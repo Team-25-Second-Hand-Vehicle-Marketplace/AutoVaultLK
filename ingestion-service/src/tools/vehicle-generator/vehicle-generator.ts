@@ -7,15 +7,6 @@ import { join } from 'path';
 import { writeImageZip } from '../image-generator/image-generator';
 import { TEMPLATE_HEADER } from '../../workers/etl-worker/pipeline/parse/csv-contract';
 
-/**
- * One row of the dealer CSV - every column of `TEMPLATE_HEADER`, in the same
- * names the parser reads, so a generated file is a valid upload by
- * construction and carries the same 43 columns the downloadable template does.
- *
- * Category-gated columns (bike, van/bus, truck) are blank on the cars this
- * generator produces: the enrich stage ignores them for any other
- * vehicle_type, and blank is exactly what a dealer's file would hold.
- */
 export type Vehicle = {
   registration_number: string;
   make: string;

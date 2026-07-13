@@ -1,28 +1,3 @@
-/**
- * LOCAL DEVELOPMENT ONLY. Wipes every vehicle, image, favourite and
- * ingestion job/log so a fresh CSV run starts against an empty database,
- * instead of accumulating rows across every manual test run (which is what
- * made earlier 300-row test runs report misleading "registration_number
- * already listed" rejections against leftover data from a prior run).
- *
- * Deliberately bypasses ListingService's DELETABLE_STATUSES restriction -
- * that restriction protects a real dealer's LIVE/SOLD inventory from
- * accidental deletion through the API, which does not apply to a script run
- * by hand against a local database. vehicle_dictionaries and auth.users are
- * NOT touched: dictionaries are reference data, and this must never remove
- * an account, only the listings under it.
- *
- * Connects with the plain `marketplace` superuser (DATABASE_URL), not the
- * app's own MARKETPLACE_DATABASE_URL: marketplace_service_role has no DELETE
- * (or in rejected_records/etl_stage_logs's case, no grant at all) on
- * ingestion.* by design (ADR-002's cross-schema isolation), so clearing job
- * history needs the broader role this script alone uses - nothing about the
- * running services' own DB access changes.
- *
- *   npx ts-node src/tools/reset-test-data.ts            # wipe everything
- *   npx ts-node src/tools/reset-test-data.ts --dealer test@example.com   # one dealer only
- *   npx ts-node src/tools/reset-test-data.ts --yes       # skip the confirmation prompt
- */
 import { createInterface } from 'node:readline/promises';
 import { config } from 'dotenv';
 import { DataSource } from 'typeorm';

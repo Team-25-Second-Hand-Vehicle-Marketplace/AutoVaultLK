@@ -155,15 +155,6 @@ describe('UpdateListingDto', () => {
   });
 });
 
-/**
- * The accepted vocabularies are derived from
- * `search/constants/vehicle-attributes.constants.ts` rather than restated here.
- *
- * They were hand-written enums until VehicleTypeDto fell five values behind the
- * CHECK constraint: migration 20000 extended vehicle_type to eleven values and
- * updated the entity, the ingestion write-entity and the search constants, but
- * not this DTO. A dealer could bulk-upload a lorry and not create one by hand.
- */
 describe('CreateListingDto vocabularies', () => {
   it.each([...VEHICLE_TYPES])('accepts vehicleType %s', (vehicleType) => {
     expect(validateCreate({ ...VALID_LISTING, vehicleType })).toHaveLength(0);

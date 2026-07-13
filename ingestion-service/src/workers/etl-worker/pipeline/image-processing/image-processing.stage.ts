@@ -66,14 +66,6 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): 
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
-/**
- * B3 - Image Processing Stage.
- *
- * Reads the original image from ObjectStore, processes it using Sharp,
- * creates a thumbnail, and writes both outputs back to ObjectStore.
- *
- * The original dealer upload is never modified.
- */
 export async function processVehicleImage(
   objectStore: ObjectStore,
   input: ImageProcessingInput,

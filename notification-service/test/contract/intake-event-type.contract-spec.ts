@@ -2,24 +2,6 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { INTAKE_NOTIFICATION_TYPES } from '../../src/modules/notifications/dto/create-notification-event.dto';
 
-/**
- * Drift guard between notification-service's intake vocabulary and the two
- * internal callers that emit events against it.
- *
- * admin-service's NotificationInternalClient and ingestion-service's
- * notification-client.ts each keep their own copy of this union - both files
- * say so directly ("Matches notification-service's INTAKE_NOTIFICATION_TYPES")
- * - because a plain pipeline stage module cannot import a NestJS DTO across a
- * service boundary. Nothing but this test enforces that promise: a type added
- * here and not mirrored there is accepted by TypeScript on both sides and
- * rejected at runtime by CreateNotificationEventDto's @IsIn validator, with
- * the failure surfacing as a silently dropped notification, not a build
- * error.
- *
- * Compares the literal union members rather than behaviour, for the same
- * reason the normalize-embed parity guard does: a reordered or renamed entry
- * must fail even though both copies still compile.
- */
 
 const ADMIN_CLIENT = resolve(
   __dirname,

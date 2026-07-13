@@ -1,20 +1,5 @@
 import type { EtlStage } from '../../../infrastructure/database/entities/etl-stage-log.entity';
 
-/**
- * What crosses a Step Functions state boundary.
- *
- * **Step Functions caps a state's input and output at 256 KB.** A chunk of 250
- * normalized rows carrying `search_text` is well past that, so rows never
- * travel between states - they live in the object store and only a pointer
- * moves. This type is that pointer, and it must stay small enough that a
- * 50-chunk Map's aggregated output is nowhere near the cap.
- *
- * At roughly 200 bytes per envelope, 50 chunks is ~10 KB.
- *
- * `LocalOrchestrator` threads the identical type. The two executors differ in
- * *who calls the next stage*, not in what is passed - which is what keeps them
- * from drifting into different pipelines.
- */
 export type ChunkEnvelope = {
   jobId: string;
   /** Owning dealer, from the job row. Carried so a stage Lambda need not re-read it. */
@@ -47,16 +32,6 @@ export type ChunkCounts = {
   rejected: number;
 };
 
-/**
- * Where a stage writes its output.
- *
- * Per-stage prefixes rather than one key overwritten in place: a failed run
- * leaves every earlier stage's output intact, which is what makes an ASL retry
- * *from the failing state* possible at all. Overwriting would destroy the input
- * the retry needs.
- *
- * S3 lifecycle expires `staging/` after 7 days (ObjectStore's header).
- */
 export function stageOutputKey(jobId: string, stage: EtlStage, chunkId: number): string {
   return `staging/${jobId}/${slug(stage)}/chunk-${pad(chunkId)}.json`;
 }

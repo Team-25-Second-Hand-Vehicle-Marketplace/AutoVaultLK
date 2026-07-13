@@ -6,15 +6,6 @@ import type {
   AdminTimeSeries,
 } from '../../api/admin.types'
 
-/**
- * Renders the real dashboard against fixed mock data - no login, no backend
- * required. For checking a local dashboard change in the browser before
- * pushing it; not linked from anywhere in the app.
- *
- * Only mounted in dev (see the `import.meta.env.DEV` guard around its route
- * in App.tsx) - `npm run build` never includes this route or this file's
- * code in what ships.
- */
 
 const MOCK_DASHBOARD: AdminDashboard = {
   listings: { live: 128 },

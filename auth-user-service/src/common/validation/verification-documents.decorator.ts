@@ -12,14 +12,6 @@ import { NIC_MESSAGE, NIC_REGEX } from './validation.constants';
 export const NIC_DOCUMENT_KEY = 'nic';
 export const BUSINESS_REGISTRATION_DOCUMENT_KEY = 'businessRegistrationCertificate';
 
-/**
- * The same cross-check the decorator below runs, exposed directly for
- * callers that know the dealer's actual type server-side rather than from a
- * sibling DTO field - e.g. DealerProfilesService.resubmit(), which validates
- * a resubmitted document against the profile's stored `dealerType` rather
- * than trusting the DTO to resend it (update-style DTOs deliberately don't;
- * see the decorator's no-op note below). Returns null when valid.
- */
 export function verificationDocumentsError(dealerType: unknown, value: unknown): string | null {
   return describeError(dealerType, value);
 }
@@ -68,14 +60,6 @@ class VerificationDocumentsForDealerTypeConstraint
   }
 }
 
-/**
- * Cross-checks `verificationDocuments` against the sibling `dealerType`
- * field: an individual dealer must submit a valid NIC (`nic`), a business
- * dealer must submit a business registration document
- * (`businessRegistrationCertificate`). A no-op when `dealerType` isn't
- * present on the DTO being validated (e.g. profile-update DTOs, which don't
- * resend dealerType since it's immutable after registration).
- */
 export function IsVerificationDocumentsForDealerType(options?: ValidationOptions) {
   return function (object: object, propertyName: string) {
     registerDecorator({

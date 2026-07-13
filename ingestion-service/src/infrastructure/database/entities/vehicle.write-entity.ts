@@ -6,21 +6,6 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-/**
- * loadFn's target entity - the ONE documented cross-schema write in the
- * whole platform (see database/src/grants.sql and
- * Documentation/plan-b-reads-cross-schemas.md §6). ingestion_service_role
- * holds SELECT + INSERT + UPDATE on this table, never DELETE.
- *
- * synchronize: false - this service never migrates marketplace.vehicles;
- * marketplace-service's migrations own the DDL. Kept in sync manually
- * with marketplace-service/src/infrastructure/database/entities/vehicle.entity.ts -
- * see the silent-drift checklist in plan-b-reads-cross-schemas.md §9A,
- * item 4.
- *
- * Named with a `.write-entity.ts` suffix (not `.entity.ts`) to make this
- * table's exceptional status visible at a glance in the file tree.
- */
 
 // Must match marketplace-service's VehicleType union and the
 // vehicles_vehicle_type_check CHECK constraint (plan-b §risk-4).

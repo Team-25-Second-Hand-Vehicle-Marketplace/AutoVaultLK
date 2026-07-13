@@ -1,27 +1,3 @@
-/**
- * One-command ETL test: generate a CSV + matching image ZIP, run them
- * through the real pipeline, and produce a single HTML report covering every
- * row's outcome, every image's compression, and embedding coverage.
- *
- * Sits alongside vehicle-generator.ts and image-generator.ts (which this
- * reuses in-process, not by shelling out) and run-pipeline.ts (whose job
- * creation / orchestrator invocation this also reuses). Built because manual
- * testing so far meant three separate commands plus reading a wall of
- * console.table output - this exists to make one full pipeline pass
- * reviewable as a single artifact.
- *
- *   npx ts-node src/tools/ingestion-tester/ingestion-tester.ts --count 50
- *   npx ts-node src/tools/ingestion-tester/ingestion-tester.ts --count 50 --dealer you@example.com
- *   npx ts-node src/tools/ingestion-tester/ingestion-tester.ts --count 50 --images-per-vehicle 3
- *   npx ts-node src/tools/ingestion-tester/ingestion-tester.ts --count 50 --no-images
- *
- * Run with ts-node, not tsx - see run-pipeline.ts's comment: Nest's DI needs
- * emitDecoratorMetadata's type-checking pass, which tsx skips.
- *
- * Vehicles land as PENDING_REVIEW, exactly like a real dealer's bulk upload -
- * this tool does not auto-approve them to LIVE. The report says so plainly so
- * "not visible in marketplace search yet" is never mistaken for a bug.
- */
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { NestFactory } from '@nestjs/core';

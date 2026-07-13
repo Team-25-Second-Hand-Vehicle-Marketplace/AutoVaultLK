@@ -5,14 +5,6 @@ import { useAsyncData } from '../../hooks/useAsyncData'
 import { VehicleCard } from './VehicleCard'
 import { VehicleCardSkeleton } from './VehicleCardSkeleton'
 
-/**
- * Similar vehicles, shown under the detail page (FR-25).
- *
- * Both the empty and the error case render **nothing at all**. A rare vehicle
- * having no near neighbours is not something a buyer needs told, and a
- * recommendations outage must not put an error box on the page they actually
- * asked for. The listing itself is the content; this is an addition to it.
- */
 
 /** Never surfaced - the section hides itself instead. */
 const swallow = () => ''

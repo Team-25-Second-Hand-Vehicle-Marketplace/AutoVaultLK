@@ -21,14 +21,6 @@ export type UploadJobPage = {
   total: number;
 };
 
-/**
- * Write-side access to ingestion.upload_jobs, used by the Ingest API and the
- * ETL pipeline.
- *
- * Distinct from JobStatusRepository, which is read-only and always scoped to
- * the owning dealer for GET /jobs/{id}. Keeping them apart means a dealer-facing
- * read can never accidentally reach a method that mutates job state.
- */
 @Injectable()
 export class UploadJobRepository {
   constructor(

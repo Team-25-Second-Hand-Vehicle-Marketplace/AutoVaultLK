@@ -1,21 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-/**
- * Drift guard between AuthService's AuthUser/AuthTokenResponse and
- * web-frontend's mirrored types (auth.types.ts). The two build
- * independently, so the frontend has no import path into this service's
- * types - a field added, renamed or removed on either side has nothing else
- * to fail until login or registration silently returns a shape the frontend
- * does not expect.
- *
- * auth.service.ts builds this response inline (`{ accessToken, refreshToken,
- * user: this.toSafeUser(user) }`) rather than through a class-validator DTO
- * like the request side, because it is a plain, unvalidated read shape -
- * there is nothing to validate on the way out. AuthUser/AuthTokenResponse
- * were exported alongside the existing logic specifically to give this test
- * a named type to diff, without changing what the endpoint returns.
- */
 
 const AUTH_SERVICE = resolve(__dirname, '../../src/modules/auth/services/auth.service.ts');
 const JWT_CONFIG = resolve(__dirname, '../../src/modules/auth/config/jwt.config.ts');

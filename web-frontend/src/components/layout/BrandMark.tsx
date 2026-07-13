@@ -1,15 +1,6 @@
 import { useId } from 'react'
 import { Link } from 'react-router-dom'
 
-/**
- * A car inside a shield, sitting on a road: trust (shield) applied to a
- * vehicle marketplace (car, road). Matches the concept the team picked from
- * generated references - see the design chat for the source image.
- *
- * `clipId` is per-render (useId) because BrandMark appears more than once on
- * the same page (header + footer), and two elements sharing one `id` would
- * make the second instance's `clipPath` reference ambiguous.
- */
 export function BrandMark({ to = '/' }: { to?: string | null }) {
   const clipId = useId()
 

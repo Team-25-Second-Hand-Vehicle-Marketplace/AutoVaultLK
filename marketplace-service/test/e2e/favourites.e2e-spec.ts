@@ -11,20 +11,6 @@ import { JwtAuthGuard } from '../../src/modules/auth/guards/jwt-auth.guard';
 import { JwtStrategy } from '../../src/modules/auth/strategies/jwt.strategy';
 import type { AuthenticatedUser } from '../../src/modules/auth/types/authenticated-user.type';
 
-/**
- * Exercises the favourites routes through HTTP, and pins the route path.
- *
- * The controller used to be `@Controller('marketplace/favourites')` - the only
- * prefixed controller in the service. nginx proxies `location /marketplace/` to
- * `http://marketplace_service/`, and the trailing slash strips the prefix, so
- * every one of these routes 404'd behind the gateway. The `/marketplace/...`
- * case below is the regression lock for that.
- *
- * FavouritesRepository is overridden rather than stubbing TypeORM, and
- * JwtAuthGuard is stubbed because the real one needs a live auth.users lookup.
- * RolesGuard stays real - this controller declares no @Roles, so it should
- * short-circuit, and that is worth proving rather than assuming.
- */
 
 const BUYER: AuthenticatedUser = {
   id: 'buyer-1',

@@ -27,16 +27,6 @@ export class DealerRegisterPage {
     await this.page.getByLabel('NIC Number *').fill(values.nicNumber);
   }
 
-  /**
-   * Business dealer path - required for bulk upload (RequireDealerType
-   * type="business" gates /dealer/upload). dealerType defaults to
-   * 'business', so no radio interaction is needed here, unlike the
-   * individual path. Waits for the upload hint text to show the file name
-   * before returning: uploadVerificationDocument is a real network call
-   * (POST /documents/verification), and next() silently refuses to advance
-   * past this step until documentKey is set, with no loading indicator on
-   * the Continue button itself to wait on instead.
-   */
   async fillCompanyInfoBusiness(values: {
     companyName: string;
     businessRegistrationNumber: string;
@@ -67,25 +57,6 @@ export class DealerRegisterPage {
     await this.page.getByLabel('Confirm Password *').fill(values.password);
   }
 
-  /**
-   * Advances one step and waits for the resulting heading.
-   *
-   * Uses dispatchEvent('click') rather than click(): wizard-card__actions
-   * renders exactly one primary button per step, at the same screen
-   * position, and this component swaps "Continue →" (type="button") for a
-   * type="submit" "Create Dealer Account" in the very next render once
-   * next()'s state update lands the wizard on its last step. click()
-   * performs a real mouse hover/mousedown/mouseup sequence at screen
-   * coordinates; when the button's `type` attribute flips between the
-   * mousedown and mouseup (React's re-render is faster than that
-   * sequence), the mouseup's native click-triggers-submit chain fires
-   * against the now-type="submit" element even though nothing re-clicked
-   * it - confirmed by direct observation: a `button.evaluate(el =>
-   * el.click())` DOM-API call on the exact same transition advances to
-   * Review WITHOUT submitting, where a Playwright click() reliably submits
-   * immediately. dispatchEvent (a single synchronous DOM event, not a
-   * coordinate-based mouse sequence) doesn't straddle the swap.
-   */
   async continueStep(expectHeading: string | RegExp): Promise<void> {
     const continueButton = this.page.locator('.wizard-card__actions button', {
       hasText: 'Continue',

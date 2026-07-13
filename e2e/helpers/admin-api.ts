@@ -1,17 +1,5 @@
 import { type APIRequestContext } from '@playwright/test';
 
-/**
- * Approves a dealer directly via admin-service's real API, bypassing the
- * admin UI. This journey's point is proving a dealer can register, verify,
- * sign in pre-approval, and use their profile once verified - not proving
- * the admin console's own click-through, which is a separate journey. A
- * direct API call keeps this test from depending on a second UI surface
- * that isn't the one under test here.
- *
- * Requires ADMIN_SEED_EMAIL/ADMIN_SEED_PASSWORD to match a real seeded
- * admin (database/src/seeds/admin-user.seed.ts) - no default exists, since
- * the seed script itself refuses to run without an explicit password.
- */
 export async function approveDealer(
   request: APIRequestContext,
   baseURL: string,

@@ -51,23 +51,6 @@ export class RecommendationsRepository {
     return rows[0]?.exists === true;
   }
 
-  /**
-   * Find vehicles related to the currently viewed vehicle.
-   *
-   * Recommendation score:
-   *
-   * Same model             +30
-   * Same make              +20
-   * Same vehicle type      +15
-   * Similar price          +10
-   * Similar manufacture year +5
-   * Similar mileage          +5
-   * Same fuel type           +5
-   * Same transmission        +5
-   * Same city                +5
-   *
-   * Maximum score = 100
-   */
   async findSimilarVehicles(
     vehicleId: string,
     limit: number,

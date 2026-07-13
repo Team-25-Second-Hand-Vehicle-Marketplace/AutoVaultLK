@@ -12,30 +12,6 @@ import { User } from '../../src/infrastructure/database/entities/user.entity';
 loadEnv({ path: '../.env' });
 loadEnv({ path: '.env' });
 
-/**
- * Shared setup for the auth-user-service integration suite.
- *
- * auth-user-service owns its schema outright - no cross-schema reads - so
- * unlike marketplace/admin/notification the risk here is not a missing
- * GRANT. It is the real constraints and cascade actions a stubbed
- * Repository<T> unit test cannot see: users.email and *_tokens.token_hash
- * both carry a unique index (so a race that produces two tokens for the
- * same secret fails loudly instead of silently colliding), and
- * refresh_tokens/dealer_profiles/password_history all CASCADE on user
- * deletion while refresh_tokens.replaced_by_id and security_events.user_id
- * SET NULL instead - the difference between "this history disappears" and
- * "this history survives, orphaned" is a migration detail no unit test
- * exercises.
- *
- * Requires a migrated, seeded database - the one docker-compose brings up:
- *
- *   docker compose up -d postgres
- *   npm --prefix database run migration:run
- *   npm --prefix database run grants
- *
- * When no database is reachable the suite SKIPS rather than fails, matching
- * marketplace-service/test/integration/test-database.ts.
- */
 
 export const INTEGRATION_DATABASE_URL =
   process.env.AUTH_DATABASE_URL ??
@@ -158,14 +134,6 @@ export function fixtureEmail(label = 'integration'): string {
   return `${label}-${Date.now()}-${counter}@example.test`;
 }
 
-/**
- * Creates and persists a throwaway user for a test to hang fixtures off,
- * with its id tracked by the caller for cleanup. Deleting the user cascades
- * to every row created against it in refresh_tokens, dealer_profiles and
- * password_history, and SETs NULL on security_events.user_id - exactly the
- * behaviour these suites exist to prove, so cleanup itself becomes part of
- * the coverage rather than working around it.
- */
 export async function createFixtureUser(
   ds: DataSource,
   overrides: Partial<User> = {},

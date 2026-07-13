@@ -188,16 +188,6 @@ interface ImagesEnvelope {
   data: UploadedVehicleImage[]
 }
 
-/**
- * POST /marketplace/listings/:id/images - FR-58. Replaces the listing's
- * whole image set; a re-upload means "this is the current set of photos",
- * not "add more to what's there". The first file in `files` becomes the
- * primary photo.
- *
- * The backend 400s in demo mode (IMAGE_SERVE_MODE=demo, the local dev
- * default) - an upload it can never serve back is a worse failure than
- * refusing it outright. toErrorMessage surfaces that message directly.
- */
 export async function uploadListingImages(
   id: string,
   files: File[],

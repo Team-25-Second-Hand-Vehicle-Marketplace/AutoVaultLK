@@ -21,14 +21,6 @@ import {
   type GroqRepair,
 } from './groq-prompt';
 
-/**
- * What the stage did, for the orchestrator to log. SKIPPED when no key is
- * configured or nothing needed help; DEGRADED when at least one sub-batch's
- * call failed and those rows kept their deterministic values; SUCCEEDED when
- * every sub-batch that was attempted came back - including a chunk where
- * some sub-batches succeeded and others degraded, since the rows that did
- * get repaired should not be reported as a wholesale failure.
- */
 export type GroqOutcome = 'SKIPPED' | 'SUCCEEDED' | 'DEGRADED';
 
 export type GroqNormalizeResult = StageResult<NormalizedRow> & {
@@ -38,45 +30,8 @@ export type GroqNormalizeResult = StageResult<NormalizedRow> & {
   error?: string;
 };
 
-/**
- * Candidates per Groq request, not per chunk.
- *
- * A whole chunk's low-confidence rows (up to INGESTION_CHUNK_SIZE, 250 by
- * default) sent in one request routinely exceeded Groq's free-tier 8,000
- * TPM limit once the full ~30-make dictionary vocabulary was included in the
- * same payload - observed directly against the API as a 413 ("Request too
- * large") on the first chunk and a 429 on the second, degrading Groq
- * normalization on every realistically-sized file. Splitting into small
- * sub-batches keeps each request's token count well under the cap
- * regardless of chunk size, at the cost of more sequential round trips per
- * chunk instead of one.
- */
 const GROQ_BATCH_SIZE = 8;
 
-/**
- * The LLM fallback for rows the dictionary could not resolve (ADR-004:
- * rules first, LLM second).
- *
- * **The keyless path is required behaviour, not a fallback.** CI has no key
- * and a dealer upload cannot fail because a third party is down, so with
- * GROQ_API_KEY unset the stage logs SKIPPED and rows pass through untouched -
- * exactly what a Groq outage produces.
- *
- * Three rules the live call does not break:
- *
- * 1. **Every returned value is checked against the dictionary snapshot.** An
- *    LLM inventing "Toyota Corrolla" would otherwise write a make/model pair
- *    that no search facet, filter or dictionary lookup can ever match. Values
- *    absent from the snapshot are dropped, not stored.
- *
- * 2. **Failure degrades, never rejects.** Rows keep whatever parseNormalize
- *    determined and continue to validateRows, which may well accept them -
- *    low confidence is not invalidity. A Groq outage must cost enrichment,
- *    not stock.
- *
- * 3. **It never rejects a row.** Same reason as parseNormalize: validateRows
- *    is the single gate.
- */
 export const groqNormalizeStage: StageRunner<
   NormalizedRow[],
   GroqNormalizeResult
@@ -173,30 +128,6 @@ async function requestRepairs(
   return parseRepairs(parseGroqJson(await complete(SYSTEM_PROMPT, payload)));
 }
 
-/**
- * Merges accepted repairs back by row number.
- *
- * **Every returned value is validated before it is written** - make/model
- * through the dictionary, the enum fields through enum-vocabulary.ts's exact
- * lookup, engine_capacity_cc/owners_count as positive integers. The prompt
- * states the allowed vocabulary, but a prompt is a request, not a constraint:
- * a model returning a value outside the stated list is dropped, not stored,
- * for the same reason an invented make/model pair is dropped - a facet or
- * filter that can never match it is worse than an honest absence.
- *
- * **A field already resolved by parseNormalize is never overwritten.** Groq
- * is asked to repair the row as a whole so it has enough context to read
- * fuel_type out of a description when the fuel_type column is blank, but a
- * cell the rules-only pass already resolved correctly (e.g. transmission
- * "Automatic") must not be replaced by a model's independent (and possibly
- * different) opinion of the same cell.
- *
- * A repaired field is scored CONFIDENCE_ALIAS: better than the fuzzy match
- * that failed, below an exact hit, because the LLM agreed with (or inferred)
- * a value rather than reading the vehicle's papers. FR-42.1: every repaired
- * field gets a `source: 'groq'` provenance entry, with `reasoning` attached
- * when Groq supplied one - only fields Groq actually changed are marked.
- */
 function applyRepairs(
   ctx: StageContext,
   rows: NormalizedRow[],
@@ -339,14 +270,6 @@ function applyEnumRepair<K extends keyof VehicleFields, T extends string>(
   return true;
 }
 
-/**
- * Rows whose weakest resolved field fell below the threshold.
- *
- * Strictly below, not at: a fuzzy dictionary hit scores exactly
- * CONFIDENCE_FUZZY (0.6) and the default threshold is 0.6, so a trigram match
- * the snapshot already vouched for is not re-litigated by an LLM. Only rows
- * where something genuinely failed to resolve are worth the call.
- */
 export function selectCandidates(
   rows: NormalizedRow[],
   threshold: number,

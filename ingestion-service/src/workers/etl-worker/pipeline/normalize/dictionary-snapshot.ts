@@ -43,19 +43,6 @@ export const AMBIGUITY_MARGIN = 0.05;
 /** Fuzzy matching needs enough signal; 3-char probes trigram-match everything. */
 const MIN_FUZZY_PROBE_LENGTH = 4;
 
-/**
- * In-memory view of marketplace.vehicle_dictionaries, built once per pipeline
- * run.
- *
- * Deliberately NOT a per-row query: the ETL holds a single connection under
- * Step Functions' MaxConcurrency of 10, and `extra: { max: 5 }` in
- * config/database.config.ts is sized on that assumption. Querying per row would
- * invalidate the whole pooling argument (see the view-entity's header).
- *
- * Resolution order is exact → alias → fuzzy, mirroring search's parser so the
- * two halves of the platform fold the same dealer input to the same canonical
- * value.
- */
 export class InMemoryDictionarySnapshot implements DictionarySnapshot {
   /** compact(value) → rows. A key can collide across types, hence the filter. */
   private readonly byKey = new Map<string, IndexedEntry[]>();

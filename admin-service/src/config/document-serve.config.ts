@@ -1,17 +1,5 @@
 import { ConfigService } from '@nestjs/config';
 
-/**
- * How admin-service resolves a stored verification-document key
- * (DealerProfileView.verificationDocuments) into a URL an admin's browser
- * can fetch. Mirrors auth-user-service's config of the same name exactly -
- * duplicated rather than shared because these are separate deployables, the
- * same reason marketplace-service and auth-user-service each carry their own
- * copy of the equivalent image-serving config.
- *
- * Read-only here: admin-service only ever resolves a document to a URL,
- * never uploads one (that's auth-user-service's DocumentUploadService, used
- * during dealer registration before the account exists).
- */
 export const DOCUMENT_SERVE_MODES = ['s3', 'local', 'demo'] as const;
 export type DocumentServeMode = (typeof DOCUMENT_SERVE_MODES)[number];
 

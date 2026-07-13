@@ -20,20 +20,6 @@ export type ProcessJobImagesInput = {
   zipKey: string | null;
 };
 
-/**
- * How long to keep retrying a registration-number lookup before treating an
- * image as genuinely unmatched.
- *
- * Images now run concurrently with the chunk Map (§ ProcessImages parallel
- * branch), not after it, to cut wall-clock time on a large upload instead of
- * paying for image processing on top of the Map's duration. The cost is that
- * a vehicle row may not exist yet when its image is ready to match - Load
- * for that row's chunk may still be running, or queued behind another chunk
- * under MaxConcurrency. Retrying here lets the match self-correct once the
- * row lands, without needing a staging table or a post-Map reconciliation
- * step; only a row that was genuinely rejected (never loaded at all) ends up
- * truly unmatched once the budget is spent.
- */
 const MATCH_RETRY_BUDGET_MS = 30_000;
 const MATCH_RETRY_INTERVAL_MS = 500;
 
@@ -156,24 +142,6 @@ export class ProcessJobImagesService {
     return 'processed';
   }
 
-  /**
-   * Polls for the vehicle row rather than looking up once, because images now
-   * run concurrently with the chunk Map that inserts it (see
-   * MATCH_RETRY_BUDGET_MS above) - the row may simply not exist yet, not be
-   * permanently absent. Stops early the moment it appears, so a fast Load
-   * costs nothing extra.
-   *
-   * Also stops early - before spending the retry budget at all - when this
-   * registration number was already rejected somewhere in the pipeline. A
-   * rejected row is not "not yet loaded", it is "will never be loaded", and
-   * waiting the full budget for it anyway was the actual cost observed in
-   * practice: an 11-image ZIP where every registration belonged to a
-   * rejected row took ~5.5 minutes to report "unmatched" for all of them,
-   * one 30s wait at a time. Checked once per poll (not just at the start) so
-   * an image whose row is rejected mid-wait - a slower chunk failing after
-   * this loop already began - still exits promptly instead of running out
-   * the clock regardless.
-   */
   private async findVehicleWithRetry(
     jobId: string,
     registrationNumber: string,

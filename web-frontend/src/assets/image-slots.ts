@@ -1,14 +1,3 @@
-/**
- * Every photo the design asks for, in one place.
- *
- * Each slot is a file at `public/images/<slot>.jpg`. Until that file exists the
- * slot shows a labelled placeholder (see SlotImage), so the layout is complete
- * and you can see exactly what to shoot or source. Drop in a JPG with the same
- * name and it replaces the placeholder - no code change.
- *
- * Brief for all of them: real, natural-looking photos are fine - the layout
- * does not assume a studio shot, a white background or a 3D render.
- */
 export interface ImageSlot {
   /** Recommended pixel size (width × height). Larger is fine; keep the ratio. */
   width: number

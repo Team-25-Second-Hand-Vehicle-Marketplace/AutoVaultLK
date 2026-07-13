@@ -7,14 +7,6 @@ export class UploadStatusPage {
     return this.page.locator('.upload-status__label');
   }
 
-  /**
-   * Waits for a terminal status label (Completed / Completed with skipped
-   * rows / Failed), polling via Playwright's own retrying assertion rather
-   * than the page's internal 2s-15s backoff timer - this only needs to
-   * observe the end state, not replicate the frontend's poll cadence. The
-   * pipeline runs in-process locally (no real Lambda/queue latency), but a
-   * generous timeout keeps this robust under load.
-   */
   async waitForTerminalStatus(timeout = 60_000): Promise<string> {
     await expect(this.statusLabel()).toHaveText(
       /Completed|Completed with skipped rows|Failed/,

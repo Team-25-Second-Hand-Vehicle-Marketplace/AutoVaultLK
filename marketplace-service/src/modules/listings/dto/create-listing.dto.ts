@@ -21,24 +21,6 @@ import {
   VEHICLE_TYPES,
 } from '../../search/constants/vehicle-attributes.constants';
 
-/**
- * The accepted vocabularies, derived from the canonical lists rather than
- * restated.
- *
- * They used to be hand-written enums here, and VehicleTypeDto fell five values
- * behind: migration 20000 extended vehicle_type to eleven values and updated
- * the entity, the ingestion write-entity and the search constants, but not this
- * file. The result was a DTO that rejected THREE_WHEELER, LORRY, PICKUP,
- * TRACTOR and HEAVY_MACHINERY - types the database accepts, the search facets
- * offer, and the ETL writes every day - so a dealer could bulk-upload a lorry
- * but not create one by hand.
- *
- * Deriving them means the next extension cannot repeat that: there is one list,
- * in `search/constants/vehicle-attributes.constants.ts`, and this follows it.
- *
- * `@IsEnum` takes any object whose values are the permitted set, so a frozen
- * map built from the array validates exactly as a hand-written enum did.
- */
 function enumFrom<T extends string>(values: readonly T[]): Record<T, T> {
   return Object.freeze(
     Object.fromEntries(values.map((value) => [value, value])),

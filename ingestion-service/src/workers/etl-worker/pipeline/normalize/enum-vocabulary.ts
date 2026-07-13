@@ -1,20 +1,6 @@
 import type { VehicleType } from '../../../../infrastructure/database/entities/vehicle.write-entity';
 import { compact } from './trigram';
 
-/**
- * Closed-vocabulary synonyms for the enum columns.
- *
- * Copied from marketplace-service/src/modules/search/parser/vocabulary.ts for
- * the same reason trigram.ts is: ingestion and search must fold the same word
- * to the same value. If a dealer uploads "deisel" and we store DIESEL, a buyer
- * typing "deisel" has to reach that row - and search already accepts these
- * misspellings. Diverging here would make bulk stock invisible to exactly the
- * queries it should match.
- *
- * Deliberately excluded: driveType and bodyType singles. Those are not columns
- * on marketplace.vehicles; body type is resolved through the BODY_TYPE
- * dictionary in the enrich stage (§A6) so it stays seed-driven.
- */
 
 export const FUEL_TYPES = ['PETROL', 'DIESEL', 'HYBRID', 'ELECTRIC', 'CNG'] as const;
 export type FuelType = (typeof FUEL_TYPES)[number];
@@ -137,16 +123,6 @@ const VEHICLE_TYPE: Record<string, VehicleType> = {
   machinery: 'HEAVY_MACHINERY',
 };
 
-/**
- * Enum coercion is exact-or-nothing - no fuzzy fallback.
- *
- * A closed vocabulary has few members and short words, so trigram matching
- * between them is unreliable in the worst way: "MANUAL" and "AUTOMATIC" are far
- * apart, but a typo landing between two fuel types would silently mislabel a
- * vehicle. Unknown values return null, which parseNormalize records as a
- * confidence miss and routes to Groq - where the whole row gives context a
- * three-letter cell cannot.
- */
 export function coerceFuelType(raw: string | undefined): FuelType | null {
   return lookup(FUEL, raw);
 }

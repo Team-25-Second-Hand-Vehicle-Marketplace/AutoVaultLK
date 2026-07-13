@@ -3,15 +3,6 @@ import {
   type SearchTextFields,
 } from '../../../../src/shared/normalize-embed/search-text';
 
-/**
- * buildSearchText is the contract between ingestion and search (FR-22.1): both
- * must turn an equivalent listing into byte-identical text, or the embeddings
- * they produce are not comparable.
- *
- * The parity spec proves the two copies agree; this one pins what they agree
- * ON - the field set, the ordering and the band boundaries - so a change is a
- * deliberate act with a re-embed attached, not an accident.
- */
 describe('buildSearchText', () => {
   const YEAR = new Date().getFullYear();
 

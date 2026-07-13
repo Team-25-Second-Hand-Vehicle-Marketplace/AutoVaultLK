@@ -149,16 +149,6 @@ export class ListingController {
     return this.listingService.approveListing(id, actor);
   }
 
-  /**
-   * FR-58: attaches photos to a listing the dealer (or admin) already owns.
-   * Replaces the whole image set - see ListingService.uploadImages for why.
-   *
-   * Multer's memory storage, not disk: ImageUploadService decides where the
-   * bytes ultimately land (S3 in s3 mode, ingestion's shared storage
-   * directory in local mode), and a temp file on this Lambda/container's own
-   * disk would be one more thing to clean up for no benefit - a handful of
-   * photos per listing comfortably fits in memory.
-   */
   @Post(':id/images')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('DEALER', 'ADMIN')

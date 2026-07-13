@@ -1,16 +1,6 @@
 import { useId, useMemo, useState } from 'react'
 import type { TimeSeriesPoint } from '../../api/admin.types'
 
-/**
- * A daily count over time - one line, one hue (`colorVar`, one of the app's
- * own reserved tokens, same convention as BarRow). Straight segments, not a
- * smoothed curve: a curve between two real daily counts implies values that
- * were never measured, which is dishonest for a count that can only ever be
- * a whole number on a whole day.
- *
- * No axis library, no dependency - this is a handful of SVG paths, matching
- * BarRow/PieChart's own hand-rolled approach elsewhere in this admin surface.
- */
 
 const WIDTH = 600
 const HEIGHT = 160

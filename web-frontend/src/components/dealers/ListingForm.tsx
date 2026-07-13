@@ -38,23 +38,6 @@ import {
   specText,
 } from './listing-form.specs'
 
-/**
- * The manual listing form, used for both create and edit.
- *
- * **This form must track the dealer CSV.** It collects the same 43 columns as
- * the bulk-upload template (`TEMPLATE_HEADER` in `api/ingestion.template.ts`),
- * so a listing entered by hand is as complete as one uploaded. The mapping from
- * each column to the field that carries it is `CSV_COLUMN_TO_FIELD` in
- * `listing-form.specs.ts`, and `listing-form.contract.test.ts` fails the build if a template column has no
- * field here.
- *
- * **This schema must also track `CreateListingDto`.** Every rule below mirrors a
- * decorator in
- * `marketplace-service/src/modules/listings/dto/create-listing.dto.ts`, and the
- * spec ranges mirror ingestion-service's enrich stage; if they drift, the
- * dealer gets a 400 with no field to attach it to, or a spec the search facets
- * cannot read. The option lists come from `listings.types.ts`.
- */
 
 const MIN_YEAR = 1980
 const MAX_YEAR = new Date().getFullYear() + 1

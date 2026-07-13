@@ -7,15 +7,6 @@ import { defineConfig, devices } from '@playwright/test';
 // admin user via database/src/seeds/admin-user.seed.ts.
 loadEnv({ path: '../.env' });
 
-/**
- * Assumes the stack is already running rather than driving it via
- * `webServer`: locally that means `scripts/start-all.ps1` (Postgres +
- * five NestJS services + the Vite dev server), each in its own window,
- * which Playwright cannot spawn and own as a single child process the way
- * `webServer` expects. Pass BASE_URL to point at a deployed environment
- * instead (see Section 9 / 10.1 of the Test Plan: the browser layer's entry
- * criteria requires a reachable, already-seeded build, local or staging).
- */
 const baseURL = process.env.BASE_URL ?? 'http://localhost:5173';
 
 export default defineConfig({

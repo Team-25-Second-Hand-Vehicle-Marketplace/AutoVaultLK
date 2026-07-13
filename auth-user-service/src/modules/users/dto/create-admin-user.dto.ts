@@ -8,14 +8,6 @@ import {
   MinLength,
 } from 'class-validator';
 
-/**
- * Body for POST /internal/users/admin - FR-12's administrator-provisions-
- * administrator path, called by admin-service.
- *
- * `adminId` identifies the acting administrator, matching the other internal
- * DTOs; the guard proves the caller is a service, this proves which human
- * authorised it.
- */
 export class CreateAdminUserDto {
   @IsUUID('4', { message: 'adminId must be a valid UUID' })
   adminId!: string;

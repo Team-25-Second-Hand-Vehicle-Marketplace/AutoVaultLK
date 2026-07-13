@@ -7,14 +7,6 @@ import {
   type DocumentServeConfig,
 } from '../../../config/document-serve.config';
 
-/**
- * Turns a stored verification-document key into something an admin's
- * browser can actually fetch - or null when there is nothing honest to
- * return. Mirrors marketplace-service's ImageUrlResolverService, but the
- * `local` route this points at must be admin-authenticated (see
- * documents.controller.ts): unlike vehicle images, these are sensitive KYC
- * documents, not public catalogue data.
- */
 @Injectable()
 export class DocumentUrlResolverService {
   private readonly logger = new Logger(DocumentUrlResolverService.name);

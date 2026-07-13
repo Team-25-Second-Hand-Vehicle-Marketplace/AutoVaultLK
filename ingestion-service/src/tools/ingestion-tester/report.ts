@@ -1,16 +1,3 @@
-/**
- * Builds the single-file HTML report for one ingestion-tester run: a summary
- * roll-up, every row's outcome (loaded fields + provenance, or rejection
- * reason), and every image's original-vs-compressed size with an embedded
- * preview of both.
- *
- * Queries mirror run-pipeline.ts's report()/reportPerRow() - same tables,
- * same row-number-to-registration matching - extended with per-image byte
- * sizes (originalBytes tracked by the caller at generation time; processed/
- * thumbnail sizes read back from the object store here) and provenance from
- * vehicles.normalization (groqProvenance()'s shape: {source, confidence,
- * reasoning?} per field).
- */
 import type { DataSource } from 'typeorm';
 import type { ObjectStore } from '../../infrastructure/ports/object-store.port';
 import type { Vehicle } from '../vehicle-generator/vehicle-generator';

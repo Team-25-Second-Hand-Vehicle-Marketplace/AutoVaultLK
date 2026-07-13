@@ -5,37 +5,11 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { REQUIRED_COLUMNS, TEMPLATE_HEADER } from '../../api/ingestion.template'
 
-/**
- * Drift guard between the downloadable template and the parser that reads it.
- *
- * ingestion.template.ts is a deliberate copy of ingestion-service's
- * csv-contract.ts - the two services build independently, so the frontend has
- * no import path into it. This reads that file off disk and compares, turning
- * a silent mismatch into a red build.
- *
- * node:fs rather than Vite's import.meta.glob, which refuses to load anything
- * outside the project root (`Denied ID …`). That sandbox is a good default and
- * not worth relaxing for a test; this file runs only under vitest in Node, and
- * the triple-slash reference keeps the Node types local rather than widening
- * tsconfig.app.json for all of src/.
- *
- * Skips itself when the sibling service is absent (a frontend-only checkout,
- * or once the repos split), at which point this becomes a published-contract
- * problem instead.
- */
 const CONTRACT = resolve(
   dirname(fileURLToPath(import.meta.url)),
   '../../../../ingestion-service/src/workers/etl-worker/pipeline/parse/csv-contract.ts',
 )
 
-/**
- * Reads an `export const NAME = [...]` string array out of the source,
- * resolving `...OTHER_NAME` spreads recursively (TEMPLATE_HEADER is
- * `[...KNOWN_COLUMNS]`, and KNOWN_COLUMNS itself opens with
- * `...REQUIRED_COLUMNS`) so the guard sees the same flattened list the
- * running code actually produces, not just the literal entries typed
- * directly into that one array.
- */
 function readStringArray(source: string, name: string, seen = new Set<string>()): string[] {
   if (seen.has(name)) throw new Error(`Circular spread while resolving ${name}`)
   seen.add(name)

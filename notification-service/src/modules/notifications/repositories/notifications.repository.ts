@@ -74,21 +74,6 @@ export class NotificationsRepository {
     });
   }
 
-  /**
-   * Claims up to `limit` notifications whose retry is due, and returns them.
-   *
-   * **FOR UPDATE SKIP LOCKED is what makes this safe under more than one
-   * replica.** docker-compose can run several notification-service instances
-   * and each sweeps on its own timer; without SKIP LOCKED two of them select
-   * the same row and both send it, which is precisely the duplicate delivery
-   * FR-53 forbids. SKIP LOCKED makes the second sweeper step over rows the
-   * first is already holding rather than block on them.
-   *
-   * The claim marks rows by clearing next_attempt_at inside the same
-   * transaction, so a row is claimed exactly once even if delivery afterwards
-   * crashes the process - it then waits for the next sweep rather than being
-   * picked up twice in this one.
-   */
   async claimDueRetries(limit: number, now: Date): Promise<Notification[]> {
     return this.notifications.manager.transaction(async (manager) => {
       const rows = await manager

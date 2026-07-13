@@ -205,17 +205,6 @@ export class IngestionUploadService {
     }
   }
 
-  /**
-   * Step 1 of the direct-to-S3 flow: creates the job row (same as upload()
-   * does, so it exists the moment a dealer sees a jobId) and returns a
-   * presigned PUT per file. The dealer's browser uploads straight to S3 -
-   * this service never sees the bytes, and never has to: API Gateway
-   * hard-caps a Lambda-proxied request body at 10 MB, well under either file.
-   *
-   * Storage paths are written now, not after the upload lands - completeUpload
-   * only has a jobId to work with, so the keys it verifies and publishes
-   * against have to already be on the row.
-   */
   async presignUpload(
     dealerId: string,
     inventory: { fileName: string; fileSize: number },
@@ -457,15 +446,6 @@ export class IngestionUploadService {
   }
 
   private safeFileName(originalName: string): string {
-    /*
-     * Never use the dealer supplied filename directly as a filesystem path.
-     *
-     * Example:
-     * ../../etc/passwd.csv
-     *
-     * becomes:
-     * etc_passwd.csv
-     */
     const baseName = originalName.split(/[\\/]/).pop() ?? 'upload';
 
     return baseName.replace(/[^a-zA-Z0-9._-]/g, '_').replace(/^\.+/, '_');

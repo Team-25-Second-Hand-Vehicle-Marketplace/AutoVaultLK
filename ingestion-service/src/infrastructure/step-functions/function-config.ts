@@ -1,16 +1,6 @@
 import type { EtlStage } from '../database/entities/etl-stage-log.entity';
 import { stageSlug } from '../../workers/etl-worker/pipeline/graph';
 
-/**
- * Per-function deployment settings.
- *
- * Declared in TypeScript rather than straight into Terraform so a test can
- * assert them against the pipeline's own constraints - a timeout shorter than
- * the statement_timeout in lambda/bootstrap.ts, or a memory size too small for
- * the model, is the kind of mismatch that only shows up under load.
- *
- * Terraform reads the emitted JSON; see docs/STEP-FUNCTIONS-MIGRATION-PLAN.md §S8.
- */
 
 export type Packaging = 'zip' | 'image';
 

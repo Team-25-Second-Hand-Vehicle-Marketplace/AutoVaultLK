@@ -12,28 +12,6 @@ import { VehicleView } from '../../src/infrastructure/database/entities/vehicle.
 loadEnv({ path: '../.env' });
 loadEnv({ path: '.env' });
 
-/**
- * Shared setup for the admin-service integration suite.
- *
- * admin_service_role holds SELECT across auth, marketplace, ingestion and
- * notification - read-only everywhere but its own `admin` schema (see
- * database.config.ts). None of that is visible to a unit test: a unit test
- * against AdminReadsRepository stubs every Repository<T>, so it can never
- * catch a missing cross-schema GRANT, a view entity's column no longer
- * matching the owning service's real column, or a raw query-builder clause
- * (DATE_TRUNC, the audit_logs filter chain) that only a live Postgres can
- * validate.
- *
- * Requires a migrated, seeded database - the one docker-compose brings up:
- *
- *   docker compose up -d postgres
- *   npm --prefix database run migration:run
- *   npm --prefix database run grants
- *   npm --prefix database run seed:vehicles
- *
- * When no database is reachable the suite SKIPS rather than fails, matching
- * marketplace-service/test/integration/test-database.ts.
- */
 
 export const INTEGRATION_DATABASE_URL =
   process.env.ADMIN_DATABASE_URL ??
@@ -41,15 +19,6 @@ export const INTEGRATION_DATABASE_URL =
 
 let cached: DataSource | undefined;
 
-/**
- * Connects as `admin_service_role`, not as the database owner.
- *
- * That is deliberate: every cross-schema read here (auth.users,
- * auth.dealer_profiles, marketplace.vehicles, ingestion.upload_jobs,
- * ingestion.rejected_records, notification.notifications) depends on a
- * SELECT grant owned by another service's migration. Running as the owner
- * would pass whether or not those grants exist.
- */
 export async function connect(): Promise<DataSource | null> {
   if (cached?.isInitialized) return cached;
 

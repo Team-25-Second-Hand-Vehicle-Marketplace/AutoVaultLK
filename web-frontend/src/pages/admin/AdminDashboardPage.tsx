@@ -52,14 +52,6 @@ interface AsyncSlice<T> {
   data: T | null
 }
 
-/**
- * The dashboard's markup, taking its three data sources as plain props
- * rather than fetching them itself - AdminDashboardPage below is the only
- * real caller, wiring these to useAsyncData, but keeping this half
- * fetch-free is what lets AdminDashboardPreviewPage render the exact same
- * page from fixed mock data, with no login and no backend, for a quick
- * local look before anything is pushed.
- */
 export function AdminDashboardView({
   data,
   reports,

@@ -14,24 +14,6 @@ export type SearchTextFields = {
   description?: string | null;
 };
 
-/**
- * Builds the text that becomes a listing's `search_text` and, through MiniLM,
- * its embedding vector.
- *
- * ⚠️ **This file is duplicated in ingestion-service and must stay
- * byte-identical.** A vector is only meaningful relative to vectors built the
- * same way, so if the two copies diverge, bulk-uploaded listings land in a
- * different region of vector space and rank badly forever - with no error, no
- * failing test and no log line (FR-22.1 / NFR-26.1, plan-b §9A).
- *
- * Changing anything here also **invalidates every embedding already stored**.
- * The full change procedure is:
- *   1. edit both copies identically (the parity test enforces this)
- *   2. add any new field to SEARCHABLE_FIELDS in listing.repository.ts, or an
- *      edit to it will leave a stale vector behind
- *   3. re-run `cd database && npm run seed:embeddings`
- *   4. note it in the plan-b §9A drift checklist
- */
 export function buildSearchText(fields: SearchTextFields): string {
   const bodyType = fields.specs?.['body_type'];
 
@@ -56,21 +38,6 @@ export function buildSearchText(fields: SearchTextFields): string {
     .join(' ');
 }
 
-/**
- * Price as a phrase, not a number.
- *
- * MiniLM tokenizes "3500000" as digit fragments with no numeric meaning -
- * "3,500,000" and "3,400,000" are not near each other in vector space, so
- * embedding the raw figure adds noise rather than signal. A band is a word the
- * model has seen in context, which is what lets "cheap family car" reach a
- * budget listing.
- *
- * Exact price filtering is a SQL WHERE clause and always has been; the
- * embedding carries what SQL cannot express.
- *
- * Bands are in LKR and reflect the Sri Lankan market, where a "budget" car is
- * under ~2M and anything past 25M is genuinely luxury.
- */
 function priceBand(price: number | null | undefined): string | null {
   if (price == null || !Number.isFinite(price) || price <= 0) return null;
 
@@ -91,16 +58,6 @@ function mileageBand(mileage: number | null | undefined): string | null {
   return 'very high mileage well used';
 }
 
-/**
- * Relative age, because buyers search in relative terms - "recent model",
- * "old car" - while the year alone only matches a query naming that year.
- *
- * Computed against the current year, so a listing re-embedded later gets the
- * band that is true then. That is a deliberate consequence: it means the text
- * is not stable across re-seeds, and two vehicles of the same year embedded a
- * decade apart differ. Acceptable, because re-seeding is a bulk operation that
- * moves every listing together.
- */
 function ageBand(manufactureYear: number): string | null {
   if (!Number.isFinite(manufactureYear)) return null;
 
@@ -114,18 +71,6 @@ function ageBand(manufactureYear: number): string | null {
   return 'vintage old';
 }
 
-/**
- * Equipment the dealer declared, as searchable words.
- *
- * Only keys that are true - an absent or false sunroof is not something a
- * buyer searches for, and emitting "no sunroof" would pull the listing toward
- * queries mentioning sunroofs.
- *
- * Keys are read from specs rather than listed here so a new KNOWN_SPEC_KEY
- * becomes searchable without touching this file. Sorted for determinism: the
- * same vehicle must produce the same text on every run, or its vector moves
- * for no reason.
- */
 function equipmentTerms(specs: Record<string, unknown> | null | undefined): string | null {
   if (!specs) return null;
 

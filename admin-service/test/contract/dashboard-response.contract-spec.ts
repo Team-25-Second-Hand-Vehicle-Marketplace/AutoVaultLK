@@ -1,19 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-/**
- * Drift guard between DashboardDto (dashboard.mapper.ts) and web-frontend's
- * AdminDashboard type (admin.types.ts). The two build independently, so the
- * frontend has no import path into this service's mapper - a field added,
- * renamed or removed on either side has nothing else to fail until the admin
- * dashboard silently renders undefined for a real number.
- *
- * Compares field names one level deep, per top-level section
- * (listings/users/uploads/notifications/audit) rather than the full nested
- * shape in one pass: the extraction regex captures the key before the first
- * `:` inside a brace block, so a nested object's own keys need their own
- * call rather than being picked up by the outer one.
- */
 
 const MAPPER = resolve(__dirname, '../../src/modules/admin/mappers/dashboard.mapper.ts');
 const FRONTEND_TYPES = resolve(__dirname, '../../../web-frontend/src/api/admin.types.ts');

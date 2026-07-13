@@ -21,14 +21,6 @@ import { VehicleSearchResultDto } from '../../src/modules/search/dto/filter-sear
 })
 class StubDataSourceModule {}
 
-/**
- * Exercises the real HTTP -> controller -> service -> relaxation-ladder ->
- * DTO pipeline for GET /search/filters, the same way main.ts wires it
- * (including the global ValidationPipe). Only the DB-touching seams are
- * stubbed: VehicleSearchRepository (no Postgres in CI) and the injected
- * DataSource that FilterSearchService uses for fire-and-forget analytics
- * logging.
- */
 
 const SAMPLE_VEHICLE: VehicleSearchResultDto = {
   id: '11111111-1111-4111-8111-111111111111',

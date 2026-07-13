@@ -8,19 +8,6 @@ import { DealerRepository } from '../../src/modules/dealers/repositories/dealer.
 import { AuthUserView } from '../../src/infrastructure/database/entities/auth-user.view-entity';
 import { DealerProfileView } from '../../src/infrastructure/database/entities/dealer-profile.view-entity';
 
-/**
- * The dealer routes are public reads plus one write that is deliberately not
- * implemented here. Two things are worth pinning at the HTTP boundary:
- * ParseUUIDPipe turning a malformed id into a 400 rather than a database
- * error, and the 501 on the profile update.
- *
- * That 501 is the important one. `PUT /dealers/:id/profile` has no guard and a
- * DTO that would rewrite a dealer's business name, email and address - it looks
- * exactly like an unguarded write, and the only thing stopping it is that
- * DealerService throws NotImplementedException because profile updates are
- * owned by auth-user-service. Someone will eventually "fix" this by
- * implementing it rather than removing it; this test states the intent.
- */
 
 const DEALER_ID = '9a8b7c6d-5e4f-4a3b-9c8d-7e6f5a4b3c2d';
 

@@ -83,14 +83,6 @@ export class DealerProfilesService {
     });
   }
 
-  /**
-   * `isActive` is not touched here - a dealer's ability to authenticate is
-   * decided once, on email verification (see EmailVerificationService), the
-   * same as a buyer. Only DealerProfile fields change on approve/reject; see
-   * assertManualUploadAllowed (marketplace-service) and
-   * isVerifiedBusinessDealer (ingestion-service) for where verificationStatus
-   * actually gates anything.
-   */
   private async decideVerification(
     dealerUserId: string,
     adminId: string,

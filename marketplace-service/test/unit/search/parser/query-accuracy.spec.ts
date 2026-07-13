@@ -2,19 +2,6 @@ import { parseQuery } from '../../../../src/modules/search/parser/deterministic-
 import { FIXTURE_VOCABULARY } from '../../../../src/modules/search/parser/fixture-vocabulary';
 import type { ExtractedFilters } from '../../../../src/modules/search/parser/types';
 
-/**
- * Relevance check for the deterministic query parser: a labelled set of
- * buyer queries, each with the filters a human would expect, scored per field.
- *
- *   recall    - of the filters a human expects, how many did the parser find
- *   precision - of the filters the parser produced, how many were expected
- *               (a wrong filter is worse than a miss: it silently hides
- *               matching listings)
- *
- * Expectations describe the CORRECT reading of the query, not whatever the
- * parser currently returns. A case that fails is a real gap; list it in
- * KNOWN_GAPS (with the reason) rather than editing the expectation.
- */
 type Expected = Partial<
   Pick<
     ExtractedFilters,

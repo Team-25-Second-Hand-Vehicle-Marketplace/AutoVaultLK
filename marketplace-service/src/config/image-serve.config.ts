@@ -1,24 +1,5 @@
 import { ConfigService } from '@nestjs/config';
 
-/**
- * How the /listings image endpoints resolve a stored path into something a
- * browser can fetch (NFR-19: "Vehicle images shall not be publicly writable;
- * access shall be via signed URLs").
- *
- *   s3    - production. Presigns a real, time-limited GET URL against
- *           MARKETPLACE_IMAGES_BUCKET. Requires AWS credentials the process
- *           can assume.
- *   local - dev convenience for when images were actually run through the
- *           ETL pipeline locally (INGESTION_STORAGE_DRIVER=local): streams
- *           the file straight from ingestion-service's own storage
- *           directory. No AWS involved, no bucket required.
- *   demo  - dev default. No image is ever resolved from storage; the caller
- *           falls back to the frontend's placeholder photos, exactly as if
- *           this feature did not exist. Safe with an empty vehicle_images
- *           table, which is the actual state of a fresh checkout - nobody
- *           has to configure or even know this exists to keep running the
- *           app the way they always have.
- */
 export const IMAGE_SERVE_MODES = ['s3', 'local', 'demo'] as const;
 export type ImageServeMode = (typeof IMAGE_SERVE_MODES)[number];
 
@@ -39,16 +20,6 @@ export type ImageServeConfig =
   | { mode: 'local'; root: string }
   | { mode: 'demo' };
 
-/**
- * Reads IMAGE_SERVE_MODE and the settings that mode needs.
- *
- * Deliberately does NOT throw for a misconfigured s3/local mode - an image
- * endpoint that 500s because a bucket name is blank is a worse failure than
- * one that falls back to demo photos and logs why. The caller (the images
- * controller/service) is what decides whether a validation problem is worth
- * surfacing at boot vs. per-request; this function only ever returns a
- * config for the mode actually requested, never silently substitutes another.
- */
 export function imageServeConfig(config: ConfigService): ImageServeConfig {
   const raw = config.get<string>('IMAGE_SERVE_MODE')?.trim();
   const mode = isImageServeMode(raw) ? raw : DEFAULT_IMAGE_SERVE_MODE;

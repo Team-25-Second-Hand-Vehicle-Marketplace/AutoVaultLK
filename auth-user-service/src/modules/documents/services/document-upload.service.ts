@@ -30,16 +30,6 @@ export type UploadedDocumentFile = {
   buffer: Buffer;
 };
 
-/**
- * Stores a single verification document (business registration certificate)
- * uploaded during dealer registration - before the account exists, so there
- * is no userId to key the object on. Keyed by a random upload token instead;
- * the frontend carries the returned key into the actual register-dealer
- * call, which is what ends up persisted in DealerProfile.verificationDocuments.
- *
- * Mirrors marketplace-service's ImageUploadService (storeOne/putS3/putLocal)
- * exactly, just pointed at a separate, private bucket for KYC documents.
- */
 @Injectable()
 export class DocumentUploadService {
   private readonly logger = new Logger(DocumentUploadService.name);

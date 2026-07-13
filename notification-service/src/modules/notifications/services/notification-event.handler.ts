@@ -6,23 +6,6 @@ import { SesAdapter, SesUnavailableError } from '../adapters/ses.adapter';
 import { EmailTemplateService } from './email-template.service';
 import { NotificationsRepository } from '../repositories/notifications.repository';
 
-/**
- * SAD 5.2.5 NotificationEventHandler: persist, send, record delivery.
- *
- * FR-53 has two halves, and they pull in opposite directions:
- *
- * - **Never send twice.** A key that already SENT is a no-op, at both the
- *   lookup and the delivery step, and the unique index on idempotency_key
- *   settles the race between two concurrent callers.
- * - **Always eventually send.** A transient SES failure must not be terminal.
- *   Such a row keeps status PENDING with next_attempt_at set, and
- *   NotificationRetrySweeper picks it up later. Only a permanent failure, or
- *   an exhausted attempt budget, lands on FAILED.
- *
- * SesAdapter already retries twice in-process, which covers a blip mid-request.
- * That cannot outlive the request: a restart, a deploy or an outage longer than
- * a couple of hundred milliseconds needs the durable retry this schedules.
- */
 @Injectable()
 export class NotificationEventHandler {
   private readonly logger = new Logger(NotificationEventHandler.name);
@@ -162,14 +145,6 @@ export const MAX_DELIVERY_ATTEMPTS = 5;
 const BASE_BACKOFF_MS = 60_000;
 const MAX_BACKOFF_MS = 15 * 60_000;
 
-/**
- * Exponential backoff with jitter: 1m, 2m, 4m, 8m, capped at 15m.
- *
- * The jitter matters more than the curve. An SES outage fails every in-flight
- * notification at once, and without it they would all retry in the same
- * instant, hit a still-recovering endpoint together, and re-synchronise into a
- * thundering herd on every subsequent attempt.
- */
 export function backoffMs(attempt: number): number {
   const exponential = Math.min(
     BASE_BACKOFF_MS * 2 ** (attempt - 1),

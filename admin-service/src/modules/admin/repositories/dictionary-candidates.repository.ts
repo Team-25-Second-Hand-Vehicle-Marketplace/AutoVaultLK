@@ -24,16 +24,6 @@ export type DictionaryEntrySummary = {
   canonicalValue: string;
 };
 
-/**
- * Read/write for the admin "New vehicle types" tab.
- *
- * The candidate query and the dictionary lookup both read across schemas
- * admin_service_role only holds SELECT on (ingestion, marketplace) - this
- * repository never writes to either; `dismiss` is the only write, and it
- * lands in admin's own schema. Promoting a candidate into the real
- * dictionary goes through MarketplaceInternalClient instead, the same way
- * every other admin-initiated write into another service's schema does.
- */
 @Injectable()
 export class DictionaryCandidatesRepository {
   constructor(
@@ -45,19 +35,6 @@ export class DictionaryCandidatesRepository {
     private readonly dismissals: Repository<DictionaryCandidateDismissal>,
   ) {}
 
-  /**
-   * Raw make text that never resolved during ingestion, grouped by its
-   * normalized form, with enough context for an admin to tell a genuinely
-   * new vehicle type apart from noise: how often it recurs, across how many
-   * dealers, and a few real rows it appeared on. Already excludes anything
-   * an admin previously dismissed.
-   *
-   * `reason LIKE` matches validateRows.stage.ts's `missing()` helper exactly
-   * (`make "X" could not be recognised`) - the one place in the pipeline
-   * that produces this message. `raw_data->>'make'` is read directly rather
-   * than parsed back out of the reason string, since it is the same value
-   * structured rather than embedded in prose.
-   */
   async findCandidates(minOccurrences: number): Promise<RawCandidate[]> {
     const rows: Array<{
       normalized_make: string;

@@ -7,17 +7,6 @@ import {
   type DictionaryRow,
 } from '../../../workers/etl-worker/pipeline/normalize/dictionary-snapshot';
 
-/**
- * Loads marketplace.vehicle_dictionaries into an in-memory snapshot.
- *
- * One query per pipeline run, never per row - that is what keeps the
- * `extra: { max: 5 }` connection-pool sizing in config/database.config.ts
- * valid under MaxConcurrency: 10.
- *
- * SELECT only: ingestion_service_role has no write grant here, and alias
- * promotion goes through marketplace-service's API rather than a second
- * cross-schema write (see the view-entity header and ADR-002).
- */
 @Injectable()
 export class DictionaryRepository {
   private readonly logger = new Logger(DictionaryRepository.name);

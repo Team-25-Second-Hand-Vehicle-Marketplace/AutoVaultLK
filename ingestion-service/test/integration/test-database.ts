@@ -8,25 +8,6 @@ import { VehicleDictionaryView } from '../../src/infrastructure/database/entitie
 loadEnv({ path: '../.env' });
 loadEnv({ path: '.env' });
 
-/**
- * Shared setup for the integration suite.
- *
- * These tests exist because every persistence unit test asserts on the SQL
- * *string*. A conflict target whose WHERE clause does not match its partial
- * index, or a cast pgvector rejects, passes every one of those and fails on the
- * first real upload. Only a live Postgres can tell the difference.
- *
- * Requires a migrated, seeded database - the one docker-compose brings up:
- *
- *   docker compose up -d postgres
- *   npm --prefix database run migration:run
- *   npm --prefix database run grants
- *   npm --prefix database run seed:dictionaries
- *
- * When no database is reachable the suite SKIPS rather than fails. A developer
- * without Docker running should not see a red build for a suite they were never
- * asked to run; CI opts in explicitly with a postgres service container.
- */
 
 export const INTEGRATION_DATABASE_URL =
   process.env.INGESTION_DATABASE_URL ??
@@ -140,14 +121,6 @@ export async function createJob(ds: DataSource, dealerId: string): Promise<strin
   return job.id;
 }
 
-/**
- * Removes everything a test created.
- *
- * ingestion_service_role holds no DELETE on marketplace.vehicles (ADR-002) -
- * the same grant the adapter is built around - so cleanup connects as the
- * owner. That asymmetry is the point: if this ever succeeds as the ETL role,
- * the grant has been widened and the architectural claim is gone.
- */
 export async function cleanup(jobIds: string[]): Promise<void> {
   if (jobIds.length === 0) return;
 

@@ -8,16 +8,6 @@ import { EtlStageLogRepository } from '../../src/modules/ingestion/repositories/
 import { JwtAuthGuard } from '../../src/modules/auth/guards/jwt-auth.guard';
 import type { AuthenticatedUser } from '../../src/modules/auth/types/authenticated-user.type';
 
-/**
- * Exercises GET /jobs/{id} the way the dealer's status page uses it: real
- * routing, real ParseUUIDPipe, real ValidationPipe, with only the repository
- * stubbed.
- *
- * The route is `/jobs`, not `/upload-jobs` - api-gateway/openapi/public-api.yaml
- * publishes GET /jobs/{jobId} and nginx proxies `location /jobs/` WITHOUT
- * stripping the prefix, so the path the service sees includes it. That mismatch
- * was a live 404 once; this suite pins it.
- */
 
 const DEALER_ID = '3f6f6b4e-1c2d-4a5b-8c9d-0e1f2a3b4c5d';
 const JOB_ID = '9a8b7c6d-5e4f-4a3b-9c8d-7e6f5a4b3c2d';
