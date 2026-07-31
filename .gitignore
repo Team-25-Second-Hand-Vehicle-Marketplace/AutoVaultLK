@@ -1,4 +1,5 @@
 node_modules/
+database/dist/
 dist/
 coverage/
 .env
@@ -8,6 +9,8 @@ coverage/
 .idea/
 .vscode/
 *.log
+__pycache__/
+*.pyc
 terraform/.terraform/
 terraform/*.tfstate
 terraform/*.tfstate.*
