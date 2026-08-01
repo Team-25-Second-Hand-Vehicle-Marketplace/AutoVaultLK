@@ -18,3 +18,5 @@ terraform/.terraform.lock.hcl
 cdk.out/
 build/
 .terraform/
+database/src/migrations/20260731100000-InitialSchema.ts
+mywork.txt
