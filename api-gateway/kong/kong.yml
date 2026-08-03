@@ -1,6 +1,7 @@
 _format_version: "3.0"
 
 services:
+  # Auth User Service
   - name: auth-user-service
     host: auth-user-service
     port: 3001
@@ -12,4 +13,50 @@ services:
           - /api/auth
         strip_path: true
 
-routes: []
+  # Marketplace Service
+  - name: marketplace-service
+    host: marketplace-service
+    port: 3002
+    protocol: http
+
+    routes:
+      - name: marketplace-route
+        paths:
+          - /api/marketplace
+        strip_path: true
+
+  # Ingestion Service
+  - name: ingestion-service
+    host: ingestion-service
+    port: 3003
+    protocol: http
+
+    routes:
+      - name: ingestion-route
+        paths:
+          - /api/uploads
+        strip_path: true
+
+  # Admin Service
+  - name: admin-service
+    host: admin-service
+    port: 3004
+    protocol: http
+
+    routes:
+      - name: admin-route
+        paths:
+          - /api/admin
+        strip_path: true
+
+  # Notification Service
+  - name: notification-service
+    host: notification-service
+    port: 3005
+    protocol: http
+
+    routes:
+      - name: notification-route
+        paths:
+          - /api/notifications
+        strip_path: true
