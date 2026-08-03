@@ -51,13 +51,19 @@ plugins:
       exposed_headers:
         - Authorization
       credentials: true
-        max_age: 3600
+      max_age: 3600
 
   - name: correlation-id
     config:
       header_name: X-Request-ID
       generator: uuid
       echo_downstream: true
+
+  - name: rate-limiting
+    config:
+      minute: 100
+      policy: local
+      hide_client_headers: false
 
 
 services:
