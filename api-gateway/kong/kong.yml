@@ -39,6 +39,27 @@ services:
     port: 80
     protocol: http
 
+    plugins:
+      - name: cors
+        config:
+          origins:
+            - http://localhost:5173
+          methods:
+            - GET
+            - POST
+            - PUT
+            - PATCH
+            - DELETE
+            - OPTIONS
+          headers:
+            - Accept
+            - Authorization
+            - Content-Type
+          exposed_headers:
+            - Authorization
+          credentials: true
+          max_age: 3600
+
     routes:
       - name: auth-route
         paths:
@@ -49,6 +70,27 @@ services:
     host: marketplace-upstream
     port: 80
     protocol: http
+
+    plugins:
+      - name: cors
+        config:
+          origins:
+            - http://localhost:5173
+          methods:
+            - GET
+            - POST
+            - PUT
+            - PATCH
+            - DELETE
+            - OPTIONS
+          headers:
+            - Accept
+            - Authorization
+            - Content-Type
+          exposed_headers:
+            - Authorization
+          credentials: true
+          max_age: 3600
 
     routes:
       - name: marketplace-route
@@ -61,6 +103,27 @@ services:
     port: 80
     protocol: http
 
+    plugins:
+      - name: cors
+        config:
+          origins:
+            - http://localhost:5173
+          methods:
+            - GET
+            - POST
+            - PUT
+            - PATCH
+            - DELETE
+            - OPTIONS
+          headers:
+            - Accept
+            - Authorization
+            - Content-Type
+          exposed_headers:
+            - Authorization
+          credentials: true
+          max_age: 3600
+
     routes:
       - name: ingestion-route
         paths:
@@ -72,6 +135,27 @@ services:
     port: 80
     protocol: http
 
+    plugins:
+      - name: cors
+        config:
+          origins:
+            - http://localhost:5173
+          methods:
+            - GET
+            - POST
+            - PUT
+            - PATCH
+            - DELETE
+            - OPTIONS
+          headers:
+            - Accept
+            - Authorization
+            - Content-Type
+          exposed_headers:
+            - Authorization
+          credentials: true
+          max_age: 3600
+
     routes:
       - name: admin-route
         paths:
@@ -82,6 +166,27 @@ services:
     host: notification-upstream
     port: 80
     protocol: http
+
+    plugins:
+      - name: cors
+        config:
+          origins:
+            - http://localhost:5173
+          methods:
+            - GET
+            - POST
+            - PUT
+            - PATCH
+            - DELETE
+            - OPTIONS
+          headers:
+            - Accept
+            - Authorization
+            - Content-Type
+          exposed_headers:
+            - Authorization
+          credentials: true
+          max_age: 3600
 
     routes:
       - name: notification-route
