@@ -51,8 +51,12 @@ plugins:
       exposed_headers:
         - Authorization
       credentials: true
-      max_age: 3600
+        max_age: 3600
 
+  - name: file-log
+    config:
+      path: /tmp/kong-access.log
+      reopen: false
 services:
 
   - name: auth-user-service
