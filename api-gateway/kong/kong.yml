@@ -1,10 +1,42 @@
 _format_version: "3.0"
 
+upstreams:
+
+  - name: auth-user-upstream
+    algorithm: round-robin
+    targets:
+      - target: auth-user-service:3001
+        weight: 100
+
+  - name: marketplace-upstream
+    algorithm: round-robin
+    targets:
+      - target: marketplace-service:3002
+        weight: 100
+
+  - name: ingestion-upstream
+    algorithm: round-robin
+    targets:
+      - target: ingestion-service:3003
+        weight: 100
+
+  - name: admin-upstream
+    algorithm: round-robin
+    targets:
+      - target: admin-service:3004
+        weight: 100
+
+  - name: notification-upstream
+    algorithm: round-robin
+    targets:
+      - target: notification-service:3005
+        weight: 100
+
 services:
-  # Auth User Service
+
   - name: auth-user-service
-    host: auth-user-service
-    port: 3001
+    host: auth-user-upstream
+    port: 80
     protocol: http
 
     routes:
@@ -13,10 +45,9 @@ services:
           - /api/auth
         strip_path: true
 
-  # Marketplace Service
   - name: marketplace-service
-    host: marketplace-service
-    port: 3002
+    host: marketplace-upstream
+    port: 80
     protocol: http
 
     routes:
@@ -25,10 +56,9 @@ services:
           - /api/marketplace
         strip_path: true
 
-  # Ingestion Service
   - name: ingestion-service
-    host: ingestion-service
-    port: 3003
+    host: ingestion-upstream
+    port: 80
     protocol: http
 
     routes:
@@ -37,10 +67,9 @@ services:
           - /api/uploads
         strip_path: true
 
-  # Admin Service
   - name: admin-service
-    host: admin-service
-    port: 3004
+    host: admin-upstream
+    port: 80
     protocol: http
 
     routes:
@@ -49,10 +78,9 @@ services:
           - /api/admin
         strip_path: true
 
-  # Notification Service
   - name: notification-service
-    host: notification-service
-    port: 3005
+    host: notification-upstream
+    port: 80
     protocol: http
 
     routes:
