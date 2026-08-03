@@ -53,10 +53,13 @@ plugins:
       credentials: true
         max_age: 3600
 
-  - name: file-log
+  - name: correlation-id
     config:
-      path: /tmp/kong-access.log
-      reopen: false
+      header_name: X-Request-ID
+      generator: uuid
+      echo_downstream: true
+
+
 services:
 
   - name: auth-user-service
