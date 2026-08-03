@@ -1,4 +1,15 @@
 _format_version: "3.0"
 
-services: []
+services:
+  - name: auth-user-service
+    host: auth-user-service
+    port: 3001
+    protocol: http
+
+    routes:
+      - name: auth-route
+        paths:
+          - /api/auth
+        strip_path: true
+
 routes: []
