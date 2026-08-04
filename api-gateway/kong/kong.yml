@@ -1,7 +1,6 @@
 _format_version: "3.0"
 
 upstreams:
-
   - name: auth-user-upstream
     algorithm: round-robin
     targets:
@@ -32,17 +31,47 @@ upstreams:
       - target: notification-service:3005
         weight: 100
 
+consumers:
+  - username: admin
+
+  - username: dealer
+
+  - username: user
+
+jwt_secrets:
+  - consumer: admin
+    key: admin-key
+    secret: admin-secret
+    algorithm: HS256
+
+  - consumer: dealer
+    key: dealer-key
+    secret: dealer-secret
+    algorithm: HS256
+
+  - consumer: user
+    key: user-key
+    secret: user-secret
+    algorithm: HS256
+
+acls:
+  - consumer: admin
+    group: admin
+
+  - consumer: dealer
+    group: dealer
+
+  - consumer: user
+    group: user
+
 plugins:
   - name: cors
     config:
       origins:
-        - http://localhost:5173
+        - exp
       methods:
-        - GET
-        - POST
-        - PUT
+
         - PATCH
-        - DELETE
         - OPTIONS
       headers:
         - Accept
@@ -65,6 +94,14 @@ plugins:
       policy: local
       hide_client_headers: false
 
+  - name: jwt
+    config:
+      claims_to_verify:
+        - exp 
+      key_claim_name: iss
+
+
+
 
 services:
 
@@ -84,26 +121,37 @@ services:
     port: 80
     protocol: http
 
-   
-
     routes:
       - name: marketplace-route
         paths:
           - /api/marketplace
         strip_path: true
 
+    plugins:
+      - name: acl
+        config:
+          allow:
+            - admin
+            - dealer
+            - user
+
   - name: ingestion-service
     host: ingestion-upstream
     port: 80
     protocol: http
-
-   
 
     routes:
       - name: ingestion-route
         paths:
           - /api/uploads
         strip_path: true
+
+    plugins:
+      - name: acl
+        config:
+          allow:
+            - admin
+            - dealer
 
   - name: admin-service
     host: admin-upstream
@@ -116,6 +164,12 @@ services:
           - /api/admin
         strip_path: true
 
+    plugins:
+      - name: acl
+        config:
+          allow:
+            - admin
+
   - name: notification-service
     host: notification-upstream
     port: 80
@@ -126,3 +180,11 @@ services:
         paths:
           - /api/notifications
         strip_path: true
+
+    plugins:
+      - name: acl
+        config:
+          allow:
+            - admin
+            - dealer
+            - user
