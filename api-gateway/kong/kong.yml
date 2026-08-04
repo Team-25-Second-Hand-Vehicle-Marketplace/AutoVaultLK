@@ -168,6 +168,48 @@ services:
             - dealer
             - user
 
+  # health proxy service (for monitoring)
+  - name: health-proxy
+    host: 127.0.0.1
+    port: 8100
+    protocol: http
+    path: /status
+
+    routes:
+      - name: health-route
+        paths:
+          - /health
+        strip_path: true
+
+    plugins:
+      - name: cors
+        config:
+          origins:
+            - http://localhost:5173
+          methods:
+            - GET
+            - OPTIONS
+          headers:
+            - Accept
+            - Authorization
+            - Content-Type
+          exposed_headers:
+            - Authorization
+          credentials: true
+          max_age: 3600
+
+  - name: kong-status
+    host: 127.0.0.1
+    port: 8100
+    protocol: http
+    path: /status
+
+    routes:
+      - name: health-route
+        paths:
+          - /health
+        strip_path: true
+
   - name: ingestion-service
     host: ingestion-upstream
     port: 80
