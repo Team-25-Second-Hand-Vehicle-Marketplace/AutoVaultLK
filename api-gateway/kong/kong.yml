@@ -68,7 +68,7 @@ plugins:
   - name: cors
     config:
       origins:
-        - exp
+        - http://localhost:5173
       methods:
 
         - PATCH
