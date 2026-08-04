@@ -115,6 +115,11 @@ plugins:
           - "X-Gateway:vehicle-marketplace-api-gateway"
           - "X-Gateway-Version:v1.0"
           - "X-Powered-By:Kong"
+        
+  - name: file-log
+    config:
+      path: /dev/stdout
+      reopen: false
 
 
 
