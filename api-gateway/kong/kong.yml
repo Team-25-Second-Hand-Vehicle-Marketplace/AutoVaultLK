@@ -100,6 +100,14 @@ plugins:
         - exp 
       key_claim_name: iss
 
+  - name: request-transformer
+    config:
+      add:
+        headers:
+          - "X-Gateway:vehicle-marketplace-api-gateway"
+          - "X-Gateway-Version:v1.0"
+          - "X-Service:kong"
+
 
 
 
