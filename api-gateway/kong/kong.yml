@@ -133,6 +133,9 @@ services:
     host: auth-user-upstream
     port: 80
     protocol: http
+    connect_timeout: 5000
+    read_timeout: 30000
+    write_timeout: 30000
 
     routes:
       - name: auth-route
@@ -146,6 +149,9 @@ services:
     host: marketplace-upstream
     port: 80
     protocol: http
+    connect_timeout: 5000
+    read_timeout: 30000
+    write_timeout: 30000
 
     routes:
       - name: marketplace-route
@@ -166,6 +172,9 @@ services:
     host: ingestion-upstream
     port: 80
     protocol: http
+    connect_timeout: 5000
+    read_timeout: 30000
+    write_timeout: 30000
 
     routes:
       - name: ingestion-route
@@ -185,6 +194,9 @@ services:
     host: admin-upstream
     port: 80
     protocol: http
+    connect_timeout: 5000
+    read_timeout: 30000
+    write_timeout: 30000
 
     routes:
       - name: admin-route
@@ -203,6 +215,9 @@ services:
     host: notification-upstream
     port: 80
     protocol: http
+    connect_timeout: 5000
+    read_timeout: 30000
+    write_timeout: 30000
 
     routes:
       - name: notification-route
