@@ -139,6 +139,8 @@ services:
         paths:
           - /api/auth
         strip_path: true
+    plugins:
+      - name: jwt
 
   - name: marketplace-service
     host: marketplace-upstream
@@ -152,6 +154,7 @@ services:
         strip_path: true
 
     plugins:
+      - name: jwt
       - name: acl
         config:
           allow:
@@ -171,6 +174,7 @@ services:
         strip_path: true
 
     plugins:
+      - name: jwt
       - name: acl
         config:
           allow:
@@ -189,6 +193,7 @@ services:
         strip_path: true
 
     plugins:
+      - name: jwt
       - name: acl
         config:
           allow:
@@ -206,6 +211,7 @@ services:
         strip_path: true
 
     plugins:
+      - name: jwt
       - name: acl
         config:
           allow:
