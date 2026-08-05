@@ -1,0 +1,128 @@
+_format_version: "3.0"
+
+upstreams:
+
+  - name: auth-user-upstream
+    algorithm: round-robin
+    targets:
+      - target: auth-user-service:3001
+        weight: 100
+
+  - name: marketplace-upstream
+    algorithm: round-robin
+    targets:
+      - target: marketplace-service:3002
+        weight: 100
+
+  - name: ingestion-upstream
+    algorithm: round-robin
+    targets:
+      - target: ingestion-service:3003
+        weight: 100
+
+  - name: admin-upstream
+    algorithm: round-robin
+    targets:
+      - target: admin-service:3004
+        weight: 100
+
+  - name: notification-upstream
+    algorithm: round-robin
+    targets:
+      - target: notification-service:3005
+        weight: 100
+
+plugins:
+  - name: cors
+    config:
+      origins:
+        - http://localhost:5173
+      methods:
+        - GET
+        - POST
+        - PUT
+        - PATCH
+        - DELETE
+        - OPTIONS
+      headers:
+        - Accept
+        - Authorization
+        - Content-Type
+      exposed_headers:
+        - Authorization
+      credentials: true
+      max_age: 3600
+
+  - name: correlation-id
+    config:
+      header_name: X-Request-ID
+      generator: uuid
+      echo_downstream: true
+
+  - name: rate-limiting
+    config:
+      minute: 100
+      policy: local
+      hide_client_headers: false
+
+
+services:
+
+  - name: auth-user-service
+    host: auth-user-upstream
+    port: 80
+    protocol: http
+
+    routes:
+      - name: auth-route
+        paths:
+          - /api/auth
+        strip_path: true
+
+  - name: marketplace-service
+    host: marketplace-upstream
+    port: 80
+    protocol: http
+
+   
+
+    routes:
+      - name: marketplace-route
+        paths:
+          - /api/marketplace
+        strip_path: true
+
+  - name: ingestion-service
+    host: ingestion-upstream
+    port: 80
+    protocol: http
+
+   
+
+    routes:
+      - name: ingestion-route
+        paths:
+          - /api/uploads
+        strip_path: true
+
+  - name: admin-service
+    host: admin-upstream
+    port: 80
+    protocol: http
+
+    routes:
+      - name: admin-route
+        paths:
+          - /api/admin
+        strip_path: true
+
+  - name: notification-service
+    host: notification-upstream
+    port: 80
+    protocol: http
+
+    routes:
+      - name: notification-route
+        paths:
+          - /api/notifications
+        strip_path: true
