@@ -287,7 +287,7 @@ So: `makes`, `models`, and `aliases` must exist as real tables, somewhere,
 readable by both marketplace-service (search/parsing) and ingestion-service
 (ETL normalization), with a path for aliases to grow over time. That much is
 fixed regardless of which option below is chosen.
-
+243r
 ### 9.2 Option A — separate `reference` schema, both services write it
 
 A dedicated `reference` schema, read by both, with both also holding
