@@ -6,6 +6,7 @@ import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
+    // Loads the root .env so MARKETPLACE_DATABASE_URL is available.
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ['../.env', '.env'],
