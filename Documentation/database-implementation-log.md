@@ -54,12 +54,6 @@ Three changes from the original `ERD.png` were agreed and then built —
 - **`seats` was never a column** — it only ever existed inside the
   `specs`/`KNOWN_SPEC_KEYS` model, corrected from an earlier draft that
   mistakenly put it under `filters`.
-- **Enrichment derivations removed entirely**: no `age`, `slug`,
-  `price_band`, `mileage_band` columns, and no equivalent computed values
-  folded into `search_text` either. This was a deliberate scope cut, not an
-  oversight — see [etl-search-contradictions-resolved.md](./etl-search-contradictions-resolved.md)
-  item 1 for the tradeoff this accepts (buyers searching "cheap" lose the
-  band-word signal in the embedding).
 
 ## 3. Docker and Postgres setup
 
