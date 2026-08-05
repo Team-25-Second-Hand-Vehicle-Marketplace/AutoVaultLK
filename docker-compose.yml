@@ -3,7 +3,10 @@ services:
     image: pgvector/pgvector:pg17
     container_name: vehicle_marketplace_postgres
     ports:
-      - "5432:5432"
+      # Host 5433 -> container 5432. Port 5432 on the host is taken by a
+      # native PostgreSQL 18 install (service postgresql-x64-18), which
+      # would otherwise intercept every connection before Docker.
+      - "5433:5432"
     environment:
       POSTGRES_USER: marketplace
       POSTGRES_PASSWORD: marketplace
