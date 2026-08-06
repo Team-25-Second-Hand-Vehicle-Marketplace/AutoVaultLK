@@ -13,7 +13,7 @@ import { DatabaseModule } from './infrastructure/database/database.module';
       envFilePath: ['../.env', '.env'],
       validationSchema: Joi.object({
         PORT: Joi.number().port().default(3000),
-        AUTH_DATABASE_URL: Joi.string().uri().required(),
+        AUTH_DATABASE_URL: Joi.string().uri({ scheme: [/^(postgres|postgresql)$/] }).required(),
       }),
       validationOptions: {
         allowUnknown: true,
