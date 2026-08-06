@@ -8,6 +8,7 @@ RUN npm run build
 
 FROM public.ecr.aws/lambda/nodejs:22
 WORKDIR ${LAMBDA_TASK_ROOT}
+ENV NODE_ENV=production
 COPY package*.json ./
 RUN npm ci --omit=dev
 COPY --from=build /app/dist ./dist
