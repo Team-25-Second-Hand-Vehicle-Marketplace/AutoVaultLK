@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import Joi from 'joi';
 import { databaseConfig } from './config/database.config';
 import { HealthModule } from './health/health.module';
+import { DatabaseModule } from './infrastructure/database/database.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { HealthModule } from './health/health.module';
       },
     }),
     TypeOrmModule.forRoot(databaseConfig()),
+    DatabaseModule,
     HealthModule,
   ],
 })
