@@ -15,24 +15,24 @@ export type VerificationStatus = 'PENDING' | 'VERIFIED' | 'REJECTED';
 export class DealerProfile {
   // user_id is both PK and FK — one profile per user
   @PrimaryColumn({ name: 'user_id', type: 'uuid' })
-  userId: string;
+  userId!: string;
 
   @OneToOne(() => User, (user) => user.dealerProfile, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
-  user: User;
+  user!: User;
 
   @Column({ name: 'company_name', type: 'varchar', length: 255 })
-  companyName: string;
+  companyName!: string;
 
   @Column({ name: 'contact_number', type: 'varchar', length: 50, nullable: true })
-  contactNumber: string | null;
+  contactNumber!: string | null;
 
   @Column({ name: 'is_verified', type: 'varchar', length: 20, default: 'PENDING' })
-  isVerified: VerificationStatus;
+  isVerified!: VerificationStatus;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
-  updatedAt: Date;
+  updatedAt!: Date;
 }
