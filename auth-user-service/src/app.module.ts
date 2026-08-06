@@ -5,6 +5,8 @@ import Joi from 'joi';
 import { databaseConfig } from './config/database.config';
 import { HealthModule } from './health/health.module';
 import { DatabaseModule } from './infrastructure/database/database.module';
+import { DealerProfilesModule } from './modules/dealers/dealers.module';
+import { UsersModule } from './modules/users/users.module';
 
 @Module({
   imports: [
@@ -22,6 +24,8 @@ import { DatabaseModule } from './infrastructure/database/database.module';
     }),
     TypeOrmModule.forRoot(databaseConfig()),
     DatabaseModule,
+    UsersModule,
+    DealerProfilesModule,
     HealthModule,
   ],
 })

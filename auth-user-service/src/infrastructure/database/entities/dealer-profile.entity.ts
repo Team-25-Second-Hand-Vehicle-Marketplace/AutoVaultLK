@@ -9,30 +9,103 @@ import {
 } from 'typeorm';
 import { User } from './user.entity';
 
-export type VerificationStatus = 'PENDING' | 'VERIFIED' | 'REJECTED';
+// enum for verification status and dealertype
+export enum VerificationStatus {
+  PENDING = 'PENDING',
+  VERIFIED = 'VERIFIED',
+  REJECTED = 'REJECTED',
+}
 
+export enum DealerType {
+  INDIVIDUAL = 'individual',
+  BUSINESS = 'business',
+}
+
+// entity for dealer profile
 @Entity({ schema: 'auth', name: 'dealer_profiles' })
 export class DealerProfile {
-  // user_id is both PK and FK — one profile per user
-  @PrimaryColumn({ name: 'user_id', type: 'uuid' })
-  userId!: string;
 
-  @OneToOne(() => User, (user) => user.dealerProfile, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'user_id' })
+  @PrimaryColumn({
+    name: 'user_id',
+    type: 'uuid'
+  })
+  userId!: string;
+//user id
+  @OneToOne(() => User, user => user.dealerProfile, {
+    onDelete: 'CASCADE'
+  })
+  @JoinColumn({name:'user_id'})
   user!: User;
 
-  @Column({ name: 'company_name', type: 'varchar', length: 255 })
-  companyName!: string;
+// dealer type
+  @Column({
+    name:'dealer_type',
+    type:'enum',
+    enum: DealerType
+  })
+  dealerType!: DealerType;
 
-  @Column({ name: 'contact_number', type: 'varchar', length: 50, nullable: true })
-  contactNumber!: string | null;
 
-  @Column({ name: 'is_verified', type: 'varchar', length: 20, default: 'PENDING' })
-  isVerified!: VerificationStatus;
+  @Column({
+    name:'business_registration_number',
+    type:'varchar',
+    length:500
+  })
+  businessRegistrationNumber!: string;
 
-  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
+
+  @Column({
+    name:'business_address',
+    type:'varchar',
+    length:500
+  })
+  businessAddress!: string;
+
+
+  @Column({
+    name:'city',
+    type:'varchar',
+    length:100
+  })
+  city!: string;
+
+
+  @Column({
+    name:'verification_documents',
+    type:'jsonb'
+  })
+  verificationDocuments!: Record<string, unknown>;
+
+
+  @Column({
+    name:'company_name',
+    type:'varchar',
+    nullable:false
+  })
+  companyName!: string ;
+
+
+  @Column({
+    name:'contact_number',
+    type:'varchar',
+    nullable:false
+  })
+  contactNumber!: string ;
+
+
+  @Column({
+    name:'verification_status',
+    type:'enum',
+    enum: VerificationStatus,
+    default: VerificationStatus.PENDING
+  })
+  verificationStatus!: VerificationStatus;
+
+
+  @CreateDateColumn()
   createdAt!: Date;
 
-  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+
+  @UpdateDateColumn()
   updatedAt!: Date;
 }
