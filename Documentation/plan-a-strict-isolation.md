@@ -261,6 +261,13 @@ no benefit that the separate-Lambda approach does not already provide.
 
 ## 9. Reference data (makes, models, aliases)
 
+> **Superseded.** Plan B was chosen, and reference data is now implemented as
+> a single `marketplace.vehicle_dictionaries` table owned by
+> marketplace-service — see
+> [plan-b-reads-cross-schemas.md §9](./plan-b-reads-cross-schemas.md#9-reference-data--marketplacevehicle_dictionaries--resolved--built).
+> The analysis below is kept as the record of why the alternatives were
+> rejected; the table names it uses no longer exist.
+
 Plan A's genuinely unresolved problem.
 
 Both search and ETL need the same make/model vocabulary — the designs warn

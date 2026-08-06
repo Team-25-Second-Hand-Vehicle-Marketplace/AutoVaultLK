@@ -9,8 +9,9 @@
 > **Companion:** [Plan A — Strict Isolation](./plan-a-strict-isolation.md).
 > Open questions behind both: [database-open-questions.md](./database-open-questions.md).
 >
-> **Status:** current, as of the latest revision. §9 (reference data
-> ownership) is explicitly **not yet final** — see that section.
+> **Status:** current and implemented. All sections reflect what exists in
+> the database as built and verified — including §9 (reference data), which
+> is now resolved: a single `marketplace.vehicle_dictionaries` table.
 
 ---
 
@@ -265,62 +266,96 @@ pre-fetching every dealer to achieve. Whether that matters depends on whether
 
 ---
 
-## 9. Reference data (makes, models, aliases) — ⚠ NOT YET FINAL
+## 9. Reference data — `marketplace.vehicle_dictionaries` ✅ RESOLVED & BUILT
 
-> **Status: open.** The ownership question below has two live candidates and
-> is intentionally left unresolved here pending a decision. Do not implement
-> against this section until it is updated. This replaces an earlier draft of
-> this section, kept below only as a record of the option not yet chosen.
+> **Status: decided and implemented.** Option B was chosen for ownership, and
+> the three-table design was subsequently replaced by a single
+> self-referencing table. Migration `1735000015000-VehicleDictionaries`.
 
-### 9.1 What is settled
+### 9.1 What drove the design
 
 Both search and ETL need the same make/model vocabulary — the designs are
 explicit that if ingest stores one spelling and search queries another, the
 mismatch returns zero results silently. Typo correction against this
-vocabulary needs `pg_trgm`, which requires a real, indexed table — a
-hardcoded list in application code cannot support `similarity()` queries.
-Both designs also describe an alias-promotion loop: corrections logged often
-enough get promoted into the dictionary, so the parser gets cheaper with use.
-That promotion is a write.
+vocabulary needs `pg_trgm`, which requires a real, indexed table: a hardcoded
+list in application code cannot support `similarity()` queries. Both designs
+also describe an alias-promotion loop — corrections logged often enough get
+promoted into the dictionary, so the parser gets cheaper with use. That
+promotion is a write, which is why ownership had to be settled.
 
-So: `makes`, `models`, and `aliases` must exist as real tables, somewhere,
-readable by both marketplace-service (search/parsing) and ingestion-service
-(ETL normalization), with a path for aliases to grow over time. That much is
-fixed regardless of which option below is chosen.
-243r
-### 9.2 Option A — separate `reference` schema, both services write it
+### 9.2 Ownership — Option B (chosen)
 
-A dedicated `reference` schema, read by both, with both also holding
-`INSERT`/`UPDATE` on `aliases` directly for the promotion loop.
-
-- ➕ Symmetric — neither service is privileged over the other for shared
-  vocabulary that arguably belongs to neither.
-- ➖ A second two-writer exception, on top of §6's ETL exception. Two
-  documented write exceptions is a materially different story than one.
-
-### 9.3 Option B — owned by marketplace-service, ingestion reads + caches
-
-Reference tables live inside the `marketplace` schema (not a separate one),
-owned solely by marketplace-service. Ingestion gets `SELECT` only, loads a
-snapshot into memory at container init and refreshes periodically — matching
+The table lives inside the `marketplace` schema, **owned solely by
+marketplace-service**. ingestion-service holds `SELECT` only and loads a
+snapshot into memory at container init, refreshing periodically — matching
 what the ETL design already specifies for the Groq Lambda's make/model
-resolution, which explicitly is not a live per-row query. Alias promotion
-from ingestion goes through marketplace's API rather than a direct write,
-since it is low-frequency and an API call is cheap at that volume.
+resolution, which is explicitly not a live per-row query. That is what keeps
+the `MaxConcurrency: 10` connection-pool argument in §6 intact.
 
-- ➕ Only one write exception in the whole plan (§6), not two. Simpler
-  isolation story.
-- ➕ Matches the existing decision that make/model vocabulary is marketplace
-  vocabulary — search already lives there.
-- ➖ Ingestion's alias promotions depend on marketplace's API being available
-  during the ETL pipeline — a new dependency the direct-write version doesn't
-  have.
+**Alias promotion from ingestion goes through marketplace's API, not a direct
+write.** This is the whole point of Option B: it keeps the platform to
+**exactly one** cross-schema write exception (§6's ETL loader) rather than
+two. Alias promotion is low-frequency, so an API round-trip costs nothing
+meaningful.
 
-### 9.4 Decision pending
+The rejected alternative was a separate `reference` schema with both services
+writing `aliases` directly — symmetric, but a second documented write
+exception is a materially different story from one.
 
-Leaning toward Option B at the time of writing, on the grounds that it keeps
-the plan to exactly one write exception — but this has not been confirmed.
-**Update this section, and the grants in §3, once decided.**
+### 9.3 Structure — one self-referencing table, not three
+
+The first implementation used three tables (`makes`, `models`, `aliases`).
+That was replaced, while all three were still empty, by a single table:
+
+```sql
+marketplace.vehicle_dictionaries (
+  id              uuid PK,
+  parent_id       uuid REFERENCES vehicle_dictionaries(id),  -- MODEL -> its MAKE
+  dictionary_type varchar(20) CHECK IN ('MAKE','MODEL','BODY_TYPE','COLOR'),
+  canonical_value varchar(100),
+  aliases         jsonb DEFAULT '[]',   -- ["toyata"], ["benz"], ...
+  is_active       boolean DEFAULT true,
+  created_at      timestamptz,
+  UNIQUE (dictionary_type, parent_id, canonical_value)
+)
+```
+
+Why the change:
+
+- **One table serves every dictionary type.** Makes, models, and future
+  vocabularies (body types, colours, trims) need no new migrations — just a
+  new `dictionary_type` value.
+- **`aliases jsonb` removes a real weakness.** The old `aliases.entity_id`
+  could not have a foreign key, because it pointed at either `makes.id` or
+  `models.id` depending on `entity_type` — Postgres cannot express a
+  conditional FK across two tables. Folding aliases into the owning row
+  eliminates the dangling-reference risk entirely.
+- **`parent_id` expresses make → model containment directly**, so the
+  parser's "resolve make first, then constrain model by it" rule becomes a
+  plain `WHERE dictionary_type = 'MODEL' AND parent_id = $1`.
+
+Indexes: GIN trigram on `canonical_value` (the reason this is a table at
+all), GIN `jsonb_path_ops` on `aliases` for containment lookups, and a
+composite on `(dictionary_type, parent_id)` for scoped model resolution.
+
+### 9.4 The grant
+
+```sql
+GRANT SELECT ON marketplace.vehicle_dictionaries TO ingestion_service_role;
+```
+
+Deliberately separate from §6's write exception, which names its two tables
+explicitly so `INSERT`/`UPDATE` can never leak onto this one.
+
+### 9.5 Verified
+
+Confirmed against the live database: ingestion can read the table and is
+denied writing it; marketplace can write it; trigram matching resolves
+`"toyata"` → `Toyota`; alias containment lookup works; the make → model
+self-reference and scoped model lookup both behave correctly.
+
+**The table is currently empty — it has never been seeded.** No make or model
+can be resolved until it is.
 
 ---
 
@@ -348,15 +383,17 @@ that was never touched by the change that caused it.
 cross-schema reader — search the other services for a matching view-entity
 before merging.
 
-**2. Reference table access** (§9) — whichever ownership option is chosen,
-ingestion-service depends on marketplace-service's `makes`/`models`/`aliases`
-shape and refresh behavior. A cached snapshot loaded at container init is
-correct only as long as the caching service knows when to refresh it — a
-schema change to `models` that isn't reflected in ingestion's cache-loading
-code produces stale or missing matches with no error at all.
-*Check during review:* a schema change to reference tables should prompt an
-explicit check of every service holding a cached snapshot, not just the
-owning service's own code.
+**2. Reference table access** (§9) — ingestion-service depends on
+marketplace-service's `vehicle_dictionaries` shape and refresh behaviour via
+`VehicleDictionaryView`. A cached snapshot loaded at container init is correct
+only as long as the caching service knows when to refresh it — a schema change
+to that table which isn't reflected in ingestion's cache-loading code produces
+stale or missing matches with no error at all. Adding a new
+`dictionary_type` value is the likeliest such change, since it needs no
+migration.
+*Check during review:* a schema change to `vehicle_dictionaries`, or a new
+`dictionary_type`, should prompt an explicit check of every service holding a
+cached snapshot — not just the owning service's own code.
 
 **3. The `KNOWN_SPEC_KEYS` / `specFilters` dictionary** — this single
 concept must stay identical across three independent places that do not
@@ -470,26 +507,28 @@ can break marketplace at runtime even though marketplace was not redeployed.
 
 ## 12. Implementation order
 
-1. Init scripts: extensions, schemas, roles.
-2. Migrations for all 13 tables, cross-schema FKs included.
-3. `grants.sql` — own-schema CRUD, cross-schema `SELECT` justified by FKs,
+Steps 1–6 are **done and verified**; 7–9 remain.
+
+1. ✅ Init scripts: extensions, schemas, roles.
+2. ✅ Migrations for all 13 tables, cross-schema FKs included.
+3. ✅ `grants.sql` — own-schema CRUD, cross-schema `SELECT` justified by FKs,
    plus the one ETL write exception (§6.2).
-4. Run and **verify**: cross-schema `SELECT` succeeds where granted; the ETL
+4. ✅ Run and **verify**: cross-schema `SELECT` succeeds where granted; the ETL
    exception's `INSERT`/`UPDATE` succeed on `vehicles`/`vehicle_images` but
    `DELETE` fails; all other cross-schema writes fail; own-schema CRUD works.
-5. Per-service TypeORM config and entities, including the view-entities in §5.
-6. `loadFn` in ingestion-service writes directly to `marketplace.vehicles` /
-   `vehicle_images` using the grant from step 3 — no bulk REST endpoint
-   needed for this path.
-7. **Decide reference table ownership (§9)** before building the parser —
-   this determines whether step 8 needs an ingestion→marketplace API client
-   or not.
-8. Reference tables (§9), once ownership is decided.
-9. Re-confirm (not rewrite) the ETL `MaxConcurrency: 10` sizing against
+5. ✅ Per-service TypeORM config and entities, including the view-entities in
+   §5. All five services boot-tested against the live database.
+6. ✅ `marketplace.vehicle_dictionaries` created and granted (§9).
+7. ⬜ **Seed `vehicle_dictionaries`.** The table exists but is empty — no make
+   or model resolves until it is populated.
+8. ⬜ `loadFn` in ingestion-service writing directly to `marketplace.vehicles`
+   / `vehicle_images` using the grant from step 3. The grant and the
+   write-entities exist; the loader code does not.
+9. ⬜ Re-confirm (not rewrite) the ETL `MaxConcurrency: 10` sizing against
    marketplace's connection pool (§6.3).
 
-Steps 1–6 are roughly a day. Step 7's decision should happen before the
-parser work starts, since it changes what step 8 requires.
+Step 7 blocks the parser — it has nothing to match against until the
+dictionary has rows.
 
 ---
 
@@ -517,13 +556,13 @@ parser work starts, since it changes what step 8 requires.
 | Cross-schema reads | ✗ REST | ✓ SQL join (FK-justified) |
 | Cross-schema writes | ✗ REST, no exceptions | ✗ REST, **except the ETL exception (§6)** |
 | Boundary enforcement | Database | Database (writes, minus 1 exception), review (reads) |
-| Clients to build | ~5 | 0–1, depending on §9's decision |
+| Clients to build | ~5 | 1 (ingestion → marketplace, for alias promotion only) |
 | Extra infra work | 1–2 weeks | a day or two |
 | Single-SQL search | ✓ | ✓ |
 | ETL concurrency rewrite | required | **not required — see §6.3** |
 | N+1 risk | high | none for display data |
 | Split to separate DBs later | config change | rewrite, and the ETL exception needs its own migration path |
-| Reference data | compromised (§9) | **not yet decided (§9)** |
+| Reference data | compromised (§9) | **resolved — one owned table (§9)** |
 | Multi-repo fit | strong | weak |
 | Silent-drift surface | small (no cross-schema entities) | real — see §9A for the checklist |
 

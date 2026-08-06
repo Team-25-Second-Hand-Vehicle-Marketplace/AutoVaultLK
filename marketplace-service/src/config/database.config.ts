@@ -2,7 +2,7 @@ import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 
 /**
  * marketplace-service owns the `marketplace` schema: vehicles,
- * vehicle_images, favourites, search_queries, makes, models, aliases.
+ * vehicle_images, favourites, search_queries, vehicle_dictionaries.
  *
  * It additionally holds SELECT on auth.users, auth.dealer_profiles and
  * ingestion.upload_jobs — read-only, for joins and the review dashboard.

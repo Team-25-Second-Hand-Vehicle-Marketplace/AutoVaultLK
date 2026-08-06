@@ -98,14 +98,6 @@ export class Vehicle {
   @Column({ type: 'text', nullable: true })
   description: string | null;
 
-  // Raw dealer values kept for audit — a systematic misspelling across many
-  // rows is a broken feed, not many individual typos.
-  @Column({ name: 'make_raw', type: 'varchar', length: 100, nullable: true })
-  makeRaw: string | null;
-
-  @Column({ name: 'model_raw', type: 'varchar', length: 100, nullable: true })
-  modelRaw: string | null;
-
   @Column({ type: 'varchar', length: 20, default: 'PENDING_REVIEW' })
   status: VehicleStatus;
 

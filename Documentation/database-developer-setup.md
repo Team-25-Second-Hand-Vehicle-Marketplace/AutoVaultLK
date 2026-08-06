@@ -102,7 +102,7 @@ npm run migration:run
 npm run grants
 ```
 
-Expect `npm run migration:run` to report 15 migrations executed. If it
+Expect `npm run migration:run` to report 17 migrations executed. If it
 reports 0, migrations already ran (safe, means someone or something already
 set this container up) — don't worry, `npm run grants` is idempotent and
 safe to run again regardless.

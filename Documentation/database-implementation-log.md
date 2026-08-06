@@ -35,12 +35,16 @@ that write to an HTTP call would invalidate the ETL design's connection-pool
 concurrency argument (`MaxConcurrency: 10`) without providing a replacement.
 The exception is scoped to `SELECT`/`INSERT`/`UPDATE` — never `DELETE`.
 
-Reference data (`makes`, `models`, `aliases` — the pg_trgm-backed dictionary
-tables for typo correction) went through the same two-option process
-documented in plan-b §9. **Option B was chosen**: owned solely by
-marketplace-service, ingestion-service holds read-only access and caches a
-snapshot rather than querying per row. This keeps the platform to exactly
-one cross-schema write exception instead of two.
+Reference data (the pg_trgm-backed dictionary for make/model typo correction)
+went through the same two-option process documented in plan-b §9. **Option B
+was chosen**: owned solely by marketplace-service, with ingestion-service
+holding read-only access and caching a snapshot rather than querying per row.
+This keeps the platform to exactly one cross-schema write exception instead of
+two.
+
+It was first built as three tables (`makes`/`models`/`aliases`) and later
+replaced by a single self-referencing `marketplace.vehicle_dictionaries` table
+— see §11.1 for why.
 
 ## 2. ERD deviations decided before implementation
 
@@ -79,7 +83,10 @@ up`, or after `docker compose down -v`):
 | `02-schemas.sql` | Creates all five schemas |
 | `03-roles.sql` | Creates all five service roles + `CONNECT` grants (no table grants — those need tables to exist first) |
 
-## 4. Migrations — 15 files, in dependency order
+## 4. Migrations — 17 files, in dependency order
+
+> Migrations 1–14 below were the initial build. Two more (15, 16) were added
+> afterwards when the New ERD was reviewed — see §11.
 
 All in `database/src/migrations/`, TypeORM-driven, run via
 `npm run migration:run`. Ordered so every foreign key resolves against an
@@ -94,7 +101,7 @@ already-created table:
 | 5 | `IngestionUploadJobs` | `ingestion.upload_jobs` → users |
 | 6 | `MarketplaceVehicles` | `marketplace.vehicles` → users, upload_jobs. **No `body_type`, no `seats`, no derivation columns.** Has `specs jsonb`, `embedding vector(384)`, `search_vector tsvector` |
 | 7 | `MarketplaceVehicleImages` | `marketplace.vehicle_images` → vehicles |
-| 7.5 | `MarketplaceReferenceData` | `marketplace.makes`, `marketplace.models` (→ makes), `marketplace.aliases` (polymorphic, no FK) — Option B |
+| 7.5 | `MarketplaceReferenceData` | `marketplace.makes`, `marketplace.models` (→ makes), `marketplace.aliases` (polymorphic, no FK) — Option B. **Superseded by migration 15**, which drops all three. |
 | 8 | `IngestionRejectedRecords` | `ingestion.rejected_records` → upload_jobs |
 | 9 | `IngestionEtlStageLogs` | `ingestion.etl_stage_logs` → upload_jobs |
 | 10 | `MarketplaceFavourites` | `marketplace.favourites` → users, vehicles |
@@ -113,10 +120,11 @@ Design choices carried into every table:
   (`WHERE registration_number IS NOT NULL`) — blank values are legitimate
   (unregistered imports) and must not collide with each other; duplicates
   among *actual* values are rejected.
-- **`aliases.entity_id` has no foreign key** — it's polymorphic, pointing at
-  either `makes.id` or `models.id` depending on `entity_type`. Postgres
-  can't express a conditional FK across two tables; integrity here is an
-  application-level concern, traded for a single alias table instead of two.
+- **`aliases.entity_id` had no foreign key** — it was polymorphic, pointing at
+  either `makes.id` or `models.id` depending on `entity_type`, and Postgres
+  cannot express a conditional FK across two tables. This weakness is what
+  migration 15 (§11) eliminated by folding aliases into a `jsonb` column on
+  the owning row.
 
 ## 5. Grants — `database/src/grants.sql`
 
@@ -148,21 +156,29 @@ scoped role, not the superuser:
 | 2 | `marketplace_service_role` deletes `auth.users` | `permission denied` | ✅ |
 | 3 | `ingestion_service_role` inserts `marketplace.vehicles` | FK violation, **not** permission denied — proves the exception grant works and only the fake data was rejected | ✅ |
 | 4 | `ingestion_service_role` deletes `marketplace.vehicles` | `permission denied` (exception excludes DELETE) | ✅ |
-| 5 | `ingestion_service_role` reads `marketplace.makes` | succeeds (Option B) | ✅ |
-| 6 | `ingestion_service_role` writes `marketplace.aliases` | `permission denied` (reads only, promotion via API) | ✅ |
+| 5 | `ingestion_service_role` reads `marketplace.vehicle_dictionaries` | succeeds (Option B) | ✅ |
+| 6 | `ingestion_service_role` writes `marketplace.vehicle_dictionaries` | `permission denied` (reads only, promotion via API) | ✅ |
 | 7 | `admin_service_role` reads `auth.users` | succeeds | ✅ |
 | 8 | `admin_service_role` writes `marketplace.vehicles` | `permission denied` | ✅ |
+| 9 | `marketplace_service_role` writes `marketplace.vehicle_dictionaries` | succeeds (it owns the table) | ✅ |
 
 Test 3 is the one that actually proves the exception is scoped correctly —
 a foreign-key error, not an authorization error, means the grant permitted
 the write and only the invalid `dealer_id` was rejected.
 
 Structural checks also passed: 5 schemas exist, `vector`/`pg_trgm`
-extensions installed, all 15 migrations recorded in `typeorm_migrations`,
+extensions installed, all 17 migrations recorded in `typeorm_migrations`,
 zero columns named `body_type`/`seats`/`age`/`slug`/`price_band`/
 `mileage_band` exist on `vehicles` (confirming the ERD deviation actually
 landed), `specs jsonb` and `embedding vector` present, HNSW/GIN indexes all
 built, `search_vector` trigger live.
+
+Dictionary behaviour was also exercised directly against the live table:
+trigram matching resolves `"toyata"` → `Toyota` (similarity 0.400), alias
+containment (`aliases @> '["toyata"]'`) returns the owning row, and the
+make → model self-reference supports the parser's scoped-model lookup
+(`WHERE dictionary_type = 'MODEL' AND parent_id = <make id>`). Test rows were
+deleted afterwards — the table is intentionally left empty.
 
 ## 7. Service scaffolding
 
@@ -188,7 +204,7 @@ One cleanup along the way: `admin-service/node_modules` existed on disk with
 no `package.json` behind it — orphaned output from an earlier, unrelated
 `npm install`. Deleted before scaffolding fresh.
 
-## 8. Entity layer — 25 files across five services
+## 8. Entity layer — 24 files across five services
 
 Every service got `src/config/database.config.ts`
 (`TypeOrmModuleOptions`, `schema: '<owned schema>'`, `synchronize: false`
@@ -198,10 +214,13 @@ always) and `TypeOrmModule.forRoot(databaseConfig())` wired into
 | Service | Entity files | Breakdown |
 |---|---|---|
 | auth-user-service | 3 | `User`, `DealerProfile`, `RefreshToken` — all owned |
-| marketplace-service | 8 | 7 owned (`Vehicle`, `VehicleImage`, `Favourite`, `SearchQuery`, `Make`, `ModelEntity`, `Alias`) + `AuthUserView` (read-only, `auth.users`) |
-| ingestion-service | 9 | 3 owned (`UploadJob`, `RejectedRecord`, `EtlStageLog`) + `AuthUserView` + `MakeView`/`ModelView`/`AliasView` (read-only Option B) + `VehicleWriteEntity`/`VehicleImageWriteEntity` (the one write exception, named with a `.write-entity.ts` suffix so its exceptional status is visible in the file tree) |
+| marketplace-service | 6 | 5 owned (`Vehicle`, `VehicleImage`, `Favourite`, `SearchQuery`, `VehicleDictionary`) + `AuthUserView` (read-only, `auth.users`) |
+| ingestion-service | 7 | 3 owned (`UploadJob`, `RejectedRecord`, `EtlStageLog`) + `AuthUserView` + `VehicleDictionaryView` (read-only Option B) + `VehicleWriteEntity`/`VehicleImageWriteEntity` (the one write exception, named with a `.write-entity.ts` suffix so its exceptional status is visible in the file tree) |
 | notification-service | 2 | `Notification` (owned) + `AuthUserView` |
 | admin-service | 6 | `AuditLog` (owned) + `AuthUserView`, `DealerProfileView`, `VehicleView`, `UploadJobView`, `NotificationView` — read-only across all four other schemas |
+
+Every `@Entity` declaration was audited against `information_schema` — all 24
+map to a real live table, with no orphans and no missing tables.
 
 Every cross-schema entity is declared `synchronize: false` and never appears
 in the schema-owning service's migrations — it exists purely so TypeORM has
@@ -217,15 +236,18 @@ validated against the real Postgres instance, not just type-checked.
 
 | Service | Result |
 |---|---|
-| auth-user-service | ✅ `{"status":"ok","service":"auth-user-service"}` |
-| marketplace-service | ✅ — including the cross-schema `AuthUserView` |
-| ingestion-service | ✅ — including both write-exception entities and three read-only reference views |
+| auth-user-service | ✅ `{"status":"ok","service":"auth-user-service"}` — including the seven new dealer-verification columns |
+| marketplace-service | ✅ — including the cross-schema `AuthUserView` and `VehicleDictionary` |
+| ingestion-service | ✅ — including both write-exception entities and `VehicleDictionaryView` |
 | notification-service | ✅ |
-| admin-service | ✅ — the hardest case: six entities across **four different schemas** initialized simultaneously |
+| admin-service | ✅ — the hardest case: six entities across **four different schemas** initialized simultaneously, including the expanded `DealerProfileView` |
+
+All five were re-built and re-booted after the dictionary and
+dealer-verification changes in §11 — not just after the initial build.
 
 ## 10. Git history
 
-Nine commits, each independently reviewable:
+The initial build landed as nine commits, each independently reviewable:
 
 ```
 9940f83  feat(database): schema-per-service database with 15 migrations
@@ -239,6 +261,88 @@ f5a4857  feat(auth-user-service): wire TypeORM to auth schema
 015fc34  chore: add package-lock.json for ingestion, notification, admin services
 ```
 
+The §11 changes (migrations 15–16, entity rewrites, doc updates) are a later,
+separate set of changes on top of these — uncommitted at the time this section
+was written.
+
+---
+
+## 11. Second round — New ERD review (migrations 15 and 16)
+
+A revised `New ERD.png` was produced after the initial build. Reviewing it
+against the live database surfaced six divergences; two were adopted as
+changes, four were diagram errors.
+
+### 11.1 Adopted — `vehicle_dictionaries` replaces the three-table design
+
+The New ERD proposed a single self-referencing `VEHICLE_DICTIONARIES` table
+instead of `makes`/`models`/`aliases`. This was **adopted** — migration
+`1735000015000-VehicleDictionaries` drops all three and creates:
+
+```
+vehicle_dictionaries (
+  id, parent_id (self-FK, MODEL -> its MAKE),
+  dictionary_type CHECK IN ('MAKE','MODEL','BODY_TYPE','COLOR'),
+  canonical_value, aliases jsonb, is_active, created_at,
+  UNIQUE (dictionary_type, parent_id, canonical_value)
+)
+```
+
+Three reasons it is better than what it replaced: one table serves every
+dictionary type with no new migrations; `aliases jsonb` eliminates the
+polymorphic-FK weakness noted in §4; and `parent_id` makes the parser's
+make-before-model scoping a plain indexed predicate.
+
+Safe because all three old tables were empty — never seeded. `down()` restores
+them exactly.
+
+Indexes: GIN trigram on `canonical_value`, GIN `jsonb_path_ops` on `aliases`,
+composite on `(dictionary_type, parent_id)`.
+
+### 11.2 Adopted — dealer-verification columns on `auth.dealer_profiles`
+
+The New ERD adds the individual-vs-business dealer verification flow.
+Migration `1735000016000-AuthDealerVerification` adds `dealer_type`,
+`business_registration_number`, `business_address`, `city`,
+`verification_documents jsonb`, `verified_by` (→ `auth.users`, SET NULL), and
+`verified_at`, plus a CHECK constraint enforcing that a BUSINESS carries a
+registration number and an INDIVIDUAL does not.
+
+> ⚠ **This touches the `auth` schema, which auth-user-service's maintainer
+> owns.** It was written here because the central `database/` package owns all
+> migrations, and because updating that service's `DealerProfile` entity
+> without the columns existing would stop it booting. **Coordinate before
+> merging.**
+
+`company_name` was **kept** even though the New ERD omits it — it exists in
+the live table and dropping it would lose data. Treated as a diagram
+oversight, not a deliberate removal. Worth confirming.
+
+### 11.3 Not adopted — four New ERD errors
+
+| Item | New ERD | Reality |
+|---|---|---|
+| `vehicles.body_type` | shown as an `enum` column | does not exist — lives in `specs` jsonb (§2) |
+| `vehicles.make_raw` / `model_raw` | absent | **present** in the live table (audit trail) |
+| `vehicles.search_text` | absent | **present** — the column `embedding` and `search_vector` derive from |
+| `dealer_profiles.company_name` | absent | **present** |
+
+`New ERD.png` still needs correcting on all four.
+
+### 11.4 Code changes made
+
+- Deleted 6 entity files: `make`/`model`/`alias` × marketplace and ingestion
+- Created `VehicleDictionary` (marketplace, owned) and
+  `VehicleDictionaryView` (ingestion, read-only)
+- Rewrote `DealerProfile` (auth) and `DealerProfileView` (admin) with the
+  verification columns
+- `grants.sql`: three grants replaced with one on `vehicle_dictionaries`
+- Fixed stale doc comments in `marketplace-service` and `ingestion-service`
+  `database.config.ts` that still named the deleted tables
+
+All five services rebuilt and re-boot-tested afterwards; isolation re-verified
+on the new table (§6, tests 5, 6, 9).
+
 ---
 
 ## What is NOT done
@@ -246,8 +350,8 @@ f5a4857  feat(auth-user-service): wire TypeORM to auth schema
 This is the important part — the database *infrastructure* is finished, but
 almost nothing that uses it exists yet.
 
-- **Reference tables are empty.** Zero rows in `makes`, `models`, `aliases`.
-  Nothing can fuzzy-match anything until these are seeded.
+- **`vehicle_dictionaries` is empty.** Zero rows. No make or model resolves
+  until it is seeded — this blocks the search parser entirely.
 - **No repositories, services, or controllers anywhere.** Every service has
   entities and a health check — nothing else. No auth endpoints, no listing
   CRUD, no search implementation, no ETL pipeline code.
@@ -256,13 +360,14 @@ almost nothing that uses it exists yet.
   by the parser, the Groq prompt builder, and the SQL builder — is still
   only discussed in the design docs, per the silent-drift risk in
   plan-b-reads-cross-schemas.md §9A.
-- **`ERD.png` was never updated.** It still shows `body_type` as a
-  `vehicles` column, `age`/`slug`/`price_band`/`mileage_band` as columns
-  that don't exist. Anyone reading the diagram as schema truth will be
-  misled until it's corrected.
+- **`New ERD.png` needs four corrections** — see §11.3.
+- **The dealer-verification flow is schema-only.** Columns and entities exist;
+  no document upload, no admin approval endpoint, no capability gating
+  (individual → manual listings only, business → bulk upload) is implemented.
+  Also needs coordinating with the auth-service maintainer (§11.2).
 - **No HTTP client layer.** The cross-schema view-entities work at the
   database level, but no repository method or service class has been
   written that actually queries through one yet.
 - **Alias-promotion loop is unbuilt.** The mechanism (logged corrections →
-  promoted into `aliases`) is designed but has no implementation — no
-  endpoint on marketplace-service for ingestion to call.
+  promoted into `vehicle_dictionaries.aliases`) is designed but has no
+  implementation — no endpoint on marketplace-service for ingestion to call.
