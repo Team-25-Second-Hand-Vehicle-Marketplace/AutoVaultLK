@@ -6,6 +6,7 @@ import { databaseConfig } from './config/database.config';
 import { HealthModule } from './health/health.module';
 import { DatabaseModule } from './infrastructure/database/database.module';
 import { DealerProfilesModule } from './modules/dealers/dealers.module';
+import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 
 @Module({
@@ -15,7 +16,15 @@ import { UsersModule } from './modules/users/users.module';
       envFilePath: ['../.env', '.env'],
       validationSchema: Joi.object({
         PORT: Joi.number().port().default(3000),
-        AUTH_DATABASE_URL: Joi.string().uri({ scheme: [/^(postgres|postgresql)$/] }).required(),
+        AUTH_DATABASE_URL: Joi.string().uri().required(),
+        JWT_ACCESS_SECRET: Joi.string().min(32).required(),
+        JWT_ACCESS_EXPIRES_IN: Joi.string()
+        // The regex pattern /^\d+[smhd]$/ matches a string that starts with one or more digits (\d+), followed by a single character that can be either 's', 'm', 'h', or 'd'. This pattern is commonly used to represent time durations, where:
+          .pattern(/^\d+[smhd]$/)
+          .default('15m'),
+        JWT_REFRESH_EXPIRES_IN: Joi.string()
+          .pattern(/^\d+[smhd]$/)
+          .default('7d'),
       }),
       validationOptions: {
         allowUnknown: true,
@@ -24,6 +33,7 @@ import { UsersModule } from './modules/users/users.module';
     }),
     TypeOrmModule.forRoot(databaseConfig()),
     DatabaseModule,
+    AuthModule,
     UsersModule,
     DealerProfilesModule,
     HealthModule,
