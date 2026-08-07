@@ -24,8 +24,9 @@ export class UsersService {
     return this.usersRepository.findByEmail(email);
   }
 
-  create(data: CreateUserDto) {
-    return this.usersRepository.create(data);
+  async create(data: CreateUserDto) {
+    const created = await this.usersRepository.create(data);
+    return this.findById(created.id);
   }
 
   async update(id: string, data: UpdateUserDto) {
