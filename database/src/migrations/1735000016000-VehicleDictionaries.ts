@@ -20,7 +20,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * init; alias promotion goes through marketplace's API, not a direct write.
  * See database/src/grants.sql.
  */
-export class VehicleDictionaries1735000015000 implements MigrationInterface {
+export class VehicleDictionaries1735000016000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       CREATE TABLE marketplace.vehicle_dictionaries (
