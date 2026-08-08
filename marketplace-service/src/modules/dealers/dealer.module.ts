@@ -9,6 +9,6 @@ import { DealerRepository } from './repositories/dealer.repository';
     DealerService,
     DealerRepository,
   ],
-  exports: [DealerService],
+  exports: [DealerService, DealerRepository],
 })
 export class DealerModule {}
