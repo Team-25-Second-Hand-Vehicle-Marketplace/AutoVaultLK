@@ -16,9 +16,11 @@ export class DealerController {
     private readonly dealerService: DealerService,
   ) {}
 
-  @Get('profile')
-  getProfile() {
-    return this.dealerService.getProfile();
+  @Get(':id/profile')
+  getProfile(
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.dealerService.getProfile(id);
   }
 
   @Get(':id')
@@ -28,10 +30,11 @@ export class DealerController {
     return this.dealerService.getDealerById(id);
   }
 
-  @Put('profile')
+  @Put(':id/profile')
   updateProfile(
+    @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateDealerProfileDto,
   ) {
-    return this.dealerService.updateProfile(dto);
+    return this.dealerService.updateProfile(id, dto);
   }
 }

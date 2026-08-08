@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { DealerRepository } from '../repositories/dealer.repository';
 import { UpdateDealerProfileDto } from '../dto/update-dealer-profile.dto';
 
@@ -8,16 +8,38 @@ export class DealerService {
     private readonly dealerRepository: DealerRepository,
   ) {}
 
-  getProfile() {
-    return this.dealerRepository.findProfile();
+  getProfile(id: number) {
+    const dealer = this.dealerRepository.findById(id);
+
+    if (!dealer) {
+      throw new NotFoundException(
+        `Dealer with ID ${id} not found`,
+      );
+    }
+
+    return dealer;
   }
 
   getDealerById(id: number) {
-    return this.dealerRepository.findById(id);
+    const dealer = this.dealerRepository.findById(id);
+
+    if (!dealer) {
+      throw new NotFoundException(
+        `Dealer with ID ${id} not found`,
+      );
+    }
+
+    return dealer;
   }
 
-  updateProfile(dto: UpdateDealerProfileDto) {
-    const updatedDealer = this.dealerRepository.update(dto);
+  updateProfile(id: number, dto: UpdateDealerProfileDto) {
+    const updatedDealer = this.dealerRepository.update(id, dto);
+
+    if (!updatedDealer) {
+      throw new NotFoundException(
+        `Dealer with ID ${id} not found`,
+      );
+    }
 
     return {
       message: 'Dealer profile updated successfully',

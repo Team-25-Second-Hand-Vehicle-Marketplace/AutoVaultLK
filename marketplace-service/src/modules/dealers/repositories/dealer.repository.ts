@@ -3,35 +3,53 @@ import { UpdateDealerProfileDto } from '../dto/update-dealer-profile.dto';
 
 @Injectable()
 export class DealerRepository {
-  private dealer = {
-    id: 1,
-    businessName: 'ABC Motors',
-    ownerName: 'John Silva',
-    email: 'abc@gmail.com',
-    phone: '+94771234567',
-    address: 'No.12, Main Street',
-    city: 'Colombo',
-    province: 'Western',
-    profileImage: 'dealer.png',
-  };
+  private dealers = [
+    {
+      id: 1,
+      businessName: 'Virusan Motors',
+      ownerName: 'Virusan',
+      email: 'virusan@gmail.com',
+      phone: '+94771234567',
+      city: 'Jaffna',
+      province: 'Northern',
+    },
+    {
+      id: 2,
+      businessName: 'ABC Motors',
+      ownerName: 'John Silva',
+      email: 'abc@gmail.com',
+      phone: '+94771111111',
+      city: 'Colombo',
+      province: 'Western',
+    },
+  ];
 
-  findProfile() {
-    return this.dealer;
+  findProfile(id?: number) {
+    if (id === undefined) {
+      return this.dealers[0];
+    }
+
+    return this.findById(id);
   }
 
   findById(id: number) {
-    return {
-      ...this.dealer,
-      id,
-    };
+    return this.dealers.find(
+      (dealer) => dealer.id === id,
+    );
   }
 
-  update(dto: UpdateDealerProfileDto) {
-    this.dealer = {
-      ...this.dealer,
-      ...dto,
-    };
+  update(
+    id: number,
+    dto: UpdateDealerProfileDto,
+  ) {
+    const dealer = this.findById(id);
 
-    return this.dealer;
+    if (!dealer) {
+      return null;
+    }
+
+    Object.assign(dealer, dto);
+
+    return dealer;
   }
 }
