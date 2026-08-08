@@ -1,7 +1,8 @@
 
-import { Body, Controller, Post,Get,Param,ParseIntPipe, } from '@nestjs/common';
+import { Body, Controller, Post,Get,Patch,Param,ParseIntPipe, } from '@nestjs/common';
 import { ListingService } from '../services/listing.service';
 import { CreateListingDto } from '../dto/create-listing.dto';
+import { UpdateListingDto } from '../dto/update-listing.dto';
 
 @Controller('listings')
 export class ListingController {
@@ -26,5 +27,13 @@ export class ListingController {
         @Param('id', ParseIntPipe) id: number,
     ) {
         return this.listingService.getListingById(id);
+    }
+
+    @Patch(':id')
+    updateListing(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateListingDto,
+    ) {
+    return this.listingService.updateListing(id, dto);
     }
 }
