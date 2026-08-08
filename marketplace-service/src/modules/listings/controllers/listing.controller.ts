@@ -43,4 +43,12 @@ export class ListingController {
     ) {
     return this.listingService.deactivateListing(id);
     }
+
+    @Post('internal/bulk')
+    createBulkListings(
+    @Body() dtos: CreateListingDto[],
+    ) {
+    return this.listingService.createBulkListings(dtos);
+    }
+
 }

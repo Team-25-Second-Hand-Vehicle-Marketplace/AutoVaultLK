@@ -4,10 +4,11 @@ import { CreateListingDto } from '../dto/create-listing.dto';
 @Injectable()
 export class ListingRepository {
   private listings: any[] = [];
+  private idCounter = 0;
 
   create(dto: CreateListingDto) {
     const listing = {
-      id: this.listings.length + 1,
+      id: ++this.idCounter,
       ...dto,
       status: 'ACTIVE',
       createdAt: new Date(),
@@ -55,4 +56,22 @@ export class ListingRepository {
 
     return listing;
   }
+
+  createBulk(dtos: CreateListingDto[]) {
+  const createdListings = dtos.map(dto => {
+    const listing = {
+      id: ++this.idCounter,
+      ...dto,
+      status: 'ACTIVE',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    this.listings.push(listing);
+
+    return listing;
+  });
+
+  return createdListings;
+}
 }
