@@ -36,4 +36,11 @@ export class ListingController {
     ) {
     return this.listingService.updateListing(id, dto);
     }
+
+    @Patch(':id/deactivate')
+    deactivateListing(
+    @Param('id', ParseIntPipe) id: number,
+    ) {
+    return this.listingService.deactivateListing(id);
+    }
 }
