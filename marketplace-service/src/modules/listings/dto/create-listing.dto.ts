@@ -23,6 +23,10 @@ export enum TransmissionType {
 }
 
 export class CreateListingDto {
+  @IsInt()
+  @IsPositive()
+  dealerId: number;
+
   @IsString()
   @IsNotEmpty()
   make: string;
