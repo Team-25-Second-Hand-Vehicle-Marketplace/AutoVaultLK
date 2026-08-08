@@ -6,23 +6,17 @@ import {
 import { ListingRepository } from '../repositories/listing.repository';
 import { CreateListingDto } from '../dto/create-listing.dto';
 import { UpdateListingDto } from '../dto/update-listing.dto';
-import { DealerRepository } from 'src/modules/dealers/repositories/dealer.repository';
+import { DealerService } from 'src/modules/dealers/services/dealer.service';
 
 @Injectable()
 export class ListingService {
   constructor(
     private readonly listingRepository: ListingRepository,
-    private readonly dealerRepository: DealerRepository,
+    private readonly dealerService: DealerService,
   ) {}
 
   createListing(dto: CreateListingDto) {
-    const dealer = this.dealerRepository.findById(dto.dealerId);
-
-    if (!dealer) {
-      throw new NotFoundException(
-        `Dealer with ID ${dto.dealerId} not found`,
-      );
-    }
+    this.dealerService.getDealerById(dto.dealerId);
 
     const listing = this.listingRepository.create(dto);
 
@@ -38,22 +32,26 @@ export class ListingService {
     return {
       message: 'Vehicle listings retrieved successfully',
       data: listings.map((listing) => {
-        const dealer = this.dealerRepository.findById(
-          listing.dealerId,
-        );
-
-        return {
-          ...listing,
-          dealer: dealer
-            ? {
-                id: dealer.id,
-                businessName: dealer.businessName,
-                ownerName: dealer.ownerName,
-                city: dealer.city,
-                phone: dealer.phone,
-              }
-            : null,
-        };
+        try {
+          const dealer = this.dealerService.getDealerById(
+            listing.dealerId,
+          );
+          return {
+            ...listing,
+            dealer: {
+              id: dealer.id,
+              businessName: dealer.businessName,
+              ownerName: dealer.ownerName,
+              city: dealer.city,
+              phone: dealer.phone,
+            },
+          };
+        } catch (error) {
+          return {
+            ...listing,
+            dealer: null,
+          };
+        }
       }),
     };
   }
@@ -67,32 +65,39 @@ export class ListingService {
       );
     }
 
-    const dealer = this.dealerRepository.findById(
-      listing.dealerId,
-    );
-
-    return {
-      message: 'Vehicle listing retrieved successfully',
-      data: {
-        ...listing,
-        dealer: dealer
-          ? {
-              id: dealer.id,
-              businessName: dealer.businessName,
-              ownerName: dealer.ownerName,
-              city: dealer.city,
-              phone: dealer.phone,
-            }
-          : null,
-      },
-    };
+    try {
+      const dealer = this.dealerService.getDealerById(
+        listing.dealerId,
+      );
+      return {
+        message: 'Vehicle listing retrieved successfully',
+        data: {
+          ...listing,
+          dealer: {
+            id: dealer.id,
+            businessName: dealer.businessName,
+            ownerName: dealer.ownerName,
+            city: dealer.city,
+            phone: dealer.phone,
+          },
+        },
+      };
+    } catch (error) {
+      return {
+        message: 'Vehicle listing retrieved successfully',
+        data: {
+          ...listing,
+          dealer: null,
+        },
+      };
+    }
   }
 
   updateListing(
     id: number,
     dto: UpdateListingDto,
   ) {
-    const listing = this.listingRepository.update(id, dto);
+    const listing = this.listingRepository.findById(id);
 
     if (!listing) {
       throw new NotFoundException(
@@ -100,9 +105,16 @@ export class ListingService {
       );
     }
 
+    // Validate new dealer if dealerId is being updated
+    if (dto.dealerId && dto.dealerId !== listing.dealerId) {
+      this.dealerService.getDealerById(dto.dealerId);
+    }
+
+    const updatedListing = this.listingRepository.update(id, dto);
+
     return {
       message: 'Vehicle listing updated successfully',
-      data: listing,
+      data: updatedListing,
     };
   }
 
@@ -123,16 +135,19 @@ export class ListingService {
 
   createBulkListings(dtos: CreateListingDto[]) {
     // Validate all dealers exist before creating any listings
-    const invalidDealers = dtos.filter(
-      (dto) => !this.dealerRepository.findById(dto.dealerId)
-    );
+    const invalidDealerIds: number[] = [];
+    
+    for (const dto of dtos) {
+      try {
+        this.dealerService.getDealerById(dto.dealerId);
+      } catch (error) {
+        invalidDealerIds.push(dto.dealerId);
+      }
+    }
 
-    if (invalidDealers.length > 0) {
-      const invalidIds = invalidDealers
-        .map((dto) => dto.dealerId)
-        .join(', ');
+    if (invalidDealerIds.length > 0) {
       throw new NotFoundException(
-        `Dealer(s) with ID ${invalidIds} not found`,
+        `Dealer(s) with ID ${invalidDealerIds.join(', ')} not found`,
       );
     }
 
