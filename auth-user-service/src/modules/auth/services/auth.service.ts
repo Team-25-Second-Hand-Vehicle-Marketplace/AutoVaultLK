@@ -50,6 +50,7 @@ export class AuthService {
           passwordHash,
           name: data.name,
           role: 'DEALER',
+          isActive: false,
         }),
       );
 
