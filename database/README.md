@@ -19,6 +19,8 @@ npm run migration:create -- src/migrations/create-users
 npm run migration:generate -- src/migrations/schema-change
 npm run migration:run
 npm run migration:revert
+npm run db:setup    # migration:run + grants
+npm run verify      # smoke-test all five service roles (requires repo root .env)
 ```
 
 Keep `synchronize: false`, and run migrations once through the deployment pipeline.

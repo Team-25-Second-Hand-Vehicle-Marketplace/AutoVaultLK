@@ -355,9 +355,12 @@ Align with ADR-002 / `ON CONFLICT (upload_job_id, registration_number)`.
 ### Step 5 — Verify
 
 ```powershell
-cd database && npm run db:setup
-# Per service: smoke test repository insert/select with service role URL
+cd database && npm run db:setup && npm run verify
 ```
+
+`npm run verify` runs `scripts/verify-roles.js` — smoke-tests each service role URL
+from the repo root `.env` (connect, own-schema access, cross-schema reads, and
+denied writes per `grants.sql`). Also confirms migrations 1800 and 1900 are applied.
 
 ---
 
