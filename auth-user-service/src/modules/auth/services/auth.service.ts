@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { DataSource, EntityManager, IsNull } from 'typeorm';
@@ -16,11 +16,20 @@ import {
   AccessTokenPayload,
   getAccessTokenSignOptions,
 } from '../config/jwt.config';
+import {
+  AUTH_SECURITY_MESSAGES,
+  SecurityEventType,
+} from '../constants/auth-security.constants';
 import { LoginDto } from '../dto/login.dto';
+import { PasswordResetRequestDto } from '../dto/password-reset-request.dto';
 import { RefreshTokenDto } from '../dto/refresh-token.dto';
 import { RegisterBuyerDto } from '../dto/register-buyer.dto';
 import { RegisterDealerDto } from '../dto/register-dealer.dto';
 import { RefreshTokensRepository } from '../repositories/refresh-tokens.repository';
+import {
+  AuthAbuseProtectionService,
+  InvalidCredentialsError,
+} from './auth-abuse-protection.service';
 import { SessionMetadata } from '../types/session-metadata.type';
 
 type AuthUser = Pick<User, 'id' | 'email' | 'name' | 'role' | 'isActive'>;
@@ -31,6 +40,7 @@ export class AuthService {
     private readonly usersRepository: UsersRepository,
     private readonly dealerProfilesRepository: DealerProfilesRepository,
     private readonly refreshTokensRepository: RefreshTokensRepository,
+    private readonly authAbuseProtection: AuthAbuseProtectionService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly dataSource: DataSource,
@@ -40,8 +50,21 @@ export class AuthService {
     data: RegisterBuyerDto,
     session: SessionMetadata = {},
   ) {
+    await this.authAbuseProtection.assertRegistrationAllowed(session);
+
     const email = data.email.trim().toLowerCase();
-    await this.ensureEmailIsAvailable(email);
+    const existingUser = await this.usersRepository.findByEmail(email);
+    if (existingUser) {
+      await this.authAbuseProtection.recordRegistrationAttempt(
+        SecurityEventType.REGISTER_BUYER,
+        email,
+        session,
+        { success: false, failureReason: 'duplicate_email' },
+      );
+      await this.authAbuseProtection.simulateRegistrationProcessing();
+      return { message: AUTH_SECURITY_MESSAGES.REGISTRATION_RECEIVED };
+    }
+
     const user = await this.usersRepository.create({
       email,
       passwordHash: await bcrypt.hash(data.password, 12),
@@ -49,15 +72,45 @@ export class AuthService {
       role: 'BUYER',
     });
 
-    return this.issueTokenPair(user, {
+    await this.authAbuseProtection.recordRegistrationAttempt(
+      SecurityEventType.REGISTER_BUYER,
+      email,
+      session,
+      { success: true, userId: user.id },
+    );
+
+    const tokens = await this.issueTokenPair(user, {
       ...session,
       deviceLabel: data.deviceLabel ?? session.deviceLabel ?? null,
     });
+
+    return {
+      message: AUTH_SECURITY_MESSAGES.REGISTRATION_RECEIVED,
+      ...tokens,
+    };
   }
 
-  async registerDealer(data: RegisterDealerDto) {
+  async registerDealer(
+    data: RegisterDealerDto,
+    session: SessionMetadata = {},
+  ) {
+    await this.authAbuseProtection.assertRegistrationAllowed(session);
+
     const email = data.email.trim().toLowerCase();
-    await this.ensureEmailIsAvailable(email);
+    const existingUser = await this.usersRepository.findByEmail(email);
+    if (existingUser) {
+      await this.authAbuseProtection.recordRegistrationAttempt(
+        SecurityEventType.REGISTER_DEALER,
+        email,
+        session,
+        { success: false, failureReason: 'duplicate_email' },
+      );
+      await this.authAbuseProtection.simulateRegistrationProcessing();
+      return {
+        message: AUTH_SECURITY_MESSAGES.REGISTRATION_RECEIVED,
+      };
+    }
+
     const passwordHash = await bcrypt.hash(data.password, 12);
 
     const user = await this.dataSource.transaction(async (manager) => {
@@ -87,6 +140,13 @@ export class AuthService {
       return createdUser;
     });
 
+    await this.authAbuseProtection.recordRegistrationAttempt(
+      SecurityEventType.REGISTER_DEALER,
+      email,
+      session,
+      { success: true, userId: user.id },
+    );
+
     return {
       message:
         'Registration submitted. Your account is pending administrator approval.',
@@ -96,60 +156,132 @@ export class AuthService {
   }
 
   async login(data: LoginDto, session: SessionMetadata = {}) {
-    const user = await this.authenticate(data);
-    if (user.role === 'ADMIN') {
-      throw new UnauthorizedException(
-        'Admin accounts must use the admin login endpoint',
-      );
-    }
+    const email = data.email.trim().toLowerCase();
+    await this.authAbuseProtection.preLoginCheck(
+      email,
+      session,
+      SecurityEventType.LOGIN,
+    );
 
-    return this.issueTokenPair(user, {
-      ...session,
-      deviceLabel: data.deviceLabel ?? session.deviceLabel ?? null,
-    });
+    try {
+      const user = await this.validateCredentials(data, { adminOnly: false });
+      await this.authAbuseProtection.recordLoginSuccess(
+        email,
+        session,
+        SecurityEventType.LOGIN,
+        user.id,
+      );
+
+      return this.issueTokenPair(user, {
+        ...session,
+        deviceLabel: data.deviceLabel ?? session.deviceLabel ?? null,
+      });
+    } catch (error) {
+      if (error instanceof InvalidCredentialsError) {
+        return this.authAbuseProtection.handleFailedLogin(
+          email,
+          session,
+          SecurityEventType.LOGIN,
+        );
+      }
+      throw error;
+    }
   }
 
   async loginAdmin(data: LoginDto, session: SessionMetadata = {}) {
-    const user = await this.authenticate(data);
-    if (user.role !== 'ADMIN') {
-      throw new UnauthorizedException('Admin credentials required');
-    }
+    const email = data.email.trim().toLowerCase();
+    await this.authAbuseProtection.preLoginCheck(
+      email,
+      session,
+      SecurityEventType.ADMIN_LOGIN,
+    );
 
-    return this.issueTokenPair(user, {
-      ...session,
-      deviceLabel: data.deviceLabel ?? session.deviceLabel ?? null,
-    });
+    try {
+      const user = await this.validateCredentials(data, { adminOnly: true });
+      await this.authAbuseProtection.recordLoginSuccess(
+        email,
+        session,
+        SecurityEventType.ADMIN_LOGIN,
+        user.id,
+      );
+
+      return this.issueTokenPair(user, {
+        ...session,
+        deviceLabel: data.deviceLabel ?? session.deviceLabel ?? null,
+      });
+    } catch (error) {
+      if (error instanceof InvalidCredentialsError) {
+        return this.authAbuseProtection.handleFailedLogin(
+          email,
+          session,
+          SecurityEventType.ADMIN_LOGIN,
+        );
+      }
+      throw error;
+    }
   }
 
   async refresh(data: RefreshTokenDto, session: SessionMetadata = {}) {
-    const tokenHash = this.hashRefreshToken(data.refreshToken);
-    const storedToken = await this.refreshTokensRepository.findByHash(tokenHash);
+    await this.authAbuseProtection.assertRefreshAllowed(session);
 
-    if (!storedToken) {
-      throw new UnauthorizedException('Invalid or expired refresh token');
-    }
+    try {
+      const tokenHash = this.hashRefreshToken(data.refreshToken);
+      const storedToken = await this.refreshTokensRepository.findByHash(tokenHash);
 
-    if (storedToken.revokedAt) {
-      await this.refreshTokensRepository.revokeFamily(storedToken.familyId);
-      throw new UnauthorizedException(
-        'Refresh token reuse detected. All sessions in this family have been revoked',
+      if (!storedToken) {
+        throw new UnauthorizedException(AUTH_SECURITY_MESSAGES.INVALID_REFRESH_TOKEN);
+      }
+
+      if (storedToken.revokedAt) {
+        await this.refreshTokensRepository.revokeFamily(storedToken.familyId);
+        throw new UnauthorizedException(AUTH_SECURITY_MESSAGES.INVALID_REFRESH_TOKEN);
+      }
+
+      if (storedToken.expiresAt <= new Date()) {
+        await this.refreshTokensRepository.revoke(storedToken);
+        throw new UnauthorizedException(AUTH_SECURITY_MESSAGES.INVALID_REFRESH_TOKEN);
+      }
+
+      const user = await this.usersRepository.findById(storedToken.userId);
+      if (!user || !user.isActive) {
+        throw new UnauthorizedException(AUTH_SECURITY_MESSAGES.INVALID_REFRESH_TOKEN);
+      }
+
+      const tokens = await this.rotateTokenPair(user, storedToken, {
+        ...session,
+        deviceLabel: data.deviceLabel ?? session.deviceLabel ?? null,
+      });
+
+      await this.authAbuseProtection.recordRefreshSuccess(
+        user.id,
+        user.email,
+        session,
       );
-    }
 
-    if (storedToken.expiresAt <= new Date()) {
-      await this.refreshTokensRepository.revoke(storedToken);
-      throw new UnauthorizedException('Invalid or expired refresh token');
+      return tokens;
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        return this.authAbuseProtection.recordRefreshFailure(
+          session,
+          'invalid_refresh_token',
+        );
+      }
+      throw error;
     }
+  }
 
-    const user = await this.usersRepository.findById(storedToken.userId);
-    if (!user || !user.isActive) {
-      throw new UnauthorizedException('Unable to refresh this session');
-    }
-
-    return this.rotateTokenPair(user, storedToken, {
-      ...session,
-      deviceLabel: data.deviceLabel ?? session.deviceLabel ?? null,
-    });
+  async requestPasswordReset(
+    data: PasswordResetRequestDto,
+    session: SessionMetadata = {},
+  ) {
+    const email = data.email.trim().toLowerCase();
+    await this.authAbuseProtection.assertPasswordResetAllowed(email, session);
+    const user = await this.usersRepository.findByEmail(email);
+    return this.authAbuseProtection.recordPasswordResetRequest(
+      email,
+      session,
+      user?.id ?? null,
+    );
   }
 
   async logout(data: RefreshTokenDto) {
@@ -168,11 +300,32 @@ export class AuthService {
     return { success: true };
   }
 
-  private async ensureEmailIsAvailable(email: string) {
-    const existingUser = await this.usersRepository.findByEmail(email);
-    if (existingUser) {
-      throw new ConflictException('An account with this email already exists');
+  private async validateCredentials(
+    data: LoginDto,
+    options: { adminOnly: boolean },
+  ) {
+    const email = data.email.trim().toLowerCase();
+    const user = await this.usersRepository.findByEmail(email);
+    const passwordMatches =
+      user && (await bcrypt.compare(data.password, user.passwordHash));
+
+    if (!passwordMatches) {
+      throw new InvalidCredentialsError();
     }
+
+    if (options.adminOnly && user.role !== 'ADMIN') {
+      throw new InvalidCredentialsError();
+    }
+
+    if (!options.adminOnly && user.role === 'ADMIN') {
+      throw new InvalidCredentialsError();
+    }
+
+    if (!user.isActive) {
+      await this.throwInactiveAccountError(user);
+    }
+
+    return user;
   }
 
   private async issueTokenPair(user: User, session: SessionMetadata = {}) {
@@ -212,20 +365,18 @@ export class AuthService {
       });
 
       if (!locked) {
-        throw new UnauthorizedException('Invalid or expired refresh token');
+        throw new UnauthorizedException(AUTH_SECURITY_MESSAGES.INVALID_REFRESH_TOKEN);
       }
 
       if (locked.revokedAt) {
         await this.revokeFamilyInTransaction(manager, locked.familyId);
-        throw new UnauthorizedException(
-          'Refresh token reuse detected. All sessions in this family have been revoked',
-        );
+        throw new UnauthorizedException(AUTH_SECURITY_MESSAGES.INVALID_REFRESH_TOKEN);
       }
 
       if (locked.expiresAt <= new Date()) {
         locked.revokedAt = new Date();
         await manager.save(locked);
-        throw new UnauthorizedException('Invalid or expired refresh token');
+        throw new UnauthorizedException(AUTH_SECURITY_MESSAGES.INVALID_REFRESH_TOKEN);
       }
 
       const refreshToken = randomBytes(32).toString('base64url');
@@ -300,19 +451,6 @@ export class AuthService {
     return this.parseDuration(
       this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '7d'),
     );
-  }
-
-  private async authenticate(data: LoginDto) {
-    const user = await this.usersRepository.findByEmail(
-      data.email.trim().toLowerCase(),
-    );
-    if (!user || !(await bcrypt.compare(data.password, user.passwordHash))) {
-      throw new UnauthorizedException('Invalid email or password');
-    }
-    if (!user.isActive) {
-      await this.throwInactiveAccountError(user);
-    }
-    return user;
   }
 
   private async throwInactiveAccountError(user: User): Promise<never> {

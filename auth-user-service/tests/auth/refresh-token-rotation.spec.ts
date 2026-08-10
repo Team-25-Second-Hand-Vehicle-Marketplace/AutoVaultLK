@@ -30,6 +30,19 @@ describe('AuthService refresh token rotation', () => {
     revokeOldestActiveSessions: jest.fn(),
     revokeAllActiveForUser: jest.fn(),
   };
+  const authAbuseProtection = {
+    assertRefreshAllowed: jest.fn(),
+    recordRefreshFailure: jest.fn().mockImplementation(() => {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }),
+    recordRefreshSuccess: jest.fn(),
+    preLoginCheck: jest.fn(),
+    handleFailedLogin: jest.fn(),
+    recordLoginSuccess: jest.fn(),
+    assertRegistrationAllowed: jest.fn(),
+    recordRegistrationAttempt: jest.fn(),
+    simulateRegistrationProcessing: jest.fn(),
+  };
   const jwtService = {
     signAsync: jest.fn().mockResolvedValue('access-token'),
   };
@@ -63,6 +76,7 @@ describe('AuthService refresh token rotation', () => {
     usersRepository as never,
     dealerProfilesRepository as never,
     refreshTokensRepository as never,
+    authAbuseProtection as never,
     jwtService as never,
     configService as unknown as ConfigService,
     dataSource as unknown as DataSource,
@@ -96,11 +110,12 @@ describe('AuthService refresh token rotation', () => {
       service.refresh({ refreshToken }),
     ).rejects.toThrow(
       new UnauthorizedException(
-        'Refresh token reuse detected. All sessions in this family have been revoked',
+        'Invalid or expired refresh token',
       ),
     );
 
     expect(refreshTokensRepository.revokeFamily).toHaveBeenCalledWith('family-id');
+    expect(authAbuseProtection.recordRefreshFailure).toHaveBeenCalled();
   });
 
   it('rotates refresh tokens atomically inside a transaction', async () => {
@@ -166,6 +181,8 @@ describe('AuthService refresh token rotation', () => {
   });
 
   it('enforces the maximum active session limit on login', async () => {
+    authAbuseProtection.preLoginCheck.mockResolvedValue(undefined);
+    authAbuseProtection.recordLoginSuccess.mockResolvedValue(undefined);
     usersRepository.findByEmail.mockResolvedValue({
       ...activeUser,
       passwordHash: '$2a$12$hashed-password-placeholder-value',

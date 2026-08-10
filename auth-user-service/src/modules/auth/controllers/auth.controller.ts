@@ -15,6 +15,7 @@ import { extractSessionMetadata } from '../utils/session-metadata.util';
 import { LoginDto } from '../dto/login.dto';
 import { RefreshTokenDto } from '../dto/refresh-token.dto';
 import { RegisterBuyerDto } from '../dto/register-buyer.dto';
+import { PasswordResetRequestDto } from '../dto/password-reset-request.dto';
 import { RegisterDealerDto } from '../dto/register-dealer.dto';
 import { AuthService } from '../services/auth.service';
 
@@ -33,8 +34,11 @@ export class AuthController {
 
   @Post('register/dealer')
   @HttpCode(HttpStatus.CREATED)
-  registerDealer(@Body() data: RegisterDealerDto) {
-    return this.authService.registerDealer(data);
+  registerDealer(@Body() data: RegisterDealerDto, @Req() req: Request) {
+    return this.authService.registerDealer(
+      data,
+      extractSessionMetadata(req),
+    );
   }
 
   @Post('login')
@@ -71,5 +75,17 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   logoutAll(@CurrentUser() user: AuthenticatedUser) {
     return this.authService.logoutAllSessions(user.id);
+  }
+
+  @Post('password-reset/request')
+  @HttpCode(HttpStatus.OK)
+  requestPasswordReset(
+    @Body() data: PasswordResetRequestDto,
+    @Req() req: Request,
+  ) {
+    return this.authService.requestPasswordReset(
+      data,
+      extractSessionMetadata(req),
+    );
   }
 }

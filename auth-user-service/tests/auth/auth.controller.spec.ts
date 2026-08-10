@@ -9,6 +9,7 @@ describe('AuthController', () => {
     refresh: jest.fn(),
     logout: jest.fn(),
     logoutAllSessions: jest.fn(),
+    requestPasswordReset: jest.fn(),
   };
   const controller = new AuthController(authService as never);
   const req = {
@@ -41,8 +42,11 @@ describe('AuthController', () => {
     };
     authService.registerDealer.mockResolvedValue(pending);
 
-    await expect(controller.registerDealer(data)).resolves.toEqual(pending);
-    expect(authService.registerDealer).toHaveBeenCalledWith(data);
+    await expect(controller.registerDealer(data, req)).resolves.toEqual(pending);
+    expect(authService.registerDealer).toHaveBeenCalledWith(
+      data,
+      expect.objectContaining({ ipAddress: '127.0.0.1' }),
+    );
   });
 
   it('routes admin login separately', async () => {

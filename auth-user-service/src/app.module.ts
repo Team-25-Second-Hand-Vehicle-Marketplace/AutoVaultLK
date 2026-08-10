@@ -29,6 +29,18 @@ import { UsersModule } from './modules/users/users.module';
           .pattern(/^\d+[smhd]$/)
           .default('7d'),
         MAX_ACTIVE_REFRESH_SESSIONS: Joi.number().integer().min(1).max(50).default(5),
+        AUTH_LOGIN_MAX_ATTEMPTS: Joi.number().integer().min(1).max(20).default(5),
+        AUTH_LOGIN_LOCKOUT_MINUTES: Joi.number().integer().min(1).max(1440).default(15),
+        AUTH_LOGIN_WINDOW_MINUTES: Joi.number().integer().min(1).max(1440).default(15),
+        AUTH_IP_MAX_ATTEMPTS: Joi.number().integer().min(1).max(1000).default(20),
+        AUTH_REGISTER_MAX_PER_IP: Joi.number().integer().min(1).max(100).default(5),
+        AUTH_REGISTER_WINDOW_MINUTES: Joi.number().integer().min(1).max(1440).default(60),
+        AUTH_REFRESH_MAX_PER_IP: Joi.number().integer().min(1).max(1000).default(30),
+        AUTH_REFRESH_WINDOW_MINUTES: Joi.number().integer().min(1).max(1440).default(15),
+        AUTH_PASSWORD_RESET_MAX_PER_EMAIL: Joi.number().integer().min(1).max(50).default(3),
+        AUTH_PASSWORD_RESET_WINDOW_MINUTES: Joi.number().integer().min(1).max(1440).default(60),
+        AUTH_PROGRESSIVE_DELAY_BASE_MS: Joi.number().integer().min(0).max(5000).default(250),
+        AUTH_PROGRESSIVE_DELAY_MAX_MS: Joi.number().integer().min(0).max(30000).default(4000),
       }),
       validationOptions: {
         allowUnknown: true,
