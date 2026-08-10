@@ -3,29 +3,58 @@ import {
   IsInt,
   IsNotEmpty,
   IsNumber,
+  IsObject,
   IsOptional,
   IsPositive,
   IsString,
+  IsUUID,
   Max,
   Min,
 } from 'class-validator';
 
-export enum FuelType {
-  PETROL = 'Petrol',
-  DIESEL = 'Diesel',
-  HYBRID = 'Hybrid',
-  ELECTRIC = 'Electric',
+export enum FuelTypeDto {
+  PETROL = 'PETROL',
+  DIESEL = 'DIESEL',
+  HYBRID = 'HYBRID',
+  ELECTRIC = 'ELECTRIC',
+  CNG = 'CNG',
 }
 
-export enum TransmissionType {
-  MANUAL = 'Manual',
-  AUTOMATIC = 'Automatic',
+export enum TransmissionTypeDto {
+  MANUAL = 'MANUAL',
+  AUTOMATIC = 'AUTOMATIC',
+  CVT = 'CVT',
+  SEMI_AUTOMATIC = 'SEMI_AUTOMATIC',
+}
+
+export enum VehicleTypeDto {
+  CAR = 'CAR',
+  BIKE = 'BIKE',
+  VAN = 'VAN',
+  TRUCK = 'TRUCK',
+  SUV = 'SUV',
+  BUS = 'BUS',
+}
+
+export enum ConditionDto {
+  NEW = 'NEW',
+  USED = 'USED',
+  RECONDITIONED = 'RECONDITIONED',
+}
+
+/** Manual dealer create: DRAFT or LIVE. ETL/bulk uses PENDING_REVIEW via service default. */
+export enum ManualListingStatusDto {
+  DRAFT = 'DRAFT',
+  LIVE = 'LIVE',
 }
 
 export class CreateListingDto {
-  @IsInt()
-  @IsPositive()
-  dealerId: number;
+  @IsUUID()
+  dealerId: string;
+
+  @IsOptional()
+  @IsEnum(VehicleTypeDto)
+  vehicleType?: VehicleTypeDto;
 
   @IsString()
   @IsNotEmpty()
@@ -35,10 +64,20 @@ export class CreateListingDto {
   @IsNotEmpty()
   model: string;
 
+  @IsOptional()
+  @IsEnum(ConditionDto)
+  condition?: ConditionDto;
+
   @IsInt()
   @Min(1980)
   @Max(new Date().getFullYear() + 1)
-  year: number;
+  manufactureYear: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1980)
+  @Max(new Date().getFullYear() + 1)
+  registrationYear?: number;
 
   @IsNumber()
   @IsPositive()
@@ -48,13 +87,21 @@ export class CreateListingDto {
   @Min(0)
   mileage: number;
 
-  @IsEnum(FuelType)
-  fuelType: FuelType;
+  @IsEnum(FuelTypeDto)
+  fuelType: FuelTypeDto;
 
-  @IsEnum(TransmissionType)
-  transmission: TransmissionType;
+  @IsEnum(TransmissionTypeDto)
+  transmissionType: TransmissionTypeDto;
 
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsEnum(ManualListingStatusDto)
+  status?: ManualListingStatusDto;
+
+  @IsOptional()
+  @IsObject()
+  specs?: Record<string, unknown>;
 }

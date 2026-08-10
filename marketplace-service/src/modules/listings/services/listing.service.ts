@@ -3,10 +3,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { ListingRepository } from '../repositories/listing.repository';
+import { DealerSummary } from '../../dealers/repositories/dealer.repository';
+import { DealerService } from '../../dealers/services/dealer.service';
 import { CreateListingDto } from '../dto/create-listing.dto';
 import { UpdateListingDto } from '../dto/update-listing.dto';
-import { DealerService } from 'src/modules/dealers/services/dealer.service';
+import { ListingRepository } from '../repositories/listing.repository';
+import { Vehicle } from '../../../infrastructure/database/entities/vehicle.entity';
 
 @Injectable()
 export class ListingService {
@@ -15,10 +17,11 @@ export class ListingService {
     private readonly dealerService: DealerService,
   ) {}
 
-  createListing(dto: CreateListingDto) {
-    this.dealerService.getDealerById(dto.dealerId);
+  async createListing(dto: CreateListingDto) {
+    await this.dealerService.getDealerById(dto.dealerId);
 
-    const listing = this.listingRepository.create(dto);
+    const status = dto.status ?? 'LIVE';
+    const listing = await this.listingRepository.create(dto, status);
 
     return {
       message: 'Vehicle listing created successfully',
@@ -26,91 +29,42 @@ export class ListingService {
     };
   }
 
-  getAllListings() {
-    const listings = this.listingRepository.findAll();
+  async getAllListings() {
+    const listings = await this.listingRepository.findAllLive();
 
     return {
       message: 'Vehicle listings retrieved successfully',
-      data: listings.map((listing) => {
-        try {
-          const dealer = this.dealerService.getDealerById(
-            listing.dealerId,
-          );
-          return {
-            ...listing,
-            dealer: {
-              id: dealer.id,
-              businessName: dealer.businessName,
-              ownerName: dealer.ownerName,
-              city: dealer.city,
-              phone: dealer.phone,
-            },
-          };
-        } catch (error) {
-          return {
-            ...listing,
-            dealer: null,
-          };
-        }
-      }),
+      data: await Promise.all(
+        listings.map((listing) => this.withDealer(listing)),
+      ),
     };
   }
 
-  getListingById(id: number) {
-    const listing = this.listingRepository.findById(id);
+  async getListingById(id: string) {
+    const listing = await this.listingRepository.findById(id);
 
-    if (!listing) {
-      throw new NotFoundException(
-        `Vehicle listing with ID ${id} not found`,
-      );
+    if (!listing || listing.status !== 'LIVE') {
+      throw new NotFoundException(`Vehicle listing with ID ${id} not found`);
     }
 
-    try {
-      const dealer = this.dealerService.getDealerById(
-        listing.dealerId,
-      );
-      return {
-        message: 'Vehicle listing retrieved successfully',
-        data: {
-          ...listing,
-          dealer: {
-            id: dealer.id,
-            businessName: dealer.businessName,
-            ownerName: dealer.ownerName,
-            city: dealer.city,
-            phone: dealer.phone,
-          },
-        },
-      };
-    } catch (error) {
-      return {
-        message: 'Vehicle listing retrieved successfully',
-        data: {
-          ...listing,
-          dealer: null,
-        },
-      };
-    }
+    return {
+      message: 'Vehicle listing retrieved successfully',
+      data: await this.withDealer(listing),
+    };
   }
 
-  updateListing(
-    id: number,
-    dto: UpdateListingDto,
-  ) {
-    const listing = this.listingRepository.findById(id);
+  async updateListing(id: string, dto: UpdateListingDto) {
+    const listing = await this.listingRepository.findById(id);
 
     if (!listing) {
-      throw new NotFoundException(
-        `Vehicle listing with ID ${id} not found`,
-      );
+      throw new NotFoundException(`Vehicle listing with ID ${id} not found`);
     }
 
-    // Validate new dealer if dealerId is being updated
     if (dto.dealerId && dto.dealerId !== listing.dealerId) {
-      this.dealerService.getDealerById(dto.dealerId);
+      await this.dealerService.getDealerById(dto.dealerId);
     }
 
-    const updatedListing = this.listingRepository.update(id, dto);
+    const updatedListing = await this.listingRepository.update(id, dto);
 
     return {
       message: 'Vehicle listing updated successfully',
@@ -118,13 +72,11 @@ export class ListingService {
     };
   }
 
-  deactivateListing(id: number) {
-    const listing = this.listingRepository.deactivate(id);
+  async deactivateListing(id: string) {
+    const listing = await this.listingRepository.deactivate(id);
 
     if (!listing) {
-      throw new NotFoundException(
-        `Vehicle listing with ID ${id} not found`,
-      );
+      throw new NotFoundException(`Vehicle listing with ID ${id} not found`);
     }
 
     return {
@@ -133,14 +85,13 @@ export class ListingService {
     };
   }
 
-  createBulkListings(dtos: CreateListingDto[]) {
-    // Validate all dealers exist before creating any listings
-    const invalidDealerIds: number[] = [];
-    
+  async createBulkListings(dtos: CreateListingDto[]) {
+    const invalidDealerIds: string[] = [];
+
     for (const dto of dtos) {
       try {
-        this.dealerService.getDealerById(dto.dealerId);
-      } catch (error) {
+        await this.dealerService.getDealerById(dto.dealerId);
+      } catch {
         invalidDealerIds.push(dto.dealerId);
       }
     }
@@ -151,12 +102,34 @@ export class ListingService {
       );
     }
 
-    const listings = this.listingRepository.createBulk(dtos);
+    const listings = await this.listingRepository.createBulk(
+      dtos,
+      'PENDING_REVIEW',
+    );
 
     return {
       message: 'Bulk vehicle listings created successfully',
       total: listings.length,
       data: listings,
+    };
+  }
+
+  private async withDealer(listing: Vehicle) {
+    try {
+      const dealer = await this.dealerService.getDealerById(listing.dealerId);
+      return { ...listing, dealer: this.toDealerPayload(dealer) };
+    } catch {
+      return { ...listing, dealer: null };
+    }
+  }
+
+  private toDealerPayload(dealer: DealerSummary) {
+    return {
+      id: dealer.id,
+      businessName: dealer.businessName,
+      ownerName: dealer.ownerName,
+      city: dealer.city,
+      phone: dealer.phone,
     };
   }
 }
