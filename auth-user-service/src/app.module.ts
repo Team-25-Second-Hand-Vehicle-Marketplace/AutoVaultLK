@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import Joi from 'joi';
+import { SecurityModule } from './common/security/security.module';
 import { databaseConfig } from './config/database.config';
 import { HealthModule } from './health/health.module';
 import { DatabaseModule } from './infrastructure/database/database.module';
@@ -48,6 +49,12 @@ import { UsersModule } from './modules/users/users.module';
         PASSWORD_RESET_EXPIRES_MINUTES: Joi.number().integer().min(5).max(1440).default(60),
         PASSWORD_HISTORY_COUNT: Joi.number().integer().min(1).max(24).default(5),
         AUTH_RETURN_PASSWORD_RESET_TOKEN: Joi.boolean().default(false),
+        CORS_ORIGINS: Joi.string().default('http://localhost:5173'),
+        COOKIE_SECURE: Joi.boolean().default(false),
+        AUTH_USE_REFRESH_COOKIES: Joi.boolean().default(true),
+        AUTH_REFRESH_TOKEN_IN_BODY: Joi.boolean().default(false),
+        HTTP_JSON_BODY_LIMIT: Joi.string().default('100kb'),
+        DISABLE_VERBOSE_ERRORS: Joi.boolean().default(false),
       }),
       validationOptions: {
         allowUnknown: true,
@@ -55,6 +62,7 @@ import { UsersModule } from './modules/users/users.module';
       },
     }),
     TypeOrmModule.forRoot(databaseConfig()),
+    SecurityModule,
     DatabaseModule,
     AuthModule,
     UsersModule,

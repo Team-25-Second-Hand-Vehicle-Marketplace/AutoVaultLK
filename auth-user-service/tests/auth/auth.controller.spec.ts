@@ -10,8 +10,20 @@ describe('AuthController', () => {
     logout: jest.fn(),
     logoutAllSessions: jest.fn(),
     requestPasswordReset: jest.fn(),
+    confirmPasswordReset: jest.fn(),
+    changePassword: jest.fn(),
+    verifyEmail: jest.fn(),
+    resendVerificationEmail: jest.fn(),
   };
-  const controller = new AuthController(authService as never);
+  const refreshTokenCookieService = {
+    attachCookies: jest.fn((_res, payload) => payload),
+    extractRefreshToken: jest.fn(),
+    clearAuthCookies: jest.fn(),
+  };
+  const controller = new AuthController(
+    authService as never,
+    refreshTokenCookieService as never,
+  );
   const req = {
     headers: {},
     ip: '127.0.0.1',
@@ -53,12 +65,13 @@ describe('AuthController', () => {
     const data = { email: 'admin@test.com', password: 'secret' };
     authService.loginAdmin.mockResolvedValue({ accessToken: 'admin-token' });
 
-    await expect(controller.loginAdmin(data, req)).resolves.toEqual({
+    await expect(controller.loginAdmin(data, req, {} as never)).resolves.toEqual({
       accessToken: 'admin-token',
     });
     expect(authService.loginAdmin).toHaveBeenCalledWith(
       data,
       expect.objectContaining({ ipAddress: '127.0.0.1' }),
     );
+    expect(refreshTokenCookieService.attachCookies).toHaveBeenCalled();
   });
 });
