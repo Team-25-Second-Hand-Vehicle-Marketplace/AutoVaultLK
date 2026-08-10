@@ -90,23 +90,23 @@ GRANT SELECT, INSERT, UPDATE ON marketplace.vehicle_images  TO ingestion_service
 
 -- ═══ Reference data — Option B (plan-b §9) ═══════════════════════════════
 --
--- makes / models / aliases are owned solely by marketplace-service and
--- live in its schema. ingestion-service gets READ-ONLY access and caches a
--- snapshot in memory at container init rather than querying per row —
--- matching what the ETL design already specifies for groqNormalizeFn's
--- make/model resolution.
+-- marketplace.vehicle_dictionaries is owned solely by marketplace-service
+-- and lives in its schema. A single self-referencing table serves makes,
+-- models, and any future dictionary type (see migration 1735000015000).
+--
+-- ingestion-service gets READ-ONLY access and caches a snapshot in memory
+-- at container init rather than querying per row — matching what the ETL
+-- design already specifies for groqNormalizeFn's make/model resolution.
 --
 -- Alias promotion from ingestion goes through marketplace's API, NOT a
 -- direct write. That is what keeps this platform to ONE cross-schema write
 -- exception instead of two.
 --
--- Note these are SELECT-only and must NOT inherit the INSERT/UPDATE from
+-- Note this is SELECT-only and must NOT inherit the INSERT/UPDATE from
 -- the ETL exception above — that exception names its two tables explicitly
 -- for exactly this reason.
 
-GRANT SELECT ON marketplace.makes    TO ingestion_service_role;
-GRANT SELECT ON marketplace.models   TO ingestion_service_role;
-GRANT SELECT ON marketplace.aliases  TO ingestion_service_role;
+GRANT SELECT ON marketplace.vehicle_dictionaries TO ingestion_service_role;
 
 
 -- ═══ admin-service: read-only across everything ══════════════════════════

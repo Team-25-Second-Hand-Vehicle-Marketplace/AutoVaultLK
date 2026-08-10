@@ -8,7 +8,7 @@ import { TypeOrmModuleOptions } from '@nestjs/typeorm';
  * marketplace.vehicle_images directly — the one documented cross-schema
  * write exception (see database/src/grants.sql and
  * Documentation/plan-b-reads-cross-schemas.md §6). It also holds SELECT
- * on marketplace.makes/models/aliases (Option B reference data) and on
+ * on marketplace.vehicle_dictionaries (Option B reference data) and on
  * auth.users, for the same reasons.
  *
  * Note on pooling: loadFn is the only stage holding a write connection

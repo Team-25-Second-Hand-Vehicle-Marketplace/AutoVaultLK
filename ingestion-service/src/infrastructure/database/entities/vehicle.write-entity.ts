@@ -99,12 +99,6 @@ export class VehicleWriteEntity {
   @Column({ type: 'text', nullable: true })
   description: string | null;
 
-  @Column({ name: 'make_raw', type: 'varchar', length: 100, nullable: true })
-  makeRaw: string | null;
-
-  @Column({ name: 'model_raw', type: 'varchar', length: 100, nullable: true })
-  modelRaw: string | null;
-
   @Column({ type: 'varchar', length: 20, default: 'PENDING_REVIEW' })
   status: string;
 
