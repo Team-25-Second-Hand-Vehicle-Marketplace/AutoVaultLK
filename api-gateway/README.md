@@ -46,6 +46,24 @@ docker compose -f docker-compose.dev.yml up gateway -d
 - `openapi/public-api.yaml` — browser-facing routes (import into AWS API Gateway)
 - `openapi/internal-api.yaml` — service-to-service routes (private API Gateway)
 
+## Tests
+
+```powershell
+cd api-gateway
+npm ci
+npm test
+```
+
+Tests validate OpenAPI structure, SAD route prefixes, public vs internal boundaries, and nginx location alignment. CI also runs `nginx -t` inside Docker.
+
+Optional live check (gateway container must be running):
+
+```powershell
+docker compose -f docker-compose.dev.yml up gateway -d
+cd api-gateway
+$env:RUN_GATEWAY_E2E="true"; npm test -- gateway-health
+```
+
 ## AWS deployment
 
 Terraform module: `cloud-infrastructure/terraform/modules/api-gateway/`
