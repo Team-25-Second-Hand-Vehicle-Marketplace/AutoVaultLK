@@ -40,10 +40,13 @@ paths:
     post:
       tags: [auth]
       summary: Register dealer (public)
+      description: |
+        Creates a pending dealer account (FR-02). No JWT is returned —
+        dealers authenticate via POST /auth/login after administrator approval (FR-03).
       operationId: registerDealer
       responses:
         '201':
-          description: Created
+          description: Registration accepted; awaiting admin verification
 
   /auth/login:
     post:
