@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { User } from '../../../infrastructure/database/entities/user.entity';
+import { AdminUpdateUserDto } from '../dto/admin-update-user.dto';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { UsersRepository } from '../repositories/users.repository';
@@ -36,6 +37,11 @@ export class UsersService {
   }
 
   async update(id: string, data: UpdateUserDto) {
+    await this.findById(id);
+    return this.usersRepository.update(id, data);
+  }
+
+  async adminUpdate(id: string, data: AdminUpdateUserDto) {
     await this.findById(id);
     return this.usersRepository.update(id, data);
   }
