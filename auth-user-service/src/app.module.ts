@@ -41,6 +41,10 @@ import { UsersModule } from './modules/users/users.module';
         AUTH_PASSWORD_RESET_WINDOW_MINUTES: Joi.number().integer().min(1).max(1440).default(60),
         AUTH_PROGRESSIVE_DELAY_BASE_MS: Joi.number().integer().min(0).max(5000).default(250),
         AUTH_PROGRESSIVE_DELAY_MAX_MS: Joi.number().integer().min(0).max(30000).default(4000),
+        EMAIL_VERIFICATION_EXPIRES_HOURS: Joi.number().integer().min(1).max(168).default(24),
+        AUTH_RETURN_VERIFICATION_TOKEN: Joi.boolean().default(false),
+        AUTH_RESEND_VERIFICATION_MAX_PER_EMAIL: Joi.number().integer().min(1).max(20).default(3),
+        AUTH_RESEND_VERIFICATION_WINDOW_MINUTES: Joi.number().integer().min(1).max(1440).default(60),
       }),
       validationOptions: {
         allowUnknown: true,

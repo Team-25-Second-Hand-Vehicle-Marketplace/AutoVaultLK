@@ -43,6 +43,14 @@ describe('AuthService refresh token rotation', () => {
     recordRegistrationAttempt: jest.fn(),
     simulateRegistrationProcessing: jest.fn(),
   };
+  const emailVerificationService = {
+    issueToken: jest.fn().mockResolvedValue({
+      rawToken: 'verification-token',
+      includeInResponse: false,
+    }),
+    verifyEmail: jest.fn(),
+    resendVerification: jest.fn(),
+  };
   const jwtService = {
     signAsync: jest.fn().mockResolvedValue('access-token'),
   };
@@ -77,6 +85,7 @@ describe('AuthService refresh token rotation', () => {
     dealerProfilesRepository as never,
     refreshTokensRepository as never,
     authAbuseProtection as never,
+    emailVerificationService as never,
     jwtService as never,
     configService as unknown as ConfigService,
     dataSource as unknown as DataSource,
@@ -92,7 +101,10 @@ describe('AuthService refresh token rotation', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    usersRepository.findById.mockResolvedValue(activeUser);
+    usersRepository.findById.mockResolvedValue({
+      ...activeUser,
+      emailVerifiedAt: new Date(),
+    });
   });
 
   it('revokes the token family when a revoked refresh token is reused', async () => {
@@ -186,6 +198,7 @@ describe('AuthService refresh token rotation', () => {
     usersRepository.findByEmail.mockResolvedValue({
       ...activeUser,
       passwordHash: '$2a$12$hashed-password-placeholder-value',
+      emailVerifiedAt: new Date(),
     });
 
     const bcrypt = require('bcryptjs') as typeof import('bcryptjs');
