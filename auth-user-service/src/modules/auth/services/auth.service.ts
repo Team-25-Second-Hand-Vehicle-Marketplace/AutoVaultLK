@@ -1,25 +1,27 @@
 import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { DataSource } from 'typeorm';
-import { createHash, randomBytes } from 'node:crypto';
+import { DataSource, EntityManager, IsNull } from 'typeorm';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import * as bcrypt from 'bcryptjs';
 import {
   DealerProfile,
   VerificationStatus,
 } from '../../../infrastructure/database/entities/dealer-profile.entity';
+import { RefreshToken } from '../../../infrastructure/database/entities/refresh-token.entity';
 import { User } from '../../../infrastructure/database/entities/user.entity';
 import { DealerProfilesRepository } from '../../dealers/repositories/dealer-profiles.repository';
-import { LoginDto } from '../dto/login.dto';
-import { RefreshTokenDto } from '../dto/refresh-token.dto';
-import { RegisterBuyerDto } from '../dto/register-buyer.dto';
-import { RegisterDealerDto } from '../dto/register-dealer.dto';
-import { RefreshTokensRepository } from '../repositories/refresh-tokens.repository';
 import { UsersRepository } from '../../users/repositories/users.repository';
 import {
   AccessTokenPayload,
   getAccessTokenSignOptions,
 } from '../config/jwt.config';
+import { LoginDto } from '../dto/login.dto';
+import { RefreshTokenDto } from '../dto/refresh-token.dto';
+import { RegisterBuyerDto } from '../dto/register-buyer.dto';
+import { RegisterDealerDto } from '../dto/register-dealer.dto';
+import { RefreshTokensRepository } from '../repositories/refresh-tokens.repository';
+import { SessionMetadata } from '../types/session-metadata.type';
 
 type AuthUser = Pick<User, 'id' | 'email' | 'name' | 'role' | 'isActive'>;
 
@@ -34,7 +36,10 @@ export class AuthService {
     private readonly dataSource: DataSource,
   ) {}
 
-  async registerBuyer(data: RegisterBuyerDto) {
+  async registerBuyer(
+    data: RegisterBuyerDto,
+    session: SessionMetadata = {},
+  ) {
     const email = data.email.trim().toLowerCase();
     await this.ensureEmailIsAvailable(email);
     const user = await this.usersRepository.create({
@@ -44,7 +49,10 @@ export class AuthService {
       role: 'BUYER',
     });
 
-    return this.issueTokenPair(user);
+    return this.issueTokenPair(user, {
+      ...session,
+      deviceLabel: data.deviceLabel ?? session.deviceLabel ?? null,
+    });
   }
 
   async registerDealer(data: RegisterDealerDto) {
@@ -79,7 +87,6 @@ export class AuthService {
       return createdUser;
     });
 
-    // FR-02 / SAD §4.1.1: pending until admin approval — no JWT at registration (FR-03).
     return {
       message:
         'Registration submitted. Your account is pending administrator approval.',
@@ -87,8 +94,8 @@ export class AuthService {
       verificationStatus: VerificationStatus.PENDING,
     };
   }
-  // The login method authenticates a user based on their email and password. It checks if the user exists, verifies the password, and ensures the account is active. If successful, it issues a new token pair (access and refresh tokens).
-  async login(data: LoginDto) {
+
+  async login(data: LoginDto, session: SessionMetadata = {}) {
     const user = await this.authenticate(data);
     if (user.role === 'ADMIN') {
       throw new UnauthorizedException(
@@ -96,38 +103,55 @@ export class AuthService {
       );
     }
 
-    return this.issueTokenPair(user);
+    return this.issueTokenPair(user, {
+      ...session,
+      deviceLabel: data.deviceLabel ?? session.deviceLabel ?? null,
+    });
   }
 
-  async loginAdmin(data: LoginDto) {
+  async loginAdmin(data: LoginDto, session: SessionMetadata = {}) {
     const user = await this.authenticate(data);
     if (user.role !== 'ADMIN') {
       throw new UnauthorizedException('Admin credentials required');
     }
 
-    return this.issueTokenPair(user);
+    return this.issueTokenPair(user, {
+      ...session,
+      deviceLabel: data.deviceLabel ?? session.deviceLabel ?? null,
+    });
   }
-// The refresh method allows a user to obtain a new access token using a valid refresh token. It checks if the refresh token is valid and not expired, revokes the old token, and issues a new token pair.
-  async refresh(data: RefreshTokenDto) {
-    const tokenHash = this.hashRefreshToken(data.refreshToken);
-    const storedToken = await this.refreshTokensRepository.findActiveByHash(
-      tokenHash,
-    );
 
-    if (!storedToken || storedToken.expiresAt <= new Date()) {
+  async refresh(data: RefreshTokenDto, session: SessionMetadata = {}) {
+    const tokenHash = this.hashRefreshToken(data.refreshToken);
+    const storedToken = await this.refreshTokensRepository.findByHash(tokenHash);
+
+    if (!storedToken) {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
 
-    await this.refreshTokensRepository.revoke(storedToken);
+    if (storedToken.revokedAt) {
+      await this.refreshTokensRepository.revokeFamily(storedToken.familyId);
+      throw new UnauthorizedException(
+        'Refresh token reuse detected. All sessions in this family have been revoked',
+      );
+    }
+
+    if (storedToken.expiresAt <= new Date()) {
+      await this.refreshTokensRepository.revoke(storedToken);
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
     const user = await this.usersRepository.findById(storedToken.userId);
     if (!user || !user.isActive) {
       throw new UnauthorizedException('Unable to refresh this session');
     }
 
-    return this.issueTokenPair(user);
+    return this.rotateTokenPair(user, storedToken, {
+      ...session,
+      deviceLabel: data.deviceLabel ?? session.deviceLabel ?? null,
+    });
   }
 
-// The logout method allows a user to log out by revoking their refresh token. It checks if the provided refresh token is valid and active, and if so, revokes it to prevent further use.
   async logout(data: RefreshTokenDto) {
     const tokenHash = this.hashRefreshToken(data.refreshToken);
     const storedToken = await this.refreshTokensRepository.findActiveByHash(
@@ -139,6 +163,11 @@ export class AuthService {
     return { success: true };
   }
 
+  async logoutAllSessions(userId: string) {
+    await this.refreshTokensRepository.revokeAllActiveForUser(userId);
+    return { success: true };
+  }
+
   private async ensureEmailIsAvailable(email: string) {
     const existingUser = await this.usersRepository.findByEmail(email);
     if (existingUser) {
@@ -146,26 +175,22 @@ export class AuthService {
     }
   }
 
-  private async issueTokenPair(user: User) {
-    const payload: AccessTokenPayload = {
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-    };
+  private async issueTokenPair(user: User, session: SessionMetadata = {}) {
+    await this.enforceSessionLimit(user.id);
 
-    const accessToken = await this.jwtService.signAsync(
-      payload,
-      getAccessTokenSignOptions(this.configService),
-    );
-
+    const accessToken = await this.signAccessToken(user);
     const refreshToken = randomBytes(32).toString('base64url');
-    const refreshExpiresIn = this.parseDuration(
-      this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '7d'),
-    );
+    const now = new Date();
+
     await this.refreshTokensRepository.create({
       userId: user.id,
+      familyId: randomUUID(),
       tokenHash: this.hashRefreshToken(refreshToken),
-      expiresAt: new Date(Date.now() + refreshExpiresIn),
+      expiresAt: new Date(Date.now() + this.getRefreshTokenTtlMs()),
+      userAgent: session.userAgent ?? null,
+      ipAddress: session.ipAddress ?? null,
+      deviceLabel: session.deviceLabel ?? null,
+      lastUsedAt: now,
     });
 
     return {
@@ -174,7 +199,109 @@ export class AuthService {
       user: this.toSafeUser(user),
     };
   }
-// The hashRefreshToken method generates a SHA-256 hash of the provided refresh token. This is used to securely store and compare refresh tokens in the database without exposing the actual token value.
+
+  private async rotateTokenPair(
+    user: User,
+    storedToken: RefreshToken,
+    session: SessionMetadata,
+  ) {
+    return this.dataSource.transaction(async (manager) => {
+      const locked = await manager.findOne(RefreshToken, {
+        where: { id: storedToken.id },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!locked) {
+        throw new UnauthorizedException('Invalid or expired refresh token');
+      }
+
+      if (locked.revokedAt) {
+        await this.revokeFamilyInTransaction(manager, locked.familyId);
+        throw new UnauthorizedException(
+          'Refresh token reuse detected. All sessions in this family have been revoked',
+        );
+      }
+
+      if (locked.expiresAt <= new Date()) {
+        locked.revokedAt = new Date();
+        await manager.save(locked);
+        throw new UnauthorizedException('Invalid or expired refresh token');
+      }
+
+      const refreshToken = randomBytes(32).toString('base64url');
+      const now = new Date();
+      const newToken = manager.create(RefreshToken, {
+        userId: user.id,
+        familyId: locked.familyId,
+        tokenHash: this.hashRefreshToken(refreshToken),
+        expiresAt: new Date(Date.now() + this.getRefreshTokenTtlMs()),
+        userAgent: session.userAgent ?? locked.userAgent,
+        ipAddress: session.ipAddress ?? locked.ipAddress,
+        deviceLabel: session.deviceLabel ?? locked.deviceLabel,
+        lastUsedAt: now,
+      });
+      const saved = await manager.save(newToken);
+
+      locked.revokedAt = now;
+      locked.replacedById = saved.id;
+      locked.lastUsedAt = now;
+      await manager.save(locked);
+
+      return {
+        accessToken: await this.signAccessToken(user),
+        refreshToken,
+        user: this.toSafeUser(user),
+      };
+    });
+  }
+
+  private async revokeFamilyInTransaction(
+    manager: EntityManager,
+    familyId: string,
+    revokedAt = new Date(),
+  ) {
+    await manager.update(
+      RefreshToken,
+      { familyId, revokedAt: IsNull() },
+      { revokedAt },
+    );
+  }
+
+  private async enforceSessionLimit(userId: string) {
+    const maxSessions = this.configService.get<number>(
+      'MAX_ACTIVE_REFRESH_SESSIONS',
+      5,
+    );
+    const activeCount =
+      await this.refreshTokensRepository.countActiveByUserId(userId);
+
+    if (activeCount >= maxSessions) {
+      await this.refreshTokensRepository.revokeOldestActiveSessions(
+        userId,
+        activeCount - maxSessions + 1,
+      );
+    }
+  }
+
+  private signAccessToken(user: User) {
+    const payload: AccessTokenPayload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+    };
+
+    return this.jwtService.signAsync(
+      payload,
+      getAccessTokenSignOptions(this.configService),
+    );
+  }
+
+  private getRefreshTokenTtlMs() {
+    return this.parseDuration(
+      this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '7d'),
+    );
+  }
+
   private async authenticate(data: LoginDto) {
     const user = await this.usersRepository.findByEmail(
       data.email.trim().toLowerCase(),

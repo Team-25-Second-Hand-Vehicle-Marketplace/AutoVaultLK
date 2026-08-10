@@ -28,6 +28,7 @@ import { UsersModule } from './modules/users/users.module';
         JWT_REFRESH_EXPIRES_IN: Joi.string()
           .pattern(/^\d+[smhd]$/)
           .default('7d'),
+        MAX_ACTIVE_REFRESH_SESSIONS: Joi.number().integer().min(1).max(50).default(5),
       }),
       validationOptions: {
         allowUnknown: true,
