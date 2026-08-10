@@ -54,7 +54,7 @@ npm ci
 npm test
 ```
 
-Tests validate OpenAPI structure, SAD route prefixes, public vs internal boundaries, and nginx location alignment. CI also runs `nginx -t` inside Docker.
+Tests validate OpenAPI structure, SAD route prefixes, public vs internal boundaries, and nginx location alignment. CI also runs `nginx -t` inside Docker with `--add-host=host.docker.internal:host-gateway` so upstream names resolve on Linux runners (same as `docker-compose.dev.yml` `extra_hosts`).
 
 Optional live check (gateway container must be running):
 

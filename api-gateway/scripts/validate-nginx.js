@@ -15,8 +15,13 @@ const mountSource =
     ? confPath.replace(/\\/g, '/')
     : confPath;
 
+// Linux CI runners do not define host.docker.internal unless we add it
+// (docker-compose.dev.yml uses extra_hosts for the same reason).
+const dockerHostFlag = '--add-host=host.docker.internal:host-gateway';
+
 const command = [
   'docker run --rm',
+  dockerHostFlag,
   `-v "${mountSource}:/etc/nginx/nginx.conf:ro"`,
   'nginx:1.27-alpine',
   'nginx -t',
