@@ -16,6 +16,10 @@ import { RegisterBuyerDto } from '../dto/register-buyer.dto';
 import { RegisterDealerDto } from '../dto/register-dealer.dto';
 import { RefreshTokensRepository } from '../repositories/refresh-tokens.repository';
 import { UsersRepository } from '../../users/repositories/users.repository';
+import {
+  AccessTokenPayload,
+  getAccessTokenSignOptions,
+} from '../config/jwt.config';
 
 type AuthUser = Pick<User, 'id' | 'email' | 'name' | 'role' | 'isActive'>;
 
@@ -143,11 +147,16 @@ export class AuthService {
   }
 
   private async issueTokenPair(user: User) {
-    const accessToken = await this.jwtService.signAsync({
+    const payload: AccessTokenPayload = {
       sub: user.id,
       email: user.email,
       role: user.role,
-    });
+    };
+
+    const accessToken = await this.jwtService.signAsync(
+      payload,
+      getAccessTokenSignOptions(this.configService),
+    );
 
     const refreshToken = randomBytes(32).toString('base64url');
     const refreshExpiresIn = this.parseDuration(
