@@ -1,0 +1,22 @@
+{
+  "name": "api-gateway",
+  "version": "1.0.0",
+  "private": true,
+  "description": "OpenAPI specs and local gateway shim tests",
+  "scripts": {
+    "test": "jest",
+    "test:ci": "jest --ci --runInBand",
+    "test:nginx": "node scripts/validate-nginx.js",
+    "test:nginx:unix": "docker run --rm -v \"$(pwd)/local/nginx.conf:/etc/nginx/nginx.conf:ro\" nginx:1.27-alpine nginx -t"
+  },
+  "devDependencies": {
+    "@apidevtools/swagger-parser": "^10.1.1",
+    "jest": "^29.7.0",
+    "js-yaml": "^4.1.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "roots": ["<rootDir>/tests"],
+    "testMatch": ["**/*.test.js"]
+  }
+}
