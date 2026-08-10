@@ -1,0 +1,87 @@
+openapi: 3.0.3
+info:
+  title: AutoVault LK Internal API (East-West)
+  description: |
+    Service-to-service routes per SAD section 3.5.2 and ADR-005.
+    Not exposed to browsers. Protected by INTERNAL_SERVICE_KEY or service JWT.
+  version: 1.0.0
+
+servers:
+  - url: https://{internalApiId}.execute-api.{region}.amazonaws.com/{stage}
+    description: Private AWS API Gateway (VPC)
+    variables:
+      apiId:
+        default: internal-example
+      region:
+        default: ap-southeast-1
+      stage:
+        default: dev
+
+tags:
+  - name: internal-auth
+  - name: internal-marketplace
+
+paths:
+  /internal/dealers/{id}/approve:
+    post:
+      tags: [internal-auth]
+      summary: Approve dealer verification (admin-service -> auth-user-service)
+      operationId: approveDealer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Dealer approved
+
+  /internal/dealers/{id}/reject:
+    post:
+      tags: [internal-auth]
+      summary: Reject dealer verification
+      operationId: rejectDealer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Dealer rejected
+
+  /internal/users/{id}/deactivate:
+    post:
+      tags: [internal-auth]
+      summary: Deactivate user account
+      operationId: deactivateUser
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User deactivated
+
+  /internal/listings/bulk:
+    post:
+      tags: [internal-marketplace]
+      summary: Bulk upsert listings (ingestion consumer / FR-14)
+      operationId: bulkUpsertListings
+      responses:
+        '200':
+          description: Chunk persisted
+
+components:
+  securitySchemes:
+    serviceKey:
+      type: apiKey
+      in: header
+      name: X-Internal-Service-Key
