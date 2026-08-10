@@ -18,6 +18,9 @@ import { UsersModule } from './modules/users/users.module';
         PORT: Joi.number().port().default(3000),
         AUTH_DATABASE_URL: Joi.string().uri().required(),
         JWT_ACCESS_SECRET: Joi.string().min(32).required(),
+        JWT_ISSUER: Joi.string().min(3).default('autovault-lk-auth'),
+        JWT_AUDIENCE: Joi.string().min(3).default('autovault-lk-api'),
+        JWT_ALGORITHM: Joi.string().valid('HS256').default('HS256'),
         JWT_ACCESS_EXPIRES_IN: Joi.string()
         // The regex pattern /^\d+[smhd]$/ matches a string that starts with one or more digits (\d+), followed by a single character that can be either 's', 'm', 'h', or 'd'. This pattern is commonly used to represent time durations, where:
           .pattern(/^\d+[smhd]$/)
