@@ -7,7 +7,7 @@ info:
   version: 1.0.0
 
 servers:
-  - url: https://{internalApiId}.execute-api.{region}.amazonaws.com/{stage}
+  - url: https://{apiId}.execute-api.{region}.amazonaws.com/{stage}
     description: Private AWS API Gateway (VPC)
     variables:
       apiId:
