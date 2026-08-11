@@ -1,20 +1,32 @@
 # Cloud-Native Marketplace Platform
 
-This directory contains the structure for a TypeScript/NestJS vehicle marketplace platform. It is intentionally scaffold-only: application source files are not included yet.
-
-Each service is designed to become an independent GitHub repository.
+TypeScript/NestJS microservices for a second-hand vehicle marketplace (Group 25, PID 11). The **database layer** and **auth-user-service** are implemented; marketplace, admin, notification, and ingestion services are in progress.
 
 ```text
 cloud-native-marketplace-org/
-├── auth-user-service/
-├── marketplace-service/
-├── ingestion-service/
-├── admin-service/
-├── notification-service/
-├── cloud-infrastructure/
+├── api-gateway/              OpenAPI specs + local nginx shim (AWS API Gateway in Terraform)
+├── auth-user-service/        Auth, users, dealer profiles (implemented)
+├── marketplace-service/      Listings API (in progress)
+├── ingestion-service/        ETL scaffold (deferred)
+├── admin-service/            Admin scaffold
+├── notification-service/     Notification scaffold
+├── database/                 Shared TypeORM migrations + grants
+├── cloud-infrastructure/     Terraform (API Gateway module)
 ├── web-frontend/
-└── README.md
+└── docker-compose.yml          Postgres (port 5433)
 ```
+
+## API Gateway
+
+Browser traffic uses **Amazon API Gateway** per the SAD. Locally, an nginx path proxy on **http://localhost:8080** mirrors the same route prefixes (`/auth`, `/marketplace`, `/admin`, etc.). JWT validation runs in each NestJS service, not at the gateway.
+
+See [api-gateway/README.md](api-gateway/README.md). Start the local shim:
+
+```powershell
+docker compose -f docker-compose.dev.yml up gateway -d
+```
+
+Copy [.env.example](.env.example) to `.env` at the repo root before running services.
 
 The existing frontend is also available at `vehicle-marketplace/frontend/` and can later become the `web-frontend` repository.
 

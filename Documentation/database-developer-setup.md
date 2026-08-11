@@ -43,21 +43,14 @@ figure out what — don't proceed until 5433 is free.
 
 ## 3. Copy the environment file
 
-There is no `.env` in git (it's gitignored — real secrets go there in
-production). Create your own at the **repo root**:
+There is no `.env` in git (it's gitignored). Copy the committed template at the **repo root**:
 
 ```powershell
 # from the repo root
-@"
-DATABASE_URL=postgresql://marketplace:marketplace@localhost:5433/vehicle_marketplace
-
-AUTH_DATABASE_URL=postgresql://auth_service_role:dev_auth@localhost:5433/vehicle_marketplace
-MARKETPLACE_DATABASE_URL=postgresql://marketplace_service_role:dev_marketplace@localhost:5433/vehicle_marketplace
-INGESTION_DATABASE_URL=postgresql://ingestion_service_role:dev_ingestion@localhost:5433/vehicle_marketplace
-NOTIFICATION_DATABASE_URL=postgresql://notification_service_role:dev_notification@localhost:5433/vehicle_marketplace
-ADMIN_DATABASE_URL=postgresql://admin_service_role:dev_admin@localhost:5433/vehicle_marketplace
-"@ | Out-File -FilePath .env -Encoding utf8 -NoNewline
+Copy-Item .env.example .env
 ```
+
+Edit `.env` if needed. At minimum set `JWT_ACCESS_SECRET` and `INTERNAL_SERVICE_KEY` to long random strings.
 
 These are local development passwords, hardcoded intentionally — they only
 ever work against your own Docker container on localhost. Production uses
