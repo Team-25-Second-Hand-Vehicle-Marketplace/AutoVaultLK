@@ -95,8 +95,18 @@ cd api-gateway
 $env:RUN_GATEWAY_E2E="true"; npm test -- gateway-health
 ```
 
-## AWS deployment
+## AWS deployment (scaffold only)
 
 Terraform module: `cloud-infrastructure/terraform/modules/api-gateway/`
 
-Wire Lambda ARNs per service when handlers are ready. Until then, `terraform validate` checks structure only.
+> **Traffic does not work in AWS after `terraform apply`.** The module intentionally provisions only HTTP APIs and stages (public + internal). Routes and backend integrations are **not** created yet — invoke URLs exist but return API Gateway **404** until wired.
+
+| What works | Where |
+|---|---|
+| Path proxy to NestJS services | Local nginx on port **8080** (`local/nginx.conf`) |
+| Route catalogue / contract | `openapi/public-api.yaml`, `openapi/internal-api.yaml` |
+| AWS resource shell + CORS | Terraform module (scaffold) |
+
+Next steps for AWS: deploy service backends, add `aws_apigatewayv2_route` / `aws_apigatewayv2_integration` resources (see commented example in `main.tf`), or import from OpenAPI. Module README: `cloud-infrastructure/terraform/modules/api-gateway/README.md`.
+
+`terraform validate` in CI checks HCL structure only — not live routing.
