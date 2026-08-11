@@ -22,9 +22,9 @@ variable "cors_allow_origins" {
   default     = null
 }
 
-# Map route key -> Lambda invoke ARN (fill when service Lambdas are deployed)
+# Map route key -> Lambda invoke ARN (unused while module is scaffold-only)
 variable "public_lambda_integrations" {
   type        = map(string)
-  description = "HTTP API route integrations for north-south traffic"
+  description = "HTTP API route integrations for north-south traffic (not wired until scaffold is completed)"
   default     = {}
 }
