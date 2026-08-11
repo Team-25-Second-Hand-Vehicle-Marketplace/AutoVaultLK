@@ -1,4 +1,7 @@
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+
+import { Vehicle } from '../../infrastructure/database/entities/vehicle.entity';
 
 import { ListingController } from './controllers/listing.controller';
 import { ListingService } from './services/listing.service';
@@ -7,12 +10,22 @@ import { ListingRepository } from './repositories/listing.repository';
 import { DealerModule } from '../dealers/dealer.module';
 
 @Module({
-    imports: [DealerModule],
-  controllers: [ListingController],
+  imports: [
+    TypeOrmModule.forFeature([Vehicle]),
+    DealerModule,
+  ],
+
+  controllers: [
+    ListingController,
+  ],
+
   providers: [
     ListingService,
     ListingRepository,
   ],
-  exports: [ListingService],
+
+  exports: [
+    ListingService,
+  ],
 })
 export class ListingModule {}
