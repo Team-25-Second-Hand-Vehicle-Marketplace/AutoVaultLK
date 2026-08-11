@@ -148,6 +148,119 @@ paths:
       responses:
         '200':
           description: Dealer profile
+
+  /marketplace/search/filters:
+    get:
+      tags:
+        - marketplace
+      summary: Filter-based search over LIVE listings (public — guest browsing)
+      operationId: filterSearch
+      parameters:
+        - name: vehicleType
+          in: query
+          schema:
+            type: string
+          description: Comma-separated, e.g. CAR,SUV
+        - name: make
+          in: query
+          schema:
+            type: string
+        - name: model
+          in: query
+          schema:
+            type: string
+        - name: fuelType
+          in: query
+          schema:
+            type: string
+        - name: transmissionType
+          in: query
+          schema:
+            type: string
+        - name: minPrice
+          in: query
+          schema:
+            type: integer
+        - name: maxPrice
+          in: query
+          schema:
+            type: integer
+        - name: minYear
+          in: query
+          schema:
+            type: integer
+        - name: maxYear
+          in: query
+          schema:
+            type: integer
+        - name: minMileage
+          in: query
+          schema:
+            type: integer
+        - name: maxMileage
+          in: query
+          schema:
+            type: integer
+        - name: verifiedDealersOnly
+          in: query
+          schema:
+            type: boolean
+        - name: hasRegistrationYear
+          in: query
+          schema:
+            type: boolean
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: Keyword match against the tsvector search_vector column
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [relevance, price_asc, price_desc, year_desc, mileage_asc, newest]
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: facets
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Paginated, filtered listings
+  /marketplace/search/facets:
+    get:
+      tags:
+        - marketplace
+      summary: Standalone facet counts for the search sidebar (public)
+      operationId: searchFacets
+      responses:
+        '200':
+          description: Per-dimension facet counts
+  /marketplace/search/options:
+    get:
+      tags:
+        - marketplace
+      summary: Dropdown option values — enums plus make/model dictionary (public)
+      operationId: searchOptions
+      parameters:
+        - name: vehicleType
+          in: query
+          schema:
+            type: string
+          description: Scopes the make/model list to this vehicle type
+      responses:
+        '200':
+          description: Vehicle types, conditions, fuel/transmission enums, body types, makes with nested models
+
+
+
   /ingest/upload:
     post:
       tags:
