@@ -1,12 +1,15 @@
 import {
+  BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 
-import { ListingRepository } from '../repositories/listing.repository';
+import { DealerSummary } from '../../dealers/repositories/dealer.repository';
+import { DealerService } from '../../dealers/services/dealer.service';
+import { Vehicle } from '../../../infrastructure/database/entities/vehicle.entity';
 import { CreateListingDto } from '../dto/create-listing.dto';
 import { UpdateListingDto } from '../dto/update-listing.dto';
-import { DealerService } from 'src/modules/dealers/services/dealer.service';
+import { ListingRepository } from '../repositories/listing.repository';
 
 @Injectable()
 export class ListingService {
@@ -15,49 +18,37 @@ export class ListingService {
     private readonly dealerService: DealerService,
   ) {}
 
-  createListing(dto: CreateListingDto) {
-    this.dealerService.getDealerById(dto.dealerId);
+  async createListing(dto: CreateListingDto) {
+    await this.dealerService.assertDealerExists(dto.dealerId);
 
-    const listing = this.listingRepository.create(dto);
+    const listing = await this.listingRepository.create(dto);
+    const dealer = await this.dealerService.getDealerById(
+      listing.dealerId,
+    );
 
     return {
       message: 'Vehicle listing created successfully',
-      data: listing,
+      data: this.withDealer(listing, dealer),
     };
   }
 
-  getAllListings() {
-    const listings = this.listingRepository.findAll();
+  async getAllListings() {
+    const listings = await this.listingRepository.findAll();
+    const dealersById = await this.getDealersById(listings);
 
     return {
       message: 'Vehicle listings retrieved successfully',
-      data: listings.map((listing) => {
-        try {
-          const dealer = this.dealerService.getDealerById(
-            listing.dealerId,
-          );
-          return {
-            ...listing,
-            dealer: {
-              id: dealer.id,
-              businessName: dealer.businessName,
-              ownerName: dealer.ownerName,
-              city: dealer.city,
-              phone: dealer.phone,
-            },
-          };
-        } catch (error) {
-          return {
-            ...listing,
-            dealer: null,
-          };
-        }
-      }),
+      data: listings.map((listing) =>
+        this.withDealer(
+          listing,
+          dealersById.get(listing.dealerId) ?? null,
+        ),
+      ),
     };
   }
 
-  getListingById(id: number) {
-    const listing = this.listingRepository.findById(id);
+  async getListingById(id: string) {
+    const listing = await this.listingRepository.findById(id);
 
     if (!listing) {
       throw new NotFoundException(
@@ -65,39 +56,25 @@ export class ListingService {
       );
     }
 
-    try {
-      const dealer = this.dealerService.getDealerById(
-        listing.dealerId,
-      );
-      return {
-        message: 'Vehicle listing retrieved successfully',
-        data: {
-          ...listing,
-          dealer: {
-            id: dealer.id,
-            businessName: dealer.businessName,
-            ownerName: dealer.ownerName,
-            city: dealer.city,
-            phone: dealer.phone,
-          },
-        },
-      };
-    } catch (error) {
-      return {
-        message: 'Vehicle listing retrieved successfully',
-        data: {
-          ...listing,
-          dealer: null,
-        },
-      };
-    }
+    const dealer = await this.dealerService.getDealerById(
+      listing.dealerId,
+    );
+
+    return {
+      message: 'Vehicle listing retrieved successfully',
+      data: this.withDealer(listing, dealer),
+    };
   }
 
-  updateListing(
-    id: number,
-    dto: UpdateListingDto,
-  ) {
-    const listing = this.listingRepository.findById(id);
+  async updateListing(id: string, dto: UpdateListingDto) {
+    if (dto.dealerId) {
+      await this.dealerService.assertDealerExists(dto.dealerId);
+    }
+
+    const listing = await this.listingRepository.update(
+      id,
+      dto,
+    );
 
     if (!listing) {
       throw new NotFoundException(
@@ -105,21 +82,19 @@ export class ListingService {
       );
     }
 
-    // Validate new dealer if dealerId is being updated
-    if (dto.dealerId && dto.dealerId !== listing.dealerId) {
-      this.dealerService.getDealerById(dto.dealerId);
-    }
-
-    const updatedListing = this.listingRepository.update(id, dto);
+    const dealer = await this.dealerService.getDealerById(
+      listing.dealerId,
+    );
 
     return {
       message: 'Vehicle listing updated successfully',
-      data: updatedListing,
+      data: this.withDealer(listing, dealer),
     };
   }
 
-  deactivateListing(id: number) {
-    const listing = this.listingRepository.deactivate(id);
+  async deactivateListing(id: string) {
+    const listing =
+      await this.listingRepository.deactivate(id);
 
     if (!listing) {
       throw new NotFoundException(
@@ -133,30 +108,71 @@ export class ListingService {
     };
   }
 
-  createBulkListings(dtos: CreateListingDto[]) {
-    // Validate all dealers exist before creating any listings
-    const invalidDealerIds: number[] = [];
-    
-    for (const dto of dtos) {
-      try {
-        this.dealerService.getDealerById(dto.dealerId);
-      } catch (error) {
-        invalidDealerIds.push(dto.dealerId);
-      }
-    }
-
-    if (invalidDealerIds.length > 0) {
-      throw new NotFoundException(
-        `Dealer(s) with ID ${invalidDealerIds.join(', ')} not found`,
+  async createBulkListings(dtos: CreateListingDto[]) {
+    if (!Array.isArray(dtos) || dtos.length === 0) {
+      throw new BadRequestException(
+        'At least one listing is required',
       );
     }
 
-    const listings = this.listingRepository.createBulk(dtos);
+    const requestedDealerIds = [
+      ...new Set(dtos.map((dto) => dto.dealerId)),
+    ];
+    const dealers =
+      await this.dealerService.getDealersByIds(
+        requestedDealerIds,
+      );
+    const validDealerIds = new Set(
+      dealers.map((dealer) => dealer.id),
+    );
+    const missingDealerIds = requestedDealerIds.filter(
+      (dealerId) => !validDealerIds.has(dealerId),
+    );
+
+    if (missingDealerIds.length > 0) {
+      throw new NotFoundException(
+        `Dealer(s) with ID ${missingDealerIds.join(', ')} not found`,
+      );
+    }
+
+    const listings =
+      await this.listingRepository.createBulk(dtos);
+    const dealersById = new Map(
+      dealers.map((dealer) => [dealer.id, dealer]),
+    );
 
     return {
-      message: 'Bulk vehicle listings created successfully',
+      message:
+        'Bulk vehicle listings created successfully',
       total: listings.length,
-      data: listings,
+      data: listings.map((listing) =>
+        this.withDealer(
+          listing,
+          dealersById.get(listing.dealerId) ?? null,
+        ),
+      ),
+    };
+  }
+
+  private async getDealersById(listings: Vehicle[]) {
+    const dealerIds = listings.map(
+      (listing) => listing.dealerId,
+    );
+    const dealers =
+      await this.dealerService.getDealersByIds(dealerIds);
+
+    return new Map(
+      dealers.map((dealer) => [dealer.id, dealer]),
+    );
+  }
+
+  private withDealer(
+    listing: Vehicle,
+    dealer: DealerSummary | null,
+  ) {
+    return {
+      ...listing,
+      dealer,
     };
   }
 }

@@ -1,43 +1,39 @@
 import {
-  IsEmail,
+  IsEnum,
   IsOptional,
   IsPhoneNumber,
   IsString,
   Length,
 } from 'class-validator';
 
+import { DealerType } from '../../../infrastructure/database/entities/dealer-profile.view-entity';
+
 export class UpdateDealerProfileDto {
   @IsOptional()
   @IsString()
-  @Length(3, 100)
-  businessName?: string;
-
-  @IsOptional()
-  @IsString()
-  @Length(3, 100)
-  ownerName?: string;
-
-  @IsOptional()
-  @IsEmail()
-  email?: string;
+  @Length(1, 255)
+  companyName?: string;
 
   @IsOptional()
   @IsPhoneNumber()
-  phone?: string;
+  contactNumber?: string;
+
+  @IsOptional()
+  @IsEnum(DealerType)
+  dealerType?: DealerType;
 
   @IsOptional()
   @IsString()
-  address?: string;
+  @Length(0, 500)
+  businessRegistrationNumber?: string;
 
   @IsOptional()
   @IsString()
+  @Length(0, 500)
+  businessAddress?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(0, 100)
   city?: string;
-
-  @IsOptional()
-  @IsString()
-  province?: string;
-
-  @IsOptional()
-  @IsString()
-  profileImage?: string;
 }

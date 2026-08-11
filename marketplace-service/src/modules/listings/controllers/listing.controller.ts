@@ -1,5 +1,12 @@
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+} from '@nestjs/common';
 
-import { Body, Controller, Post,Get,Patch,Param,ParseIntPipe, } from '@nestjs/common';
 import { ListingService } from '../services/listing.service';
 import { CreateListingDto } from '../dto/create-listing.dto';
 import { UpdateListingDto } from '../dto/update-listing.dto';
@@ -18,37 +25,41 @@ export class ListingController {
   }
 
   @Get()
-    getAllListings() {
+  getAllListings() {
     return this.listingService.getAllListings();
-    }
+  }
 
-    @Get(':id')
-    getListingById(
-        @Param('id', ParseIntPipe) id: number,
-    ) {
-        return this.listingService.getListingById(id);
-    }
+  @Get(':id')
+  getListingById(
+    @Param('id') id: string,
+  ) {
+    return this.listingService.getListingById(id);
+  }
 
-    @Patch(':id')
-    updateListing(
-    @Param('id', ParseIntPipe) id: number,
+  @Patch(':id')
+  updateListing(
+    @Param('id') id: string,
     @Body() dto: UpdateListingDto,
-    ) {
-    return this.listingService.updateListing(id, dto);
-    }
+  ) {
+    return this.listingService.updateListing(
+      id,
+      dto,
+    );
+  }
 
-    @Patch(':id/deactivate')
-    deactivateListing(
-    @Param('id', ParseIntPipe) id: number,
-    ) {
+  @Patch(':id/deactivate')
+  deactivateListing(
+    @Param('id') id: string,
+  ) {
     return this.listingService.deactivateListing(id);
-    }
+  }
 
-    @Post('internal/bulk')
-    createBulkListings(
+  @Post('internal/bulk')
+  createBulkListings(
     @Body() dtos: CreateListingDto[],
-    ) {
-    return this.listingService.createBulkListings(dtos);
-    }
-
+  ) {
+    return this.listingService.createBulkListings(
+      dtos,
+    );
+  }
 }

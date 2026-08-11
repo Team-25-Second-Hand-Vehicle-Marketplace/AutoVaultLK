@@ -3,12 +3,11 @@ import {
   Controller,
   Get,
   Param,
-  ParseIntPipe,
   Put,
 } from '@nestjs/common';
 
-import { DealerService } from '../services/dealer.service';
 import { UpdateDealerProfileDto } from '../dto/update-dealer-profile.dto';
+import { DealerService } from '../services/dealer.service';
 
 @Controller('dealers')
 export class DealerController {
@@ -18,21 +17,21 @@ export class DealerController {
 
   @Get(':id/profile')
   getProfile(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id') id: string,
   ) {
     return this.dealerService.getProfile(id);
   }
 
   @Get(':id')
   getDealerById(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id') id: string,
   ) {
     return this.dealerService.getDealerById(id);
   }
 
   @Put(':id/profile')
   updateProfile(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id') id: string,
     @Body() dto: UpdateDealerProfileDto,
   ) {
     return this.dealerService.updateProfile(id, dto);

@@ -1,55 +1,118 @@
 import { Injectable } from '@nestjs/common';
-import { UpdateDealerProfileDto } from '../dto/update-dealer-profile.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { In, Repository } from 'typeorm';
+
+import { AuthUserView } from '../../../infrastructure/database/entities/auth-user.view-entity';
+import { DealerProfileView } from '../../../infrastructure/database/entities/dealer-profile.view-entity';
+
+export interface DealerSummary {
+  id: string;
+  name: string;
+  email: string;
+  companyName: string;
+  contactNumber: string | null;
+  dealerType: string;
+  businessRegistrationNumber: string;
+  businessAddress: string;
+  city: string;
+  verificationStatus: string;
+}
 
 @Injectable()
 export class DealerRepository {
-  private dealers = [
-    {
-      id: 1,
-      businessName: 'Virusan Motors',
-      ownerName: 'Virusan',
-      email: 'virusan@gmail.com',
-      phone: '+94771234567',
-      city: 'Jaffna',
-      province: 'Northern',
-    },
-    {
-      id: 2,
-      businessName: 'ABC Motors',
-      ownerName: 'John Silva',
-      email: 'abc@gmail.com',
-      phone: '+94771111111',
-      city: 'Colombo',
-      province: 'Western',
-    },
-  ];
+  constructor(
+    @InjectRepository(DealerProfileView)
+    private readonly dealerProfiles: Repository<DealerProfileView>,
+    @InjectRepository(AuthUserView)
+    private readonly users: Repository<AuthUserView>,
+  ) {}
 
-  findProfile(id?: number) {
-    if (id === undefined) {
-      return this.dealers[0];
-    }
+  async findById(id: string): Promise<DealerSummary | null> {
+    const profile = await this.findProfileWithUser(id);
 
-    return this.findById(id);
+    return profile ? this.toSummary(profile) : null;
   }
 
-  findById(id: number) {
-    return this.dealers.find(
-      (dealer) => dealer.id === id,
-    );
-  }
+  async findByIds(ids: string[]): Promise<DealerSummary[]> {
+    const uniqueIds = [...new Set(ids)];
 
-  update(
-    id: number,
-    dto: UpdateDealerProfileDto,
-  ) {
-    const dealer = this.findById(id);
-
-    if (!dealer) {
-      return null;
+    if (uniqueIds.length === 0) {
+      return [];
     }
 
-    Object.assign(dealer, dto);
+    const profiles = await this.dealerProfiles.find({
+      where: {
+        userId: In(uniqueIds),
+        user: {
+          role: 'DEALER',
+          isActive: true,
+        },
+      },
+      relations: {
+        user: true,
+      },
+    });
 
-    return dealer;
+    return profiles.map((profile) => this.toSummary(profile));
+  }
+
+  async exists(id: string): Promise<boolean> {
+    const count = await this.dealerProfiles.count({
+      where: {
+        userId: id,
+        user: {
+          role: 'DEALER',
+          isActive: true,
+        },
+      },
+      relations: {
+        user: true,
+      },
+    });
+
+    return count > 0;
+  }
+
+  async userExists(id: string): Promise<boolean> {
+    return this.users.exists({
+      where: {
+        id,
+        role: 'DEALER',
+        isActive: true,
+      },
+    });
+  }
+
+  private findProfileWithUser(
+    id: string,
+  ): Promise<DealerProfileView | null> {
+    return this.dealerProfiles.findOne({
+      where: {
+        userId: id,
+        user: {
+          role: 'DEALER',
+          isActive: true,
+        },
+      },
+      relations: {
+        user: true,
+      },
+    });
+  }
+
+  private toSummary(profile: DealerProfileView): DealerSummary {
+    return {
+      id: profile.userId,
+      name: profile.user?.name ?? '',
+      email: profile.user?.email ?? '',
+      companyName: profile.companyName,
+      contactNumber: profile.contactNumber,
+      dealerType: profile.dealerType,
+      businessRegistrationNumber:
+        profile.businessRegistrationNumber,
+      businessAddress: profile.businessAddress,
+      city: profile.city,
+      verificationStatus: profile.verificationStatus,
+    };
   }
 }
