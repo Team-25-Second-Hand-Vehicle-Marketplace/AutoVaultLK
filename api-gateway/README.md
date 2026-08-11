@@ -9,18 +9,49 @@ North-south and east-west API boundaries per the Software Architecture Document 
 
 JWT validation and RBAC run **inside each NestJS service** (SAD section 3.4.1). The gateway routes traffic only; it does not issue or verify tokens.
 
+## CORS (single source of truth)
+
+Browser CORS for the public API is defined once in **`config/cors.json`**. That file drives:
+
+| Consumer | How it is applied |
+|---|---|
+| **Local nginx** (`local/nginx.conf`) | `npm run sync:cors` writes the `# BEGIN CORS` block |
+| **OpenAPI / API Gateway import** (`openapi/public-api.yaml`) | `npm run sync:cors` updates `x-amazon-apigateway-cors` |
+| **Terraform (AWS)** | `modules/api-gateway/main.tf` reads `config/cors.json` via `jsondecode(file(...))` |
+
+After editing `config/cors.json`, run `npm run sync:cors` and `npm test` (the `cors-alignment` suite fails on drift).
+
+NestJS services use `CORS_ORIGINS` in `.env` for direct-to-service dev traffic; keep the first origin aligned with `config/cors.json` for local development.
+
 ## Route map (public)
 
-| Prefix | Service | Port (local) | Notes |
-|---|---|---|---|
-| `/auth/*` | auth-user-service | 3001 | Register/login public; other routes JWT-protected in service |
-| `/marketplace/*` | marketplace-service | 3002 | Browse/search public; mutations require dealer JWT |
-| `/ingest/*` | ingestion-service | 3003 | Business verified dealers only (not implemented yet) |
-| `/jobs/*` | ingestion-service | 3003 | Job status polling (not implemented yet) |
-| `/admin/*` | admin-service | 3004 | Administrator only |
-| `/notifications/*` | notification-service | 3005 | Internal/event-driven in MVP |
+| Prefix | Service | Port (local) | Upstream path | Notes |
+|---|---|---|---|---|
+| `/auth/*` | auth-user-service | 3001 | `/auth/*` (preserved) | Register/login; JWT-protected auth actions |
+| `/users/*` | auth-user-service | 3001 | `/users/*` (preserved) | User profile & account routes |
+| `/dealer-profiles/*` | auth-user-service | 3001 | `/dealer-profiles/*` (preserved) | Dealer profile management |
+| `/marketplace/*` | marketplace-service | 3002 | `/*` (**prefix stripped**) | Listings & marketplace dealer views |
+| `/ingest/*` | ingestion-service | 3003 | `/ingest/*` (preserved) | Stub — controllers not implemented yet |
+| `/jobs/*` | ingestion-service | 3003 | `/jobs/*` (preserved) | Stub — controllers not implemented yet |
+| `/admin/*` | admin-service | 3004 | `/admin/*` (preserved) | Stub — controllers not implemented yet |
+| `/notifications/*` | notification-service | 3005 | `/notifications/*` (preserved) | Stub — controllers not implemented yet |
 
-Gateway strips the **prefix** before forwarding. Example: `GET /marketplace/listings` → `marketplace-service:3002/listings`.
+### Prefix rewrite rules (`local/nginx.conf`)
+
+Only **`/marketplace/`** strips the gateway prefix before forwarding. All other public prefixes are **preserved** on the upstream service so they match NestJS `@Controller(...)` paths.
+
+| Client request | Forwarded to service |
+|---|---|
+| `POST /auth/login` | `auth-user-service:3001/auth/login` |
+| `GET /users/me` | `auth-user-service:3001/users/me` |
+| `GET /dealer-profiles/me` | `auth-user-service:3001/dealer-profiles/me` |
+| `GET /marketplace/listings` | `marketplace-service:3002/listings` |
+| `GET /marketplace/dealers/{id}/profile` | `marketplace-service:3002/dealers/{id}/profile` |
+| `POST /ingest/upload` | `ingestion-service:3003/ingest/upload` |
+| `GET /jobs/{jobId}` | `ingestion-service:3003/jobs/{jobId}` |
+| `GET /admin/dashboard` | `admin-service:3004/admin/dashboard` |
+
+`internal/*` routes are **not** on this public listener (see internal OpenAPI). Call services directly on their ports for east-west traffic in local dev.
 
 ## Internal routes (east-west)
 
@@ -64,8 +95,18 @@ cd api-gateway
 $env:RUN_GATEWAY_E2E="true"; npm test -- gateway-health
 ```
 
-## AWS deployment
+## AWS deployment (scaffold only)
 
 Terraform module: `cloud-infrastructure/terraform/modules/api-gateway/`
 
-Wire Lambda ARNs per service when handlers are ready. Until then, `terraform validate` checks structure only.
+> **Traffic does not work in AWS after `terraform apply`.** The module intentionally provisions only HTTP APIs and stages (public + internal). Routes and backend integrations are **not** created yet — invoke URLs exist but return API Gateway **404** until wired.
+
+| What works | Where |
+|---|---|
+| Path proxy to NestJS services | Local nginx on port **8080** (`local/nginx.conf`) |
+| Route catalogue / contract | `openapi/public-api.yaml`, `openapi/internal-api.yaml` |
+| AWS resource shell + CORS | Terraform module (scaffold) |
+
+Next steps for AWS: deploy service backends, add `aws_apigatewayv2_route` / `aws_apigatewayv2_integration` resources (see commented example in `main.tf`), or import from OpenAPI. Module README: `cloud-infrastructure/terraform/modules/api-gateway/README.md`.
+
+`terraform validate` in CI checks HCL structure only — not live routing.

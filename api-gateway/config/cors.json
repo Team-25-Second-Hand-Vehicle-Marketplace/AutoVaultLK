@@ -1,0 +1,12 @@
+{
+  "allowOrigins": ["http://localhost:5173"],
+  "allowMethods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  "allowHeaders": [
+    "Authorization",
+    "Content-Type",
+    "X-CSRF-Token",
+    "X-Device-Label",
+    "X-Request-ID"
+  ],
+  "allowCredentials": true
+}
