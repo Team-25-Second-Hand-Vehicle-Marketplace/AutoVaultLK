@@ -9,7 +9,9 @@
     "migration:revert": "npm run typeorm -- migration:revert -d src/data-source.ts",
     "migration:show": "npm run typeorm -- migration:show -d src/data-source.ts",
     "grants": "docker exec -i vehicle_marketplace_postgres psql -U marketplace -d vehicle_marketplace -f - < src/grants.sql",
-    "db:setup": "npm run migration:run && npm run grants"
+    "db:setup": "npm run migration:run && npm run grants",
+    "seed:dictionaries": "ts-node src/seeds/vehicle-dictionaries.seed.ts",
+    "seed:vehicles": "ts-node src/seeds/vehicles.seed.ts"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
