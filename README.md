@@ -26,6 +26,8 @@ cloud-native-marketplace-org/
 
 NestJS services run on the host (`npm run start:dev`); they are not in either compose file yet.
 
+**Linux developers:** the gateway nginx config targets `host.docker.internal` to reach those host services. Use `docker-compose.dev.yml` as documented (it adds `extra_hosts` automatically). See [api-gateway/README.md](api-gateway/README.md#linux-hostdockerinternal).
+
 Copy [.env.example](.env.example) to `.env` at the repo root before running services.
 
 ## API Gateway
