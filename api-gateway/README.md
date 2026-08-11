@@ -9,6 +9,20 @@ North-south and east-west API boundaries per the Software Architecture Document 
 
 JWT validation and RBAC run **inside each NestJS service** (SAD section 3.4.1). The gateway routes traffic only; it does not issue or verify tokens.
 
+## CORS (single source of truth)
+
+Browser CORS for the public API is defined once in **`config/cors.json`**. That file drives:
+
+| Consumer | How it is applied |
+|---|---|
+| **Local nginx** (`local/nginx.conf`) | `npm run sync:cors` writes the `# BEGIN CORS` block |
+| **OpenAPI / API Gateway import** (`openapi/public-api.yaml`) | `npm run sync:cors` updates `x-amazon-apigateway-cors` |
+| **Terraform (AWS)** | `modules/api-gateway/main.tf` reads `config/cors.json` via `jsondecode(file(...))` |
+
+After editing `config/cors.json`, run `npm run sync:cors` and `npm test` (the `cors-alignment` suite fails on drift).
+
+NestJS services use `CORS_ORIGINS` in `.env` for direct-to-service dev traffic; keep the first origin aligned with `config/cors.json` for local development.
+
 ## Route map (public)
 
 | Prefix | Service | Port (local) | Upstream path | Notes |

@@ -6,6 +6,7 @@
   "scripts": {
     "test": "jest",
     "test:ci": "jest --ci --runInBand",
+    "sync:cors": "node scripts/sync-cors-config.js",
     "test:nginx": "node scripts/validate-nginx.js",
     "test:nginx:unix": "docker run --rm -v \"$(pwd)/local/nginx.conf:/etc/nginx/nginx.conf:ro\" nginx:1.27-alpine nginx -t"
   },
