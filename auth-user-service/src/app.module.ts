@@ -15,7 +15,7 @@ import { UsersModule } from './modules/users/users.module';
       isGlobal: true,
       envFilePath: ['../.env', '.env'],
       validationSchema: Joi.object({
-        PORT: Joi.number().port().default(3000),
+        PORT: Joi.number().port().default(3001),
         AUTH_DATABASE_URL: Joi.string().uri().required(),
         JWT_ACCESS_SECRET: Joi.string().min(32).required(),
         JWT_ACCESS_EXPIRES_IN: Joi.string()
