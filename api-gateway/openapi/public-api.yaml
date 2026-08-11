@@ -5,7 +5,6 @@ info:
     North-south routes per SAD section 3.5.1.
     JWT validation is performed by each NestJS service, not at the gateway.
   version: 1.0.0
-
 servers:
   - url: https://{apiId}.execute-api.{region}.amazonaws.com/{stage}
     description: AWS API Gateway (production)
@@ -18,63 +17,62 @@ servers:
         default: dev
   - url: http://localhost:8080
     description: Local nginx path proxy (development)
-
 tags:
   - name: auth
   - name: marketplace
   - name: ingest
   - name: jobs
   - name: admin
-
 paths:
   /auth/register/buyer:
     post:
-      tags: [auth]
+      tags:
+        - auth
       summary: Register buyer (public)
       operationId: registerBuyer
       responses:
         '201':
           description: Created
-
   /auth/register/dealer:
     post:
-      tags: [auth]
+      tags:
+        - auth
       summary: Register dealer (public)
       operationId: registerDealer
       responses:
         '201':
           description: Created
-
   /auth/login:
     post:
-      tags: [auth]
+      tags:
+        - auth
       summary: Login (public)
       operationId: login
       responses:
         '200':
           description: Token pair issued
-
   /auth/login/admin:
     post:
-      tags: [auth]
+      tags:
+        - auth
       summary: Admin login (public)
       operationId: loginAdmin
       responses:
         '200':
           description: Token pair issued
-
   /auth/refresh:
     post:
-      tags: [auth]
+      tags:
+        - auth
       summary: Refresh access token (public)
       operationId: refreshToken
       responses:
         '200':
           description: New access token
-
   /auth/logout:
     post:
-      tags: [auth]
+      tags:
+        - auth
       summary: Revoke refresh token
       operationId: logout
       security:
@@ -82,17 +80,18 @@ paths:
       responses:
         '204':
           description: Logged out
-
   /marketplace/listings:
     get:
-      tags: [marketplace]
+      tags:
+        - marketplace
       summary: Browse listings (public — LIVE only)
       operationId: listListings
       responses:
         '200':
           description: Paginated listings
     post:
-      tags: [marketplace]
+      tags:
+        - marketplace
       summary: Create listing (dealer)
       operationId: createListing
       security:
@@ -100,10 +99,10 @@ paths:
       responses:
         '201':
           description: Created
-
   /marketplace/listings/{id}:
     get:
-      tags: [marketplace]
+      tags:
+        - marketplace
       summary: Get listing by id (public if LIVE)
       operationId: getListing
       parameters:
@@ -117,7 +116,8 @@ paths:
         '200':
           description: Listing detail
     patch:
-      tags: [marketplace]
+      tags:
+        - marketplace
       summary: Update listing (dealer)
       operationId: updateListing
       security:
@@ -132,10 +132,10 @@ paths:
       responses:
         '200':
           description: Updated
-
   /marketplace/dealers/{id}/profile:
     get:
-      tags: [marketplace]
+      tags:
+        - marketplace
       summary: Dealer profile summary alongside listings
       operationId: getDealerProfile
       parameters:
@@ -148,10 +148,10 @@ paths:
       responses:
         '200':
           description: Dealer profile
-
   /ingest/upload:
     post:
-      tags: [ingest]
+      tags:
+        - ingest
       summary: Bulk upload intake (business dealer, verified)
       operationId: ingestUpload
       security:
@@ -159,10 +159,10 @@ paths:
       responses:
         '202':
           description: Accepted with jobId
-
   /jobs/{jobId}:
     get:
-      tags: [jobs]
+      tags:
+        - jobs
       summary: Poll upload job status
       operationId: getJobStatus
       security:
@@ -177,10 +177,10 @@ paths:
       responses:
         '200':
           description: Job status
-
   /admin/dashboard:
     get:
-      tags: [admin]
+      tags:
+        - admin
       summary: Administrator dashboard aggregates
       operationId: adminDashboard
       security:
@@ -188,14 +188,12 @@ paths:
       responses:
         '200':
           description: Dashboard metrics
-
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
-
   schemas:
     JobAccepted:
       type: object
@@ -203,7 +201,6 @@ components:
         jobId:
           type: string
           format: uuid
-
 x-amazon-apigateway-cors:
   allowOrigins:
     - http://localhost:5173
@@ -217,3 +214,7 @@ x-amazon-apigateway-cors:
   allowHeaders:
     - Authorization
     - Content-Type
+    - X-CSRF-Token
+    - X-Device-Label
+    - X-Request-ID
+  allowCredentials: true
