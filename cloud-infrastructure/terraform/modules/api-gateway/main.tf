@@ -22,7 +22,7 @@ terraform {
 
 locals {
   # Single source of truth: api-gateway/config/cors.json (synced to nginx + OpenAPI via npm run sync:cors)
-  cors = jsondecode(file("${path.module}/../../../../api-gateway/config/cors.json"))
+  cors               = jsondecode(file("${path.module}/../../../../api-gateway/config/cors.json"))
   cors_allow_origins = coalesce(var.cors_allow_origins, local.cors.allowOrigins)
 }
 
