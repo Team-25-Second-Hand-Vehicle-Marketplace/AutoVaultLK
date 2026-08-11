@@ -8,6 +8,7 @@ import { HealthModule } from './health/health.module';
 
 import { DealerModule } from './modules/dealers/dealer.module';
 import { ListingModule } from './modules/listings/listing.module';
+import { SearchModule } from './modules/search/search.module';
 
 @Module({
   imports: [
@@ -16,8 +17,6 @@ import { ListingModule } from './modules/listings/listing.module';
       envFilePath: ['../.env', '.env'],
     }),
 
-    // Reads MARKETPLACE_DATABASE_URL. ConfigModule is registered first so
-    // process.env is populated before databaseConfig() is called.
     TypeOrmModule.forRoot(databaseConfig()),
 
     HealthModule,
@@ -25,6 +24,8 @@ import { ListingModule } from './modules/listings/listing.module';
     DealerModule,
 
     ListingModule,
+
+    SearchModule,
   ],
 })
 export class AppModule {}
