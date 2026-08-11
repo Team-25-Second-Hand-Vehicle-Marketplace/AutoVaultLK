@@ -7,6 +7,19 @@ terraform {
   }
 }
 
+# -----------------------------------------------------------------------------
+# SCAFFOLD ONLY — routes and integrations are NOT provisioned yet.
+#
+# This module creates HTTP APIs and stages (public + internal) plus public CORS.
+# It does NOT create aws_apigatewayv2_route or aws_apigatewayv2_integration
+# resources, so terraform apply will NOT route traffic in AWS.
+#
+# Invoke URLs exist but return API Gateway 404 until integrations are wired.
+# Local development uses api-gateway/local/nginx.conf (port 8080) instead.
+# OpenAPI specs under api-gateway/openapi/ are the route catalogue for a later
+# import / integration pass (see commented example below).
+# -----------------------------------------------------------------------------
+
 locals {
   # Single source of truth: api-gateway/config/cors.json (synced to nginx + OpenAPI via npm run sync:cors)
   cors = jsondecode(file("${path.module}/../../../../api-gateway/config/cors.json"))
