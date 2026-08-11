@@ -16,6 +16,12 @@ describe('internal OpenAPI spec (ADR-005)', () => {
     expect(spec.info.title).toContain('Internal');
   });
 
+  it('documents ADR-002 direct-write for ETL listing persistence', () => {
+    expect(spec.info.description).toMatch(/MarketplaceVehiclesWriteAdapter/i);
+    expect(spec.info.description).toMatch(/not on this API/i);
+    expect(spec.paths['/internal/listings/bulk']).toBeUndefined();
+  });
+
   it('only uses /internal paths', () => {
     for (const route of Object.keys(spec.paths)) {
       expect(route.startsWith('/internal/')).toBe(true);
@@ -29,10 +35,6 @@ describe('internal OpenAPI spec (ADR-005)', () => {
     expect(spec.paths['/internal/users/{id}/deactivate']).toBeDefined();
   });
 
-  it('defines bulk listing ingest route for marketplace consumer (FR-14)', () => {
-    expect(spec.paths['/internal/listings/bulk']).toBeDefined();
-  });
-
   it('documents service-to-service security scheme', () => {
     expect(spec.components.securitySchemes.serviceKey).toBeDefined();
     expect(spec.components.securitySchemes.serviceKey.name).toBe(
@@ -44,7 +46,7 @@ describe('internal OpenAPI spec (ADR-005)', () => {
 describe('internal OpenAPI YAML structure', () => {
   it('loads without YAML errors', () => {
     const doc = loadYaml('openapi/internal-api.yaml');
-    expect(Object.keys(doc.paths).length).toBe(4);
+    expect(Object.keys(doc.paths).length).toBe(3);
   });
 
   it('server URL variables match servers.variables keys', () => {
