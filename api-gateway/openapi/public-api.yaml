@@ -217,3 +217,7 @@ x-amazon-apigateway-cors:
   allowHeaders:
     - Authorization
     - Content-Type
+    - X-CSRF-Token
+    - X-Device-Label
+    - X-Request-ID
+  allowCredentials: true

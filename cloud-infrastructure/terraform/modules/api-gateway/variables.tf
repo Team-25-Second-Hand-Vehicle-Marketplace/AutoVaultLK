@@ -18,8 +18,8 @@ variable "aws_region" {
 
 variable "cors_allow_origins" {
   type        = list(string)
-  description = "Browser origins allowed through the public API"
-  default     = ["http://localhost:5173"]
+  description = "Optional override for browser origins; defaults to api-gateway/config/cors.json allowOrigins"
+  default     = null
 }
 
 # Map route key -> Lambda invoke ARN (fill when service Lambdas are deployed)
