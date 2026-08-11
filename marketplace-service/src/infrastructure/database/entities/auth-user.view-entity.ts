@@ -1,4 +1,10 @@
-import { Column, Entity, PrimaryColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  PrimaryColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 /**
  * Read-only projection of auth.users, owned by auth-user-service.
@@ -26,4 +32,10 @@ export class AuthUserView {
 
   @Column({ name: 'is_active', type: 'boolean' })
   isActive: boolean;
+
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
+  createdAt: Date;
+
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+  updatedAt: Date;
 }
