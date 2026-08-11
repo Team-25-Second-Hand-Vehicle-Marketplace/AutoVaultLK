@@ -26,21 +26,24 @@ function syncNginx(config) {
   fs.writeFileSync(NGINX_CONF, updated);
 }
 
+function renderOpenApiCorsYaml(config) {
+  const extension = renderOpenApiCorsExtension(config);
+  return yaml.dump(extension, { lineWidth: -1, noRefs: true }).trim();
+}
+
 function syncPublicOpenApi(config) {
   const raw = fs.readFileSync(PUBLIC_OPENAPI, 'utf8');
-  const doc = yaml.load(raw);
-  const extension = renderOpenApiCorsExtension(config);
+  const corsYaml = renderOpenApiCorsYaml(config);
+  const pattern = /^x-amazon-apigateway-cors:[\s\S]*$/m;
 
-  delete doc['x-amazon-apigateway-cors'];
-  Object.assign(doc, extension);
+  if (!pattern.test(raw)) {
+    throw new Error(
+      'public-api.yaml is missing x-amazon-apigateway-cors extension block',
+    );
+  }
 
-  const body = yaml.dump(doc, {
-    lineWidth: -1,
-    noRefs: true,
-    sortKeys: false,
-  });
-
-  fs.writeFileSync(PUBLIC_OPENAPI, body);
+  const updated = raw.replace(pattern, corsYaml);
+  fs.writeFileSync(PUBLIC_OPENAPI, updated.endsWith('\n') ? updated : `${updated}\n`);
 }
 
 function main() {

@@ -44,7 +44,6 @@ paths:
       operationId: registerDealer
       responses:
         '201':
-          description: Created
           description: Registration accepted; awaiting admin verification
 
   /auth/login:
