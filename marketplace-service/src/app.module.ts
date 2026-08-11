@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { JwtStrategy } from './common/guards/jwt.strategy';
 import { databaseConfig } from './config/database.config';
 import { HealthModule } from './health/health.module';
 import { DealerModule } from './modules/dealers/dealer.module';
@@ -16,11 +18,15 @@ import { FavouritesModule } from './modules/favourites/favourites.module';
     }),
 
     TypeOrmModule.forRoot(databaseConfig()),
+    PassportModule.register({ defaultStrategy: 'jwt' }),
 
     HealthModule,
     DealerModule,
     ListingModule,
     FavouritesModule,
+  ],
+  providers: [
+    JwtStrategy,
   ],
 })
 export class AppModule {}

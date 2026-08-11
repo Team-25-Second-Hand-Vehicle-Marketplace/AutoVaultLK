@@ -1,6 +1,6 @@
-import { IsInt } from 'class-validator';
+import { IsUUID } from 'class-validator';
 
 export class AddFavouriteDto {
-  @IsInt()
-  vehicleId: number;
+  @IsUUID()
+  vehicleId: string;
 }

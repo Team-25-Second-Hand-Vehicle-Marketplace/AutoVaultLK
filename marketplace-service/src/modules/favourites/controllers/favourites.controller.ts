@@ -1,17 +1,19 @@
 import {
-  Body,
   Controller,
   Delete,
   Get,
   Param,
   ParseUUIDPipe,
   Post,
-  Query,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 
-import { CreateFavouriteDto } from '../dto/create-favourite.dto';
+import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
+import type { AuthenticatedRequest } from '../../../common/types/jwt-payload.type';
 import { FavouriteService } from '../services/favourite.service';
 
+@UseGuards(JwtAuthGuard)
 @Controller('marketplace/favourites')
 export class FavouriteController {
   constructor(
@@ -19,21 +21,19 @@ export class FavouriteController {
   ) {}
 
   @Get()
-  getFavourites(
-    @Query('buyerId', ParseUUIDPipe) buyerId: string,
-  ) {
+  getFavourites(@Req() req: AuthenticatedRequest) {
     return this.favouriteService.getFavourites(
-      buyerId,
+      req.user.userId,
     );
   }
 
   @Post(':vehicleId')
   addFavourite(
     @Param('vehicleId', ParseUUIDPipe) vehicleId: string,
-    @Body() dto: CreateFavouriteDto,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.favouriteService.addFavourite(
-      dto.buyerId,
+      req.user.userId,
       vehicleId,
     );
   }
@@ -41,10 +41,10 @@ export class FavouriteController {
   @Delete(':vehicleId')
   removeFavourite(
     @Param('vehicleId', ParseUUIDPipe) vehicleId: string,
-    @Body() dto: CreateFavouriteDto,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.favouriteService.removeFavourite(
-      dto.buyerId,
+      req.user.userId,
       vehicleId,
     );
   }

@@ -1,5 +1,13 @@
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 
+import { AuthUserView } from '../infrastructure/database/entities/auth-user.view-entity';
+import { DealerProfileView } from '../infrastructure/database/entities/dealer-profile.view-entity';
+import { Favourite } from '../infrastructure/database/entities/favourite.entity';
+import { SearchQuery } from '../infrastructure/database/entities/search-query.entity';
+import { VehicleDictionary } from '../infrastructure/database/entities/vehicle-dictionary.entity';
+import { VehicleImage } from '../infrastructure/database/entities/vehicle-image.entity';
+import { Vehicle } from '../infrastructure/database/entities/vehicle.entity';
+
 /**
  * marketplace-service owns the `marketplace` schema: vehicles,
  * vehicle_images, favourites, search_queries, vehicle_dictionaries.
@@ -13,7 +21,15 @@ export const databaseConfig = (): TypeOrmModuleOptions => ({
   type: 'postgres',
   url: process.env.MARKETPLACE_DATABASE_URL,
   schema: 'marketplace',
-  entities: [__dirname + '/../infrastructure/database/entities/*.entity{.ts,.js}'],
+  entities: [
+    AuthUserView,
+    DealerProfileView,
+    Favourite,
+    SearchQuery,
+    Vehicle,
+    VehicleDictionary,
+    VehicleImage,
+  ],
   // Never true. Five services share one database; a single sync would
   // reshape tables out from under the others. Migrations own all DDL.
   synchronize: false,
