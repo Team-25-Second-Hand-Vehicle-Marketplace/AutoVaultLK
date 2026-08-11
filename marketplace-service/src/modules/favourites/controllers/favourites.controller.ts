@@ -1,11 +1,15 @@
 import {
+  Body,
   Controller,
   Delete,
   Get,
   Param,
+  ParseUUIDPipe,
   Post,
+  Query,
 } from '@nestjs/common';
 
+import { CreateFavouriteDto } from '../dto/create-favourite.dto';
 import { FavouriteService } from '../services/favourite.service';
 
 @Controller('marketplace/favourites')
@@ -15,12 +19,9 @@ export class FavouriteController {
   ) {}
 
   @Get()
-  getFavourites() {
-    // Temporary buyer UUID.
-    // Replace this with the authenticated user's UUID later.
-    const buyerId =
-      '00000000-0000-0000-0000-000000000001';
-
+  getFavourites(
+    @Query('buyerId', ParseUUIDPipe) buyerId: string,
+  ) {
     return this.favouriteService.getFavourites(
       buyerId,
     );
@@ -28,28 +29,22 @@ export class FavouriteController {
 
   @Post(':vehicleId')
   addFavourite(
-    @Param('vehicleId') vehicleId: string,
+    @Param('vehicleId', ParseUUIDPipe) vehicleId: string,
+    @Body() dto: CreateFavouriteDto,
   ) {
-    // Temporary buyer UUID.
-    const buyerId =
-      '00000000-0000-0000-0000-000000000001';
-
     return this.favouriteService.addFavourite(
-      buyerId,
+      dto.buyerId,
       vehicleId,
     );
   }
 
   @Delete(':vehicleId')
   removeFavourite(
-    @Param('vehicleId') vehicleId: string,
+    @Param('vehicleId', ParseUUIDPipe) vehicleId: string,
+    @Body() dto: CreateFavouriteDto,
   ) {
-    // Temporary buyer UUID.
-    const buyerId =
-      '00000000-0000-0000-0000-000000000001';
-
     return this.favouriteService.removeFavourite(
-      buyerId,
+      dto.buyerId,
       vehicleId,
     );
   }
