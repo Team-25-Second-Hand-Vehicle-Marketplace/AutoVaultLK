@@ -22,6 +22,8 @@ export type DictionaryType = 'MAKE' | 'MODEL' | 'BODY_TYPE' | 'COLOR';
  * transmission_type, condition, status) stay as hardcoded arrays plus CHECK
  * constraints and never appear here.
  */
+
+
 @Entity({ schema: 'marketplace', name: 'vehicle_dictionaries' })
 export class VehicleDictionary {
   @PrimaryGeneratedColumn('uuid')
@@ -53,6 +55,15 @@ export class VehicleDictionary {
   @Column({ name: 'canonical_value', type: 'varchar', length: 100 })
   canonicalValue: string;
 
+
+    // Which vehicle types this entry applies to. MAKE rows span several
+  // ('Toyota' -> CAR, VAN, SUV, LORRY); MODEL rows carry exactly one.
+  // Empty array means "applies to all types" — used by flat dictionary
+  // types (BODY_TYPE, COLOR) that have no type scoping.
+  @Column({ name: 'vehicle_types', type: 'text', array: true, default: () => `'{}'` })
+  vehicleTypes: string[];
+
+  
   /**
    * Known misspellings and colloquial forms — e.g. ["toyata"] for Toyota,
    * ["benz"] for Mercedes-Benz. Seeded by hand and grown by the

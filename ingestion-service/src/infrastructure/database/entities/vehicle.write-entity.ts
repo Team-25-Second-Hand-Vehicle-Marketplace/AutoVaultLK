@@ -21,6 +21,16 @@ import {
  * Named with a `.write-entity.ts` suffix (not `.entity.ts`) to make this
  * table's exceptional status visible at a glance in the file tree.
  */
+
+// Must match marketplace-service's VehicleType union and the
+// vehicles_vehicle_type_check CHECK constraint (plan-b §risk-4).
+// Nothing but grep enforces this — ingestion does not import
+// marketplace's entities.
+export type VehicleType =
+  | 'CAR' | 'BIKE' | 'VAN' | 'TRUCK' | 'SUV' | 'BUS'
+  | 'THREE_WHEELER' | 'LORRY' | 'PICKUP' | 'TRACTOR' | 'HEAVY_MACHINERY';
+
+
 @Entity({ schema: 'marketplace', name: 'vehicles', synchronize: false })
 export class VehicleWriteEntity {
   @PrimaryGeneratedColumn('uuid')
@@ -33,7 +43,7 @@ export class VehicleWriteEntity {
   uploadJobId: string | null;
 
   @Column({ name: 'vehicle_type', type: 'varchar', length: 20 })
-  vehicleType: string;
+    vehicleType: VehicleType;
 
   @Column({ type: 'varchar', length: 100 })
   make: string;

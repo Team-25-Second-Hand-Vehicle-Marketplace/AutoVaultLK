@@ -8,7 +8,9 @@ import {
 } from 'typeorm';
 import { VehicleImage } from './vehicle-image.entity';
 
-export type VehicleType = 'CAR' | 'BIKE' | 'VAN' | 'TRUCK' | 'SUV' | 'BUS';
+export type VehicleType =
+  | 'CAR' | 'BIKE' | 'VAN' | 'TRUCK' | 'SUV' | 'BUS'
+  | 'THREE_WHEELER' | 'LORRY' | 'PICKUP' | 'TRACTOR' | 'HEAVY_MACHINERY';
 export type Condition = 'NEW' | 'USED' | 'RECONDITIONED';
 export type FuelType = 'PETROL' | 'DIESEL' | 'HYBRID' | 'ELECTRIC' | 'CNG';
 export type TransmissionType = 'MANUAL' | 'AUTOMATIC' | 'CVT' | 'SEMI_AUTOMATIC';
