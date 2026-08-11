@@ -13,20 +13,31 @@ cloud-native-marketplace-org/
 ├── database/                 Shared TypeORM migrations + grants
 ├── cloud-infrastructure/     Terraform (API Gateway module)
 ├── web-frontend/
-└── docker-compose.yml          Postgres (port 5433)
+├── docker-compose.yml          Postgres (port 5433) — default `docker compose up`
+└── docker-compose.dev.yml      Local nginx API gateway shim (port 8080)
 ```
+
+## Local Docker Compose files
+
+| File | What it runs | Typical command |
+|---|---|---|
+| `docker-compose.yml` | PostgreSQL (`pgvector/pgvector:pg17` on host port **5433**) | `docker compose up -d` |
+| `docker-compose.dev.yml` | nginx API gateway shim (host port **8080**) | `docker compose -f docker-compose.dev.yml up gateway -d` |
+
+NestJS services run on the host (`npm run start:dev`); they are not in either compose file yet.
+
+Copy [.env.example](.env.example) to `.env` at the repo root before running services.
 
 ## API Gateway
 
 Browser traffic uses **Amazon API Gateway** per the SAD. Locally, an nginx path proxy on **http://localhost:8080** mirrors the same route prefixes (`/auth`, `/marketplace`, `/admin`, etc.). JWT validation runs in each NestJS service, not at the gateway.
 
-See [api-gateway/README.md](api-gateway/README.md). Start the local shim:
+See [api-gateway/README.md](api-gateway/README.md). From the repo root:
 
 ```powershell
-docker compose -f docker-compose.dev.yml up gateway -d
+docker compose up -d                                          # Postgres (docker-compose.yml)
+docker compose -f docker-compose.dev.yml up gateway -d        # Gateway shim (docker-compose.dev.yml)
 ```
-
-Copy [.env.example](.env.example) to `.env` at the repo root before running services.
 
 The existing frontend is also available at `vehicle-marketplace/frontend/` and can later become the `web-frontend` repository.
 

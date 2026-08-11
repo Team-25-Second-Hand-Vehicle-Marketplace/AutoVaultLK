@@ -61,10 +61,17 @@ Set `AUTH_SERVICE_INTERNAL_URL=http://localhost:3001` when running services on t
 
 ## Local quick start
 
-1. Copy root `.env.example` to `.env` and fill secrets.
-2. Start Postgres: `docker compose up -d`
+Run from the **repo root** (two compose files — do not confuse them):
+
+1. Copy `.env.example` to `.env` and fill secrets.
+2. Start Postgres (`docker-compose.yml`):
+
+```powershell
+docker compose up -d
+```
+
 3. Start services on their ports (3001–3005).
-4. Start gateway shim:
+4. Start gateway shim (`docker-compose.dev.yml`):
 
 ```powershell
 docker compose -f docker-compose.dev.yml up gateway -d
