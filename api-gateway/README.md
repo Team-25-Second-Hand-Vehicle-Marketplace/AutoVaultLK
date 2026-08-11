@@ -55,7 +55,9 @@ Only **`/marketplace/`** strips the gateway prefix before forwarding. All other 
 
 ## Internal routes (east-west)
 
-Defined in `openapi/internal-api.yaml`. Admin service calls auth-user-service for dealer approve/reject and user deactivate (ADR-005). Not exposed on the public nginx listener.
+Defined in `openapi/internal-api.yaml`. Current routes are **admin-service → auth-user-service** (dealer approve/reject, user deactivate per ADR-005). Not exposed on the public nginx listener.
+
+**ETL → marketplace (FR-14):** not an internal HTTP route. Ingestion Load writes directly to `marketplace.vehicles` via `MarketplaceVehiclesWriteAdapter` (ADR-002). Step Functions retry + DB upsert provide idempotency. A queue-based or internal bulk-API boundary may be revisited later if we need independent scaling; it is **out of scope for the current implementation**.
 
 Set `AUTH_SERVICE_INTERNAL_URL=http://localhost:3001` when running services on the host, or `http://auth-user-service:3001` inside Docker Compose.
 
