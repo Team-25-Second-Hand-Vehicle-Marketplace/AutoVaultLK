@@ -11,6 +11,7 @@ function extractProxyPass(nginxConf, locationPrefix) {
 
 describe('local nginx.conf', () => {
   const nginxConf = readText('local/nginx.conf');
+  const validateNginxScript = readText('scripts/validate-nginx.js');
 
   function locationPrefixes() {
     const matches = nginxConf.matchAll(/location\s+(\/[^;\s]+)/g);
@@ -76,6 +77,10 @@ describe('local nginx.conf', () => {
     expect(nginxConf).toContain('host.docker.internal:3003');
     expect(nginxConf).toContain('host.docker.internal:3004');
     expect(nginxConf).toContain('host.docker.internal:3005');
+  });
+
+  it('adds host.docker.internal mapping when validating nginx in Docker', () => {
+    expect(validateNginxScript).toContain('--add-host=host.docker.internal:host-gateway');
   });
 
   it('exposes gateway health endpoint', () => {
