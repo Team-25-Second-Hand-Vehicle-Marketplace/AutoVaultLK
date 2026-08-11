@@ -55,22 +55,56 @@ Only **`/marketplace/`** strips the gateway prefix before forwarding. All other 
 
 ## Internal routes (east-west)
 
-Defined in `openapi/internal-api.yaml`. Admin service calls auth-user-service for dealer approve/reject and user deactivate (ADR-005). Not exposed on the public nginx listener.
+Defined in `openapi/internal-api.yaml`. Current routes are **admin-service → auth-user-service** (dealer approve/reject, user deactivate per ADR-005). Not exposed on the public nginx listener.
+
+**ETL → marketplace (FR-14):** not an internal HTTP route. Ingestion Load writes directly to `marketplace.vehicles` via `MarketplaceVehiclesWriteAdapter` (ADR-002). Step Functions retry + DB upsert provide idempotency. A queue-based or internal bulk-API boundary may be revisited later if we need independent scaling; it is **out of scope for the current implementation**.
 
 Set `AUTH_SERVICE_INTERNAL_URL=http://localhost:3001` when running services on the host, or `http://auth-user-service:3001` inside Docker Compose.
 
 ## Local quick start
 
-1. Copy root `.env.example` to `.env` and fill secrets.
-2. Start Postgres: `docker compose up -d`
+Run from the **repo root** (two compose files — do not confuse them):
+
+1. Copy `.env.example` to `.env` and fill secrets.
+2. Start Postgres (`docker-compose.yml`):
+
+```powershell
+docker compose up -d
+```
+
 3. Start services on their ports (3001–3005).
-4. Start gateway shim:
+4. Start gateway shim (`docker-compose.dev.yml`):
 
 ```powershell
 docker compose -f docker-compose.dev.yml up gateway -d
 ```
 
 5. Frontend / API clients use `http://localhost:8080` as the base URL.
+
+### Linux: `host.docker.internal`
+
+`local/nginx.conf` forwards to NestJS services on the **host** at `host.docker.internal:3001–3005`. Docker Desktop on Mac/Windows defines that hostname automatically; **on Linux it does not**, unless you add it.
+
+| How you run the gateway | Linux setup |
+|---|---|
+| **`docker compose -f docker-compose.dev.yml up gateway`** (recommended) | **No extra steps** — `docker-compose.dev.yml` already sets `extra_hosts: host.docker.internal:host-gateway`. |
+| **Manual `docker run`** | Pass `--add-host=host.docker.internal:host-gateway` (same flag `scripts/validate-nginx.js` uses for CI). |
+| **nginx on the host** (not in Docker) | Replace upstream `host.docker.internal` with `127.0.0.1` in a local override, or run services in containers on the Docker network instead. |
+
+**Checklist for Linux:**
+
+1. Start NestJS services on the host (`npm run start:dev`) on ports **3001–3005**.
+2. Start the gateway via Compose (step 4 above) — do not omit `extra_hosts`.
+3. Smoke test: `curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/health` should return `200`.
+4. If upstreams return **502**, verify services listen on the host and that the gateway container resolves the hostname:
+
+```bash
+docker compose -f docker-compose.dev.yml exec gateway getent hosts host.docker.internal
+```
+
+You should see an IP (typically the Docker bridge gateway). If the name does not resolve, recreate the container with the compose file above — do not run a bare `docker run` without `--add-host`.
+
+**API Gateway tests on Linux:** use `npm run test:nginx` (runs `validate-nginx.js` with `--add-host=host.docker.internal:host-gateway`). Avoid `npm run test:nginx:unix` on Linux — that script omits the host mapping.
 
 ## OpenAPI specs
 
