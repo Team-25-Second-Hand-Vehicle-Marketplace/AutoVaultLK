@@ -8,8 +8,8 @@ import {
   IsString,
   Max,
   Min,
-  ValidateNested,
 } from 'class-validator';
+import { BadRequestException } from '@nestjs/common';
 import {
   CONDITIONS,
   FUEL_TYPES,
@@ -42,17 +42,55 @@ function toArray(): (params: { value: unknown }) => string[] | undefined {
 
 /**
  * One key/value pair inside specs, e.g. { key: "seats", value: "5" }.
- * Validated at runtime against KNOWN_SPEC_KEYS in the query builder — class
- * validators alone cannot express "value's shape depends on key's value",
- * so this DTO only enforces the envelope; SpecFilterValidator (Phase 2A)
- * enforces the whitelist and per-key type/range.
+ * Runtime shape only — validated against KNOWN_SPEC_KEYS in the query
+ * builder, not here. See the `specs` field below for why this is no longer
+ * a class-validated nested DTO.
  */
-export class SpecFilterDto {
-  @IsString()
+export interface SpecFilterDto {
   key: string;
-
-  @IsString()
   value: string;
+}
+
+/**
+ * Parses `?specs=body_type:SUV,engine_class:150cc` into SpecFilterDto[].
+ *
+ * Originally this was `specs[0][key]=x&specs[0][value]=y` validated via
+ * @ValidateNested + @Type(() => SpecFilterDto) — a combination that is a
+ * known-fragile interaction with ValidationPipe's whitelist:true:
+ * whitelist stripping runs against the outer DTO's recognized properties
+ * before/independently of the nested class-transformer instantiation
+ * completing, so `specs[0].key`/`specs[0].value` got rejected as "should
+ * not exist" even though the envelope (`specs` itself) was declared and
+ * qs correctly parsed the bracket syntax into the right nested object.
+ *
+ * A flat "key:value,key:value" string sidesteps the whole class validator
+ * nested-array code path — one scalar field, one Transform, no interaction
+ * with whitelist's per-level property recognition.
+ */
+function parseSpecs(): (params: { value: unknown }) => SpecFilterDto[] | undefined {
+  return ({ value }) => {
+    if (value === undefined || value === null || value === '') return undefined;
+    const raw = Array.isArray(value) ? value.join(',') : String(value);
+    const pairs = raw
+      .split(',')
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+
+    const specs: SpecFilterDto[] = [];
+    for (const pair of pairs) {
+      const colonIndex = pair.indexOf(':');
+      if (colonIndex === -1) {
+        throw new BadRequestException(
+          `Malformed specs entry "${pair}" — expected "key:value"`,
+        );
+      }
+      specs.push({
+        key: pair.slice(0, colonIndex),
+        value: pair.slice(colonIndex + 1),
+      });
+    }
+    return specs.length > 0 ? specs : undefined;
+  };
 }
 
 export class FilterSearchDto {
@@ -181,10 +219,10 @@ export class FilterSearchDto {
 
   // ---- Specs (JSONB) ----
 
+  // Accepts ?specs=body_type:SUV,seats:5 — see parseSpecs() above for why
+  // this is a flat Transform rather than @ValidateNested + @Type.
   @IsOptional()
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => SpecFilterDto)
+  @Transform(parseSpecs())
   specs?: SpecFilterDto[];
 
   // ---- Keyword layer (D5 — the tsvector path, §11.5 of the design doc) ----
