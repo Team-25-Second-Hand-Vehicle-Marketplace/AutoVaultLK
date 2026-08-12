@@ -1,8 +1,17 @@
 import { apiClient } from './client'
 import type { FilterSearchParams, FilterSearchResponse, SearchOptionsResponse } from './search.types'
 
-// Serializes array/object fields into the comma-joined and bracketed forms
-// the backend's @Transform(toArray()) and SpecFilterDto parsing expect.
+// Serializes array/object fields into the flat forms the backend's DTO
+// expects: comma-joined for plain arrays (@Transform(toArray())), and
+// "key:value,key:value" for specs (@Transform(parseSpecs())).
+//
+// specs was originally sent as specs[0][key]=x&specs[0][value]=y, matching
+// a @ValidateNested + @Type(() => SpecFilterDto) field on the backend. That
+// combination turned out to be a known-fragile interaction with
+// ValidationPipe's whitelist:true — the nested array's own properties got
+// rejected as "should not exist" even though qs parsed the bracket syntax
+// correctly. The backend DTO now parses a flat string instead, so this
+// must match that format exactly.
 function toQueryParams(filters: FilterSearchParams): Record<string, string> {
   const params: Record<string, string> = {}
 
@@ -10,10 +19,10 @@ function toQueryParams(filters: FilterSearchParams): Record<string, string> {
     if (value === undefined || value === null) continue
 
     if (key === 'specs' && Array.isArray(value)) {
-      value.forEach((spec: { key: string; value: string }, i: number) => {
-        params[`specs[${i}][key]`] = spec.key
-        params[`specs[${i}][value]`] = spec.value
-      })
+      const encoded = value
+        .map((spec: { key: string; value: string }) => `${spec.key}:${spec.value}`)
+        .join(',')
+      if (encoded) params.specs = encoded
       continue
     }
 
