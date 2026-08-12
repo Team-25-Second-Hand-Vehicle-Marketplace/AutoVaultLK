@@ -166,8 +166,21 @@ export function buildFilterQuery(dto: FilterSearchDto): BuiltFilterQuery {
   }
 
   if (dto.specs && dto.specs.length > 0) {
+    // Group by key: several values for the SAME key are alternatives a
+    // buyer is willing to accept (body_type=SUV or SEDAN) and must be
+    // OR'd, not AND'd — a vehicle cannot be both body types at once, so
+    // ANDing them always produced zero rows. Different keys stay AND'd
+    // (body_type=SUV AND drive_type=4WD is a real, valid combination).
+    const byKey = new Map<string, SpecFilterDto[]>();
     for (const spec of dto.specs) {
-      clauses.push(buildSpecClause(spec, nextParam, params));
+      const group = byKey.get(spec.key) ?? [];
+      group.push(spec);
+      byKey.set(spec.key, group);
+    }
+
+    for (const group of byKey.values()) {
+      const groupClauses = group.map((spec) => buildSpecClause(spec, nextParam, params));
+      clauses.push(groupClauses.length > 1 ? `(${groupClauses.join(' OR ')})` : groupClauses[0]);
     }
     appliedFilterKeys.push('specs');
   }
