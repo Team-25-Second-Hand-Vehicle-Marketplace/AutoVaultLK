@@ -4,8 +4,12 @@ import { JwtService } from '@nestjs/jwt';
 import { DataSource } from 'typeorm';
 import { createHash, randomBytes } from 'node:crypto';
 import * as bcrypt from 'bcryptjs';
-import { DealerProfile } from '../../../infrastructure/database/entities/dealer-profile.entity';
+import {
+  DealerProfile,
+  VerificationStatus,
+} from '../../../infrastructure/database/entities/dealer-profile.entity';
 import { User } from '../../../infrastructure/database/entities/user.entity';
+import { DealerProfilesRepository } from '../../dealers/repositories/dealer-profiles.repository';
 import { LoginDto } from '../dto/login.dto';
 import { RefreshTokenDto } from '../dto/refresh-token.dto';
 import { RegisterBuyerDto } from '../dto/register-buyer.dto';
@@ -19,6 +23,7 @@ type AuthUser = Pick<User, 'id' | 'email' | 'name' | 'role' | 'isActive'>;
 export class AuthService {
   constructor(
     private readonly usersRepository: UsersRepository,
+    private readonly dealerProfilesRepository: DealerProfilesRepository,
     private readonly refreshTokensRepository: RefreshTokensRepository,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
@@ -50,6 +55,7 @@ export class AuthService {
           passwordHash,
           name: data.name,
           role: 'DEALER',
+          isActive: false,
         }),
       );
 
@@ -69,7 +75,13 @@ export class AuthService {
       return createdUser;
     });
 
-    return this.issueTokenPair(user);
+    // FR-02 / SAD §4.1.1: pending until admin approval — no JWT at registration (FR-03).
+    return {
+      message:
+        'Registration submitted. Your account is pending administrator approval.',
+      user: this.toSafeUser(user),
+      verificationStatus: VerificationStatus.PENDING,
+    };
   }
   // The login method authenticates a user based on their email and password. It checks if the user exists, verifies the password, and ensures the account is active. If successful, it issues a new token pair (access and refresh tokens).
   async login(data: LoginDto) {
@@ -162,9 +174,29 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
     if (!user.isActive) {
-      throw new UnauthorizedException('This account is inactive');
+      await this.throwInactiveAccountError(user);
     }
     return user;
+  }
+
+  private async throwInactiveAccountError(user: User): Promise<never> {
+    if (user.role === 'DEALER') {
+      const profile = await this.dealerProfilesRepository.findByUserId(user.id);
+
+      if (profile?.verificationStatus === VerificationStatus.PENDING) {
+        throw new UnauthorizedException(
+          'Your dealer account is pending administrator approval',
+        );
+      }
+
+      if (profile?.verificationStatus === VerificationStatus.REJECTED) {
+        throw new UnauthorizedException(
+          'Your dealer registration was rejected. Contact support to resubmit',
+        );
+      }
+    }
+
+    throw new UnauthorizedException('This account is inactive');
   }
 
   private hashRefreshToken(token: string) {

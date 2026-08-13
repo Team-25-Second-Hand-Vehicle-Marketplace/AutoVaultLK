@@ -51,6 +51,12 @@ export class DealerProfileView {
   @Column({ name: 'verification_status', type: 'varchar' })
   verificationStatus: string;
 
+  @Column({ name: 'verified_by', type: 'uuid', nullable: true })
+  verifiedBy: string | null;
+
+  @Column({ name: 'verified_at', type: 'timestamptz', nullable: true })
+  verifiedAt: Date | null;
+
   @Column({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 }

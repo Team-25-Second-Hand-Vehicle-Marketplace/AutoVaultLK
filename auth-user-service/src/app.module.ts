@@ -25,6 +25,7 @@ import { UsersModule } from './modules/users/users.module';
         JWT_REFRESH_EXPIRES_IN: Joi.string()
           .pattern(/^\d+[smhd]$/)
           .default('7d'),
+        INTERNAL_SERVICE_KEY: Joi.string().min(16).required(),
       }),
       validationOptions: {
         allowUnknown: true,
