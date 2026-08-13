@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import axios from 'axios'
 import { filterSearch } from '../api/search.api'
-import type { FilterSearchParams, FilterSearchResponse, SortOption } from '../api/search.types'
+import { toErrorMessage } from '../api/client'
+import type {
+  FilterSearchParams,
+  FilterSearchResponse,
+  SortOption,
+  SpecFilter,
+} from '../api/search.types'
 
 const ARRAY_KEYS = [
   'vehicleType', 'make', 'model', 'condition', 'fuelType',
@@ -25,42 +32,70 @@ const CONTROL_KEYS = new Set(['page', 'limit', 'facets', 'sort'])
 // truth; the hook only translates between URLSearchParams and the typed
 // filter object.
 function paramsToFilters(searchParams: URLSearchParams): FilterSearchParams {
-  const filters: FilterSearchParams = {}
+  // Written through an index signature rather than `as any` per assignment:
+  // the keys come from the readonly tuples above, so this stays a typed
+  // write to a known-shaped object.
+  const filters: Record<string, unknown> = {}
 
   for (const key of ARRAY_KEYS) {
     const raw = searchParams.get(key)
-    if (raw) (filters as any)[key] = raw.split(',')
+    if (raw) filters[key] = raw.split(',')
   }
   for (const key of NUMBER_KEYS) {
     const raw = searchParams.get(key)
-    if (raw !== null && raw !== '') (filters as any)[key] = Number(raw)
+    if (raw !== null && raw !== '') filters[key] = Number(raw)
   }
   for (const key of BOOLEAN_KEYS) {
     const raw = searchParams.get(key)
-    if (raw !== null) (filters as any)[key] = raw === 'true'
+    if (raw !== null) filters[key] = raw === 'true'
   }
+
   const q = searchParams.get('q')
   if (q) filters.q = q
-  const sort = searchParams.get('sort') as SortOption | null
-  if (sort) filters.sort = sort
+  const sort = searchParams.get('sort')
+  if (sort) filters.sort = sort as SortOption
 
-  return filters
+  // specs round-trips as the same flat "key:value,key:value" string the
+  // backend parses. Without this, every spec filter (body type, seats,
+  // drive type…) was silently dropped on reload, on a shared link, and on
+  // every back/forward navigation — the sidebar showed them as applied
+  // while the query no longer contained them.
+  const specs = searchParams.get('specs')
+  if (specs) {
+    filters.specs = specs
+      .split(',')
+      .map((pair) => pair.trim())
+      .filter(Boolean)
+      .map((pair) => {
+        const separatorIndex = pair.indexOf(':')
+        return separatorIndex === -1
+          ? null
+          : { key: pair.slice(0, separatorIndex), value: pair.slice(separatorIndex + 1) }
+      })
+      .filter((spec): spec is SpecFilter => spec !== null)
+  }
+
+  return filters as FilterSearchParams
 }
 
 function filtersToParams(filters: FilterSearchParams): URLSearchParams {
   const params = new URLSearchParams()
+  const source = filters as Record<string, unknown>
 
   for (const key of ARRAY_KEYS) {
-    const value = (filters as any)[key] as string[] | undefined
+    const value = source[key] as string[] | undefined
     if (value && value.length > 0) params.set(key, value.join(','))
   }
   for (const key of NUMBER_KEYS) {
-    const value = (filters as any)[key] as number | undefined
+    const value = source[key] as number | undefined
     if (value !== undefined) params.set(key, String(value))
   }
   for (const key of BOOLEAN_KEYS) {
-    const value = (filters as any)[key] as boolean | undefined
+    const value = source[key] as boolean | undefined
     if (value !== undefined) params.set(key, String(value))
+  }
+  if (filters.specs && filters.specs.length > 0) {
+    params.set('specs', filters.specs.map((s) => `${s.key}:${s.value}`).join(','))
   }
   if (filters.q) params.set('q', filters.q)
   if (filters.sort) params.set('sort', filters.sort)
@@ -96,32 +131,43 @@ export function useVehicleSearch() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
+  // Depends on searchParams, not appliedFilters: appliedFilters is a fresh
+  // object identity on every render of this hook (useMemo over searchParams),
+  // so listing it here would re-fire the search on renders where the actual
+  // filters are unchanged. searchParams is the real input — appliedFilters is
+  // a pure function of it.
   useEffect(() => {
-    let cancelled = false
+    const controller = new AbortController()
     setLoading(true)
     setError(null)
 
-    filterSearch({ ...appliedFilters, facets: true })
-      .then((data) => {
-        if (!cancelled) setResult(data)
-      })
+    filterSearch({ ...appliedFilters, facets: true }, controller.signal)
+      .then((data) => setResult(data))
       .catch((err) => {
-        if (!cancelled) setError(err.message ?? 'Search failed')
+        // An aborted request is this effect superseding itself, not a
+        // failure — surfacing it would flash an error on every filter change.
+        if (axios.isCancel(err)) return
+        setError(toErrorMessage(err, 'Search failed'))
       })
       .finally(() => {
-        if (!cancelled) setLoading(false)
+        if (!controller.signal.aborted) setLoading(false)
       })
 
-    return () => {
-      cancelled = true
-    }
+    return () => controller.abort()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
-  /** Writes straight to the URL/applied filters — bypasses the draft. */
+  /**
+   * Writes straight to the URL/applied filters — bypasses the draft.
+   *
+   * Any change other than paging itself resets to page 1: a buyer on page 5
+   * who narrows the filters would otherwise land on page 5 of a much shorter
+   * result set, which is usually empty and reads as "your filter found
+   * nothing". Callers that mean to change the page pass it explicitly.
+   */
   const applyToUrl = useCallback(
-    (next: FilterSearchParams) => {
-      const withResetPage = { ...next, page: next.page ?? 1 }
-      setSearchParams(filtersToParams(withResetPage))
+    (next: FilterSearchParams, keepPage = false) => {
+      setSearchParams(filtersToParams({ ...next, page: keepPage ? (next.page ?? 1) : 1 }))
     },
     [setSearchParams],
   )
@@ -169,16 +215,53 @@ export function useVehicleSearch() {
 
   const setPage = useCallback(
     (page: number) => {
-      applyToUrl({ ...appliedFilters, page })
+      applyToUrl({ ...appliedFilters, page }, true)
     },
     [appliedFilters, applyToUrl],
   )
 
-  /** Removes one applied filter immediately (chip ×) — not a draft edit. */
-  const removeAppliedFilter = useCallback(
-    (key: string) => {
-      if (CONTROL_KEYS.has(key)) return
-      applyToUrl({ ...appliedFilters, [key]: undefined })
+  /**
+   * Removes one or more applied filters immediately (chip ×) — not a draft
+   * edit.
+   *
+   * Takes a list rather than a single key because range chips span two keys
+   * (minPrice+maxPrice, minYear+maxYear). Calling a single-key remover twice
+   * in a row does NOT work: both calls close over the same `appliedFilters`
+   * snapshot, so the second overwrites the first and clears only one half of
+   * the range — the bug that left a "LKR 1M – 5M" chip removal with minPrice
+   * still applied.
+   */
+  const removeAppliedFilters = useCallback(
+    (keys: string[]) => {
+      const removable = keys.filter((key) => !CONTROL_KEYS.has(key))
+      if (removable.length === 0) return
+
+      const next = { ...appliedFilters }
+      for (const key of removable) {
+        delete (next as Record<string, unknown>)[key]
+      }
+      applyToUrl(next)
+    },
+    [appliedFilters, applyToUrl],
+  )
+
+  /**
+   * Applies a keyword immediately, bypassing the staged draft.
+   *
+   * Must not go through updateDraft + applyFilters: applyFilters is memoized
+   * on the draft from the current render, so it would publish the state as it
+   * was BEFORE the keyword was set — the first Enter press searched without
+   * the keyword and only a second press appeared to work.
+   */
+  const setKeyword = useCallback(
+    (q: string | undefined) => {
+      const next = { ...appliedFilters }
+      if (q) {
+        next.q = q
+      } else {
+        delete next.q
+      }
+      applyToUrl(next)
     },
     [appliedFilters, applyToUrl],
   )
@@ -202,7 +285,8 @@ export function useVehicleSearch() {
     error,
     setSort,
     setPage,
-    removeAppliedFilter,
+    setKeyword,
+    removeAppliedFilters,
     clearFilters,
   }
 }

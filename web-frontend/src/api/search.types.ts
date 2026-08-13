@@ -45,6 +45,7 @@ export interface VehicleSearchResult {
   vehicleType: VehicleTypeValue
   make: string
   model: string
+  condition: string | null
   manufactureYear: number
   registrationYear: number | null
   effectiveYear: number
@@ -57,7 +58,28 @@ export interface VehicleSearchResult {
   locationDistrict: string | null
   specs: Record<string, unknown>
   dealerVerified: boolean
+  // Null until image upload is wired up — every environment currently has
+  // zero rows in vehicle_images, so the card renders a placeholder.
+  imageUrl: string | null
+  thumbnailUrl: string | null
   createdAt: string
+}
+
+export interface VehicleDealer {
+  id: string
+  companyName: string | null
+  city: string | null
+  contactNumber: string | null
+  verified: boolean
+}
+
+export interface VehicleDetail extends VehicleSearchResult {
+  description: string | null
+  color: string | null
+  ownersCount: number | null
+  engineCapacityCc: number | null
+  images: string[]
+  dealer: VehicleDealer
 }
 
 export interface FacetBucket {
@@ -96,6 +118,22 @@ export interface MakeOption {
   models: { id: string; name: string }[]
 }
 
+/**
+ * Landing-page headline figures, all computed from live inventory.
+ *
+ * The design reference also shows "Happy Buyers" and a "Satisfaction Rate";
+ * neither has any source in this system (no orders, no reviews), so they are
+ * absent rather than invented.
+ */
+export interface MarketplaceStats {
+  vehicleCount: number
+  dealerCount: number
+  verifiedDealerCount: number
+  makeCount: number
+  categories: { vehicleType: VehicleTypeValue; count: number }[]
+  topMakes: { make: string; count: number }[]
+}
+
 export interface SearchOptionsResponse {
   vehicleTypes: readonly VehicleTypeValue[]
   conditions: readonly string[]
@@ -103,4 +141,7 @@ export interface SearchOptionsResponse {
   transmissionTypes: readonly string[]
   bodyTypes: string[]
   makes: MakeOption[]
+  // Districts that actually have live inventory — derived from vehicles, so
+  // the filter can never offer a district with nothing in it.
+  districts: string[]
 }

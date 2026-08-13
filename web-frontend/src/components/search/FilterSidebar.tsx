@@ -1,20 +1,32 @@
+import { useEffect, useState } from 'react'
 import { CheckboxFacetGroup } from './CheckboxFacetGroup'
 import { RadioFacetGroup } from './RadioFacetGroup'
 import { RangeInput } from './RangeInput'
 import { PresetSelect } from './PresetSelect'
 import { MakeModelSelect } from './MakeModelSelect'
-import type { FilterSearchParams, Facets, VehicleTypeValue } from '../../api/search.types'
+import { getSearchOptions } from '../../api/search.api'
+import type {
+  FilterSearchParams,
+  Facets,
+  SearchOptionsResponse,
+  VehicleTypeValue,
+} from '../../api/search.types'
 
-const VEHICLE_TYPES: VehicleTypeValue[] = [
+/**
+ * Static fallbacks used until /search/options resolves (and if it fails).
+ *
+ * These mirror the marketplace-service constants; the fetched options
+ * replace them as soon as they arrive, so a drift between the two is
+ * visible for one render at most rather than permanently.
+ */
+const FALLBACK_VEHICLE_TYPES: VehicleTypeValue[] = [
   'CAR', 'BIKE', 'VAN', 'TRUCK', 'SUV', 'BUS',
   'THREE_WHEELER', 'LORRY', 'PICKUP', 'TRACTOR', 'HEAVY_MACHINERY',
 ]
-const FUEL_TYPES = ['PETROL', 'DIESEL', 'HYBRID', 'ELECTRIC', 'CNG']
-const TRANSMISSION_TYPES = ['MANUAL', 'AUTOMATIC', 'CVT', 'SEMI_AUTOMATIC']
-
-// Matches KNOWN_SPEC_KEYS.body_type.values (marketplace-service constants) —
-// keep in sync by hand until the frontend generates this from /search/options.
-const BODY_TYPES = [
+const FALLBACK_FUEL_TYPES = ['PETROL', 'DIESEL', 'HYBRID', 'ELECTRIC', 'CNG']
+const FALLBACK_TRANSMISSION_TYPES = ['MANUAL', 'AUTOMATIC', 'CVT', 'SEMI_AUTOMATIC']
+const FALLBACK_CONDITIONS = ['NEW', 'USED', 'RECONDITIONED']
+const FALLBACK_BODY_TYPES = [
   'SEDAN', 'HATCHBACK', 'SUV', 'WAGON', 'COUPE',
   'CONVERTIBLE', 'PICKUP', 'MINIVAN', 'SCOOTER', 'MOTORBIKE',
 ]
@@ -28,20 +40,37 @@ const MILEAGE_PRESETS = [
   { label: 'Under 150,000 km', value: 150000 },
 ]
 
-// Matches KNOWN_SPEC_KEYS.engine_class.values (marketplace-service).
-// Only meaningful for bikes — hidden unless BIKE is the only selected type.
+const OWNERS_PRESETS = [
+  { label: 'Any number of owners', value: undefined },
+  { label: 'First owner only', value: 1 },
+  { label: 'Up to 2 owners', value: 2 },
+  { label: 'Up to 3 owners', value: 3 },
+]
+
+// Matches KNOWN_SPEC_KEYS.engine_class (marketplace-service).
+// Only meaningful for bikes — hidden unless BIKE is in play.
 const ENGINE_CLASSES = ['100cc', '125cc', '150cc', '155cc', '160cc', '200cc', '250cc+']
 
+const DRIVE_TYPES = ['FWD', 'RWD', 'AWD', '4WD']
+
 // Backend spec filters are equality-only ((specs->>'key')::int = $n), not a
-// range — so load_capacity_kg is a preset dropdown of exact tonnages a
-// lorry/truck buyer would search for, same pattern as Max Mileage, rather
-// than a min/max slider the backend can't actually satisfy.
+// range — so these are exact-value presets, not min/max sliders the backend
+// could not satisfy.
 const LOAD_CAPACITY_PRESETS = [
   { label: 'Any load capacity', value: undefined },
   { label: '1,000 kg', value: 1000 },
   { label: '3,000 kg', value: 3000 },
   { label: '5,000 kg', value: 5000 },
   { label: '8,000 kg', value: 8000 },
+]
+
+const SEATS_PRESETS = [
+  { label: 'Any number of seats', value: undefined },
+  { label: '2 seats', value: 2 },
+  { label: '4 seats', value: 4 },
+  { label: '5 seats', value: 5 },
+  { label: '7 seats', value: 7 },
+  { label: '8 seats', value: 8 },
 ]
 
 interface Props {
@@ -60,7 +89,6 @@ interface Props {
  * All inputs here bind to the caller's DRAFT filter state (see
  * useVehicleSearch — `draft` + `updateDraft`/`updateDraftMany`), not the
  * applied filters. Nothing here triggers a search on its own; onApply does.
- * Matches the design's "Filter Results … Apply Filters" sidebar.
  */
 export function FilterSidebar({
   filters,
@@ -71,30 +99,52 @@ export function FilterSidebar({
   onReset,
   hasUnappliedChanges,
 }: Props) {
+  const [options, setOptions] = useState<SearchOptionsResponse | null>(null)
+
+  // Enum lists and the district list come from the API so the sidebar can't
+  // drift from the database's CHECK constraints. Unscoped by vehicle type:
+  // only the make/model tree is type-scoped, and MakeModelSelect fetches
+  // that itself.
+  useEffect(() => {
+    const controller = new AbortController()
+    getSearchOptions(undefined, controller.signal)
+      .then(setOptions)
+      .catch(() => {
+        // Non-fatal: the FALLBACK_* lists above keep every filter usable.
+        // Districts are the only control that degrades, and it hides itself.
+      })
+    return () => controller.abort()
+  }, [])
+
   const setSpecFilters = (values: string[], key: string) => {
     const withoutKey = (filters.specs ?? []).filter((s) => s.key !== key)
     const next = [...withoutKey, ...values.map((value) => ({ key, value }))]
-    onUpdate('specs', next)
+    onUpdate('specs', next.length > 0 ? next : undefined)
   }
 
-  // Single-value spec fields (engine_class, load_capacity_kg): each key can
-  // hold at most one active spec[] entry, unlike body_type's multi-select.
+  // Single-value spec fields (engine_class, seats, ...): each key holds at
+  // most one active specs[] entry, unlike body_type's multi-select.
   const getSpec = (key: string): string | undefined =>
     (filters.specs ?? []).find((s) => s.key === key)?.value
 
   const setSpec = (key: string, value: string | undefined) => {
     const withoutKey = (filters.specs ?? []).filter((s) => s.key !== key)
-    onUpdate('specs', value === undefined ? withoutKey : [...withoutKey, { key, value }])
+    const next = value === undefined ? withoutKey : [...withoutKey, { key, value }]
+    onUpdate('specs', next.length > 0 ? next : undefined)
   }
 
   const selectedTypes = filters.vehicleType ?? []
   const showEngineClass = selectedTypes.length === 0 || selectedTypes.includes('BIKE')
   const showLoadCapacity =
+    selectedTypes.length === 0 || selectedTypes.some((t) => t === 'LORRY' || t === 'TRUCK')
+  // Seats/doors/drive-type are car-shaped concepts; showing them while the
+  // buyer is browsing bikes only invites zero-result searches.
+  const showPassengerSpecs =
     selectedTypes.length === 0 ||
-    selectedTypes.some((t) => t === 'LORRY' || t === 'TRUCK')
+    selectedTypes.some((t) => ['CAR', 'SUV', 'VAN', 'BUS', 'PICKUP'].includes(t))
 
   return (
-    <aside className="filter-sidebar">
+    <aside className="filter-sidebar" aria-label="Filter results">
       <div className="filter-sidebar__header">
         <h2>Filter Results</h2>
         <button type="button" className="link-button" onClick={onReset}>
@@ -104,16 +154,18 @@ export function FilterSidebar({
 
       <CheckboxFacetGroup
         label="Vehicle Type"
-        options={VEHICLE_TYPES}
+        options={options?.vehicleTypes ?? FALLBACK_VEHICLE_TYPES}
         facets={facets?.vehicleType}
         selected={filters.vehicleType ?? []}
-        onChange={(v) => onUpdate('vehicleType', v as VehicleTypeValue[])}
+        onChange={(v) => onUpdate('vehicleType', (v.length ? v : undefined) as VehicleTypeValue[])}
       />
 
       <MakeModelSelect
         vehicleTypes={filters.vehicleType ?? []}
         selectedMakes={filters.make ?? []}
-        onChange={(v) => onUpdate('make', v)}
+        selectedModels={filters.model ?? []}
+        onMakesChange={(v) => onUpdate('make', v.length ? v : undefined)}
+        onModelsChange={(v) => onUpdate('model', v.length ? v : undefined)}
       />
 
       <RangeInput
@@ -131,6 +183,14 @@ export function FilterSidebar({
         onChange={(min, max) => onUpdateMany({ minYear: min, maxYear: max })}
       />
 
+      <CheckboxFacetGroup
+        label="Condition"
+        options={options?.conditions ?? FALLBACK_CONDITIONS}
+        facets={facets?.condition}
+        selected={filters.condition ?? []}
+        onChange={(v) => onUpdate('condition', v.length ? v : undefined)}
+      />
+
       <PresetSelect
         label="Max Mileage"
         options={MILEAGE_PRESETS}
@@ -140,33 +200,63 @@ export function FilterSidebar({
 
       <CheckboxFacetGroup
         label="Fuel Type"
-        options={FUEL_TYPES}
+        options={options?.fuelTypes ?? FALLBACK_FUEL_TYPES}
         facets={facets?.fuelType}
         selected={filters.fuelType ?? []}
-        onChange={(v) => onUpdate('fuelType', v as any)}
+        onChange={(v) => onUpdate('fuelType', v.length ? v : undefined)}
       />
 
       <CheckboxFacetGroup
         label="Transmission"
-        options={TRANSMISSION_TYPES}
+        options={options?.transmissionTypes ?? FALLBACK_TRANSMISSION_TYPES}
         facets={facets?.transmissionType}
         selected={filters.transmissionType ?? []}
-        onChange={(v) => onUpdate('transmissionType', v as any)}
+        onChange={(v) => onUpdate('transmissionType', v.length ? v : undefined)}
       />
 
+      {/* Districts are data-derived, so an empty list means the API call
+          failed or inventory is empty — either way, hide the control rather
+          than render an empty box. */}
+      {options?.districts && options.districts.length > 0 && (
+        <CheckboxFacetGroup
+          label="District"
+          options={options.districts}
+          selected={filters.locationDistrict ?? []}
+          onChange={(v) => onUpdate('locationDistrict', v.length ? v : undefined)}
+        />
+      )}
+
       {/*
-        Body type lives in specs JSONB, not a vehicles column (Decision D1),
-        so it goes through the specs[] filter shape rather than onUpdate on a
-        top-level DTO field. Only one body_type value is kept active at a
-        time per the backend's equality-on-@> semantics, but the control
-        supports selecting several — each becomes its own specs[] entry.
+        Body type lives in specs JSONB, not a vehicles column, so it goes
+        through the specs[] filter shape rather than a top-level DTO field.
+        Multi-select is supported: values for the same key are OR'd server-side.
       */}
       <CheckboxFacetGroup
         label="Body Type"
-        options={BODY_TYPES}
+        options={options?.bodyTypes ?? FALLBACK_BODY_TYPES}
         selected={(filters.specs ?? []).filter((s) => s.key === 'body_type').map((s) => s.value)}
         onChange={(values) => setSpecFilters(values, 'body_type')}
       />
+
+      {showPassengerSpecs && (
+        <>
+          <PresetSelect
+            label="Seats"
+            options={SEATS_PRESETS}
+            value={getSpec('seats') ? Number(getSpec('seats')) : undefined}
+            onChange={(value) =>
+              setSpec('seats', value === undefined ? undefined : String(value))
+            }
+          />
+
+          <RadioFacetGroup
+            label="Drive Type"
+            options={DRIVE_TYPES}
+            selected={getSpec('drive_type')}
+            onChange={(value) => setSpec('drive_type', value)}
+          />
+        </>
+      )}
 
       {showEngineClass && (
         <RadioFacetGroup
@@ -182,37 +272,66 @@ export function FilterSidebar({
           label="Load Capacity"
           options={LOAD_CAPACITY_PRESETS}
           value={getSpec('load_capacity_kg') ? Number(getSpec('load_capacity_kg')) : undefined}
-          onChange={(value) => setSpec('load_capacity_kg', value === undefined ? undefined : String(value))}
+          onChange={(value) =>
+            setSpec('load_capacity_kg', value === undefined ? undefined : String(value))
+          }
         />
       )}
 
-      <label className="toggle-filter">
-        <input
-          type="checkbox"
-          checked={filters.verifiedDealersOnly ?? false}
-          onChange={(e) => onUpdate('verifiedDealersOnly', e.target.checked || undefined)}
-        />
-        Verified dealers only
-      </label>
+      <PresetSelect
+        label="Previous Owners"
+        options={OWNERS_PRESETS}
+        value={filters.maxOwners}
+        onChange={(value) => onUpdate('maxOwners', value)}
+      />
 
-      <label className="toggle-filter">
-        <input
-          type="checkbox"
-          checked={filters.hasRegistrationYear ?? false}
-          onChange={(e) => onUpdate('hasRegistrationYear', e.target.checked || undefined)}
-        />
-        <span title="Excludes listings where the dealer omitted registration year">
-          Confirmed registration year only
-        </span>
-      </label>
+      <div className="filter-sidebar__toggles">
+        <label className="toggle-filter">
+          <input
+            type="checkbox"
+            checked={filters.isNegotiable ?? false}
+            onChange={(e) => onUpdate('isNegotiable', e.target.checked || undefined)}
+          />
+          Negotiable price only
+        </label>
+
+        <label className="toggle-filter">
+          <input
+            type="checkbox"
+            checked={filters.verifiedDealersOnly ?? false}
+            onChange={(e) => onUpdate('verifiedDealersOnly', e.target.checked || undefined)}
+          />
+          Verified dealers only
+        </label>
+
+        <label className="toggle-filter">
+          <input
+            type="checkbox"
+            checked={filters.hasRegistrationYear ?? false}
+            onChange={(e) => onUpdate('hasRegistrationYear', e.target.checked || undefined)}
+          />
+          <span title="Excludes listings where the dealer omitted the registration year">
+            Confirmed registration year only
+          </span>
+        </label>
+
+        <label className="toggle-filter">
+          <input
+            type="checkbox"
+            checked={Boolean(getSpec('sunroof'))}
+            onChange={(e) => setSpec('sunroof', e.target.checked ? 'true' : undefined)}
+          />
+          Sunroof
+        </label>
+      </div>
 
       <button
         type="button"
-        className="apply-filters-button"
+        className="button button--primary apply-filters-button"
         onClick={onApply}
         disabled={!hasUnappliedChanges}
       >
-        Apply Filters
+        {hasUnappliedChanges ? 'Apply Filters' : 'Filters Applied'}
       </button>
     </aside>
   )
