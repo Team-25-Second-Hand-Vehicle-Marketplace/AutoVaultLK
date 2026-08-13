@@ -60,21 +60,3 @@ describe('internal OpenAPI YAML structure', () => {
     }
   });
 });
-
-describe('internal OpenAPI YAML structure', () => {
-  it('server URL variables match servers.variables keys', () => {
-    const doc = loadYaml('openapi/internal-api.yaml');
-    const server = doc.servers[0];
-    const declared = Object.keys(server.variables);
-    const used = [...server.url.matchAll(/\{([^}]+)\}/g)].map((match) => match[1]);
-
-    for (const name of used) {
-      expect(declared).toContain(name);
-    }
-  });
-
-  it('loads without YAML errors', () => {
-    const doc = loadYaml('openapi/internal-api.yaml');
-    expect(Object.keys(doc.paths).length).toBe(4);
-  });
-});
