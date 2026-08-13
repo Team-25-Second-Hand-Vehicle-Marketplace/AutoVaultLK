@@ -10,6 +10,7 @@ export interface VehicleSearchResultDto {
   vehicleType: VehicleTypeValue;
   make: string;
   model: string;
+  condition: string | null;
   manufactureYear: number;
   registrationYear: number | null;
   // The year actually used by filtering/display — COALESCE(registration,
@@ -24,8 +25,38 @@ export interface VehicleSearchResultDto {
   locationCity: string | null;
   locationDistrict: string | null;
   specs: Record<string, unknown>;
+  // Real per-row value from a LEFT JOIN on auth.dealer_profiles — not, as
+  // before, an echo of the verifiedDealersOnly filter (which made the badge
+  // appear only where it carried no information).
   dealerVerified: boolean;
+  // Primary listing photo, null when the dealer hasn't uploaded one. Every
+  // environment currently has zero rows in vehicle_images, so null is the
+  // normal case and the frontend renders a silhouette placeholder.
+  imageUrl: string | null;
+  thumbnailUrl: string | null;
   createdAt: Date;
+}
+
+/**
+ * A single listing for the detail page: everything in the grid projection
+ * plus the fields too heavy or too rarely used to send for all 20 cards.
+ */
+export interface VehicleDealerDto {
+  id: string;
+  companyName: string | null;
+  city: string | null;
+  contactNumber: string | null;
+  verified: boolean;
+}
+
+export interface VehicleDetailDto extends VehicleSearchResultDto {
+  description: string | null;
+  color: string | null;
+  ownersCount: number | null;
+  engineCapacityCc: number | null;
+  // All photos, primary first. Empty until image upload is wired up.
+  images: string[];
+  dealer: VehicleDealerDto;
 }
 
 // One dimension's facet counts, e.g. { value: 'PETROL', count: 34 } for fuelType.
