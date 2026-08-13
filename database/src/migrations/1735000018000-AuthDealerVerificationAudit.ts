@@ -22,9 +22,9 @@ export class AuthDealerVerificationAudit1735000018000
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`
-      DROP INDEX IF EXISTS auth.idx_dealer_profiles_verified_by
-    `);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS idx_dealer_profiles_verified_by`,
+    );
     await queryRunner.query(`
       ALTER TABLE auth.dealer_profiles
         DROP COLUMN IF EXISTS verified_by,
