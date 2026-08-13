@@ -8,6 +8,10 @@ import { DealerProfilesRepository } from './repositories/dealer-profiles.reposit
 import { DealerProfilesService } from './services/dealer-profiles.service';
 import { UsersModule } from '../users/users.module';
 
+/**
+ * UsersModule is imported for UsersRepository only. UsersModule does not
+ * import DealersModule, so this is not a circular dependency.
+ */
 @Module({
   imports: [TypeOrmModule.forFeature([DealerProfile]), UsersModule, JwtAuthModule],
   controllers: [DealerProfilesController, InternalDealersController],

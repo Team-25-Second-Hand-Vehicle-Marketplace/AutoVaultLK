@@ -55,6 +55,7 @@ import { UsersModule } from './modules/users/users.module';
         AUTH_REFRESH_TOKEN_IN_BODY: Joi.boolean().default(false),
         HTTP_JSON_BODY_LIMIT: Joi.string().default('100kb'),
         DISABLE_VERBOSE_ERRORS: Joi.boolean().default(false),
+        INTERNAL_SERVICE_KEY: Joi.string().min(16).required(),
       }),
       validationOptions: {
         allowUnknown: true,
