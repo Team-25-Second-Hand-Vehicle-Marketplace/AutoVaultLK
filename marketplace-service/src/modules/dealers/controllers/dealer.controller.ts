@@ -3,7 +3,7 @@ import {
   Controller,
   Get,
   Param,
-  ParseIntPipe,
+  ParseUUIDPipe,
   Put,
 } from '@nestjs/common';
 
@@ -17,22 +17,18 @@ export class DealerController {
   ) {}
 
   @Get(':id/profile')
-  getProfile(
-    @Param('id', ParseIntPipe) id: number,
-  ) {
+  getProfile(@Param('id', ParseUUIDPipe) id: string) {
     return this.dealerService.getProfile(id);
   }
 
   @Get(':id')
-  getDealerById(
-    @Param('id', ParseIntPipe) id: number,
-  ) {
+  getDealerById(@Param('id', ParseUUIDPipe) id: string) {
     return this.dealerService.getDealerById(id);
   }
 
   @Put(':id/profile')
   updateProfile(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateDealerProfileDto,
   ) {
     return this.dealerService.updateProfile(id, dto);
