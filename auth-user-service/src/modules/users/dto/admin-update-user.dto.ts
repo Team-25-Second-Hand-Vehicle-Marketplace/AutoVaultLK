@@ -1,5 +1,5 @@
 import { IsBoolean, IsEnum, IsOptional } from 'class-validator';
-import { UserRole } from '../../../infrastructure/database/entities/user.entity';
+import type { UserRole } from '../../../infrastructure/database/entities/user.entity';
 import { UpdateUserDto } from './update-user.dto';
 
 /** Administrator updates for another user's account — not for self-service. */
