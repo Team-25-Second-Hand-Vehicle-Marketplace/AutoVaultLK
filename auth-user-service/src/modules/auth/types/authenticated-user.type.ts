@@ -1,4 +1,4 @@
-import { UserRole } from '../../../infrastructure/database/entities/user.entity';
+import type { UserRole } from '../../../infrastructure/database/entities/user.entity';
 
 export type AuthenticatedUser = {
   id: string;

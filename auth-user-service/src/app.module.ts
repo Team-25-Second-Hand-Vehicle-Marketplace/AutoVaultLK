@@ -15,7 +15,7 @@ import { UsersModule } from './modules/users/users.module';
       isGlobal: true,
       envFilePath: ['../.env', '.env'],
       validationSchema: Joi.object({
-        PORT: Joi.number().port().default(3000),
+        PORT: Joi.number().port().default(3001),
         AUTH_DATABASE_URL: Joi.string().uri().required(),
         JWT_ACCESS_SECRET: Joi.string().min(32).required(),
         JWT_ISSUER: Joi.string().min(3).default('autovault-lk-auth'),
@@ -41,6 +41,7 @@ import { UsersModule } from './modules/users/users.module';
         AUTH_PASSWORD_RESET_WINDOW_MINUTES: Joi.number().integer().min(1).max(1440).default(60),
         AUTH_PROGRESSIVE_DELAY_BASE_MS: Joi.number().integer().min(0).max(5000).default(250),
         AUTH_PROGRESSIVE_DELAY_MAX_MS: Joi.number().integer().min(0).max(30000).default(4000),
+        INTERNAL_SERVICE_KEY: Joi.string().min(16).required(),
       }),
       validationOptions: {
         allowUnknown: true,
