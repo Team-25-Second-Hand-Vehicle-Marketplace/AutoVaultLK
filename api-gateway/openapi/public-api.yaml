@@ -45,6 +45,7 @@ paths:
       responses:
         '201':
           description: Registration accepted; awaiting admin verification
+
   /auth/login:
     post:
       tags:

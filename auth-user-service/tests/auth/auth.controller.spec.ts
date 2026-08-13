@@ -25,11 +25,15 @@ describe('AuthController', () => {
 
   it('routes dealer registration to the dealer flow', async () => {
     const data = { email: 'dealer@test.com', password: 'secret' };
-    authService.registerDealer.mockResolvedValue({ user: { role: 'DEALER' } });
+    const pending = {
+      message:
+        'Registration submitted. Your account is pending administrator approval.',
+      user: { id: 'uuid', role: 'DEALER', isActive: false },
+      verificationStatus: 'PENDING',
+    };
+    authService.registerDealer.mockResolvedValue(pending);
 
-    await expect(controller.registerDealer(data)).resolves.toEqual({
-      user: { role: 'DEALER' },
-    });
+    await expect(controller.registerDealer(data)).resolves.toEqual(pending);
     expect(authService.registerDealer).toHaveBeenCalledWith(data);
   });
 

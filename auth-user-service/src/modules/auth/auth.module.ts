@@ -4,6 +4,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { RefreshToken } from '../../infrastructure/database/entities/refresh-token.entity';
 import { User } from '../../infrastructure/database/entities/user.entity';
+import { DealerProfilesModule } from '../dealers/dealers.module';
 import { UsersModule } from '../users/users.module';
 import { AuthController } from './controllers/auth.controller';
 import { RefreshTokensRepository } from './repositories/refresh-tokens.repository';
@@ -14,6 +15,7 @@ import { AuthService } from './services/auth.service';
     ConfigModule,
     TypeOrmModule.forFeature([User, RefreshToken]),
     UsersModule,
+    DealerProfilesModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
