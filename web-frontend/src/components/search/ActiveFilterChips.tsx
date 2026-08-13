@@ -2,7 +2,12 @@ import type { FilterSearchParams } from '../../api/search.types'
 
 interface Props {
   appliedFilters: FilterSearchParams
-  onRemove: (key: string) => void
+  /**
+   * Removes every listed key in ONE update. Range chips span two keys
+   * (minPrice+maxPrice), and removing them with two single-key calls clears
+   * only one half — both calls read the same pre-removal filter snapshot.
+   */
+  onRemove: (keys: string[]) => void
   onClearAll: () => void
 }
 
@@ -79,7 +84,14 @@ export function ActiveFilterChips({ appliedFilters, onRemove, onClearAll }: Prop
   if (appliedFilters.minYear !== undefined || appliedFilters.maxYear !== undefined) {
     const min = appliedFilters.minYear as number | undefined
     const max = appliedFilters.maxYear as number | undefined
-    const label = min !== undefined && max !== undefined ? `${min} – ${max}` : `${min ?? ''}${max ?? ''}`
+    // A bare "2015" doesn't say whether it's a floor or a ceiling — spell it
+    // out for the one-sided cases.
+    const label =
+      min !== undefined && max !== undefined
+        ? `${min} – ${max}`
+        : max !== undefined
+          ? `Up to ${max}`
+          : `From ${min}`
     chips.push({ key: 'yearRange', label, removeKeys: ['minYear', 'maxYear'] })
   }
 
@@ -98,7 +110,9 @@ export function ActiveFilterChips({ appliedFilters, onRemove, onClearAll }: Prop
         <button
           key={chip.key}
           className="filter-chip"
-          onClick={() => chip.removeKeys.forEach(onRemove)}
+          // One call with every key this chip owns — see Props.onRemove.
+          onClick={() => onRemove(chip.removeKeys)}
+          aria-label={`Remove filter: ${chip.label}`}
         >
           {chip.label} ×
         </button>

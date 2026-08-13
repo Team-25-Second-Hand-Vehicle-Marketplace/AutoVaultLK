@@ -16,13 +16,25 @@ export default defineConfig({
   server: {
     // Dev-only proxy standing in for api-gateway/local/nginx.conf, so the
     // frontend works without the nginx container running and without CORS.
-    // Mirrors nginx's `location /marketplace/` -> marketplace-service:3002
-    // with the prefix stripped, so the browser and production paths match.
+    // Each entry mirrors the matching `location` block in nginx.conf so that
+    // request paths are identical in dev and production.
     proxy: {
+      // nginx: location /marketplace/ -> marketplace_service/ (prefix stripped)
       "/marketplace": {
         target: "http://localhost:3002",
         changeOrigin: true,
         rewrite: (p) => p.replace(/^\/marketplace/, ""),
+      },
+      // nginx: location /auth/ -> auth_user_service/auth/ (prefix PRESERVED —
+      // the service mounts its own @Controller('auth'), unlike marketplace).
+      "/auth": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+      },
+      // nginx: location /users/ -> auth_user_service/users/
+      "/users": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
       },
     },
   },

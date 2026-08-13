@@ -1,5 +1,11 @@
 import { apiClient } from './client'
-import type { FilterSearchParams, FilterSearchResponse, SearchOptionsResponse } from './search.types'
+import type {
+  FilterSearchParams,
+  FilterSearchResponse,
+  MarketplaceStats,
+  SearchOptionsResponse,
+  VehicleDetail,
+} from './search.types'
 
 // Serializes array/object fields into the flat forms the backend's DTO
 // expects: comma-joined for plain arrays (@Transform(toArray())), and
@@ -37,16 +43,38 @@ function toQueryParams(filters: FilterSearchParams): Record<string, string> {
   return params
 }
 
-export async function filterSearch(filters: FilterSearchParams): Promise<FilterSearchResponse> {
+export async function filterSearch(
+  filters: FilterSearchParams,
+  signal?: AbortSignal,
+): Promise<FilterSearchResponse> {
   const { data } = await apiClient.get<FilterSearchResponse>('/marketplace/search/filters', {
     params: toQueryParams(filters),
+    signal,
   })
   return data
 }
 
-export async function getSearchOptions(vehicleType?: string): Promise<SearchOptionsResponse> {
+/** Landing-page headline figures. Cached server-side for 5 minutes. */
+export async function getMarketplaceStats(signal?: AbortSignal): Promise<MarketplaceStats> {
+  const { data } = await apiClient.get<MarketplaceStats>('/marketplace/search/stats', { signal })
+  return data
+}
+
+/** One listing for the detail page. Throws on 404 (non-existent or not LIVE). */
+export async function getVehicleById(id: string, signal?: AbortSignal): Promise<VehicleDetail> {
+  const { data } = await apiClient.get<VehicleDetail>(`/marketplace/search/vehicles/${id}`, {
+    signal,
+  })
+  return data
+}
+
+export async function getSearchOptions(
+  vehicleType?: string,
+  signal?: AbortSignal,
+): Promise<SearchOptionsResponse> {
   const { data } = await apiClient.get<SearchOptionsResponse>('/marketplace/search/options', {
     params: vehicleType ? { vehicleType } : {},
+    signal,
   })
   return data
 }
