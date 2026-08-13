@@ -55,7 +55,7 @@ flowchart TB
 ## 2. How to run the database locally
 
 ```powershell
-# Repo root
+# Repo root — Postgres only (docker-compose.yml; gateway is docker-compose.dev.yml)
 Copy-Item .env.example .env
 docker compose up -d
 cd database

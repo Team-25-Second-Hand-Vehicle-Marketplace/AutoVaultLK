@@ -7,6 +7,25 @@ terraform {
   }
 }
 
+# -----------------------------------------------------------------------------
+# SCAFFOLD ONLY — routes and integrations are NOT provisioned yet.
+#
+# This module creates HTTP APIs and stages (public + internal) plus public CORS.
+# It does NOT create aws_apigatewayv2_route or aws_apigatewayv2_integration
+# resources, so terraform apply will NOT route traffic in AWS.
+#
+# Invoke URLs exist but return API Gateway 404 until integrations are wired.
+# Local development uses api-gateway/local/nginx.conf (port 8080) instead.
+# OpenAPI specs under api-gateway/openapi/ are the route catalogue for a later
+# import / integration pass (see commented example below).
+# -----------------------------------------------------------------------------
+
+locals {
+  # Single source of truth: api-gateway/config/cors.json (synced to nginx + OpenAPI via npm run sync:cors)
+  cors               = jsondecode(file("${path.module}/../../../../api-gateway/config/cors.json"))
+  cors_allow_origins = coalesce(var.cors_allow_origins, local.cors.allowOrigins)
+}
+
 # Public north-south API (SAD section 3.5.1)
 resource "aws_apigatewayv2_api" "public" {
   name          = "${var.project_name}-public-${var.environment}"
@@ -14,9 +33,10 @@ resource "aws_apigatewayv2_api" "public" {
   description   = "AutoVault LK public API Gateway"
 
   cors_configuration {
-    allow_origins = var.cors_allow_origins
-    allow_methods = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
-    allow_headers = ["authorization", "content-type", "x-request-id"]
+    allow_origins     = local.cors_allow_origins
+    allow_methods     = local.cors.allowMethods
+    allow_headers     = [for header in local.cors.allowHeaders : lower(header)]
+    allow_credentials = local.cors.allowCredentials
   }
 
   tags = {
