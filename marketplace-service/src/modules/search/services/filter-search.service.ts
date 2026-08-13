@@ -34,6 +34,10 @@ export class FilterSearchService {
     let built = buildFilterQuery(normalizedDto);
     let total = await this.repository.count(built, normalizedDto.verifiedDealersOnly);
     let relaxation: RelaxationDto | undefined;
+    // The filter set the results actually reflect — the original DTO, or the
+    // relaxed one when the ladder fired. Facets must be counted against this,
+    // not the original, or they would describe a result set nobody is seeing.
+    let effectiveDto: FilterSearchDto = normalizedDto;
 
     if (total === 0) {
       const result = await this.relax(normalizedDto);
@@ -41,12 +45,13 @@ export class FilterSearchService {
         built = result.built;
         total = result.total;
         relaxation = result.relaxation;
+        effectiveDto = result.dto;
       }
     }
 
     const [items, facets] = await Promise.all([
-      this.repository.search(built, normalizedDto),
-      normalizedDto.facets ? this.repository.facets(built, normalizedDto.verifiedDealersOnly) : undefined,
+      this.repository.search(built, effectiveDto),
+      normalizedDto.facets ? this.repository.facets(effectiveDto) : undefined,
     ]);
 
     this.logSearch(normalizedDto, total, Date.now() - startedAt).catch((err) =>
@@ -67,19 +72,63 @@ export class FilterSearchService {
 
   /**
    * §8: relax the weakest filter, or return nearest matches with a notice.
-   * Tries each step in order, re-counting after each drop, and stops at the
-   * first step that produces results. Price is handled separately — it is
-   * flagged in the response, never dropped from the query.
+   *
+   * Each step is applied CUMULATIVELY on top of the previous ones (loosening
+   * one constraint at a time until something matches), and every step that
+   * has been applied by the time results appear is reported — not just the
+   * last one. The previous version accumulated the same way but named only
+   * the final step in its message, so a search that had quietly dropped
+   * specs AND widened mileage AND widened years told the buyer it had only
+   * "relaxed the year range".
+   *
+   * A step that would change nothing (widening a range the buyer never set,
+   * dropping specs they never chose) is skipped rather than counted as a
+   * relaxation — otherwise `droppedFilters` lists filters that were never
+   * applied, and the ladder burns a COUNT query re-running an identical
+   * search. This is also what killed the old step 4: step 1 had already set
+   * `specs: undefined`, so filtering seats out of `undefined` was a no-op
+   * that could never fire.
+   *
+   * Price is never dropped — a stated budget is a hard constraint. It is
+   * flagged via priceCeilingExceeded instead.
    */
-  private async relax(
-    dto: FilterSearchDto,
-  ): Promise<{ built: ReturnType<typeof buildFilterQuery>; total: number; relaxation: RelaxationDto } | null> {
-    const steps: Array<{ apply: (d: FilterSearchDto) => FilterSearchDto; step: RelaxationStep }> = [
+  private async relax(dto: FilterSearchDto): Promise<{
+    built: ReturnType<typeof buildFilterQuery>;
+    total: number;
+    relaxation: RelaxationDto;
+    dto: FilterSearchDto;
+  } | null> {
+    const steps: Array<{
+      apply: (d: FilterSearchDto) => FilterSearchDto;
+      applies: (d: FilterSearchDto) => boolean;
+      step: RelaxationStep;
+    }> = [
+      // Most speculative first: a spec filter is a "nice to have", a keyword
+      // may simply be misspelled, and only then do stated numeric ranges get
+      // widened.
       {
+        applies: (d) => (d.specs?.length ?? 0) > 0,
         apply: (d) => ({ ...d, specs: undefined }),
         step: { drop: 'specs', label: 'vehicle spec filters' },
       },
       {
+        // A typo'd or over-specific keyword produces zero rows no amount of
+        // range-widening can rescue, so it is dropped before numeric ranges.
+        applies: (d) => (d.q?.trim().length ?? 0) > 0,
+        apply: (d) => ({ ...d, q: undefined }),
+        step: { drop: 'q', label: 'keyword search' },
+      },
+      {
+        // hasRegistrationYear hides every listing where the dealer omitted a
+        // registration date (~36% of seeded inventory). Relaxing it before
+        // touching the buyer's stated year range recovers real vehicles that
+        // do match the requested years via manufacture_year.
+        applies: (d) => d.hasRegistrationYear === true,
+        apply: (d) => ({ ...d, hasRegistrationYear: undefined }),
+        step: { drop: 'hasRegistrationYear', label: 'the confirmed-registration-year requirement' },
+      },
+      {
+        applies: (d) => d.minMileage !== undefined || d.maxMileage !== undefined,
         apply: (d) => ({
           ...d,
           minMileage: widen(d.minMileage, -0.15),
@@ -88,6 +137,7 @@ export class FilterSearchService {
         step: { drop: 'mileageRange', label: 'mileage range (widened 15%)' },
       },
       {
+        applies: (d) => d.minYear !== undefined || d.maxYear !== undefined,
         apply: (d) => ({
           ...d,
           minYear: d.minYear !== undefined ? d.minYear - 1 : d.minYear,
@@ -95,34 +145,34 @@ export class FilterSearchService {
         }),
         step: { drop: 'yearRange', label: 'year range (widened by 1 year)' },
       },
-      {
-        apply: (d) => {
-          const withoutSeats = d.specs?.filter((s) => s.key !== 'seats');
-          return { ...d, specs: withoutSeats };
-        },
-        step: { drop: 'seats', label: 'seat count' },
-      },
     ];
 
     const droppedFilters: string[] = [];
+    const labels: string[] = [];
     let current = dto;
 
-    for (const { apply, step } of steps) {
+    for (const { apply, applies, step } of steps) {
+      if (!applies(current)) continue;
+
       current = apply(current);
       droppedFilters.push(step.drop);
+      labels.push(step.label);
+
       const built = buildFilterQuery(current);
       const total = await this.repository.count(built, current.verifiedDealersOnly);
       if (total > 0) {
         const priceCeilingExceeded = dto.maxPrice !== undefined;
+        const what = formatList(labels);
         return {
           built,
           total,
+          dto: current,
           relaxation: {
             droppedFilters,
             priceCeilingExceeded,
             message: priceCeilingExceeded
-              ? `No exact matches — showing results after relaxing ${step.label}. Some results may exceed your budget.`
-              : `No exact matches — showing results after relaxing ${step.label}.`,
+              ? `No exact matches — showing results after relaxing ${what}. Some results may exceed your budget.`
+              : `No exact matches — showing results after relaxing ${what}.`,
           },
         };
       }
@@ -153,4 +203,10 @@ export class FilterSearchService {
 function widen(value: number | undefined, fraction: number): number | undefined {
   if (value === undefined) return value;
   return Math.round(value * (1 + fraction));
+}
+
+/** "a", "a and b", "a, b and c" — for the buyer-facing relaxation message. */
+function formatList(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? '';
+  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
 }

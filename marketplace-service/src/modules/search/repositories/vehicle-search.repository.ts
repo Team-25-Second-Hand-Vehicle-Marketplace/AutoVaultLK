@@ -1,13 +1,27 @@
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
-import { BuiltFilterQuery } from '../filters/filter-query.builder';
+import { BuiltFilterQuery, buildFilterQuery } from '../filters/filter-query.builder';
 import { FilterSearchDto } from '../dto/filter-search.dto';
 import { SortOption } from '../constants/vehicle-attributes.constants';
-import { VehicleSearchResultDto, FacetBucketDto } from '../dto/filter-search-response.dto';
+import {
+  VehicleSearchResultDto,
+  VehicleDetailDto,
+  FacetBucketDto,
+} from '../dto/filter-search-response.dto';
 
+/**
+ * ORDER BY fragments. These are looked up by key from a fixed record — the
+ * DTO's @IsIn(SORT_OPTIONS) guarantees the key is one of these, so no user
+ * string ever reaches the SQL text.
+ *
+ * `relevance` is the only entry that isn't constant: with a keyword query it
+ * ranks by ts_rank against the same tsquery the WHERE clause filters on, and
+ * without one there is nothing to rank, so it falls back to recency (design
+ * doc §9 — no blended score when there is no semantic text).
+ */
 const SORT_SQL: Record<SortOption, string> = {
-  relevance: 'v.created_at DESC', // no semantic_text in filter search — falls back to recency, design doc §9
+  relevance: 'v.created_at DESC',
   price_asc: 'v.price ASC',
   price_desc: 'v.price DESC',
   year_desc: 'COALESCE(v.registration_year, v.manufacture_year) DESC',
@@ -15,12 +29,57 @@ const SORT_SQL: Record<SortOption, string> = {
   newest: 'v.created_at DESC',
 };
 
+/**
+ * Primary listing photo, or NULL when the dealer hasn't uploaded one.
+ *
+ * LEFT JOIN, never INNER: vehicle_images is empty in every environment right
+ * now, and an inner join here would silently return zero results for every
+ * search. idx_vehicle_images_one_primary (UNIQUE on vehicle_id WHERE
+ * is_primary) guarantees at most one row per vehicle, so this cannot fan out
+ * and inflate COUNT(*).
+ *
+ * COALESCE order is display-quality order: a processed/optimized render if
+ * ETL produced one, otherwise the original upload.
+ */
+const IMAGE_JOIN = `
+  LEFT JOIN marketplace.vehicle_images vi
+    ON vi.vehicle_id = v.id AND vi.is_primary = true
+`;
+
+const IMAGE_COLUMNS = `
+  COALESCE(vi.processed_path, vi.s3_path) AS image_path,
+  vi.thumbnail_path AS thumbnail_path
+`;
+
+/**
+ * Per-row dealer verification.
+ *
+ * Previously this was hardcoded to `dto.verifiedDealersOnly ?? false`, which
+ * meant the "Verified Dealer" badge could only ever appear on a search that
+ * had already filtered to verified dealers — i.e. exactly where it carried no
+ * information — and every card on a normal search claimed the dealer was
+ * unverified. This LEFT JOIN reports the real value on every row.
+ *
+ * Kept separate from the verifiedDealersOnly INNER JOIN below: this one must
+ * never remove rows, so a vehicle whose dealer has no profile row still shows
+ * up (as unverified) rather than vanishing.
+ */
+const DEALER_JOIN = `
+  LEFT JOIN auth.dealer_profiles dpv ON dpv.user_id = v.dealer_id
+`;
+
+const DEALER_COLUMNS = `
+  (dpv.verification_status = 'VERIFIED') AS dealer_verified
+`;
+
 const SELECT_COLUMNS = `
   v.id, v.vehicle_type, v.make, v.model, v.manufacture_year,
   v.registration_year, v.price, v.is_negotiable, v.mileage,
   v.fuel_type, v.transmission_type, v.location_city, v.location_district,
-  v.specs, v.created_at,
-  COALESCE(v.registration_year, v.manufacture_year) AS effective_year
+  v.specs, v.created_at, v.condition,
+  COALESCE(v.registration_year, v.manufacture_year) AS effective_year,
+  ${DEALER_COLUMNS},
+  ${IMAGE_COLUMNS}
 `;
 
 interface VehicleRow {
@@ -38,8 +97,24 @@ interface VehicleRow {
   transmission_type: string | null;
   location_city: string | null;
   location_district: string | null;
+  condition: string | null;
   specs: Record<string, unknown>;
   created_at: Date;
+  dealer_verified: boolean | null;
+  image_path: string | null;
+  thumbnail_path: string | null;
+}
+
+interface VehicleDetailRow extends VehicleRow {
+  description: string | null;
+  color: string | null;
+  owners_count: number | null;
+  engine_capacity_cc: number | null;
+  dealer_id: string;
+  dealer_company_name: string | null;
+  dealer_city: string | null;
+  dealer_contact_number: string | null;
+  image_paths: string[] | null;
 }
 
 @Injectable()
@@ -49,35 +124,65 @@ export class VehicleSearchRepository {
   /**
    * verifiedDealersOnly is applied here, not in the query builder — it
    * changes FROM, not just WHERE, and the builder is deliberately scoped to
-   * vehicles-table-only clauses (Phase 2A comment). One JOIN, added only
-   * when asked for, keeps the common (unverified) path index-clean.
+   * vehicles-table-only clauses so it stays a pure, testable function.
+   *
+   * `extraJoins` carries the display-only joins (image, dealer verification)
+   * that SELECT needs but COUNT does not — counting with them attached is
+   * wasted work, and they must never change the row count.
    */
-  private buildFromAndWhere(built: BuiltFilterQuery, verifiedDealersOnly?: boolean) {
+  private buildFromAndWhere(
+    built: BuiltFilterQuery,
+    verifiedDealersOnly?: boolean,
+    extraJoins = '',
+  ) {
+    const base = `marketplace.vehicles v${extraJoins}`;
     if (!verifiedDealersOnly) {
-      return { from: 'marketplace.vehicles v', where: built.whereSql, params: built.params };
+      return { from: base, where: built.whereSql, params: built.params };
     }
     const params = [...built.params];
     const dealerParamIndex = params.length + 1;
     params.push('VERIFIED');
     return {
-      from: `marketplace.vehicles v
+      from: `${base}
              JOIN auth.dealer_profiles dp ON dp.user_id = v.dealer_id`,
       where: `${built.whereSql} AND dp.verification_status = $${dealerParamIndex}`,
       params,
     };
   }
 
-  async search(
-    built: BuiltFilterQuery,
-    dto: FilterSearchDto,
-  ): Promise<VehicleSearchResultDto[]> {
-    const { from, where, params } = this.buildFromAndWhere(built, dto.verifiedDealersOnly);
-    const sort = SORT_SQL[dto.sort ?? 'relevance'];
+  /**
+   * Resolves the ORDER BY clause, appending a ts_rank parameter when sorting
+   * by relevance with an active keyword.
+   *
+   * The rank expression re-derives plainto_tsquery from the raw keyword
+   * rather than reusing the WHERE clause's parameter index, because the
+   * builder owns that numbering and the sort clause is appended after
+   * limit/offset params. It is still fully parameterized.
+   */
+  private resolveSort(dto: FilterSearchDto, params: unknown[]): string {
+    const keyword = dto.q?.trim();
+    if ((dto.sort ?? 'relevance') === 'relevance' && keyword) {
+      params.push(keyword);
+      const idx = params.length;
+      return `ts_rank(v.search_vector, plainto_tsquery('english', $${idx})) DESC, v.created_at DESC`;
+    }
+    return SORT_SQL[dto.sort ?? 'relevance'];
+  }
+
+  async search(built: BuiltFilterQuery, dto: FilterSearchDto): Promise<VehicleSearchResultDto[]> {
+    const { from, where, params } = this.buildFromAndWhere(
+      built,
+      dto.verifiedDealersOnly,
+      `${DEALER_JOIN}${IMAGE_JOIN}`,
+    );
     const limit = dto.limit ?? 20;
     const offset = ((dto.page ?? 1) - 1) * limit;
 
-    const limitIdx = params.length + 1;
-    const offsetIdx = params.length + 2;
+    const queryParams = [...params];
+    const sort = this.resolveSort(dto, queryParams);
+    queryParams.push(limit, offset);
+    const limitIdx = queryParams.length - 1;
+    const offsetIdx = queryParams.length;
 
     const rows: VehicleRow[] = await this.dataSource.query(
       `SELECT ${SELECT_COLUMNS}
@@ -85,15 +190,10 @@ export class VehicleSearchRepository {
        WHERE ${where}
        ORDER BY ${sort}
        LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
-      [...params, limit, offset],
+      queryParams,
     );
 
-    // dealerVerified: when verifiedDealersOnly was set, every returned row
-    // is verified by construction of the JOIN above. When it wasn't set, we
-    // don't know per-row verification without an unconditional second join
-    // — deferred; false is the honest "unknown/not filtered" default for v1.
-    const dealerVerified = dto.verifiedDealersOnly ?? false;
-    return rows.map((row) => this.mapRow(row, dealerVerified));
+    return rows.map((row) => this.mapRow(row));
   }
 
   async count(built: BuiltFilterQuery, verifiedDealersOnly?: boolean): Promise<number> {
@@ -106,17 +206,25 @@ export class VehicleSearchRepository {
   }
 
   /**
-   * Per-dimension counts for the sidebar ("SUV (14)"). Runs one GROUP BY
-   * query per dimension rather than a single multi-dimensional query —
-   * simpler to reason about, and facet queries are cheap relative to the
-   * main search on this table size.
+   * Per-dimension counts for the sidebar ("SUV (14)").
+   *
+   * Each dimension is counted against every filter EXCEPT its own — standard
+   * faceted-search semantics. Counting a dimension against its own filter
+   * makes the facet list collapse to just the selected value the moment a
+   * buyer clicks anything ("PETROL (34)" and nothing else), which destroys
+   * the affordance the counts exist to provide: "if I also picked DIESEL,
+   * how many more would I see?"
+   *
+   * That requires rebuilding the WHERE clause per dimension from a modified
+   * DTO, so this takes the DTO rather than the prebuilt query.
+   *
+   * The five queries are independent, so they run concurrently.
    */
-  async facets(
-    built: BuiltFilterQuery,
-    verifiedDealersOnly?: boolean,
-  ): Promise<Record<string, FacetBucketDto[]>> {
-    const { from, where, params } = this.buildFromAndWhere(built, verifiedDealersOnly);
-    const dimensions: Array<{ key: string; column: string }> = [
+  async facets(dto: FilterSearchDto): Promise<Record<string, FacetBucketDto[]>> {
+    const dimensions: Array<{
+      key: keyof FilterSearchDto;
+      column: string;
+    }> = [
       { key: 'vehicleType', column: 'v.vehicle_type' },
       { key: 'make', column: 'v.make' },
       { key: 'fuelType', column: 'v.fuel_type' },
@@ -124,27 +232,88 @@ export class VehicleSearchRepository {
       { key: 'condition', column: 'v.condition' },
     ];
 
-    const result: Record<string, FacetBucketDto[]> = {};
-    for (const { key, column } of dimensions) {
-      const rows: Array<{ value: string; count: string }> = await this.dataSource.query(
-        `SELECT ${column} AS value, COUNT(*) AS count
-         FROM ${from}
-         WHERE ${where} AND ${column} IS NOT NULL
-         GROUP BY ${column}
-         ORDER BY count DESC`,
-        params,
-      );
-      result[key] = rows.map((r) => ({ value: r.value, count: parseInt(r.count, 10) }));
-    }
-    return result;
+    const entries = await Promise.all(
+      dimensions.map(async ({ key, column }) => {
+        // Drop this dimension's own filter before building its count query.
+        const scopedDto = { ...dto, [key]: undefined } as FilterSearchDto;
+        const scopedBuilt = buildFilterQuery(scopedDto);
+        const { from, where, params } = this.buildFromAndWhere(
+          scopedBuilt,
+          dto.verifiedDealersOnly,
+        );
+
+        const rows: Array<{ value: string; count: string }> = await this.dataSource.query(
+          `SELECT ${column} AS value, COUNT(*) AS count
+           FROM ${from}
+           WHERE ${where} AND ${column} IS NOT NULL
+           GROUP BY ${column}
+           ORDER BY count DESC, value ASC`,
+          params,
+        );
+
+        return [
+          key as string,
+          rows.map((r) => ({ value: r.value, count: parseInt(r.count, 10) })),
+        ] as const;
+      }),
+    );
+
+    return Object.fromEntries(entries);
   }
 
-  private mapRow(row: VehicleRow, dealerVerified: boolean): VehicleSearchResultDto {
+  /**
+   * Single vehicle for the detail page. Gated on the same SEARCHABLE_STATUS
+   * as search itself — a direct link to a DRAFT/SOLD/ARCHIVED listing must
+   * 404 rather than expose a row search would never return.
+   *
+   * Returns null (not a throw) so the controller owns the HTTP shape.
+   */
+  async findById(id: string): Promise<VehicleDetailDto | null> {
+    const rows: VehicleDetailRow[] = await this.dataSource.query(
+      `SELECT ${SELECT_COLUMNS},
+              v.description, v.color, v.owners_count, v.engine_capacity_cc,
+              v.dealer_id,
+              dpv.company_name   AS dealer_company_name,
+              dpv.city           AS dealer_city,
+              dpv.contact_number AS dealer_contact_number,
+              (
+                SELECT array_agg(COALESCE(i.processed_path, i.s3_path)
+                                 ORDER BY i.is_primary DESC, i.display_order ASC)
+                FROM marketplace.vehicle_images i
+                WHERE i.vehicle_id = v.id
+              ) AS image_paths
+       FROM marketplace.vehicles v${DEALER_JOIN}${IMAGE_JOIN}
+       WHERE v.id = $1 AND v.status = $2`,
+      [id, 'LIVE'],
+    );
+
+    if (rows.length === 0) return null;
+    const row = rows[0];
+
+    return {
+      ...this.mapRow(row),
+      description: row.description,
+      color: row.color,
+      ownersCount: row.owners_count,
+      engineCapacityCc: row.engine_capacity_cc,
+      images: row.image_paths ?? [],
+      dealer: {
+        id: row.dealer_id,
+        companyName: row.dealer_company_name,
+        city: row.dealer_city,
+        contactNumber: row.dealer_contact_number,
+        verified: row.dealer_verified === true,
+      },
+    };
+  }
+
+  private mapRow(row: VehicleRow): VehicleSearchResultDto {
     return {
       id: row.id,
       vehicleType: row.vehicle_type as VehicleSearchResultDto['vehicleType'],
       make: row.make,
       model: row.model,
+      condition: row.condition,
       manufactureYear: row.manufacture_year,
       registrationYear: row.registration_year,
       effectiveYear: row.effective_year,
@@ -156,7 +325,11 @@ export class VehicleSearchRepository {
       locationCity: row.location_city,
       locationDistrict: row.location_district,
       specs: row.specs,
-      dealerVerified,
+      // LEFT JOIN yields NULL for a vehicle whose dealer has no profile row;
+      // that is "not verified", not "unknown", for badge purposes.
+      dealerVerified: row.dealer_verified === true,
+      imageUrl: row.image_path,
+      thumbnailUrl: row.thumbnail_path,
       createdAt: row.created_at,
     };
   }
