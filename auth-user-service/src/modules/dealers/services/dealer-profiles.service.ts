@@ -86,7 +86,7 @@ export class DealerProfilesService {
     const decidedAt = new Date();
 
     return this.dataSource.transaction(async (manager) => {
-      await manager.update(
+      const profileUpdate = await manager.update(
         DealerProfile,
         { userId: dealerUserId },
         {
@@ -96,13 +96,35 @@ export class DealerProfilesService {
         },
       );
 
-      await manager.update(
+      if (!profileUpdate.affected) {
+        throw new NotFoundException(
+          `Dealer profile for user ${dealerUserId} was not found`,
+        );
+      }
+
+      const userUpdate = await manager.update(
         User,
         { id: dealerUserId },
         { isActive: activateAccount },
       );
 
-      return manager.findOne(DealerProfile, { where: { userId: dealerUserId } });
+      if (!userUpdate.affected) {
+        throw new NotFoundException(
+          `Dealer user ${dealerUserId} was not found`,
+        );
+      }
+
+      const updated = await manager.findOne(DealerProfile, {
+        where: { userId: dealerUserId },
+      });
+
+      if (!updated) {
+        throw new NotFoundException(
+          `Dealer profile for user ${dealerUserId} was not found`,
+        );
+      }
+
+      return updated;
     });
   }
 }
