@@ -1,55 +1,60 @@
 import { Injectable } from '@nestjs/common';
-import { UpdateDealerProfileDto } from '../dto/update-dealer-profile.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+
+import { AuthUserView } from '../../../infrastructure/database/entities/auth-user.view-entity';
+import { DealerProfileView } from '../../../infrastructure/database/entities/dealer-profile.view-entity';
+
+export type DealerSummary = {
+  id: string;
+  businessName: string;
+  ownerName: string;
+  email: string;
+  phone: string | null;
+  city: string;
+  verificationStatus: string;
+};
 
 @Injectable()
 export class DealerRepository {
-  private dealers = [
-    {
-      id: 1,
-      businessName: 'Virusan Motors',
-      ownerName: 'Virusan',
-      email: 'virusan@gmail.com',
-      phone: '+94771234567',
-      city: 'Jaffna',
-      province: 'Northern',
-    },
-    {
-      id: 2,
-      businessName: 'ABC Motors',
-      ownerName: 'John Silva',
-      email: 'abc@gmail.com',
-      phone: '+94771111111',
-      city: 'Colombo',
-      province: 'Western',
-    },
-  ];
+  constructor(
+    @InjectRepository(AuthUserView)
+    private readonly userRepo: Repository<AuthUserView>,
+    @InjectRepository(DealerProfileView)
+    private readonly profileRepo: Repository<DealerProfileView>,
+  ) {}
 
-  findProfile(id?: number) {
-    if (id === undefined) {
-      return this.dealers[0];
-    }
+  async findById(id: string): Promise<DealerSummary | null> {
+    const user = await this.userRepo.findOne({
+      where: { id, role: 'DEALER', isActive: true },
+    });
 
-    return this.findById(id);
-  }
-
-  findById(id: number) {
-    return this.dealers.find(
-      (dealer) => dealer.id === id,
-    );
-  }
-
-  update(
-    id: number,
-    dto: UpdateDealerProfileDto,
-  ) {
-    const dealer = this.findById(id);
-
-    if (!dealer) {
+    if (!user) {
       return null;
     }
 
-    Object.assign(dealer, dto);
+    const profile = await this.profileRepo.findOne({ where: { userId: id } });
 
-    return dealer;
+    if (!profile) {
+      return null;
+    }
+
+    return this.toSummary(user, profile);
+  }
+
+  findProfile(id: string) {
+    return this.findById(id);
+  }
+
+  private toSummary(user: AuthUserView, profile: DealerProfileView): DealerSummary {
+    return {
+      id: user.id,
+      businessName: profile.companyName,
+      ownerName: user.name,
+      email: user.email,
+      phone: profile.contactNumber,
+      city: profile.city,
+      verificationStatus: profile.verificationStatus,
+    };
   }
 }
