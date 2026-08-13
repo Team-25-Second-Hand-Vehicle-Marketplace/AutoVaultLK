@@ -181,7 +181,7 @@ export class AuthAbuseProtectionService {
   async recordRefreshFailure(
     session: SessionMetadata,
     failureReason: string,
-  ) {
+  ): Promise<never> {
     await this.securityEventsRepository.record({
       eventType: SecurityEventType.REFRESH,
       email: null,
