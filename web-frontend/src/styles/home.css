@@ -1,0 +1,1028 @@
+/* ==========================================================================
+   Landing page, header/footer chrome, and dealer auth screens.
+   Follows the marketplace design reference; builds on theme.css tokens.
+   ========================================================================== */
+
+/* ── Brand mark ──────────────────────────────────────────────── */
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-h);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.brand__tile {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+/* ── Header ──────────────────────────────────────────────────── */
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.site-header__inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 24px;
+  height: 66px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.header-search {
+  position: relative;
+  flex: 1;
+  max-width: 520px;
+}
+
+.header-search__icon {
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.header-search input {
+  width: 100%;
+  padding: 10px 14px 10px 38px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-alt);
+  color: var(--text-h);
+  font: inherit;
+  font-size: 14px;
+}
+
+.header-search input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+  background: var(--bg);
+}
+
+.site-header__nav {
+  display: flex;
+  gap: 4px;
+}
+
+.site-header__link {
+  padding: 8px 12px;
+  border-radius: 7px;
+  color: var(--text-h);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.site-header__link:hover {
+  background: var(--bg-alt);
+}
+
+.site-header__link--active {
+  color: var(--accent);
+}
+
+.site-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.site-header__saved {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-h);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 6px;
+}
+
+.site-header__saved:hover {
+  color: var(--accent);
+}
+
+.site-header__signin {
+  padding: 9px 16px;
+}
+
+/* ── Hero ────────────────────────────────────────────────────── */
+
+.hero {
+  position: relative;
+  isolation: isolate;
+  min-height: 620px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+/* Stand-in for the reference's photographic hero — see HomePage.tsx.
+   Deep navy base with two off-centre light pools and a faint diagonal
+   sheen, so the band reads as a designed surface rather than flat colour. */
+.hero__backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background:
+    radial-gradient(120% 90% at 82% 18%, rgba(59, 130, 246, 0.34) 0%, transparent 58%),
+    radial-gradient(90% 80% at 12% 92%, rgba(37, 99, 235, 0.26) 0%, transparent 62%),
+    linear-gradient(115deg, #070d1a 0%, #0d1830 48%, #16264a 100%),
+    #0a1223;
+}
+
+/* If a real photo is added later, this class renders it edge to edge. */
+.hero__bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -2;
+}
+
+/* Dark, left-weighted scrim: the headline sits on the left, and the photo
+   stays visible on the right. Without this the white text fails contrast
+   over the lighter parts of the image. */
+.hero__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    90deg,
+    rgba(8, 15, 28, 0.72) 0%,
+    rgba(8, 15, 28, 0.42) 55%,
+    rgba(8, 15, 28, 0.1) 100%
+  );
+}
+
+.hero__inner {
+  max-width: 1260px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 72px 24px;
+  color: #fff;
+}
+
+.hero__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #7fa8ff;
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0 0 18px;
+}
+
+.hero__title {
+  font-size: clamp(38px, 5.4vw, 64px);
+  line-height: 1.06;
+  color: #fff;
+  margin: 0 0 20px;
+}
+
+.hero__title-accent {
+  color: #4f8bff;
+}
+
+.hero__subtitle {
+  max-width: 620px;
+  font-size: 17px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.86);
+  margin: 0 0 32px;
+}
+
+.hero__search {
+  max-width: 720px;
+}
+
+.hero-search__field input::placeholder {
+  color: var(--text-muted);
+}
+
+.hero-search {
+  background: var(--bg);
+  border-radius: var(--radius);
+  padding: 18px;
+  box-shadow: var(--shadow-lg);
+}
+
+.hero-search__row {
+  display: flex;
+  gap: 10px;
+}
+
+.hero-search__field {
+  position: relative;
+  flex: 1;
+}
+
+.hero-search__icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.hero-search__field input {
+  width: 100%;
+  padding: 14px 16px 14px 42px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 15px;
+  color: var(--text-h);
+  background: var(--bg);
+}
+
+.hero-search__field input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.hero-search__quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.chip {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.chip:hover {
+  background: var(--accent-bg);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ── Stats band ──────────────────────────────────────────────── */
+
+.stats-band {
+  background: var(--accent);
+  color: #fff;
+}
+
+.stats-band__inner {
+  max-width: 1260px;
+  margin: 0 auto;
+  padding: 40px 24px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  text-align: center;
+}
+
+.stat__value {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.stat__label {
+  margin-top: 4px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* ── Section furniture ───────────────────────────────────────── */
+
+.section__head--center {
+  justify-content: center;
+  text-align: center;
+}
+
+.section__empty {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 24px 0;
+}
+
+/* ── Category tiles ──────────────────────────────────────────── */
+
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 14px;
+}
+
+.category-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 22px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  text-decoration: none;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+
+.category-tile:hover {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.category-tile__icon {
+  color: var(--accent);
+  display: grid;
+  place-items: center;
+  height: 30px;
+}
+
+.category-tile__name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-h);
+  text-align: center;
+  text-transform: capitalize;
+}
+
+.category-tile__count {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ── Brand tiles ─────────────────────────────────────────────── */
+
+.brand-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 14px;
+}
+
+.brand-tile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 18px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  text-decoration: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.brand-tile:hover {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-md);
+}
+
+.brand-tile__mark {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--accent-bg);
+  color: var(--accent);
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+.brand-tile__name {
+  font-weight: 600;
+  color: var(--text-h);
+  font-size: 14px;
+}
+
+.brand-tile__count {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ── Feature cards ───────────────────────────────────────────── */
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 18px;
+}
+
+.feature-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+}
+
+.feature-card__icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  display: grid;
+  place-items: center;
+  margin-bottom: 14px;
+}
+
+.feature-card h3 {
+  font-size: 16px;
+  margin: 0 0 6px;
+}
+
+.feature-card p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* ── CTA band ────────────────────────────────────────────────── */
+
+.cta-band {
+  background: var(--accent);
+  color: #fff;
+  text-align: center;
+}
+
+.cta-band__inner {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 64px 24px;
+}
+
+.cta-band h2 {
+  color: #fff;
+  font-size: 32px;
+  margin: 0 0 12px;
+}
+
+.cta-band p {
+  margin: 0 0 28px;
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.cta-band__actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* ── Footer ──────────────────────────────────────────────────── */
+
+.site-footer {
+  background: var(--bg-dark);
+  color: #9aa7bd;
+  margin-top: auto;
+}
+
+.site-footer__inner {
+  max-width: 1260px;
+  margin: 0 auto;
+  padding: 56px 24px 40px;
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1fr 1fr;
+  gap: 32px;
+}
+
+.site-footer__brand .brand {
+  color: #fff;
+  margin-bottom: 14px;
+}
+
+.site-footer__brand p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.65;
+  max-width: 320px;
+}
+
+.site-footer__col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.site-footer__col h3 {
+  color: #fff;
+  font-size: 14px;
+  margin: 0 0 4px;
+}
+
+.site-footer__col a {
+  color: #9aa7bd;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.site-footer__col a:hover {
+  color: #fff;
+}
+
+.site-footer__bar {
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+  max-width: 1260px;
+  margin: 0 auto;
+  padding: 18px 24px 28px;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+
+.site-footer__note {
+  color: #6f7d94;
+}
+
+/* ── Buyer auth pages ───────────────────────────────────────── */
+
+.auth-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  /* Fill the space between header and footer so the card sits optically
+     centred rather than pinned under the header. */
+  min-height: calc(100vh - 66px - 320px);
+  padding: 56px 20px;
+  background: var(--bg-alt);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 36px;
+  box-shadow: var(--shadow-md);
+}
+
+.auth-card h1 {
+  font-size: 24px;
+  margin: 0 0 6px;
+}
+
+.auth-card__subtitle {
+  margin: 0 0 26px;
+  font-size: 14px;
+}
+
+.auth-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.auth-card .button {
+  margin-top: 4px;
+  padding: 13px 20px;
+}
+
+.auth-card__footer {
+  margin: 22px 0 0;
+  text-align: center;
+  font-size: 14px;
+}
+
+/* Shared form controls (both buyer and dealer forms). */
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+.form-field input {
+  padding: 11px 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text-h);
+  font: inherit;
+  font-size: 14px;
+}
+
+.form-field input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+  border-color: transparent;
+}
+
+.form-field input[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.form-error {
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.form-error--banner {
+  padding: 11px 13px;
+  border-radius: var(--radius-sm);
+  background: rgba(217, 45, 32, 0.08);
+  font-size: 13px;
+}
+
+/* ── Dealer auth (split screen) ──────────────────────────────── */
+
+.dealer-auth {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.dealer-auth__panel {
+  background: var(--bg-dark);
+  color: #fff;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+}
+
+.dealer-auth__panel .brand {
+  color: #fff;
+}
+
+.dealer-auth__panel-body {
+  margin-top: auto;
+}
+
+.dealer-auth__panel h1 {
+  color: #fff;
+  font-size: 34px;
+  margin: 0 0 12px;
+  max-width: 15ch;
+}
+
+.dealer-auth__panel p {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 15px;
+  line-height: 1.6;
+  margin: 0 0 32px;
+  max-width: 46ch;
+}
+
+.dealer-auth__stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.dealer-auth__stats > div {
+  background: var(--bg-dark-alt);
+  border-radius: var(--radius);
+  padding: 18px;
+  text-align: center;
+}
+
+.dealer-auth__stats strong {
+  display: block;
+  font-size: 22px;
+  color: #fff;
+  font-weight: 700;
+}
+
+.dealer-auth__stats span {
+  font-size: 12px;
+  color: #9aa7bd;
+}
+
+.dealer-auth__form-side {
+  background: var(--bg-alt);
+  display: grid;
+  place-items: center;
+  padding: 40px 24px;
+}
+
+.dealer-auth__form-wrap {
+  width: 100%;
+  max-width: 400px;
+}
+
+.dealer-auth__form-wrap h2 {
+  font-size: 28px;
+  margin: 0 0 6px;
+}
+
+.dealer-auth__subtitle {
+  margin: 0 0 26px;
+  font-size: 14px;
+}
+
+.dealer-auth__form-wrap form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dealer-auth__footer,
+.dealer-auth__back {
+  text-align: center;
+  font-size: 14px;
+  margin: 20px 0 0;
+}
+
+.dealer-auth__back a {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.dealer-auth__back a:hover {
+  color: var(--accent);
+}
+
+/* ── Registration wizard ─────────────────────────────────────── */
+
+.wizard-page {
+  min-height: 100vh;
+  background: var(--bg-alt);
+  padding: 40px 24px 64px;
+}
+
+.wizard-page__head {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 28px;
+}
+
+.wizard-steps {
+  list-style: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin: 0 auto 26px;
+  padding: 0;
+  max-width: 720px;
+  flex-wrap: wrap;
+}
+
+.wizard-steps__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.wizard-steps__item:not(:last-child)::after {
+  content: '';
+  width: 28px;
+  height: 1px;
+  background: var(--border);
+  margin-left: 6px;
+}
+
+.wizard-steps__num {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  background: var(--bg);
+}
+
+.wizard-steps__item--active {
+  color: var(--accent);
+}
+
+.wizard-steps__item--active .wizard-steps__num {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.wizard-steps__item--done .wizard-steps__num {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.wizard-card {
+  max-width: 680px;
+  margin: 0 auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: var(--shadow);
+}
+
+.wizard-card h1 {
+  font-size: 24px;
+  margin: 0;
+}
+
+.wizard-card__subtitle {
+  margin: -10px 0 6px;
+  font-size: 14px;
+}
+
+.wizard-card__note {
+  font-size: 13px;
+  background: var(--bg-alt);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin: 0;
+}
+
+.wizard-card__actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+  margin-top: 4px;
+}
+
+.wizard-card--message {
+  text-align: center;
+  align-items: center;
+}
+
+.wizard-page__foot {
+  text-align: center;
+  font-size: 14px;
+  margin-top: 20px;
+}
+
+.form-field__legend {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-h);
+  display: block;
+  margin-bottom: 6px;
+}
+
+.radio-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.radio-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  background: var(--bg);
+}
+
+.radio-card:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.radio-card strong {
+  display: block;
+  font-size: 14px;
+  color: var(--text-h);
+}
+
+.radio-card small {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.review-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.review-list > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 11px 14px;
+  background: var(--bg-alt);
+  border-radius: var(--radius-sm);
+}
+
+.review-list dt {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.review-list dd {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-h);
+  text-align: right;
+}
+
+/* ── Vehicle grid on the landing page ───────────────────────── */
+
+.vehicle-grid--4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+
+@media (max-width: 1100px) {
+  .vehicle-grid--4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .site-footer__inner {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .header-search {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .dealer-auth {
+    grid-template-columns: 1fr;
+  }
+
+  /* The marketing panel is decorative; on a phone it would push the form
+     below the fold, so it is dropped rather than stacked. */
+  .dealer-auth__panel {
+    display: none;
+  }
+
+  .stats-band__inner {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .hero {
+    min-height: 520px;
+  }
+
+  .hero-search__row {
+    flex-direction: column;
+  }
+
+  .site-header__nav {
+    display: none;
+  }
+
+  .vehicle-grid--4 {
+    grid-template-columns: 1fr;
+  }
+
+  .site-footer__inner {
+    grid-template-columns: 1fr;
+  }
+
+  .radio-row {
+    grid-template-columns: 1fr;
+  }
+
+  .wizard-steps__label {
+    display: none;
+  }
+
+  .section {
+    padding: 44px 0;
+  }
+}

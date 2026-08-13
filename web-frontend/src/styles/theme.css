@@ -1,0 +1,253 @@
+/* ==========================================================================
+   AutoMarket theme — matches the marketplace design reference.
+
+   Loaded AFTER index.css, so these values win. Kept as a token override
+   rather than edits to index.css so the original palette stays intact and
+   diffable, and so the whole visual language can be adjusted from one place.
+
+   The reference design is light-only: it uses white surfaces, a near-black
+   ink for headings, and a single saturated blue for every action. The dark
+   scheme that index.css defines under prefers-color-scheme is therefore
+   neutralised below — a half-applied dark mode (dark tokens, light-only
+   component styles) reads as broken, and the reference has no dark variant
+   to copy.
+   ========================================================================== */
+
+:root,
+:root:where(*) {
+  /* Ink */
+  --text: #5b6472;
+  --text-h: #0b1524;
+  --text-muted: #8a94a6;
+
+  /* Surfaces */
+  --bg: #ffffff;
+  --bg-alt: #f6f8fb;
+  --bg-dark: #0e1626;
+  --bg-dark-alt: #162033;
+  --border: #e4e9f0;
+
+  /* One blue drives every action, link, and highlight in the reference. */
+  --accent: #1b5fff;
+  --accent-hover: #1550e0;
+  --accent-bg: rgba(27, 95, 255, 0.08);
+  --accent-ink: #ffffff;
+
+  --success: #12805c;
+  --success-bg: rgba(18, 128, 92, 0.1);
+  --warning-bg: #fff4d6;
+  --warning-text: #8a5a00;
+  --danger: #d92d20;
+
+  /* Cards in the reference sit on a very soft, wide shadow rather than a
+     hard border — the border is a fallback for when they sit on white. */
+  --shadow: 0 1px 2px rgba(13, 24, 41, 0.04), 0 1px 3px rgba(13, 24, 41, 0.06);
+  --shadow-md: 0 4px 12px rgba(13, 24, 41, 0.06), 0 2px 4px rgba(13, 24, 41, 0.04);
+  --shadow-lg: 0 12px 32px rgba(13, 24, 41, 0.1);
+
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 16px;
+
+  --sans: 'Roboto', system-ui, 'Segoe UI', sans-serif;
+
+  color: var(--text);
+  background: var(--bg);
+}
+
+/* Neutralise index.css's dark scheme — see the header note. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #5b6472;
+    --text-h: #0b1524;
+    --bg: #ffffff;
+    --bg-alt: #f6f8fb;
+    --border: #e4e9f0;
+    --accent: #1b5fff;
+    --accent-bg: rgba(27, 95, 255, 0.08);
+    --success: #12805c;
+    --success-bg: rgba(18, 128, 92, 0.1);
+    --warning-bg: #fff4d6;
+    --warning-text: #8a5a00;
+    --shadow: 0 1px 2px rgba(13, 24, 41, 0.04), 0 1px 3px rgba(13, 24, 41, 0.06);
+  }
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* The reference sets headings noticeably heavier and tighter than body copy. */
+h1,
+h2,
+h3,
+h4 {
+  color: var(--text-h);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  margin: 0;
+}
+
+a {
+  color: var(--accent);
+}
+
+/* ── Shared section furniture ────────────────────────────────────
+   Every content band in the reference follows the same rhythm: a small
+   uppercase blue eyebrow, a large heading, then the content. */
+
+.section {
+  padding: 64px 0;
+}
+
+.section--alt {
+  background: var(--bg-alt);
+}
+
+.section__inner {
+  max-width: 1260px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.section__eyebrow {
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0 0 8px;
+}
+
+.section__title {
+  font-size: 32px;
+  margin: 0;
+}
+
+.section__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.section__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 14px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.section__link:hover {
+  text-decoration: underline;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────
+   Redefined here (index.css/app.css also define .button) so the reference's
+   pill-ish radius, weight, and blue win. */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 20px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.button--primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.button--primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.button--ghost {
+  background: var(--bg);
+  border-color: var(--border);
+  color: var(--text-h);
+}
+
+.button--ghost:hover:not(:disabled) {
+  background: var(--bg-alt);
+}
+
+/* For use on the dark/blue bands, where a white button is the primary. */
+.button--inverse {
+  background: #ffffff;
+  color: var(--accent);
+}
+
+.button--inverse:hover:not(:disabled) {
+  background: #eef3ff;
+}
+
+.button--outline-light {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.55);
+  color: #ffffff;
+}
+
+.button--outline-light:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.button--lg {
+  padding: 14px 26px;
+  font-size: 15px;
+}
+
+.button--block {
+  width: 100%;
+}
+
+.button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ── Badges ──────────────────────────────────────────────────── */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.badge--verified {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.badge--negotiable {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.badge--condition {
+  background: var(--bg-alt);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
