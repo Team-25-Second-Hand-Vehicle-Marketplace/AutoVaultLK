@@ -21,6 +21,7 @@ npm run migration:run
 npm run migration:revert
 npm run db:setup    # migration:run + grants
 npm run verify      # smoke-test all five service roles (requires repo root .env)
+npm run seed:dev    # local buyer / dealer / admin accounts (password: Password1)
 ```
 
 Keep `synchronize: false`, and run migrations once through the deployment pipeline.

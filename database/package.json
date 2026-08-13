@@ -10,7 +10,8 @@
     "migration:show": "npm run typeorm -- migration:show -d src/data-source.ts",
     "grants": "docker exec -i vehicle_marketplace_postgres psql -U marketplace -d vehicle_marketplace -f - < src/grants.sql",
     "db:setup": "npm run migration:run && npm run grants",
-    "verify": "node scripts/verify-roles.js"
+    "verify": "node scripts/verify-roles.js",
+    "seed:dev": "node scripts/seed-dev-users.js"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
