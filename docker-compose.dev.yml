@@ -1,5 +1,9 @@
-# Local development: Postgres + API gateway nginx shim.
+# Local development: API gateway nginx shim (Postgres is in docker-compose.yml).
 # Run NestJS services on the host (npm run start:dev) or add them to this file later.
+#
+# Linux: extra_hosts maps host.docker.internal -> host gateway IP so nginx can
+# reach services on localhost:3001-3005. Mac/Windows Docker Desktop do this
+# by default; Linux requires this line (or --add-host on manual docker run).
 
 services:
   gateway:
