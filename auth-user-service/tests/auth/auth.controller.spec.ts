@@ -28,6 +28,7 @@ describe('AuthController', () => {
     headers: {},
     ip: '127.0.0.1',
   } as never;
+  const res = {} as never;
 
   beforeEach(() => jest.clearAllMocks());
 
@@ -65,13 +66,16 @@ describe('AuthController', () => {
     const data = { email: 'admin@test.com', password: 'secret' };
     authService.loginAdmin.mockResolvedValue({ accessToken: 'admin-token' });
 
-    await expect(controller.loginAdmin(data, req, {} as never)).resolves.toEqual({
+    await expect(controller.loginAdmin(data, req, res)).resolves.toEqual({
       accessToken: 'admin-token',
     });
     expect(authService.loginAdmin).toHaveBeenCalledWith(
       data,
       expect.objectContaining({ ipAddress: '127.0.0.1' }),
     );
-    expect(refreshTokenCookieService.attachCookies).toHaveBeenCalled();
+    expect(refreshTokenCookieService.attachCookies).toHaveBeenCalledWith(
+      res,
+      { accessToken: 'admin-token' },
+    );
   });
 });
