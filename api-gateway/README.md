@@ -9,37 +9,102 @@ North-south and east-west API boundaries per the Software Architecture Document 
 
 JWT validation and RBAC run **inside each NestJS service** (SAD section 3.4.1). The gateway routes traffic only; it does not issue or verify tokens.
 
+## CORS (single source of truth)
+
+Browser CORS for the public API is defined once in **`config/cors.json`**. That file drives:
+
+| Consumer | How it is applied |
+|---|---|
+| **Local nginx** (`local/nginx.conf`) | `npm run sync:cors` writes the `# BEGIN CORS` block |
+| **OpenAPI / API Gateway import** (`openapi/public-api.yaml`) | `npm run sync:cors` updates `x-amazon-apigateway-cors` |
+| **Terraform (AWS)** | `modules/api-gateway/main.tf` reads `config/cors.json` via `jsondecode(file(...))` |
+
+After editing `config/cors.json`, run `npm run sync:cors` and `npm test` (the `cors-alignment` suite fails on drift).
+
+NestJS services use `CORS_ORIGINS` in `.env` for direct-to-service dev traffic; keep the first origin aligned with `config/cors.json` for local development.
+
 ## Route map (public)
 
-| Prefix | Service | Port (local) | Notes |
-|---|---|---|---|
-| `/auth/*` | auth-user-service | 3001 | Register/login public; other routes JWT-protected in service |
-| `/marketplace/*` | marketplace-service | 3002 | Browse/search public; mutations require dealer JWT |
-| `/ingest/*` | ingestion-service | 3003 | Business verified dealers only (not implemented yet) |
-| `/jobs/*` | ingestion-service | 3003 | Job status polling (not implemented yet) |
-| `/admin/*` | admin-service | 3004 | Administrator only |
-| `/notifications/*` | notification-service | 3005 | Internal/event-driven in MVP |
+| Prefix | Service | Port (local) | Upstream path | Notes |
+|---|---|---|---|---|
+| `/auth/*` | auth-user-service | 3001 | `/auth/*` (preserved) | Register/login; JWT-protected auth actions |
+| `/users/*` | auth-user-service | 3001 | `/users/*` (preserved) | User profile & account routes |
+| `/dealer-profiles/*` | auth-user-service | 3001 | `/dealer-profiles/*` (preserved) | Dealer profile management |
+| `/marketplace/*` | marketplace-service | 3002 | `/*` (**prefix stripped**) | Listings & marketplace dealer views |
+| `/ingest/*` | ingestion-service | 3003 | `/ingest/*` (preserved) | Stub — controllers not implemented yet |
+| `/jobs/*` | ingestion-service | 3003 | `/jobs/*` (preserved) | Stub — controllers not implemented yet |
+| `/admin/*` | admin-service | 3004 | `/admin/*` (preserved) | Stub — controllers not implemented yet |
+| `/notifications/*` | notification-service | 3005 | `/notifications/*` (preserved) | Stub — controllers not implemented yet |
 
-Gateway strips the **prefix** before forwarding. Example: `GET /marketplace/listings` → `marketplace-service:3002/listings`.
+### Prefix rewrite rules (`local/nginx.conf`)
+
+Only **`/marketplace/`** strips the gateway prefix before forwarding. All other public prefixes are **preserved** on the upstream service so they match NestJS `@Controller(...)` paths.
+
+| Client request | Forwarded to service |
+|---|---|
+| `POST /auth/login` | `auth-user-service:3001/auth/login` |
+| `GET /users/me` | `auth-user-service:3001/users/me` |
+| `GET /dealer-profiles/me` | `auth-user-service:3001/dealer-profiles/me` |
+| `GET /marketplace/listings` | `marketplace-service:3002/listings` |
+| `GET /marketplace/dealers/{id}/profile` | `marketplace-service:3002/dealers/{id}/profile` |
+| `POST /ingest/upload` | `ingestion-service:3003/ingest/upload` |
+| `GET /jobs/{jobId}` | `ingestion-service:3003/jobs/{jobId}` |
+| `GET /admin/dashboard` | `admin-service:3004/admin/dashboard` |
+
+`internal/*` routes are **not** on this public listener (see internal OpenAPI). Call services directly on their ports for east-west traffic in local dev.
 
 ## Internal routes (east-west)
 
-Defined in `openapi/internal-api.yaml`. Admin service calls auth-user-service for dealer approve/reject and user deactivate (ADR-005). Not exposed on the public nginx listener.
+Defined in `openapi/internal-api.yaml`. Current routes are **admin-service → auth-user-service** (dealer approve/reject, user deactivate per ADR-005). Not exposed on the public nginx listener.
+
+**ETL → marketplace (FR-14):** not an internal HTTP route. Ingestion Load writes directly to `marketplace.vehicles` via `MarketplaceVehiclesWriteAdapter` (ADR-002). Step Functions retry + DB upsert provide idempotency. A queue-based or internal bulk-API boundary may be revisited later if we need independent scaling; it is **out of scope for the current implementation**.
 
 Set `AUTH_SERVICE_INTERNAL_URL=http://localhost:3001` when running services on the host, or `http://auth-user-service:3001` inside Docker Compose.
 
 ## Local quick start
 
-1. Copy root `.env.example` to `.env` and fill secrets.
-2. Start Postgres: `docker compose up -d`
+Run from the **repo root** (two compose files — do not confuse them):
+
+1. Copy `.env.example` to `.env` and fill secrets.
+2. Start Postgres (`docker-compose.yml`):
+
+```powershell
+docker compose up -d
+```
+
 3. Start services on their ports (3001–3005).
-4. Start gateway shim:
+4. Start gateway shim (`docker-compose.dev.yml`):
 
 ```powershell
 docker compose -f docker-compose.dev.yml up gateway -d
 ```
 
 5. Frontend / API clients use `http://localhost:8080` as the base URL.
+
+### Linux: `host.docker.internal`
+
+`local/nginx.conf` forwards to NestJS services on the **host** at `host.docker.internal:3001–3005`. Docker Desktop on Mac/Windows defines that hostname automatically; **on Linux it does not**, unless you add it.
+
+| How you run the gateway | Linux setup |
+|---|---|
+| **`docker compose -f docker-compose.dev.yml up gateway`** (recommended) | **No extra steps** — `docker-compose.dev.yml` already sets `extra_hosts: host.docker.internal:host-gateway`. |
+| **Manual `docker run`** | Pass `--add-host=host.docker.internal:host-gateway` (same flag `scripts/validate-nginx.js` uses for CI). |
+| **nginx on the host** (not in Docker) | Replace upstream `host.docker.internal` with `127.0.0.1` in a local override, or run services in containers on the Docker network instead. |
+
+**Checklist for Linux:**
+
+1. Start NestJS services on the host (`npm run start:dev`) on ports **3001–3005**.
+2. Start the gateway via Compose (step 4 above) — do not omit `extra_hosts`.
+3. Smoke test: `curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/health` should return `200`.
+4. If upstreams return **502**, verify services listen on the host and that the gateway container resolves the hostname:
+
+```bash
+docker compose -f docker-compose.dev.yml exec gateway getent hosts host.docker.internal
+```
+
+You should see an IP (typically the Docker bridge gateway). If the name does not resolve, recreate the container with the compose file above — do not run a bare `docker run` without `--add-host`.
+
+**API Gateway tests on Linux:** use `npm run test:nginx` (runs `validate-nginx.js` with `--add-host=host.docker.internal:host-gateway`). Avoid `npm run test:nginx:unix` on Linux — that script omits the host mapping.
 
 ## OpenAPI specs
 
@@ -64,8 +129,18 @@ cd api-gateway
 $env:RUN_GATEWAY_E2E="true"; npm test -- gateway-health
 ```
 
-## AWS deployment
+## AWS deployment (scaffold only)
 
 Terraform module: `cloud-infrastructure/terraform/modules/api-gateway/`
 
-Wire Lambda ARNs per service when handlers are ready. Until then, `terraform validate` checks structure only.
+> **Traffic does not work in AWS after `terraform apply`.** The module intentionally provisions only HTTP APIs and stages (public + internal). Routes and backend integrations are **not** created yet — invoke URLs exist but return API Gateway **404** until wired.
+
+| What works | Where |
+|---|---|
+| Path proxy to NestJS services | Local nginx on port **8080** (`local/nginx.conf`) |
+| Route catalogue / contract | `openapi/public-api.yaml`, `openapi/internal-api.yaml` |
+| AWS resource shell + CORS | Terraform module (scaffold) |
+
+Next steps for AWS: deploy service backends, add `aws_apigatewayv2_route` / `aws_apigatewayv2_integration` resources (see commented example in `main.tf`), or import from OpenAPI. Module README: `cloud-infrastructure/terraform/modules/api-gateway/README.md`.
+
+`terraform validate` in CI checks HCL structure only — not live routing.

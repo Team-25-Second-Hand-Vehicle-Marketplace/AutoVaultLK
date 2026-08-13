@@ -18,13 +18,13 @@ variable "aws_region" {
 
 variable "cors_allow_origins" {
   type        = list(string)
-  description = "Browser origins allowed through the public API"
-  default     = ["http://localhost:5173"]
+  description = "Optional override for browser origins; defaults to api-gateway/config/cors.json allowOrigins"
+  default     = null
 }
 
-# Map route key -> Lambda invoke ARN (fill when service Lambdas are deployed)
+# Map route key -> Lambda invoke ARN (unused while module is scaffold-only)
 variable "public_lambda_integrations" {
   type        = map(string)
-  description = "HTTP API route integrations for north-south traffic"
+  description = "HTTP API route integrations for north-south traffic (not wired until scaffold is completed)"
   default     = {}
 }

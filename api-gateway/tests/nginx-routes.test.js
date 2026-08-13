@@ -1,4 +1,13 @@
 const { readText, SAD_PUBLIC_PREFIXES, INTERNAL_PREFIX } = require('./fixtures');
+const { PROXY_ROUTE_ALIGNMENT } = require('./proxy-route-alignment');
+
+function extractProxyPass(nginxConf, locationPrefix) {
+  const pattern = new RegExp(
+    `location\\s+${locationPrefix.replace(/\//g, '\\/')}[\\s\\S]*?proxy_pass\\s+http:\\/\\/([^;]+);`,
+  );
+  const match = nginxConf.match(pattern);
+  return match ? match[1] : null;
+}
 
 describe('local nginx.conf', () => {
   const nginxConf = readText('local/nginx.conf');
@@ -20,6 +29,12 @@ describe('local nginx.conf', () => {
     }
   });
 
+  it('proxies auth-user-service user and dealer profile routes', () => {
+    const locations = locationPrefixes();
+    expect(locations).toContain('/users/');
+    expect(locations).toContain('/dealer-profiles/');
+  });
+
   it('does not expose internal routes on the public listener', () => {
     expect(nginxConf).not.toMatch(new RegExp(`location\\s+/${INTERNAL_PREFIX}/`));
   });
@@ -30,10 +45,29 @@ describe('local nginx.conf', () => {
     );
   });
 
+  it('forwards users with /users/ path preserved', () => {
+    expect(nginxConf).toMatch(
+      /location\s+\/users\/[\s\S]*?proxy_pass\s+http:\/\/auth_user_service\/users\//,
+    );
+  });
+
+  it('forwards dealer profiles with /dealer-profiles/ path preserved', () => {
+    expect(nginxConf).toMatch(
+      /location\s+\/dealer-profiles\/[\s\S]*?proxy_pass\s+http:\/\/auth_user_service\/dealer-profiles\//,
+    );
+  });
+
   it('strips marketplace prefix when forwarding', () => {
     expect(nginxConf).toMatch(
       /location\s+\/marketplace\/[\s\S]*?proxy_pass\s+http:\/\/marketplace_service\//,
     );
+  });
+
+  it('aligns each location proxy_pass with implemented service controller paths', () => {
+    for (const route of PROXY_ROUTE_ALIGNMENT) {
+      const proxyTarget = extractProxyPass(nginxConf, route.location);
+      expect(proxyTarget).toBe(`${route.upstream}${route.proxyPath}`);
+    }
   });
 
   it('targets standard local service ports', () => {
