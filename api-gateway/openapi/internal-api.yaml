@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: AutoVault LK Internal API (East-West)
+  title: AutoVaultLK Internal API (East-West)
   description: |
     Service-to-service routes per SAD section 3.5.2 and ADR-005.
     Not exposed to browsers. Protected by INTERNAL_SERVICE_KEY or service JWT.
