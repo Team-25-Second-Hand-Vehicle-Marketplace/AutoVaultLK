@@ -62,7 +62,7 @@ paths:
   /internal/users/{id}/deactivate:
     post:
       tags: [internal-auth]
-      summary: Deactivate user account
+      summary: Deactivate user account (admin-service -> auth-user-service)
       operationId: deactivateUser
       parameters:
         - name: id
@@ -71,9 +71,22 @@ paths:
           schema:
             type: string
             format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [adminId]
+              properties:
+                adminId:
+                  type: string
+                  format: uuid
       responses:
         '200':
           description: User deactivated
+        '403':
+          description: Administrator cannot deactivate their own account
 
   /notifications/events:
     post:
