@@ -238,6 +238,51 @@ paths:
       responses:
         '200':
           description: Paginated, filtered listings
+  /marketplace/search/nl:
+    get:
+      tags:
+        - marketplace
+      summary: Natural-language search over LIVE listings (public — guest browsing)
+      description: |
+        Deterministic parser (FR-21) turns `q` into structured filters. When
+        parse confidence is below 0.6, unresolved tokens are sent to Groq
+        and whitelist-validated (FR-21.2 / FR-21.3) before merging. Groq
+        outages fall back to rules-only filters. Leftover semantic text is
+        embedded with all-MiniLM-L6-v2 and ranked with
+        `ORDER BY embedding <=> query_vector` (FR-22 / FR-23). If MiniLM is
+        unavailable, leftovers are ranked with pg_trgm `word_similarity` on
+        `search_text` (FR-24); a `search_text` WHERE is applied only when
+        the parser extracted no filters. Resolved make/model are never
+        re-matched via trigram.
+      operationId: nlSearch
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            maxLength: 500
+          description: Free-text query, e.g. "Toyata Corrola under 8.5m deisel"
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [relevance, price_asc, price_desc, year_desc, mileage_asc, newest]
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: facets
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Paginated listings plus parse metadata (confidence, unresolved tokens)
   /marketplace/search/facets:
     get:
       tags:
@@ -298,13 +343,118 @@ paths:
     get:
       tags:
         - admin
-      summary: Administrator dashboard aggregates
+      summary: Administrator dashboard aggregates (FR-48)
       operationId: adminDashboard
       security:
         - bearerAuth: []
       responses:
         '200':
-          description: Dashboard metrics
+          description: Dashboard metrics (LIVE listings, users, uploads, notification rates, recent audit)
+        '403':
+          description: Non-administrator JWT
+  /admin/users:
+    get:
+      tags:
+        - admin
+      summary: List users and dealer verification state
+      operationId: adminListUsers
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: verificationStatus
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, VERIFIED, REJECTED]
+      responses:
+        '200':
+          description: Users with optional dealer profile
+        '403':
+          description: Non-administrator JWT
+  /admin/uploads:
+    get:
+      tags:
+        - admin
+      summary: View upload jobs across all dealers (FR-44)
+      operationId: adminListUploads
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, PROCESSING, COMPLETED, FAILED, PARTIAL]
+      responses:
+        '200':
+          description: Upload jobs
+        '403':
+          description: Non-administrator JWT
+  /admin/reports:
+    get:
+      tags:
+        - admin
+      summary: Summary reports over a date range (FR-45)
+      operationId: adminReports
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Listing counts, upload volumes, error/partial rates, active users
+        '400':
+          description: Invalid date range
+        '403':
+          description: Non-administrator JWT
+  /admin/audit-logs:
+    get:
+      tags:
+        - admin
+      summary: Search administrative audit logs (FR-46, FR-47)
+      operationId: adminAuditLogs
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: action
+          in: query
+          schema:
+            type: string
+        - name: entityType
+          in: query
+          schema:
+            type: string
+        - name: actorId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Audit log rows
+        '403':
+          description: Non-administrator JWT
 components:
   securitySchemes:
     bearerAuth:
