@@ -30,7 +30,7 @@ locals {
 resource "aws_apigatewayv2_api" "public" {
   name          = "${var.project_name}-public-${var.environment}"
   protocol_type = "HTTP"
-  description   = "AutoVault LK public API Gateway"
+  description   = "AutoVaultLK public API Gateway"
 
   cors_configuration {
     allow_origins     = local.cors_allow_origins
@@ -61,7 +61,7 @@ resource "aws_apigatewayv2_stage" "public" {
 resource "aws_apigatewayv2_api" "internal" {
   name          = "${var.project_name}-internal-${var.environment}"
   protocol_type = "HTTP"
-  description   = "AutoVault LK internal service-to-service API"
+  description   = "AutoVaultLK internal service-to-service API"
 
   tags = {
     Project     = var.project_name

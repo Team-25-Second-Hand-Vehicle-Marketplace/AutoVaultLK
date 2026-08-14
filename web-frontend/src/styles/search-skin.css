@@ -1,0 +1,458 @@
+/* ==========================================================================
+   Search page + result card, restyled to the marketplace design reference.
+
+   Overrides the earlier index.css/app.css rules for these components rather
+   than editing them, keeping the redesign reviewable as one layer.
+   ========================================================================== */
+
+.search-page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+/* ── Toolbar ─────────────────────────────────────────────────── */
+
+.search-toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+/* Capped rather than flex:1 — at 1400px a full-bleed input dwarfs the sort
+   and filter controls beside it, and the header already carries a
+   full-width search field. */
+.search-toolbar__input {
+  flex: 1 1 320px;
+  max-width: 520px;
+  min-width: 220px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text-h);
+  font: inherit;
+  font-size: 14px;
+}
+
+.search-toolbar__input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.search-toolbar__filters-btn,
+.sort-dropdown select {
+  padding: 11px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text-h);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.search-toolbar__filters-btn:hover {
+  background: var(--bg-alt);
+}
+
+/* Sort sits at the far right, as in the reference's results header. */
+.sort-dropdown {
+  margin-left: auto;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────── */
+
+.filter-sidebar {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  align-self: start;
+  box-shadow: var(--shadow);
+}
+
+.filter-sidebar__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.filter-sidebar__header h2 {
+  font-size: 16px;
+}
+
+.link-button {
+  background: none;
+  border: 0;
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+.facet-group,
+.range-input,
+.preset-select,
+.make-select {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.facet-group legend,
+.range-input legend,
+.preset-select legend,
+.make-select legend {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-h);
+  padding: 0;
+  margin-bottom: 10px;
+}
+
+.facet-option {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 5px 0;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.facet-option:hover {
+  color: var(--text-h);
+}
+
+.facet-option input {
+  accent-color: var(--accent);
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+
+.facet-option--empty {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.facet-count {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.range-input__fields {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.range-input__fields input,
+.preset-select select {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text-h);
+  font: inherit;
+  font-size: 14px;
+}
+
+.range-input__fields input:focus,
+.preset-select select:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.toggle-filter {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.toggle-filter input {
+  accent-color: var(--accent);
+  width: 15px;
+  height: 15px;
+}
+
+.apply-filters-button {
+  width: 100%;
+}
+
+/* ── Chips ───────────────────────────────────────────────────── */
+
+.active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.active-filters__label {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.filter-chip {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--accent);
+  background: var(--accent-bg);
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.filter-chip--clear {
+  border-color: var(--border);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.result-count {
+  font-size: 14px;
+  color: var(--text);
+  margin-bottom: 14px;
+}
+
+/* ── Result cards ────────────────────────────────────────────── */
+
+.vehicle-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(268px, 1fr));
+  gap: 18px;
+}
+
+.vehicle-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.15s, transform 0.15s, border-color 0.15s;
+}
+
+.vehicle-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+  border-color: #d4dceb;
+}
+
+.vehicle-card__media {
+  position: relative;
+  background: var(--bg-alt);
+}
+
+.vehicle-card__image-placeholder {
+  aspect-ratio: 4 / 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #b6c0d1;
+}
+
+.vehicle-card__image-placeholder-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Circular white save button, floating top-right of the photo. */
+.vehicle-card__save {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 0;
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--text);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: color 0.15s, transform 0.15s;
+}
+
+.vehicle-card__save:hover {
+  transform: scale(1.07);
+  color: var(--danger);
+}
+
+.vehicle-card__save--active {
+  color: var(--danger);
+}
+
+.vehicle-card__body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.vehicle-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.vehicle-card__header h3 {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.vehicle-card__price {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: -0.02em;
+}
+
+/* Two-column spec grid separated by a hairline, as in the reference. */
+.vehicle-card__specs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 12px;
+  margin: 4px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.vehicle-card__specs dt {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.vehicle-card__specs dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.year-note {
+  font-weight: 400;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.vehicle-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 12px;
+  margin-top: auto;
+  border-top: 1px solid var(--border);
+}
+
+.vehicle-card__location {
+  font-size: 13px;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ── Pagination ──────────────────────────────────────────────── */
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 28px;
+  flex-wrap: wrap;
+}
+
+.pagination__nav,
+.pagination__page {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text-h);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 8px 12px;
+}
+
+.pagination__page {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+
+.pagination__nav:hover:not(:disabled),
+.pagination__page:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.pagination__page--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 700;
+}
+
+.pagination__nav:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── Relaxation notice ──────────────────────────────────────── */
+
+.relaxation-notice {
+  background: var(--warning-bg);
+  color: var(--warning-text);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-size: 14px;
+  margin-bottom: 14px;
+}
+
+/* ── Detail page price accent ───────────────────────────────── */
+
+.detail-summary__price {
+  color: var(--accent);
+}

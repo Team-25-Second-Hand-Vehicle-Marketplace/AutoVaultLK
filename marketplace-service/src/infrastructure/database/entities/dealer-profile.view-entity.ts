@@ -1,49 +1,43 @@
 import { Column, Entity, PrimaryColumn } from 'typeorm';
 
+export type DealerType = 'individual' | 'business';
+export type VerificationStatus = 'PENDING' | 'VERIFIED' | 'REJECTED';
+
 /**
- * Read-only projection of auth.dealer_profiles for listing enrichment
- * (FR-18.1). Mutations go through auth-user-service; marketplace holds
- * SELECT only (see database/src/grants.sql).
+ * Read-only projection of auth.dealer_profiles, owned by auth-user-service.
+ * Declared here only so marketplace can join on vehicles.dealer_id — this is
+ * what backs the `verifiedDealersOnly` search filter (plan-b §8: Plan B
+ * uniquely allows search to filter on dealer verification status).
+ * Never migrated by this service — database/ created the real table.
+ *
+ * marketplace_service_role holds only SELECT here (database/src/grants.sql).
+ *
+ * ⚠️ CROSS-SERVICE COUPLING (plan-b §risk-1): marketplace search reads
+ * `verification_status`. Renaming that column or altering its enum in
+ * auth-user-service breaks the verified-dealer filter silently — grep is the
+ * enforcement mechanism here, not the compiler. Verification-document columns
+ * are deliberately omitted: search never needs them.
  */
 @Entity({ schema: 'auth', name: 'dealer_profiles', synchronize: false })
 export class DealerProfileView {
+
+  // The table's primary key IS user_id — there is no separate id column.
+  // vehicles.dealer_id references auth.users(id), so this joins directly.
   @PrimaryColumn({ name: 'user_id', type: 'uuid' })
   userId: string;
 
-  @Column({ name: 'company_name', type: 'varchar', length: 255 })
-  companyName: string;
 
-  @Column({ name: 'contact_number', type: 'varchar', length: 50, nullable: true })
-  contactNumber: string | null;
-
-  @Column({ name: 'dealer_type', type: 'varchar' })
-  dealerType: string;
-
-  @Column({
-    name: 'business_registration_number',
-    type: 'varchar',
-    length: 500,
-  })
-  businessRegistrationNumber: string;
-
-  @Column({ name: 'business_address', type: 'varchar', length: 500 })
-  businessAddress: string;
+  @Column({ name: 'dealer_type', type: 'enum', enum: ['individual', 'business'] })
+  dealerType: DealerType;
 
   @Column({ type: 'varchar', length: 100 })
   city: string;
 
-  @Column({ name: 'verification_documents', type: 'jsonb' })
-  verificationDocuments: Record<string, unknown>;
-
-  @Column({ name: 'verification_status', type: 'varchar' })
-  verificationStatus: string;
-
-  @Column({ name: 'verified_by', type: 'uuid', nullable: true })
-  verifiedBy: string | null;
-
-  @Column({ name: 'verified_at', type: 'timestamptz', nullable: true })
-  verifiedAt: Date | null;
-
-  @Column({ name: 'created_at', type: 'timestamptz' })
-  createdAt: Date;
+  // Indexed by idx_dealer_profiles_verification_status (migration 15000).
+  @Column({
+    name: 'verification_status',
+    type: 'enum',
+    enum: ['PENDING', 'VERIFIED', 'REJECTED'],
+  })
+  verificationStatus: VerificationStatus;
 }
