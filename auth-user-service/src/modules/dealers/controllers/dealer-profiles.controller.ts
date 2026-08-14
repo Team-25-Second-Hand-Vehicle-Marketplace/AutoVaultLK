@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
 import { CreateDealerProfileDto } from '../dto/create-dealer-profile.dto';
 import { UpdateDealerProfileDto } from '../dto/update-dealer-profile.dto';
 import { DealerProfilesService } from '../services/dealer-profiles.service';
@@ -15,7 +15,7 @@ export class DealerProfilesController {
   }
 
   @Get(':userId')
-  findByUserId(@Param('userId') userId: string) {
+  findByUserId(@Param('userId', ParseUUIDPipe) userId: string) {
     return this.dealerProfilesService.findByUserId(userId);
   }
 
@@ -26,7 +26,7 @@ export class DealerProfilesController {
 
   @Patch(':userId')
   update(
-    @Param('userId') userId: string,
+    @Param('userId', ParseUUIDPipe) userId: string,
     @Body() data: UpdateDealerProfileDto,
   ) {
     return this.dealerProfilesService.update(userId, data);

@@ -63,12 +63,12 @@ export class AuthService {
         manager.create(DealerProfile, {
           userId: createdUser.id,
           dealerType: data.dealerType,
-          businessRegistrationNumber: data.businessRegistrationNumber,
+          businessRegistrationNumber: data.businessRegistrationNumber ?? '',
           businessAddress: data.businessAddress,
           city: data.city,
           verificationDocuments: data.verificationDocuments,
           companyName: data.companyName,
-          contactNumber: data.contactNumber,
+          contactNumber: data.contactNumber ?? null,
         }),
       );
 
