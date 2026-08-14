@@ -8,8 +8,14 @@ describe('AuthController', () => {
     loginAdmin: jest.fn(),
     refresh: jest.fn(),
     logout: jest.fn(),
+    logoutAllSessions: jest.fn(),
+    requestPasswordReset: jest.fn(),
   };
   const controller = new AuthController(authService as never);
+  const req = {
+    headers: {},
+    ip: '127.0.0.1',
+  } as never;
 
   beforeEach(() => jest.clearAllMocks());
 
@@ -17,10 +23,13 @@ describe('AuthController', () => {
     const data = { email: 'buyer@test.com', password: 'secret', name: 'Buyer' };
     authService.registerBuyer.mockResolvedValue({ user: { role: 'BUYER' } });
 
-    await expect(controller.registerBuyer(data)).resolves.toEqual({
+    await expect(controller.registerBuyer(data, req)).resolves.toEqual({
       user: { role: 'BUYER' },
     });
-    expect(authService.registerBuyer).toHaveBeenCalledWith(data);
+    expect(authService.registerBuyer).toHaveBeenCalledWith(
+      data,
+      expect.objectContaining({ ipAddress: '127.0.0.1' }),
+    );
   });
 
   it('routes dealer registration to the dealer flow', async () => {
@@ -33,17 +42,23 @@ describe('AuthController', () => {
     };
     authService.registerDealer.mockResolvedValue(pending);
 
-    await expect(controller.registerDealer(data)).resolves.toEqual(pending);
-    expect(authService.registerDealer).toHaveBeenCalledWith(data);
+    await expect(controller.registerDealer(data, req)).resolves.toEqual(pending);
+    expect(authService.registerDealer).toHaveBeenCalledWith(
+      data,
+      expect.objectContaining({ ipAddress: '127.0.0.1' }),
+    );
   });
 
   it('routes admin login separately', async () => {
     const data = { email: 'admin@test.com', password: 'secret' };
     authService.loginAdmin.mockResolvedValue({ accessToken: 'admin-token' });
 
-    await expect(controller.loginAdmin(data)).resolves.toEqual({
+    await expect(controller.loginAdmin(data, req)).resolves.toEqual({
       accessToken: 'admin-token',
     });
-    expect(authService.loginAdmin).toHaveBeenCalledWith(data);
+    expect(authService.loginAdmin).toHaveBeenCalledWith(
+      data,
+      expect.objectContaining({ ipAddress: '127.0.0.1' }),
+    );
   });
 });

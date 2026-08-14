@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import { NormalizeEmail } from '../../../common/validation/normalize-email.decorator';
 import { IsStrongPassword } from '../../../common/validation/password.decorator';
 import {
@@ -25,6 +25,11 @@ export class RegisterBuyerDto {
     message: `name must be at most ${PERSON_NAME_MAX} characters`,
   })
   name!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100, { message: 'deviceLabel must be at most 100 characters' })
+  deviceLabel?: string;
 }
 
 // Backward-compatible name for code that still imports RegisterDto.
