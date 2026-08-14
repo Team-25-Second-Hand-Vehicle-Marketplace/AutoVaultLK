@@ -21,4 +21,16 @@ describe('EmailTemplateService', () => {
       'documents',
     );
   });
+
+  it('renders upload-failed copy and falls back when the name is blank', () => {
+    const mail = templates.render('UPLOAD_FAILED', '  ', { fileName: 'stock.csv', reason: 'bad headers' });
+    expect(mail.subject).toMatch(/failed/i);
+    expect(mail.message).toContain('Hi there');
+    expect(mail.message).toContain('bad headers');
+  });
+
+  it('omits row counts when an upload completed without totals', () => {
+    const mail = templates.render('UPLOAD_COMPLETED', 'Amal', { fileName: 'stock.csv' });
+    expect(mail.message).toMatch(/pending review/i);
+  });
 });
