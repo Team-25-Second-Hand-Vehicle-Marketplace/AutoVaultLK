@@ -22,7 +22,6 @@ servers:
         default: ap-southeast-1
       stage:
         default: dev
-
 tags:
   - name: internal-auth
 
