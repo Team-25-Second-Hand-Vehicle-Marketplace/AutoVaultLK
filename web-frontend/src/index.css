@@ -99,18 +99,6 @@ h3 {
   flex-wrap: wrap;
 }
 
-.search-toolbar__input {
-  flex: 1;
-  min-width: 200px;
-  padding: 10px 14px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--bg);
-  color: var(--text-h);
-  font: inherit;
-  font-size: 14px;
-}
-
 .search-toolbar__filters-btn {
   padding: 10px 16px;
   border: 1px solid var(--border);
