@@ -22,10 +22,10 @@ describe('internal OpenAPI spec (ADR-005)', () => {
     expect(spec.paths['/internal/listings/bulk']).toBeUndefined();
   });
 
-  it('only uses /internal paths', () => {
+  it('documents east-west auth and notification routes', () => {
     for (const route of Object.keys(spec.paths)) {
-      expect(route.startsWith('/internal/')).toBe(true);
-      expect(pathPrefix(route)).toBe('internal');
+      const prefix = pathPrefix(route);
+      expect(['internal', 'notifications']).toContain(prefix);
     }
   });
 
@@ -33,6 +33,7 @@ describe('internal OpenAPI spec (ADR-005)', () => {
     expect(spec.paths['/internal/dealers/{id}/approve']).toBeDefined();
     expect(spec.paths['/internal/dealers/{id}/reject']).toBeDefined();
     expect(spec.paths['/internal/users/{id}/deactivate']).toBeDefined();
+    expect(spec.paths['/notifications/events']).toBeDefined();
   });
 
   it('documents service-to-service security scheme', () => {
@@ -46,7 +47,7 @@ describe('internal OpenAPI spec (ADR-005)', () => {
 describe('internal OpenAPI YAML structure', () => {
   it('loads without YAML errors', () => {
     const doc = loadYaml('openapi/internal-api.yaml');
-    expect(Object.keys(doc.paths).length).toBe(3);
+    expect(Object.keys(doc.paths).length).toBe(4);
   });
 
   it('server URL variables match servers.variables keys', () => {

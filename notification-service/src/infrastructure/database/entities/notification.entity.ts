@@ -6,6 +6,7 @@ export type NotificationType =
   | 'LISTING_APPROVED'
   | 'LISTING_REJECTED'
   | 'DEALER_VERIFIED'
+  | 'DEALER_REJECTED'
   | 'WELCOME'
   | 'PASSWORD_RESET';
 
@@ -36,6 +37,9 @@ export class Notification {
 
   @Column({ name: 'sent_at', type: 'timestamptz', nullable: true })
   sentAt: Date | null;
+
+  @Column({ name: 'idempotency_key', type: 'varchar', length: 128, unique: true, nullable: true })
+  idempotencyKey: string | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
