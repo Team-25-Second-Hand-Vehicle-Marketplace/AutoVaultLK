@@ -48,20 +48,11 @@ describe('toFilterSearchDto', () => {
     expect(dto.q).toBeUndefined();
   });
 
-  it('does not put semanticText into `q` when vector ranking will run', () => {
+  it('never puts leftover semanticText into keyword `q` (trigram/vector own that)', () => {
     const dto = toFilterSearchDto(parsed({ semanticText: 'red', unresolvedTokens: ['red'] }), {
       q: 'red toyota',
     });
     expect(dto.q).toBeUndefined();
-  });
-
-  it('uses leftover semanticText as keyword `q` only when MiniLM is unavailable', () => {
-    const dto = toFilterSearchDto(
-      parsed({ semanticText: 'red', unresolvedTokens: ['red'] }),
-      { q: 'red toyota' },
-      { keywordFallback: true },
-    );
-    expect(dto.q).toBe('red');
   });
 
   it('forwards page/sort/facets without treating them as parse tokens', () => {
@@ -127,14 +118,14 @@ describe('NlSearchService', () => {
     const result = await service.search({ q: 'Toyata Corrola under 8.5m deisel auto' });
 
     expect(filterSearch.search).toHaveBeenCalledTimes(1);
-    const [dto, log, queryEmbedding] = filterSearch.search.mock.calls[0];
+    const [dto, log, rank] = filterSearch.search.mock.calls[0];
     expect(dto.make).toEqual(['Toyota']);
     expect(dto.model).toEqual(['Corolla']);
     expect(dto.maxPrice).toBe(8_500_000);
     expect(dto.fuelType).toEqual(['DIESEL']);
     expect(dto.transmissionType).toEqual(['AUTOMATIC']);
     expect(dto.q).toBeUndefined();
-    expect(queryEmbedding).toBeUndefined();
+    expect(rank).toBeUndefined();
     expect(embeddings.embedQuery).not.toHaveBeenCalled();
     expect(log.rawText).toBe('Toyata Corrola under 8.5m deisel auto');
     expect(log.usedLlm).toBe(false);
@@ -144,6 +135,7 @@ describe('NlSearchService', () => {
     expect(result.parse.needsGroqFallback).toBe(false);
     expect(result.parse.usedGroqFallback).toBe(false);
     expect(result.parse.usedSemanticRanking).toBe(false);
+    expect(result.parse.usedTrigramFallback).toBe(false);
     expect(result.items).toEqual([]);
     expect(groqFallback.repair).toHaveBeenCalled();
   });
@@ -162,20 +154,37 @@ describe('NlSearchService', () => {
 
     expect(embeddings.embedQuery).toHaveBeenCalled();
     expect(result.parse.usedSemanticRanking).toBe(true);
-    const [dto, , queryEmbedding] = filterSearch.search.mock.calls[0];
+    expect(result.parse.usedTrigramFallback).toBe(false);
+    const [dto, , rank] = filterSearch.search.mock.calls[0];
     expect(dto.q).toBeUndefined();
-    expect(queryEmbedding).toHaveLength(EMBEDDING_DIMENSIONS);
+    expect(rank.queryEmbedding).toHaveLength(EMBEDDING_DIMENSIONS);
+    expect(rank.trigramQuery).toBeUndefined();
   });
 
-  it('falls back to keyword `q` when MiniLM cannot produce a vector', async () => {
+  it('ranks leftovers with pg_trgm among resolved filters when MiniLM is down', async () => {
+    const { service, filterSearch } = makeService({ embedQuery: async () => null });
+
+    const result = await service.search({ q: 'toyota leather' });
+
+    expect(result.parse.usedSemanticRanking).toBe(false);
+    expect(result.parse.usedTrigramFallback).toBe(true);
+    const [dto, , rank] = filterSearch.search.mock.calls[0];
+    expect(dto.make).toEqual(['Toyota']);
+    expect(dto.q).toBeUndefined();
+    expect(rank.trigramQuery).toContain('leather');
+    expect(rank.trigramWhere).toBeUndefined();
+  });
+
+  it('gates last-resort retrieval on search_text when nothing resolved and MiniLM is down', async () => {
     const { service, filterSearch } = makeService({ embedQuery: async () => null });
 
     const result = await service.search({ q: 'well maintained full option leather' });
 
-    expect(result.parse.usedSemanticRanking).toBe(false);
-    const [dto, , queryEmbedding] = filterSearch.search.mock.calls[0];
-    expect(dto.q).toContain('leather');
-    expect(queryEmbedding).toBeUndefined();
+    expect(result.parse.usedTrigramFallback).toBe(true);
+    const [dto, , rank] = filterSearch.search.mock.calls[0];
+    expect(dto.q).toBeUndefined();
+    expect(rank.trigramWhere).toBe(true);
+    expect(rank.trigramQuery).toContain('leather');
   });
 
   it('routes low-coverage queries through Groq and records usedLlm', async () => {

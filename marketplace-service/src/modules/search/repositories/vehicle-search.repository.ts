@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { BuiltFilterQuery, buildFilterQuery } from '../filters/filter-query.builder';
+import { appendTrigramWhere, type SearchRankOptions } from '../filters/search-rank';
 import { buildOrderBy } from '../filters/sort-clause';
 import { FilterSearchDto } from '../dto/filter-search.dto';
 import {
@@ -134,7 +135,7 @@ export class VehicleSearchRepository {
   async search(
     built: BuiltFilterQuery,
     dto: FilterSearchDto,
-    queryEmbedding?: number[],
+    rank?: SearchRankOptions,
   ): Promise<VehicleSearchResultDto[]> {
     const { from, where, params } = this.buildFromAndWhere(
       built,
@@ -145,9 +146,11 @@ export class VehicleSearchRepository {
     const offset = ((dto.page ?? 1) - 1) * limit;
 
     const queryParams = [...params];
+    const gatedWhere = appendTrigramWhere(where, queryParams, rank);
     const sort = buildOrderBy(dto.sort, queryParams, {
       keyword: dto.q,
-      queryEmbedding,
+      queryEmbedding: rank?.queryEmbedding,
+      trigramQuery: rank?.trigramQuery,
     });
     queryParams.push(limit, offset);
     const limitIdx = queryParams.length - 1;
@@ -156,7 +159,7 @@ export class VehicleSearchRepository {
     const rows: VehicleRow[] = await this.dataSource.query(
       `SELECT ${SELECT_COLUMNS}
        FROM ${from}
-       WHERE ${where}
+       WHERE ${gatedWhere}
        ORDER BY ${sort}
        LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
       queryParams,
@@ -165,11 +168,17 @@ export class VehicleSearchRepository {
     return rows.map((row) => this.mapRow(row));
   }
 
-  async count(built: BuiltFilterQuery, verifiedDealersOnly?: boolean): Promise<number> {
+  async count(
+    built: BuiltFilterQuery,
+    verifiedDealersOnly?: boolean,
+    rank?: SearchRankOptions,
+  ): Promise<number> {
     const { from, where, params } = this.buildFromAndWhere(built, verifiedDealersOnly);
+    const queryParams = [...params];
+    const gatedWhere = appendTrigramWhere(where, queryParams, rank);
     const [{ count }] = await this.dataSource.query(
-      `SELECT COUNT(*) AS count FROM ${from} WHERE ${where}`,
-      params,
+      `SELECT COUNT(*) AS count FROM ${from} WHERE ${gatedWhere}`,
+      queryParams,
     );
     return parseInt(count, 10);
   }
