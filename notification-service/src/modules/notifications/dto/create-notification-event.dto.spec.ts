@@ -25,4 +25,15 @@ describe('CreateNotificationEventDto', () => {
       expect(errors.some((e) => e.property === 'type')).toBe(true);
     }
   });
+
+  it('rejects a missing userId, short idempotency key, and non-object payload', async () => {
+    const missingUser = await check({ type: 'DEALER_VERIFIED', idempotencyKey: 'dealer-verified-u1' });
+    expect(missingUser.some((e) => e.property === 'userId')).toBe(true);
+
+    const shortKey = await check({ ...valid, idempotencyKey: 'short' });
+    expect(shortKey.some((e) => e.property === 'idempotencyKey')).toBe(true);
+
+    const badPayload = await check({ ...valid, payload: 'not-an-object' });
+    expect(badPayload.some((e) => e.property === 'payload')).toBe(true);
+  });
 });
