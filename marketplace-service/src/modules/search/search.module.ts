@@ -7,12 +7,14 @@ import { VehicleDictionaryRepository } from './repositories/vehicle-dictionary.r
 import { VehicleSearchRepository } from './repositories/vehicle-search.repository';
 import { GroqClient } from './groq/groq-client';
 import { GroqFallbackService } from './groq/groq-fallback.service';
+import { QueryEmbeddingService } from './services/query-embedding.service';
 
 @Module({
   controllers: [SearchController],
   providers: [
     FilterSearchService,
     NlSearchService,
+    QueryEmbeddingService,
     SearchOptionsService,
     VehicleDictionaryRepository,
     VehicleSearchRepository,
