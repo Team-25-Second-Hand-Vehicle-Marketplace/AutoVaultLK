@@ -1,0 +1,23 @@
+process.env.NODE_ENV = 'test';
+process.env.PORT = '3099';
+process.env.AUTH_DATABASE_URL =
+  'postgresql://auth_service_role:dev_auth@localhost:5433/vehicle_marketplace';
+process.env.JWT_ACCESS_SECRET = 'e2e-test-jwt-access-secret-32chars!!';
+process.env.JWT_ISSUER = 'autovault-lk-auth';
+process.env.JWT_AUDIENCE = 'autovault-lk-api';
+process.env.JWT_ALGORITHM = 'HS256';
+process.env.JWT_ACCESS_EXPIRES_IN = '15m';
+process.env.JWT_REFRESH_EXPIRES_IN = '7d';
+process.env.AUTH_REFRESH_TOKEN_IN_BODY = 'true';
+process.env.AUTH_USE_REFRESH_COOKIES = 'false';
+process.env.AUTH_RETURN_VERIFICATION_TOKEN = 'true';
+process.env.AUTH_RETURN_PASSWORD_RESET_TOKEN = 'true';
+process.env.AUTH_LOGIN_MAX_ATTEMPTS = '5';
+process.env.AUTH_LOGIN_LOCKOUT_MINUTES = '15';
+process.env.AUTH_LOGIN_WINDOW_MINUTES = '15';
+process.env.AUTH_REGISTER_MAX_PER_IP = '5';
+process.env.AUTH_PROGRESSIVE_DELAY_BASE_MS = '0';
+process.env.AUTH_PROGRESSIVE_DELAY_MAX_MS = '0';
+process.env.CORS_ORIGINS = 'http://localhost:5173';
+process.env.COOKIE_SECURE = 'false';
+process.env.DISABLE_VERBOSE_ERRORS = 'false';

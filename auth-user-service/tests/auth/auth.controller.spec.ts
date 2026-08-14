@@ -10,6 +10,10 @@ describe('AuthController', () => {
     logout: jest.fn(),
     logoutAllSessions: jest.fn(),
     requestPasswordReset: jest.fn(),
+    confirmPasswordReset: jest.fn(),
+    changePassword: jest.fn(),
+    verifyEmail: jest.fn(),
+    resendVerificationEmail: jest.fn(),
   };
   const refreshTokenCookieService = {
     attachCookies: jest.fn((_res, payload) => payload),
