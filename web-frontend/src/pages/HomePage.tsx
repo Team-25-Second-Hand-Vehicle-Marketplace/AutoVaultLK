@@ -312,7 +312,7 @@ export function HomePage() {
         <div className="cta-band__inner">
           <h2>Ready to sell your vehicle?</h2>
           <p>
-            Join the dealers already listing on AutoMarket. Registration takes a few minutes.
+            Join the dealers already listing on AutoVaultLK. Registration takes a few minutes.
           </p>
           <div className="cta-band__actions">
             <Link to="/dealer/register" className="button button--inverse button--lg">

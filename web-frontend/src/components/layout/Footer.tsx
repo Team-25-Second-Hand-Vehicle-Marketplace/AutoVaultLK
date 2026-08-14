@@ -49,7 +49,7 @@ export function Footer() {
       </div>
 
       <div className="site-footer__bar">
-        <span>© {new Date().getFullYear()} AutoMarket</span>
+        <span>© {new Date().getFullYear()} AutoVaultLK</span>
         <span className="site-footer__note">
           A university project build — listings and dealers are seeded sample data.
         </span>

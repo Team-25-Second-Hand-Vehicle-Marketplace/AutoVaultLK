@@ -171,7 +171,7 @@ export function DealerLoginPage() {
           </p>
 
           <p className="dealer-auth__back">
-            <Link to="/">← Back to AutoMarket</Link>
+            <Link to="/">← Back to AutoVaultLK</Link>
           </p>
         </div>
       </main>
