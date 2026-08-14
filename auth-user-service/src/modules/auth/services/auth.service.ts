@@ -30,6 +30,7 @@ import {
   AuthAbuseProtectionService,
   InvalidCredentialsError,
 } from './auth-abuse-protection.service';
+import { EmailVerificationService } from './email-verification.service';
 import { SessionMetadata } from '../types/session-metadata.type';
 
 type AuthUser = Pick<User, 'id' | 'email' | 'name' | 'role' | 'isActive'>;
@@ -41,6 +42,7 @@ export class AuthService {
     private readonly dealerProfilesRepository: DealerProfilesRepository,
     private readonly refreshTokensRepository: RefreshTokensRepository,
     private readonly authAbuseProtection: AuthAbuseProtectionService,
+    private readonly emailVerificationService: EmailVerificationService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly dataSource: DataSource,
@@ -70,6 +72,8 @@ export class AuthService {
       passwordHash: await bcrypt.hash(data.password, 12),
       name: data.name,
       role: 'BUYER',
+      isActive: false,
+      emailVerifiedAt: null,
     });
 
     await this.authAbuseProtection.recordRegistrationAttempt(
@@ -79,14 +83,14 @@ export class AuthService {
       { success: true, userId: user.id },
     );
 
-    const tokens = await this.issueTokenPair(user, {
-      ...session,
-      deviceLabel: data.deviceLabel ?? session.deviceLabel ?? null,
-    });
+    const verification = await this.emailVerificationService.issueToken(user);
 
     return {
       message: AUTH_SECURITY_MESSAGES.REGISTRATION_RECEIVED,
-      ...tokens,
+      emailVerificationRequired: true,
+      ...(verification.includeInResponse
+        ? { verificationToken: verification.rawToken }
+        : {}),
     };
   }
 
@@ -121,6 +125,7 @@ export class AuthService {
           name: data.name,
           role: 'DEALER',
           isActive: false,
+          emailVerifiedAt: null,
         }),
       );
 
@@ -147,12 +152,29 @@ export class AuthService {
       { success: true, userId: user.id },
     );
 
+    const verification = await this.emailVerificationService.issueToken(user);
+
     return {
       message:
-        'Registration submitted. Your account is pending administrator approval.',
+        'Registration submitted. Please verify your email address. Your dealer account will remain pending administrator approval after verification.',
       user: this.toSafeUser(user),
+      emailVerificationRequired: true,
       verificationStatus: VerificationStatus.PENDING,
+      ...(verification.includeInResponse
+        ? { verificationToken: verification.rawToken }
+        : {}),
     };
+  }
+
+  async verifyEmail(token: string) {
+    return this.emailVerificationService.verifyEmail(token);
+  }
+
+  async resendVerificationEmail(
+    email: string,
+    session: SessionMetadata = {},
+  ) {
+    return this.emailVerificationService.resendVerification(email, session);
   }
 
   async login(data: LoginDto, session: SessionMetadata = {}) {
@@ -243,7 +265,7 @@ export class AuthService {
       }
 
       const user = await this.usersRepository.findById(storedToken.userId);
-      if (!user || !user.isActive) {
+      if (!user || !user.isActive || !user.emailVerifiedAt) {
         throw new UnauthorizedException(AUTH_SECURITY_MESSAGES.INVALID_REFRESH_TOKEN);
       }
 
@@ -319,6 +341,10 @@ export class AuthService {
 
     if (!options.adminOnly && user.role === 'ADMIN') {
       throw new InvalidCredentialsError();
+    }
+
+    if (user.role !== 'ADMIN' && !user.emailVerifiedAt) {
+      throw new UnauthorizedException(AUTH_SECURITY_MESSAGES.EMAIL_NOT_VERIFIED);
     }
 
     if (!user.isActive) {
@@ -456,6 +482,10 @@ export class AuthService {
   private async throwInactiveAccountError(user: User): Promise<never> {
     if (user.role === 'DEALER') {
       const profile = await this.dealerProfilesRepository.findByUserId(user.id);
+
+      if (!user.emailVerifiedAt) {
+        throw new UnauthorizedException(AUTH_SECURITY_MESSAGES.EMAIL_NOT_VERIFIED);
+      }
 
       if (profile?.verificationStatus === VerificationStatus.PENDING) {
         throw new UnauthorizedException(
