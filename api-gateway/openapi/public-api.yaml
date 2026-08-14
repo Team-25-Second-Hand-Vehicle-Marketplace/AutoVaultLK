@@ -247,8 +247,11 @@ paths:
         Deterministic parser (FR-21) turns `q` into structured filters. When
         parse confidence is below 0.6, unresolved tokens are sent to Groq
         and whitelist-validated (FR-21.2 / FR-21.3) before merging. Groq
-        outages fall back to rules-only filters. Leftover tokens are applied
-        as a keyword (`search_vector`) match until pgvector ranking lands.
+        outages fall back to rules-only filters. Leftover semantic text is
+        embedded with all-MiniLM-L6-v2 and ranked with
+        `ORDER BY embedding <=> query_vector` (FR-22 / FR-23). If MiniLM is
+        unavailable, leftover tokens fall back to a keyword (`search_vector`)
+        match.
       operationId: nlSearch
       parameters:
         - name: q
