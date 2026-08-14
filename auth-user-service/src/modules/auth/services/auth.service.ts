@@ -247,7 +247,10 @@ export class AuthService {
     }
   }
 
-  async refresh(data: RefreshTokenDto, session: SessionMetadata = {}) {
+  async refresh(
+    data: RefreshTokenDto & { refreshToken: string },
+    session: SessionMetadata = {},
+  ) {
     await this.authAbuseProtection.assertRefreshAllowed(session);
 
     try {
@@ -287,7 +290,7 @@ export class AuthService {
       return tokens;
     } catch (error) {
       if (error instanceof UnauthorizedException) {
-        return this.authAbuseProtection.recordRefreshFailure(
+        await this.authAbuseProtection.recordRefreshFailure(
           session,
           'invalid_refresh_token',
         );
@@ -335,7 +338,7 @@ export class AuthService {
     );
   }
 
-  async logout(data: RefreshTokenDto) {
+  async logout(data: RefreshTokenDto & { refreshToken: string }) {
     const tokenHash = this.hashRefreshToken(data.refreshToken);
     const storedToken = await this.refreshTokensRepository.findActiveByHash(
       tokenHash,
