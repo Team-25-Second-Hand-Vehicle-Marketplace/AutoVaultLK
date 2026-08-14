@@ -50,6 +50,21 @@ export class UsersService {
     return this.toPublicUser(updated);
   }
 
+  async deactivate(userId: string, adminId: string) {
+    if (adminId === userId) {
+      throw new ForbiddenException(
+        'Administrators cannot change their own role or account status',
+      );
+    }
+
+    const admin = await this.usersRepository.findById(adminId);
+    if (!admin || admin.role !== 'ADMIN') {
+      throw new NotFoundException(`Administrator with ID ${adminId} was not found`);
+    }
+
+    return this.adminUpdate(userId, { isActive: false });
+  }
+
   private toPublicUser(user: User): PublicUser {
     const {
       passwordHash: _passwordHash,
