@@ -244,10 +244,11 @@ paths:
         - marketplace
       summary: Natural-language search over LIVE listings (public — guest browsing)
       description: |
-        Deterministic parser (FR-21) turns `q` into structured filters, then
-        reuses the filter-search path. Groq fallback and pgvector ranking are
-        not invoked on this route yet; leftover tokens are applied as a
-        keyword (`search_vector`) match.
+        Deterministic parser (FR-21) turns `q` into structured filters. When
+        parse confidence is below 0.6, unresolved tokens are sent to Groq
+        and whitelist-validated (FR-21.2 / FR-21.3) before merging. Groq
+        outages fall back to rules-only filters. Leftover tokens are applied
+        as a keyword (`search_vector`) match until pgvector ranking lands.
       operationId: nlSearch
       parameters:
         - name: q
