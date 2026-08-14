@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, Logger } from '@nestjs/common';
 import { AdminMutationsService } from './admin-mutations.service';
 import type { AuthenticatedUser } from '../../auth/types/authenticated-user.type';
 
@@ -66,5 +66,31 @@ describe('AdminMutationsService', () => {
     expect(auditLogs.append).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'user.deactivated', entityId: 'user-1' }),
     );
+  });
+
+  it('writes dealer.rejected and emits DEALER_REJECTED after Auth reject succeeds', async () => {
+    const { service, auth, auditLogs, notifications } = makeService();
+    auth.rejectDealer.mockResolvedValue({ userId: 'dealer-1', verificationStatus: 'REJECTED' });
+
+    await service.rejectDealer('dealer-1', actor, null);
+
+    expect(auditLogs.append).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'dealer.rejected', entityId: 'dealer-1' }),
+    );
+    expect(notifications.emit).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'DEALER_REJECTED', userId: 'dealer-1' }),
+    );
+  });
+
+  it('still returns after Auth success if notification emit fails', async () => {
+    jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    const { service, auth, auditLogs, notifications } = makeService();
+    auth.approveDealer.mockResolvedValue({ userId: 'dealer-1', verificationStatus: 'VERIFIED' });
+    notifications.emit.mockRejectedValue(new Error('notification down'));
+
+    await expect(service.approveDealer('dealer-1', actor, null)).resolves.toMatchObject({
+      audit: { id: 'audit-1' },
+    });
+    expect(auditLogs.append).toHaveBeenCalled();
   });
 });
