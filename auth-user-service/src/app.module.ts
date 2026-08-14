@@ -45,6 +45,9 @@ import { UsersModule } from './modules/users/users.module';
         AUTH_RETURN_VERIFICATION_TOKEN: Joi.boolean().default(false),
         AUTH_RESEND_VERIFICATION_MAX_PER_EMAIL: Joi.number().integer().min(1).max(20).default(3),
         AUTH_RESEND_VERIFICATION_WINDOW_MINUTES: Joi.number().integer().min(1).max(1440).default(60),
+        PASSWORD_RESET_EXPIRES_MINUTES: Joi.number().integer().min(5).max(1440).default(60),
+        PASSWORD_HISTORY_COUNT: Joi.number().integer().min(1).max(24).default(5),
+        AUTH_RETURN_PASSWORD_RESET_TOKEN: Joi.boolean().default(false),
         INTERNAL_SERVICE_KEY: Joi.string().min(16).required(),
       }),
       validationOptions: {
