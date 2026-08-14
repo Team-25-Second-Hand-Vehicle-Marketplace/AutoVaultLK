@@ -40,4 +40,24 @@ describe('RolesGuard (admin-service)', () => {
 
     expect(guard.canActivate(context)).toBe(true);
   });
+
+  it('returns 403 for a BUYER JWT on ADMIN routes', () => {
+    jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(['ADMIN']);
+    const context = createContext({
+      id: 'b1',
+      email: 'buyer@test.com',
+      role: 'BUYER',
+    });
+
+    expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
+  });
+
+  it('allows access when no roles are required', () => {
+    jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(undefined);
+    expect(
+      guard.canActivate(
+        createContext({ id: 'd1', email: 'dealer@test.com', role: 'DEALER' }),
+      ),
+    ).toBe(true);
+  });
 });
