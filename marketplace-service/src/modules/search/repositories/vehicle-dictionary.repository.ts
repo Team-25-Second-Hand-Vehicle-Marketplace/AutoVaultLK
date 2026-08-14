@@ -89,6 +89,16 @@ export class VehicleDictionaryRepository {
 
   private cache: DictionaryCache | null = null;
   /**
+   * Set by invalidate() to force the next read to reload.
+   *
+   * Kept separate from nulling `cache`, because `cache` doubles as the
+   * fallback the error handler serves when a reload fails. Discarding it on
+   * invalidate would mean an invalidate followed by a failed reload returns
+   * an empty dictionary — silently disabling every parser stage — which is
+   * exactly the outcome the stale-serve behaviour exists to prevent.
+   */
+  private stale = false;
+  /**
    * De-duplicates concurrent loads. Without it, N requests arriving on a cold
    * cache each fire their own dictionary query; with it they all await the
    * same promise.
@@ -97,7 +107,7 @@ export class VehicleDictionaryRepository {
 
   async getCache(): Promise<DictionaryCache> {
     const cached = this.cache;
-    if (cached && Date.now() - cached.loadedAt < CACHE_TTL_MS) {
+    if (cached && !this.stale && Date.now() - cached.loadedAt < CACHE_TTL_MS) {
       return cached;
     }
 
@@ -106,6 +116,7 @@ export class VehicleDictionaryRepository {
     this.inFlight = this.load()
       .then((loaded) => {
         this.cache = loaded;
+        this.stale = false;
         return loaded;
       })
       .catch((error) => {
@@ -124,9 +135,14 @@ export class VehicleDictionaryRepository {
     return this.inFlight;
   }
 
-  /** Drops the cache so the next read reloads. For seeds, admin edits, tests. */
+  /**
+   * Forces the next read to reload. For seeds, admin edits, and tests.
+   *
+   * Marks the cache stale rather than dropping it, so it remains available as
+   * the fallback if that reload fails.
+   */
   invalidate(): void {
-    this.cache = null;
+    this.stale = true;
   }
 
   private async load(): Promise<DictionaryCache> {
