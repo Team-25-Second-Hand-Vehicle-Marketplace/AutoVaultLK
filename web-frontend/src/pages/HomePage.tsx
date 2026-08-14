@@ -106,7 +106,7 @@ export function HomePage() {
                   </svg>
                   <input
                     type="search"
-                    placeholder="Make, model, or keyword…"
+                    placeholder="Try “Toyata Corrola under 8.5m deisel”…"
                     aria-label="Search vehicles"
                     value={keyword}
                     onChange={(e) => setKeyword(e.target.value)}

@@ -62,7 +62,7 @@ export function Header() {
           </svg>
           <input
             type="search"
-            placeholder="Search by make, model, or keyword…"
+            placeholder="Try “Toyata Corrola under 8.5m deisel”…"
             aria-label="Search vehicles"
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}

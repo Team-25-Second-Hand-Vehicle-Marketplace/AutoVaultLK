@@ -12,10 +12,9 @@ interface Props {
 }
 
 /**
- * Top toolbar: free-text keyword search (goes straight to the `q` /
- * tsvector filter, applied immediately on submit — not staged like the
- * sidebar), a Filters toggle for collapsing the sidebar on narrow screens,
- * and sort. Matches the design's top row above the results grid.
+ * Top toolbar: free-text NL search (GET /search/nl on submit — not staged
+ * like the sidebar), a Filters toggle for collapsing the sidebar on narrow
+ * screens, and sort. Matches the design's top row above the results grid.
  */
 export function SearchToolbar({
   q,
@@ -40,7 +39,7 @@ export function SearchToolbar({
       <input
         type="search"
         className="search-toolbar__input"
-        placeholder="Search by make, model, or keyword…"
+        placeholder="Try “Toyata Corrola under 8.5m deisel”…"
         value={keyword}
         onChange={(e) => setKeyword(e.target.value)}
       />
