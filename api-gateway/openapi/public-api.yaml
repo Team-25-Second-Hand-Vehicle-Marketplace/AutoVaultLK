@@ -250,8 +250,10 @@ paths:
         outages fall back to rules-only filters. Leftover semantic text is
         embedded with all-MiniLM-L6-v2 and ranked with
         `ORDER BY embedding <=> query_vector` (FR-22 / FR-23). If MiniLM is
-        unavailable, leftover tokens fall back to a keyword (`search_vector`)
-        match.
+        unavailable, leftovers are ranked with pg_trgm `word_similarity` on
+        `search_text` (FR-24); a `search_text` WHERE is applied only when
+        the parser extracted no filters. Resolved make/model are never
+        re-matched via trigram.
       operationId: nlSearch
       parameters:
         - name: q

@@ -37,7 +37,7 @@ export class SearchController {
 
   // Free-text path — SAD 4.1.4 / FR-21. Parser emits a FilterSearchDto,
   // Groq fills unresolved tokens when confidence < 0.6; leftover
-  // semanticText is embedded with MiniLM and ranked via pgvector.
+  // semanticText is ranked with MiniLM/pgvector, or pg_trgm last-resort.
   @Get('nl')
   async nlSearch(@Query() dto: NlSearchDto): Promise<NlSearchResponseDto> {
     return this.nlSearchService.search(dto);
