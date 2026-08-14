@@ -22,6 +22,8 @@ import {
 } from '../constants/auth-security.constants';
 import { LoginDto } from '../dto/login.dto';
 import { PasswordResetRequestDto } from '../dto/password-reset-request.dto';
+import { PasswordResetConfirmDto } from '../dto/password-reset-confirm.dto';
+import { ChangePasswordDto } from '../dto/change-password.dto';
 import { RefreshTokenDto } from '../dto/refresh-token.dto';
 import { RegisterBuyerDto } from '../dto/register-buyer.dto';
 import { RegisterDealerDto } from '../dto/register-dealer.dto';
@@ -31,6 +33,7 @@ import {
   InvalidCredentialsError,
 } from './auth-abuse-protection.service';
 import { EmailVerificationService } from './email-verification.service';
+import { PasswordService } from './password.service';
 import { SessionMetadata } from '../types/session-metadata.type';
 
 type AuthUser = Pick<User, 'id' | 'email' | 'name' | 'role' | 'isActive'>;
@@ -43,6 +46,7 @@ export class AuthService {
     private readonly refreshTokensRepository: RefreshTokensRepository,
     private readonly authAbuseProtection: AuthAbuseProtectionService,
     private readonly emailVerificationService: EmailVerificationService,
+    private readonly passwordService: PasswordService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly dataSource: DataSource,
@@ -299,10 +303,35 @@ export class AuthService {
     const email = data.email.trim().toLowerCase();
     await this.authAbuseProtection.assertPasswordResetAllowed(email, session);
     const user = await this.usersRepository.findByEmail(email);
-    return this.authAbuseProtection.recordPasswordResetRequest(
+
+    if (user) {
+      await this.authAbuseProtection.recordPasswordResetRequest(
+        email,
+        session,
+        user.id,
+      );
+      await this.authAbuseProtection.simulateRegistrationProcessing();
+      return this.passwordService.requestResetResponse(user);
+    }
+
+    await this.authAbuseProtection.recordPasswordResetRequest(
       email,
       session,
-      user?.id ?? null,
+      null,
+    );
+    await this.authAbuseProtection.simulateRegistrationProcessing();
+    return this.passwordService.requestResetResponse(null);
+  }
+
+  async confirmPasswordReset(data: PasswordResetConfirmDto) {
+    return this.passwordService.confirmReset(data.token, data.newPassword);
+  }
+
+  async changePassword(userId: string, data: ChangePasswordDto) {
+    return this.passwordService.changePassword(
+      userId,
+      data.currentPassword,
+      data.newPassword,
     );
   }
 

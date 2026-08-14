@@ -26,4 +26,9 @@ export const AUTH_SECURITY_MESSAGES = {
   EMAIL_VERIFIED: 'Email address verified successfully.',
   RESEND_VERIFICATION_RECEIVED:
     'If this email is registered and not yet verified, a new verification link will be sent.',
+  INVALID_RESET_TOKEN: 'Invalid or expired password reset token',
+  PASSWORD_RESET_COMPLETE: 'Password has been reset successfully.',
+  PASSWORD_CHANGED: 'Password changed successfully.',
+  CURRENT_PASSWORD_INCORRECT: 'Current password is incorrect',
+  PASSWORD_REUSED: 'You cannot reuse a recent password',
 } as const;

@@ -51,6 +51,11 @@ describe('AuthService refresh token rotation', () => {
     verifyEmail: jest.fn(),
     resendVerification: jest.fn(),
   };
+  const passwordService = {
+    requestResetResponse: jest.fn(),
+    confirmReset: jest.fn(),
+    changePassword: jest.fn(),
+  };
   const jwtService = {
     signAsync: jest.fn().mockResolvedValue('access-token'),
   };
@@ -86,6 +91,7 @@ describe('AuthService refresh token rotation', () => {
     refreshTokensRepository as never,
     authAbuseProtection as never,
     emailVerificationService as never,
+    passwordService as never,
     jwtService as never,
     configService as unknown as ConfigService,
     dataSource as unknown as DataSource,

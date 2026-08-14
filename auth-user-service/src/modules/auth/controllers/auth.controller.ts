@@ -16,6 +16,8 @@ import { LoginDto } from '../dto/login.dto';
 import { RefreshTokenDto } from '../dto/refresh-token.dto';
 import { RegisterBuyerDto } from '../dto/register-buyer.dto';
 import { PasswordResetRequestDto } from '../dto/password-reset-request.dto';
+import { ChangePasswordDto } from '../dto/change-password.dto';
+import { PasswordResetConfirmDto } from '../dto/password-reset-confirm.dto';
 import { RegisterDealerDto } from '../dto/register-dealer.dto';
 import { ResendVerificationDto } from '../dto/resend-verification.dto';
 import { VerifyEmailDto } from '../dto/verify-email.dto';
@@ -89,6 +91,34 @@ export class AuthController {
       data,
       extractSessionMetadata(req),
     );
+  }
+
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  forgotPassword(
+    @Body() data: PasswordResetRequestDto,
+    @Req() req: Request,
+  ) {
+    return this.authService.requestPasswordReset(
+      data,
+      extractSessionMetadata(req),
+    );
+  }
+
+  @Post('password-reset/confirm')
+  @HttpCode(HttpStatus.OK)
+  confirmPasswordReset(@Body() data: PasswordResetConfirmDto) {
+    return this.authService.confirmPasswordReset(data);
+  }
+
+  @Post('password/change')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  changePassword(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() data: ChangePasswordDto,
+  ) {
+    return this.authService.changePassword(user.id, data);
   }
 
   @Post('email/verify')
