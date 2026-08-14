@@ -26,7 +26,6 @@ export function SearchPage() {
     error,
     setSort,
     setPage,
-    setKeyword,
     removeAppliedFilters,
     clearFilters,
   } = useVehicleSearch()
@@ -83,8 +82,6 @@ export function SearchPage() {
   return (
     <div className="search-page">
       <SearchToolbar
-        q={appliedFilters.q}
-        onSubmitKeyword={setKeyword}
         sort={appliedFilters.sort ?? 'relevance'}
         onSortChange={setSort}
         filtersOpen={filtersOpen}
