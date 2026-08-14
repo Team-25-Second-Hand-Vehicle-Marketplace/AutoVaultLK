@@ -63,6 +63,8 @@ service's `TypeOrmModuleOptions` at `DATABASE_URL`.
 
 ## 4. Start Postgres
 
+Uses the default compose file at the repo root (`docker-compose.yml` — not `docker-compose.dev.yml`, which is only the API gateway nginx shim).
+
 ```powershell
 docker compose up -d
 docker compose ps

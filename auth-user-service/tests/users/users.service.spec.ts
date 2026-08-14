@@ -13,11 +13,20 @@ describe('UsersService', () => {
 
   beforeEach(() => jest.clearAllMocks());
 
-  it('returns a user by id', async () => {
-    const user = { id: 'user-id', email: 'user@test.com' };
+  it('returns a sanitized user by id', async () => {
+    const user = {
+      id: 'user-id',
+      email: 'user@test.com',
+      passwordHash: 'secret-hash',
+      failedLoginAttempts: 2,
+      lockedUntil: null,
+    };
     usersRepository.findById.mockResolvedValue(user);
 
-    await expect(service.findById('user-id')).resolves.toBe(user);
+    await expect(service.findById('user-id')).resolves.toEqual({
+      id: 'user-id',
+      email: 'user@test.com',
+    });
   });
 
   it('throws when a user does not exist', async () => {
