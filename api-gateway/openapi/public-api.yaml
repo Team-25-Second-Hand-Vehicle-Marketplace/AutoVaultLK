@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: AutoVault LK Public API
+  title: AutoVaultLK Public API
   description: |
     North-south routes per SAD section 3.5.1.
     JWT validation is performed by each NestJS service, not at the gateway.

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 
 /**
- * The AutoMarket wordmark: a rounded blue tile holding a car glyph, followed
+ * The AutoVaultLK wordmark: a rounded blue tile holding a car glyph, followed
  * by the name. Shared by the header, footer, and both dealer screens so the
  * logo is defined once.
  *
@@ -19,7 +19,7 @@ export function BrandMark({ to = '/' }: { to?: string | null }) {
           <circle cx="16" cy="16.8" r="1.5" />
         </svg>
       </span>
-      <span className="brand__name">AutoMarket</span>
+      <span className="brand__name">AutoVaultLK</span>
     </>
   )
 
