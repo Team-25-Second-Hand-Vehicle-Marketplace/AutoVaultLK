@@ -2,32 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { BuiltFilterQuery, buildFilterQuery } from '../filters/filter-query.builder';
+import { buildOrderBy } from '../filters/sort-clause';
 import { FilterSearchDto } from '../dto/filter-search.dto';
-import { SortOption } from '../constants/vehicle-attributes.constants';
 import {
   VehicleSearchResultDto,
   VehicleDetailDto,
   FacetBucketDto,
 } from '../dto/filter-search-response.dto';
-
-/**
- * ORDER BY fragments. These are looked up by key from a fixed record — the
- * DTO's @IsIn(SORT_OPTIONS) guarantees the key is one of these, so no user
- * string ever reaches the SQL text.
- *
- * `relevance` is the only entry that isn't constant: with a keyword query it
- * ranks by ts_rank against the same tsquery the WHERE clause filters on, and
- * without one there is nothing to rank, so it falls back to recency (design
- * doc §9 — no blended score when there is no semantic text).
- */
-const SORT_SQL: Record<SortOption, string> = {
-  relevance: 'v.created_at DESC',
-  price_asc: 'v.price ASC',
-  price_desc: 'v.price DESC',
-  year_desc: 'COALESCE(v.registration_year, v.manufacture_year) DESC',
-  mileage_asc: 'v.mileage ASC',
-  newest: 'v.created_at DESC',
-};
 
 /**
  * Primary listing photo, or NULL when the dealer hasn't uploaded one.
@@ -150,26 +131,11 @@ export class VehicleSearchRepository {
     };
   }
 
-  /**
-   * Resolves the ORDER BY clause, appending a ts_rank parameter when sorting
-   * by relevance with an active keyword.
-   *
-   * The rank expression re-derives plainto_tsquery from the raw keyword
-   * rather than reusing the WHERE clause's parameter index, because the
-   * builder owns that numbering and the sort clause is appended after
-   * limit/offset params. It is still fully parameterized.
-   */
-  private resolveSort(dto: FilterSearchDto, params: unknown[]): string {
-    const keyword = dto.q?.trim();
-    if ((dto.sort ?? 'relevance') === 'relevance' && keyword) {
-      params.push(keyword);
-      const idx = params.length;
-      return `ts_rank(v.search_vector, plainto_tsquery('english', $${idx})) DESC, v.created_at DESC`;
-    }
-    return SORT_SQL[dto.sort ?? 'relevance'];
-  }
-
-  async search(built: BuiltFilterQuery, dto: FilterSearchDto): Promise<VehicleSearchResultDto[]> {
+  async search(
+    built: BuiltFilterQuery,
+    dto: FilterSearchDto,
+    queryEmbedding?: number[],
+  ): Promise<VehicleSearchResultDto[]> {
     const { from, where, params } = this.buildFromAndWhere(
       built,
       dto.verifiedDealersOnly,
@@ -179,7 +145,10 @@ export class VehicleSearchRepository {
     const offset = ((dto.page ?? 1) - 1) * limit;
 
     const queryParams = [...params];
-    const sort = this.resolveSort(dto, queryParams);
+    const sort = buildOrderBy(dto.sort, queryParams, {
+      keyword: dto.q,
+      queryEmbedding,
+    });
     queryParams.push(limit, offset);
     const limitIdx = queryParams.length - 1;
     const offsetIdx = queryParams.length;
