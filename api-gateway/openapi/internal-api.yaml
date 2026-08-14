@@ -25,6 +25,7 @@ servers:
 
 tags:
   - name: internal-auth
+  - name: internal-notifications
 
 paths:
   /internal/dealers/{id}/approve:
@@ -74,6 +75,37 @@ paths:
       responses:
         '200':
           description: User deactivated
+
+  /notifications/events:
+    post:
+      tags: [internal-notifications]
+      summary: Enqueue and send a templated notification (FR-49–FR-53)
+      operationId: createNotificationEvent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, userId, idempotencyKey]
+              properties:
+                type:
+                  type: string
+                  enum: [UPLOAD_COMPLETED, UPLOAD_FAILED, DEALER_VERIFIED, DEALER_REJECTED]
+                userId:
+                  type: string
+                  format: uuid
+                idempotencyKey:
+                  type: string
+                payload:
+                  type: object
+      responses:
+        '200':
+          description: Notification row (SENT, FAILED, or already SENT)
+        '401':
+          description: Missing or invalid X-Internal-Service-Key
+        '404':
+          description: Recipient user not found
 
 components:
   securitySchemes:
