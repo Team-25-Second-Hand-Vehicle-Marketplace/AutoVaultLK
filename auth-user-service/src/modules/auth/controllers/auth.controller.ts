@@ -17,6 +17,8 @@ import { RefreshTokenDto } from '../dto/refresh-token.dto';
 import { RegisterBuyerDto } from '../dto/register-buyer.dto';
 import { PasswordResetRequestDto } from '../dto/password-reset-request.dto';
 import { RegisterDealerDto } from '../dto/register-dealer.dto';
+import { ResendVerificationDto } from '../dto/resend-verification.dto';
+import { VerifyEmailDto } from '../dto/verify-email.dto';
 import { AuthService } from '../services/auth.service';
 
 @Controller('auth')
@@ -85,6 +87,21 @@ export class AuthController {
   ) {
     return this.authService.requestPasswordReset(
       data,
+      extractSessionMetadata(req),
+    );
+  }
+
+  @Post('email/verify')
+  @HttpCode(HttpStatus.OK)
+  verifyEmail(@Body() data: VerifyEmailDto) {
+    return this.authService.verifyEmail(data.token);
+  }
+
+  @Post('email/resend-verification')
+  @HttpCode(HttpStatus.OK)
+  resendVerification(@Body() data: ResendVerificationDto, @Req() req: Request) {
+    return this.authService.resendVerificationEmail(
+      data.email,
       extractSessionMetadata(req),
     );
   }

@@ -9,6 +9,7 @@ import {
   getJwtAudience,
   getJwtIssuer,
 } from '../config/jwt.config';
+import { AUTH_SECURITY_MESSAGES } from '../constants/auth-security.constants';
 import { AuthenticatedUser } from '../types/authenticated-user.type';
 
 @Injectable()
@@ -34,6 +35,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     if (!user || !user.isActive) {
       throw new UnauthorizedException('User account is inactive or not found');
+    }
+
+    if (user.role !== 'ADMIN' && !user.emailVerifiedAt) {
+      throw new UnauthorizedException(AUTH_SECURITY_MESSAGES.EMAIL_NOT_VERIFIED);
     }
 
     return {

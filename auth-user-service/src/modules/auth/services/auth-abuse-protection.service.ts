@@ -247,6 +247,42 @@ export class AuthAbuseProtectionService {
     };
   }
 
+  async assertResendVerificationAllowed(email: string, session: SessionMetadata) {
+    await this.assertIpRateLimit(
+      SecurityEventType.RESEND_EMAIL_VERIFICATION,
+      session.ipAddress,
+    );
+
+    const since = this.windowStart(this.getResendVerificationWindowMinutes());
+    const emailAttempts = await this.securityEventsRepository.countRecentByEmail(
+      SecurityEventType.RESEND_EMAIL_VERIFICATION,
+      email,
+      since,
+    );
+
+    if (emailAttempts >= this.getResendVerificationMaxPerEmail()) {
+      throw new HttpException(
+        AUTH_SECURITY_MESSAGES.TOO_MANY_ATTEMPTS,
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+  }
+
+  async recordResendVerification(
+    email: string,
+    session: SessionMetadata,
+    userId?: string | null,
+  ) {
+    await this.securityEventsRepository.record({
+      eventType: SecurityEventType.RESEND_EMAIL_VERIFICATION,
+      email,
+      userId: userId ?? null,
+      ipAddress: session.ipAddress ?? null,
+      userAgent: session.userAgent ?? null,
+      success: true,
+    });
+  }
+
   private async assertIpRateLimit(
     eventType: SecurityEventType,
     ipAddress?: string | null,
@@ -334,6 +370,20 @@ export class AuthAbuseProtectionService {
     );
   }
 
+  private getResendVerificationMaxPerEmail() {
+    return this.configService.get<number>(
+      'AUTH_RESEND_VERIFICATION_MAX_PER_EMAIL',
+      3,
+    );
+  }
+
+  private getResendVerificationWindowMinutes() {
+    return this.configService.get<number>(
+      'AUTH_RESEND_VERIFICATION_WINDOW_MINUTES',
+      60,
+    );
+  }
+
   private getIpMaxAttempts(eventType: SecurityEventType) {
     const defaults: Record<SecurityEventType, number> = {
       [SecurityEventType.LOGIN]: 20,
@@ -342,6 +392,7 @@ export class AuthAbuseProtectionService {
       [SecurityEventType.REGISTER_DEALER]: 5,
       [SecurityEventType.REFRESH]: 30,
       [SecurityEventType.PASSWORD_RESET]: 10,
+      [SecurityEventType.RESEND_EMAIL_VERIFICATION]: 10,
     };
 
     return this.configService.get<number>(
