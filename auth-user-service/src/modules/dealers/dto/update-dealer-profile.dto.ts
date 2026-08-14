@@ -1,15 +1,14 @@
-import {
-  DealerType,
-  VerificationStatus,
-} from '../../../infrastructure/database/entities/dealer-profile.entity';
+import { PartialType, PickType } from '@nestjs/mapped-types';
+import { CreateDealerProfileDto } from './create-dealer-profile.dto';
 
-export class UpdateDealerProfileDto {
-  dealerType?: DealerType;
-  businessRegistrationNumber?: string;
-  businessAddress?: string;
-  city?: string;
-  verificationDocuments?: Record<string, unknown>;
-  companyName?: string;
-  contactNumber?: string;
-  verificationStatus?: VerificationStatus;
-}
+/** Dealer self-service updates only — not verification_status (admin internal API). */
+export class UpdateDealerProfileDto extends PartialType(
+  PickType(CreateDealerProfileDto, [
+    'businessRegistrationNumber',
+    'businessAddress',
+    'city',
+    'verificationDocuments',
+    'companyName',
+    'contactNumber',
+  ] as const),
+) {}
