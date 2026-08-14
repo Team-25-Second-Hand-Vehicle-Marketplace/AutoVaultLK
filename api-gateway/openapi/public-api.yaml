@@ -343,13 +343,118 @@ paths:
     get:
       tags:
         - admin
-      summary: Administrator dashboard aggregates
+      summary: Administrator dashboard aggregates (FR-48)
       operationId: adminDashboard
       security:
         - bearerAuth: []
       responses:
         '200':
-          description: Dashboard metrics
+          description: Dashboard metrics (LIVE listings, users, uploads, notification rates, recent audit)
+        '403':
+          description: Non-administrator JWT
+  /admin/users:
+    get:
+      tags:
+        - admin
+      summary: List users and dealer verification state
+      operationId: adminListUsers
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: verificationStatus
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, VERIFIED, REJECTED]
+      responses:
+        '200':
+          description: Users with optional dealer profile
+        '403':
+          description: Non-administrator JWT
+  /admin/uploads:
+    get:
+      tags:
+        - admin
+      summary: View upload jobs across all dealers (FR-44)
+      operationId: adminListUploads
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, PROCESSING, COMPLETED, FAILED, PARTIAL]
+      responses:
+        '200':
+          description: Upload jobs
+        '403':
+          description: Non-administrator JWT
+  /admin/reports:
+    get:
+      tags:
+        - admin
+      summary: Summary reports over a date range (FR-45)
+      operationId: adminReports
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Listing counts, upload volumes, error/partial rates, active users
+        '400':
+          description: Invalid date range
+        '403':
+          description: Non-administrator JWT
+  /admin/audit-logs:
+    get:
+      tags:
+        - admin
+      summary: Search administrative audit logs (FR-46, FR-47)
+      operationId: adminAuditLogs
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: action
+          in: query
+          schema:
+            type: string
+        - name: entityType
+          in: query
+          schema:
+            type: string
+        - name: actorId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Audit log rows
+        '403':
+          description: Non-administrator JWT
 components:
   securitySchemes:
     bearerAuth:
