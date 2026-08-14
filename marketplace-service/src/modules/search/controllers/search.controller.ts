@@ -35,9 +35,9 @@ export class SearchController {
     return this.filterSearchService.search(dto);
   }
 
-  // Free-text path — SAD 4.1.4 / FR-21. Parser emits a FilterSearchDto and
-  // this reuses the filter service (LIVE gate, relaxation, facets). Groq
-  // and pgvector are not on this route yet.
+  // Free-text path — SAD 4.1.4 / FR-21. Parser emits a FilterSearchDto,
+  // Groq fills unresolved tokens when confidence < 0.6, then this reuses
+  // the filter service. pgvector ranking is not on this route yet.
   @Get('nl')
   async nlSearch(@Query() dto: NlSearchDto): Promise<NlSearchResponseDto> {
     return this.nlSearchService.search(dto);
