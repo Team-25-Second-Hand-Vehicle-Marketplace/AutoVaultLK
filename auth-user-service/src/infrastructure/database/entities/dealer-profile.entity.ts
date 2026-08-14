@@ -88,9 +88,9 @@ export class DealerProfile {
   @Column({
     name:'contact_number',
     type:'varchar',
-    nullable:false
+    nullable:true
   })
-  contactNumber!: string ;
+  contactNumber!: string | null;
 
 
   @Column({
@@ -100,6 +100,12 @@ export class DealerProfile {
     default: VerificationStatus.PENDING
   })
   verificationStatus!: VerificationStatus;
+
+  @Column({ name: 'verified_by', type: 'uuid', nullable: true })
+  verifiedBy!: string | null;
+
+  @Column({ name: 'verified_at', type: 'timestamptz', nullable: true })
+  verifiedAt!: Date | null;
 
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })

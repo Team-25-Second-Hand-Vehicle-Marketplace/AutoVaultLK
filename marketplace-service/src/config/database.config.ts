@@ -16,6 +16,7 @@ export const databaseConfig = (): TypeOrmModuleOptions => ({
   entities: [
     __dirname + '/../infrastructure/database/entities/*.entity{.ts,.js}',
     __dirname + '/../infrastructure/database/entities/*.view-entity{.ts,.js}',
+    __dirname + '/../infrastructure/database/entities/*.write-entity{.ts,.js}',
   ],
   // Never true. Five services share one database; a single sync would
   // reshape tables out from under the others. Migrations own all DDL.
