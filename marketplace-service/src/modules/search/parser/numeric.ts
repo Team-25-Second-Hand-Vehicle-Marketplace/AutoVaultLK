@@ -29,7 +29,7 @@ const MIN_OPS = new Set([
 
 const MAX_YEAR_OPS = new Set(['older', 'before']);
 
-const UNIT_WORDS = new Set(['million', 'm', 'k', 'km', 'kms', 'mileage', 'milage']);
+const UNIT_WORDS = new Set(['million', 'mil', 'm', 'k', 'km', 'kms', 'mileage', 'milage']);
 
 type Bound = 'min' | 'max' | 'exact';
 
@@ -136,13 +136,13 @@ function readNumber(
 }
 
 export function parseMagnitude(norm: string): { n: number; unit?: string } | undefined {
-  const match = norm.match(/^(\d+(?:\.\d+)?)(k|m|million|km|kms)?$/);
+  const match = norm.match(/^(\d+(?:\.\d+)?)(k|m|mil|million|km|kms)?$/);
   if (!match) return undefined;
   return { n: Number(match[1]), unit: match[2] };
 }
 
 function scale(n: number, unit: string | undefined): number {
-  if (unit === 'million' || unit === 'm') return Math.round(n * 1_000_000);
+  if (unit === 'million' || unit === 'mil' || unit === 'm') return Math.round(n * 1_000_000);
   if (unit === 'k' || unit === 'km' || unit === 'kms') return Math.round(n * 1000);
   return Math.round(n);
 }
