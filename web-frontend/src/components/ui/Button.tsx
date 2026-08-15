@@ -10,11 +10,6 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   block?: boolean
 }
 
-/**
- * Wraps the `.button` / `.button--*` classes already defined in
- * app.css / theme.css / admin.css — no new styling, just a single place to
- * assemble the class string instead of hand-typing it at each call site.
- */
 export function Button({
   variant = 'primary',
   size,

@@ -14,9 +14,6 @@ export function RangeInput({ label, min, max, step = 1, onChange }: Props) {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const isTypingRef = useRef(false)
 
-  // Sync down from the URL only when the change did NOT originate here.
-  // Without the guard, the debounced update round-trips through the URL and
-  // resets these inputs mid-keystroke, eating what the user is typing.
   useEffect(() => {
     if (isTypingRef.current) return
     setLocalMin(min?.toString() ?? '')

@@ -1,18 +1,3 @@
-/* ==========================================================================
-   AutoVaultLK theme — matches the marketplace design reference.
-
-   Loaded AFTER app.css, so these values win. Kept as a token override
-   rather than edits to app.css so the original palette stays intact and
-   diffable, and so the whole visual language can be adjusted from one place.
-
-   The reference design is light-only: it uses white surfaces, a near-black
-   ink for headings, and a single saturated blue for every action. The dark
-   scheme that app.css defines under prefers-color-scheme is therefore
-   neutralised below — a half-applied dark mode (dark tokens, light-only
-   component styles) reads as broken, and the reference has no dark variant
-   to copy.
-   ========================================================================== */
-
 :root,
 :root:where(*) {
   /* Ink */
@@ -78,10 +63,6 @@ body {
   color: var(--text);
 }
 
-/* The reference sets headings noticeably heavier and tighter than body copy.
-   Poppins runs wider than Roboto at the same size, so the negative tracking
-   is a touch stronger here than it needed to be before — without it the big
-   hero headline sets loose and drifts toward a third line. */
 h1,
 h2,
 h3,
@@ -97,9 +78,6 @@ a {
   color: var(--accent);
 }
 
-/* ── Shared section furniture ────────────────────────────────────
-   Every content band in the reference follows the same rhythm: a small
-   uppercase blue eyebrow, a large heading, then the content. */
 
 .section {
   padding: 64px 0;

@@ -23,19 +23,11 @@ const NUMBER_KEYS = [
 
 const BOOLEAN_KEYS = ['isNegotiable', 'hasRegistrationYear', 'verifiedDealersOnly'] as const
 
-// page/limit/facets/sort are control params that act immediately (sort and
-// pagination in the design have no "Apply" step) — never part of the staged
-// sidebar draft.
+
 const CONTROL_KEYS = new Set(['page', 'limit', 'facets', 'sort'])
 
-// Filter state lives in the URL, not component state — bookmarkable,
-// shareable, and survives the back button. This is the single source of
-// truth; the hook only translates between URLSearchParams and the typed
-// filter object.
 function paramsToFilters(searchParams: URLSearchParams): FilterSearchParams {
-  // Written through an index signature rather than `as any` per assignment:
-  // the keys come from the readonly tuples above, so this stays a typed
-  // write to a known-shaped object.
+
   const filters: Record<string, unknown> = {}
 
   for (const key of ARRAY_KEYS) {
@@ -56,11 +48,7 @@ function paramsToFilters(searchParams: URLSearchParams): FilterSearchParams {
   const sort = searchParams.get('sort')
   if (sort) filters.sort = sort as SortOption
 
-  // specs round-trips as the same flat "key:value,key:value" string the
-  // backend parses. Without this, every spec filter (body type, seats,
-  // drive type…) was silently dropped on reload, on a shared link, and on
-  // every back/forward navigation — the sidebar showed them as applied
-  // while the query no longer contained them.
+
   const specs = searchParams.get('specs')
   if (specs) {
     filters.specs = specs
@@ -104,29 +92,6 @@ function filtersToParams(filters: FilterSearchParams): URLSearchParams {
   return params
 }
 
-/**
- * Staged filters, matching the Figma "Filter Results … Apply Filters"
- * sidebar: sidebar edits accumulate in local `draft` state and only reach
- * the URL (and therefore the API) when applyFilters() runs. Sort and page
- * changes bypass the draft entirely — they act immediately, same as before.
- *
- * `draft` re-syncs from the URL whenever the URL changes for a reason other
- * than the draft's own apply — e.g. a chip removal, "Clear all", or the
- * back/forward button — so the sidebar never goes stale relative to what's
- * actually applied.
- */
-/**
- * Developer-facing record of how an NL query was parsed.
- *
- * The buyer-facing UI deliberately shows only what is actionable (see
- * ParseWarning), but the full parse — which strategy answered, the
- * confidence score, what could not be resolved — is exactly what is needed
- * when someone reports "I searched X and got nothing". Dropping it entirely
- * along with the old "Understood as …" line would have made those reports
- * unreproducible, so it moves to the console instead of the page.
- *
- * Dev-only: this is per-search and would be noise in a production console.
- */
 function logParseDiagnostics(
   query: string | undefined,
   data: FilterSearchResponse & { parse?: NlParse },
@@ -159,13 +124,7 @@ export function useVehicleSearch() {
 
   const [draft, setDraft] = useState<FilterSearchParams>(appliedFilters)
 
-  /**
-   * Search state as one value: a request resolves to either a result or an
-   * error, and both end the loading phase. Three separate useState calls
-   * forced the effect to reset loading/error synchronously before each
-   * fetch,
-   * which is the cascading-render pattern React flags.
-   */
+
   const [search, setSearch] = useState<{
     result: (FilterSearchResponse & { parse?: NlParse }) | null
     loading: boolean
@@ -173,25 +132,14 @@ export function useVehicleSearch() {
   }>({ result: null, loading: true, error: null })
   const { result, loading, error } = search
 
-  // Re-sync the draft whenever the applied (URL) filters change from
-  // outside the sidebar itself — keeps chip removal / Clear all / back
-  // button reflected in the sidebar's controls immediately.
-  //
-  // Adjusted during render rather than in an effect: React re-runs this hook
-  // with the new draft before the DOM is touched, so the sidebar never
-  // paints a stale frame. This is React's documented pattern for state
-  // derived from props/URL.
+
   const [lastParams, setLastParams] = useState(searchParams)
   if (lastParams !== searchParams) {
     setLastParams(searchParams)
     setDraft(appliedFilters)
   }
 
-  // Depends on searchParams, not appliedFilters: appliedFilters is a fresh
-  // object identity on every render of this hook (useMemo over searchParams),
-  // so listing it here would re-fire the search on renders where the actual
-  // filters are unchanged. searchParams is the real input — appliedFilters is
-  // a pure function of it.
+
   useEffect(() => {
     const controller = new AbortController()
     let settled = false
@@ -231,9 +179,6 @@ export function useVehicleSearch() {
         }))
       })
 
-    // Shows the spinner for a re-search without a synchronous setState in
-    // the effect body. Skipped when the request already resolved, so the
-    // first paint after a cached/immediate response stays a single render.
     queueMicrotask(() => {
       if (!settled && !controller.signal.aborted) {
         setSearch((prev) => ({ ...prev, loading: true, error: null }))
@@ -244,14 +189,7 @@ export function useVehicleSearch() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
-  /**
-   * Writes straight to the URL/applied filters — bypasses the draft.
-   *
-   * Any change other than paging itself resets to page 1: a buyer on page 5
-   * who narrows the filters would otherwise land on page 5 of a much shorter
-   * result set, which is usually empty and reads as "your filter found
-   * nothing". Callers that mean to change the page pass it explicitly.
-   */
+
   const applyToUrl = useCallback(
     (next: FilterSearchParams, keepPage = false) => {
       setSearchParams(filtersToParams({ ...next, page: keepPage ? (next.page ?? 1) : 1 }))
@@ -267,17 +205,10 @@ export function useVehicleSearch() {
     [],
   )
 
-  /**
-   * Updates several draft fields at once. Two updateDraft calls in a row
-   * would clobber each other — both close over the same prior draft.
-   * Range inputs (min+max together) must use this.
-   */
   const updateDraftMany = useCallback((patch: Partial<FilterSearchParams>) => {
     setDraft((prev) => ({ ...prev, ...patch }))
   }, [])
 
-  /** Pushes the staged draft to the URL — this is what "Apply Filters" calls.
-   *  Drop a leftover NL `q` so the sidebar path is not overridden by /search/nl. */
   const applyFilters = useCallback(() => {
     const next = { ...draft }
     delete next.q
@@ -309,18 +240,6 @@ export function useVehicleSearch() {
     },
     [appliedFilters, applyToUrl],
   )
-
-  /**
-   * Removes one or more applied filters immediately (chip ×) — not a draft
-   * edit.
-   *
-   * Takes a list rather than a single key because range chips span two keys
-   * (minPrice+maxPrice, minYear+maxYear). Calling a single-key remover twice
-   * in a row does NOT work: both calls close over the same `appliedFilters`
-   * snapshot, so the second overwrites the first and clears only one half of
-   * the range — the bug that left a "LKR 1M – 5M" chip removal with minPrice
-   * still applied.
-   */
   const removeAppliedFilters = useCallback(
     (keys: string[]) => {
       const removable = keys.filter((key) => !CONTROL_KEYS.has(key))
@@ -335,16 +254,6 @@ export function useVehicleSearch() {
     [appliedFilters, applyToUrl],
   )
 
-  /**
-   * Applies a free-text query immediately via GET /search/nl.
-   *
-   * Clears structured sidebar filters: the parser owns those fields, and
-   * leaving them in the URL would show chips the NL request does not send.
-   * Must not go through updateDraft + applyFilters: applyFilters is memoized
-   * on the draft from the current render, so it would publish the state as it
-   * was BEFORE the keyword was set — the first Enter press searched without
-   * the keyword and only a second press appeared to work.
-   */
   const setKeyword = useCallback(
     (q: string | undefined) => {
       const next: FilterSearchParams = {}

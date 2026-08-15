@@ -9,17 +9,6 @@ import { Button } from '../components/ui/Button'
 import { FormField } from '../components/ui/FormField'
 import { ErrorBanner } from '../components/ui/ErrorBanner'
 
-/**
- * Client-side validation carries real weight here, not just UX polish:
- * auth-user-service's RegisterBuyerDto has no class-validator decorators and
- * its main.ts registers no ValidationPipe on this branch, so the API accepts
- * a one-character password and a malformed email without complaint. Strict
- * validation lands on feat/AUS-StrictValicationReq; until then this is the
- * only thing standing between a typo and an unusable account.
- *
- * These rules are intentionally the same ones that branch enforces, so
- * nothing the UI accepts today starts failing when it merges.
- */
 const registerSchema = z
   .object({
     name: z.string().trim().min(2, 'Name must be at least 2 characters'),

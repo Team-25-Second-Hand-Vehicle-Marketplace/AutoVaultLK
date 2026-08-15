@@ -1,12 +1,6 @@
 import type { VehicleSearchResult } from '../../api/search.types'
 
-/**
- * registrationYear is nullable because dealers omit it, and the backend
- * falls back to manufactureYear via COALESCE so the listing is never hidden
- * from a year-filtered search. This is where that fallback becomes visible
- * and honest to the buyer, instead of presenting a manufacture year as if it
- * were a registration year.
- */
+
 export function YearDisplay({
   result,
 }: {

@@ -19,15 +19,6 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
-/**
- * Dealer sign-in.
- *
- * There is no separate dealer login endpoint — `POST /auth/login` serves both
- * buyers and dealers and returns the account's role. So this page posts to the
- * same endpoint and then checks the role: a BUYER who signs in here is told
- * plainly that the account isn't a dealer account, rather than being dropped
- * into a portal that has nothing for them.
- */
 export function DealerLoginPage() {
   const { login, logout, user, isAuthenticated } = useAuth()
   const navigate = useNavigate()

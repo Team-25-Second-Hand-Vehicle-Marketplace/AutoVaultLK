@@ -1,10 +1,3 @@
-/**
- * Numbered page buttons + Previous/Next, matching the design ("1 2 3 4 5 6
- * 7 8" with the current page highlighted). Caps the visible window at 7
- * numbers so it doesn't overflow the sidebar-width results column when
- * totalPages is large; a real "…" truncation isn't needed yet at the data
- * volumes this app has.
- */
 const MAX_VISIBLE_PAGES = 7
 
 function getVisiblePages(page: number, totalPages: number): number[] {
