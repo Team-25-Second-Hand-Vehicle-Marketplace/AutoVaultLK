@@ -1,6 +1,7 @@
-import { EMBEDDING_DIMENSIONS } from '../../../../src/shared/normalize-embed';
+import { EMBEDDING_DIMENSIONS, toPgVector } from '../../../../src/shared/normalize-embed';
 import {
   LAST_RESORT_WORD_SIMILARITY,
+  MAX_EMBEDDING_DISTANCE,
   appendTrigramWhere,
   chooseSearchRank,
   hasResolvedFilters,
@@ -30,6 +31,26 @@ describe('chooseSearchRank', () => {
     expect(result.usedSemanticRanking).toBe(true);
     expect(result.usedTrigramFallback).toBe(false);
     expect(result.rank?.queryEmbedding).toBe(vector);
+  });
+
+  it('gates embedding retrieval when nothing else resolved (no bikes for "family friendly")', () => {
+    const result = chooseSearchRank({
+      filters: {},
+      semanticText: 'family friendly vehicles',
+      rawQuery: 'family friendly vehicles',
+      queryEmbedding: vector,
+    });
+    expect(result.rank?.embeddingWhere).toBe(true);
+  });
+
+  it('does not gate embedding retrieval when other filters already resolved', () => {
+    const result = chooseSearchRank({
+      filters: { make: ['Toyota'] },
+      semanticText: 'family friendly',
+      rawQuery: 'toyota family friendly',
+      queryEmbedding: vector,
+    });
+    expect(result.rank?.embeddingWhere).toBe(false);
   });
 
   it('ranks leftovers with trigram among resolved filters when MiniLM is down', () => {
@@ -86,6 +107,30 @@ describe('appendTrigramWhere', () => {
   it('does not gate retrieval when trigram is ranking-only', () => {
     const params: unknown[] = ['LIVE'];
     expect(appendTrigramWhere('v.status = $1', params, { trigramQuery: 'leather' })).toBe(
+      'v.status = $1',
+    );
+    expect(params).toEqual(['LIVE']);
+  });
+
+  it('binds the query vector and distance cutoff when embeddingWhere is set', () => {
+    const vector = new Array(EMBEDDING_DIMENSIONS).fill(0);
+    vector[0] = 1;
+    const params: unknown[] = ['LIVE'];
+    const where = appendTrigramWhere('v.status = $1', params, {
+      queryEmbedding: vector,
+      embeddingWhere: true,
+    });
+    expect(where).toBe(
+      "v.status = $1 AND v.embedding IS NOT NULL AND v.embedding <=> $2::vector <= $3",
+    );
+    expect(params).toEqual(['LIVE', toPgVector(vector), MAX_EMBEDDING_DISTANCE]);
+  });
+
+  it('does not gate retrieval when embedding rank is ranking-only', () => {
+    const vector = new Array(EMBEDDING_DIMENSIONS).fill(0);
+    vector[0] = 1;
+    const params: unknown[] = ['LIVE'];
+    expect(appendTrigramWhere('v.status = $1', params, { queryEmbedding: vector })).toBe(
       'v.status = $1',
     );
     expect(params).toEqual(['LIVE']);

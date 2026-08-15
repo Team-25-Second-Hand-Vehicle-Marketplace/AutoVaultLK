@@ -10,11 +10,15 @@ import { VehicleDictionaryRepository } from '../repositories/vehicle-dictionary.
 import { FilterSearchService } from './filter-search.service';
 import { QueryEmbeddingService } from './query-embedding.service';
 
-/**
- * SAD 4.1.4: parse → Groq repair → MiniLM rank leftovers → filter search.
- * pg_trgm is last-resort only (FR-24): rank leftovers among resolved
- * filters when MiniLM is down; gate on search_text only when nothing resolved.
- */
+const BARE_QUERY_EXPANSIONS: Record<string, string> = {
+  'family friendly': 'family friendly vehicles',
+};
+
+function expandBareQuery(q: string): string {
+  const expansion = BARE_QUERY_EXPANSIONS[q.trim().toLowerCase()];
+  return expansion ?? q;
+}
+
 @Injectable()
 export class NlSearchService {
   constructor(
@@ -25,9 +29,10 @@ export class NlSearchService {
   ) {}
 
   async search(dto: NlSearchDto): Promise<NlSearchResponseDto> {
+    const q = expandBareQuery(dto.q);
     const vocab = await this.dictionaries.getParserVocabulary();
-    const rules = parseQuery(dto.q, vocab);
-    const { parsed, usedLlm } = await this.groqFallback.repair(dto.q, rules, vocab);
+    const rules = parseQuery(q, vocab);
+    const { parsed, usedLlm } = await this.groqFallback.repair(q, rules, vocab);
 
     const queryEmbedding = parsed.semanticText
       ? await this.embeddings.embedQuery(parsed.semanticText)
@@ -35,14 +40,14 @@ export class NlSearchService {
     const { rank, usedSemanticRanking, usedTrigramFallback } = chooseSearchRank({
       filters: parsed.filters,
       semanticText: parsed.semanticText,
-      rawQuery: dto.q,
+      rawQuery: q,
       queryEmbedding,
     });
 
     const results = await this.filterSearch.search(
       toFilterSearchDto(parsed, dto),
       {
-        rawText: dto.q,
+        rawText: q,
         confidence: rules.confidence,
         unresolvedTokens: rules.unresolvedTokens,
         usedLlm,
