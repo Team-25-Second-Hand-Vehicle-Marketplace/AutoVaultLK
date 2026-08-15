@@ -11,17 +11,6 @@ import {
 
 export type DictionaryType = 'MAKE' | 'MODEL' | 'BODY_TYPE' | 'COLOR';
 
-/**
- * Controlled vocabulary for the search parser and ETL normalizer.
- * Owned by marketplace-service. One self-referencing table serves makes,
- * models, and any future dictionary type.
- *
- * This is the backing store for the large, typo-prone vocabularies that a
- * hardcoded array cannot handle — it needs pg_trgm `similarity()`, which
- * requires a real indexed table. Small closed enums (fuel_type,
- * transmission_type, condition, status) stay as hardcoded arrays plus CHECK
- * constraints and never appear here.
- */
 
 
 @Entity({ schema: 'marketplace', name: 'vehicle_dictionaries' })
@@ -29,12 +18,7 @@ export class VehicleDictionary {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  /**
-   * A MODEL row points at its MAKE row. NULL for MAKE rows and for any
-   * flat dictionary type. Makes a make-scoped model lookup a plain
-   * `WHERE parent_id = $1`, which is what the parser's
-   * "resolve make first, then constrain model by it" rule needs.
-   */
+ 
   @Column({ name: 'parent_id', type: 'uuid', nullable: true })
   parentId: string | null;
 
