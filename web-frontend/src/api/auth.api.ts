@@ -19,6 +19,12 @@ export async function login(payload: LoginRequest): Promise<AuthTokenResponse> {
   return data
 }
 
+/** Admin-only login — rejects non-ADMIN accounts server-side. */
+export async function loginAdmin(payload: LoginRequest): Promise<AuthTokenResponse> {
+  const { data } = await apiClient.post<AuthTokenResponse>('/auth/login/admin', payload)
+  return data
+}
+
 export async function registerBuyer(payload: RegisterBuyerRequest): Promise<RegisterResponse> {
   const { data } = await apiClient.post<RegisterResponse>('/auth/register/buyer', payload)
   return data
