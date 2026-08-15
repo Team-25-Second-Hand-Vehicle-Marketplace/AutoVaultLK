@@ -48,6 +48,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(session.user)
   }, [])
 
+  const loginAdmin = useCallback(async (email: string, password: string) => {
+    const session = await authApi.loginAdmin({ email, password })
+    saveSession(session)
+    setUser(session.user)
+  }, [])
+
   const register = useCallback(async (payload: RegisterBuyerRequest) => {
     const result = await authApi.registerBuyer(payload)
     // Today the service returns tokens and logs the user straight in. Once
@@ -73,10 +79,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: user !== null,
       initializing,
       login,
+      loginAdmin,
       register,
       logout,
     }),
-    [user, initializing, login, register, logout],
+    [user, initializing, login, loginAdmin, register, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
