@@ -5,18 +5,6 @@ import { filterSearch, getSearchOptions } from '../../api/search.api'
 import type { MakeOption } from '../../api/search.types'
 import { Button } from '../ui/Button'
 
-/**
- * Structured quick-search panel in the hero.
- *
- * Four narrowing controls plus a submit button that carries the live count
- * of matching listings, so the button says what pressing it will yield
- * rather than just "Search".
- *
- * Every control here maps to a real FilterSearchParams field. The design
- * reference also offers a VAT-deduction toggle; vehicles carry no VAT or
- * tax-status column in this system, so there is nothing to filter on and it
- * is omitted rather than faked.
- */
 
 /** Mileage ceilings, in km. Chosen to bracket typical Sri Lankan odometers. */
 const MILEAGE_STEPS = [10_000, 25_000, 50_000, 75_000, 100_000, 150_000, 200_000]
@@ -59,9 +47,6 @@ export function HeroSearchPanel() {
     getSearchOptions(undefined, controller.signal)
       .then((res) => setMakes(res.makes))
       .catch((err) => {
-        // An abort is this effect superseding itself, not a failure. Leaving
-        // `makes` empty degrades the panel to a disabled Make dropdown; the
-        // other three controls and the submit button still work.
         if (!axios.isCancel(err)) console.error('Failed to load makes:', err)
       })
     return () => controller.abort()
@@ -84,8 +69,6 @@ export function HeroSearchPanel() {
     return c
   }, [make, model, maxMileage, minYear, maxPrice])
 
-  // Re-count on every change. limit:1 because only `total` is read — the
-  // items array is discarded, so there is no reason to transfer a full page.
   useEffect(() => {
     const controller = new AbortController()
     const timer = setTimeout(() => {

@@ -563,13 +563,6 @@ h3 {
   font-weight: 600;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   Below: the app-shell/header/auth-card/detail-page styles that used to
-   live in a separate app.css, merged in above the foundational tokens and
-   base elements — both are shared/foundational, not tied to one page area
-   (unlike theme.css, home.css, search-skin.css, admin.css, which stay
-   separate).
-   ══════════════════════════════════════════════════════════════ */
 
 .app-shell {
   min-height: 100vh;
@@ -1107,9 +1100,6 @@ h3 {
   display: block;
 }
 
-/* PLACEHOLDER PHOTOGRAPHY — see src/assets/demo-images.ts. Studio cut-outs
-   need letterboxing rather than cropping; 16/10 is wider than the source
-   images, so `cover` would slice the roof and wheels off. */
 .detail-gallery__primary--contain {
   object-fit: contain;
   background: #fff;

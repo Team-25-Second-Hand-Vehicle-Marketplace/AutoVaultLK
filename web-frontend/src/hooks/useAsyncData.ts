@@ -56,11 +56,6 @@ export function useAsyncData<T>(
       },
     )
 
-    // Only signals "a request is in flight" for a fetcher that did not
-    // resolve synchronously. Dispatching unconditionally here would be the
-    // synchronous effect-body setState this hook exists to avoid; deferring
-    // it to a microtask keeps the mount path a single render while still
-    // showing a spinner when the key changes.
     queueMicrotask(() => {
       if (!settled && !controller.signal.aborted) dispatch({ type: 'start' })
     })

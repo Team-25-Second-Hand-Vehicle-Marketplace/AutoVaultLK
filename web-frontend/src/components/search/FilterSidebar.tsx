@@ -13,13 +13,6 @@ import type {
   VehicleTypeValue,
 } from '../../api/search.types'
 
-/**
- * Static fallbacks used until /search/options resolves (and if it fails).
- *
- * These mirror the marketplace-service constants; the fetched options
- * replace them as soon as they arrive, so a drift between the two is
- * visible for one render at most rather than permanently.
- */
 const FALLBACK_VEHICLE_TYPES: VehicleTypeValue[] = [
   'CAR', 'BIKE', 'VAN', 'TRUCK', 'SUV', 'BUS',
   'THREE_WHEELER', 'LORRY', 'PICKUP', 'TRACTOR', 'HEAVY_MACHINERY',
@@ -78,19 +71,12 @@ interface Props {
   filters: FilterSearchParams
   facets?: Facets
   onUpdate: <K extends keyof FilterSearchParams>(key: K, value: FilterSearchParams[K]) => void
-  // Range inputs set a min and a max together. Two onUpdate calls in a row
-  // would clobber each other — both close over the same filters snapshot.
   onUpdateMany: (patch: Partial<FilterSearchParams>) => void
   onApply: () => void
   onReset: () => void
   hasUnappliedChanges: boolean
 }
 
-/**
- * All inputs here bind to the caller's DRAFT filter state (see
- * useVehicleSearch — `draft` + `updateDraft`/`updateDraftMany`), not the
- * applied filters. Nothing here triggers a search on its own; onApply does.
- */
 export function FilterSidebar({
   filters,
   facets,
@@ -102,10 +88,6 @@ export function FilterSidebar({
 }: Props) {
   const [options, setOptions] = useState<SearchOptionsResponse | null>(null)
 
-  // Enum lists and the district list come from the API so the sidebar can't
-  // drift from the database's CHECK constraints. Unscoped by vehicle type:
-  // only the make/model tree is type-scoped, and MakeModelSelect fetches
-  // that itself.
   useEffect(() => {
     const controller = new AbortController()
     getSearchOptions(undefined, controller.signal)
@@ -215,9 +197,6 @@ export function FilterSidebar({
         onChange={(v) => onUpdate('transmissionType', v.length ? v : undefined)}
       />
 
-      {/* Districts are data-derived, so an empty list means the API call
-          failed or inventory is empty — either way, hide the control rather
-          than render an empty box. */}
       {options?.districts && options.districts.length > 0 && (
         <CheckboxFacetGroup
           label="District"
@@ -227,11 +206,6 @@ export function FilterSidebar({
         />
       )}
 
-      {/*
-        Body type lives in specs JSONB, not a vehicles column, so it goes
-        through the specs[] filter shape rather than a top-level DTO field.
-        Multi-select is supported: values for the same key are OR'd server-side.
-      */}
       <CheckboxFacetGroup
         label="Body Type"
         options={options?.bodyTypes ?? FALLBACK_BODY_TYPES}

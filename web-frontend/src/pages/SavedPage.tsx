@@ -8,23 +8,9 @@ import { useSavedVehicles } from '../hooks/useSavedVehicles'
 import { VehicleCard } from '../components/search/VehicleCard'
 import { VehicleCardSkeleton } from '../components/search/VehicleCardSkeleton'
 
-/**
- * The buyer's saved listings.
- *
- * Saved ids live client-side (see useSavedVehicles — the favourites API
- * doesn't exist on this branch), so each one is fetched individually rather
- * than through a single /favourites call. That is fine at this scale and
- * collapses to one request when the server-side module lands.
- *
- * Ids that 404 are dropped silently: a saved listing that has since sold or
- * been withdrawn is expected, not an error worth showing.
- */
 export function SavedPage() {
   const { savedIds } = useSavedVehicles()
-  // Single state value: a load resolves to either a list or an error, and
-  // the empty-ids case resolves synchronously to an empty list. Keeping them
-  // together removes the setLoading/setError reset the effect used to do
-  // synchronously before every fetch.
+
   const [state, setState] = useState<{
     vehicles: VehicleDetail[]
     loading: boolean

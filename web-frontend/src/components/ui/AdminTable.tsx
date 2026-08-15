@@ -10,13 +10,7 @@ interface AdminTableProps<T> {
   renderRow: (row: T) => ReactNode
 }
 
-/**
- * The loading / table / empty-row shell previously duplicated across
- * AdminUsersPage, AdminUploadsPage, and AdminAuditLogsPage — each page kept
- * its own column count and cell markup, only the surrounding structure was
- * copy-pasted. `columns` supplies both the header row and the colSpan for
- * the empty-state row, so the two can no longer drift out of sync by hand.
- */
+
 export function AdminTable<T>({
   columns,
   rows,

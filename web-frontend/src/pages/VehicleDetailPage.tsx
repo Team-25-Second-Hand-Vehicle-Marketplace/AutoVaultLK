@@ -21,13 +21,7 @@ function formatSpecValue(value: unknown): string {
 
 export function VehicleDetailPage() {
   const { id } = useParams<{ id: string }>()
-  /**
-   * One state value, because these four always change together: a load
-   * either yields a vehicle, a not-found, or an error, and each outcome
-   * fully replaces the previous one. As separate useState calls the effect
-   * had to reset three of them synchronously on every run before fetching,
-   * which is the cascading-render pattern React warns about.
-   */
+
   const [state, setState] = useState<{
     vehicle: VehicleDetail | null
     loading: boolean
@@ -35,8 +29,7 @@ export function VehicleDetailPage() {
     notFound: boolean
   }>({ vehicle: null, loading: true, error: null, notFound: false })
   const { vehicle, loading, error, notFound } = state
-  // Placeholder gallery photos come from a CDN — fall back to the "no
-  // photos" panel if one fails rather than showing a broken image.
+
   const [galleryFailed, setGalleryFailed] = useState(false)
 
   useEffect(() => {
@@ -51,9 +44,7 @@ export function VehicleDetailPage() {
       })
       .catch((err) => {
         if (axios.isCancel(err) || controller.signal.aborted) return
-        // The API returns 404 both for a listing that doesn't exist and one
-        // that isn't LIVE — deliberately indistinguishable, so this page
-        // says the same thing for both.
+
         if (axios.isAxiosError(err) && err.response?.status === 404) {
           setState({ vehicle: null, loading: false, error: null, notFound: true })
           return
@@ -107,9 +98,7 @@ export function VehicleDetailPage() {
     ([, value]) => value !== null && value !== '',
   )
 
-  // PLACEHOLDER PHOTOGRAPHY — see src/assets/demo-images.ts. Real images
-  // win; the stock photo fills the gap so a detail page opened from a demo
-  // screenshot doesn't read as an empty listing.
+
   const primaryImage =
     vehicle.images[0] ??
     demoImageFor(vehicle.id, {

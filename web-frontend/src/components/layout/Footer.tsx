@@ -1,15 +1,6 @@
 import { Link } from 'react-router-dom'
 import { BrandMark } from './BrandMark'
 
-/**
- * Site footer.
- *
- * Every link here points at a route that exists. The design reference also
- * lists Careers, Press, Blog, Privacy, Terms, and social accounts — none of
- * which exist in this project — so those are omitted rather than rendered as
- * links to nowhere. The price-bracket links use LKR thresholds that match the
- * real inventory range.
- */
 export function Footer() {
   return (
     <footer className="site-footer">

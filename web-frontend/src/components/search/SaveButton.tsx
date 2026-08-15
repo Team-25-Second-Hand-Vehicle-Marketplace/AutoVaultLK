@@ -3,19 +3,6 @@ import { toast } from 'sonner'
 import { useAuth } from '../../auth/useAuth'
 import { useSavedVehicles } from '../../hooks/useSavedVehicles'
 
-/**
- * Save/unsave a listing.
- *
- * Saved ids persist per-user in localStorage, NOT on the server: the
- * favourites module in marketplace-service is an empty directory of .gitkeep
- * files on this branch (the implementation lives on feat/MP-favourite,
- * unmerged), so there is no endpoint to call. useSavedVehicles is the single
- * place that changes when it lands.
- *
- * Requiring sign-in even for local saves is deliberate: it keeps the
- * behaviour identical before and after the server-backed version, so nobody
- * builds up a list as an anonymous visitor and then loses it.
- */
 export function SaveButton({ vehicleId }: { vehicleId: string }) {
   const { isAuthenticated } = useAuth()
   const navigate = useNavigate()
