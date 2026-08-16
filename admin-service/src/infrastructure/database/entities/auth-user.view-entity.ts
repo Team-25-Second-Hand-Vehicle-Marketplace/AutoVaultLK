@@ -23,6 +23,9 @@ export class AuthUserView {
   @Column({ name: 'is_active', type: 'boolean' })
   isActive: boolean;
 
+  @Column({ name: 'email_verified_at', type: 'timestamptz', nullable: true })
+  emailVerifiedAt: Date | null;
+
   @Column({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 }

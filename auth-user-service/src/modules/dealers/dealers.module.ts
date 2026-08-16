@@ -7,6 +7,7 @@ import { InternalDealersController } from './controllers/internal-dealers.contro
 import { DealerProfilesRepository } from './repositories/dealer-profiles.repository';
 import { DealerProfilesService } from './services/dealer-profiles.service';
 import { UsersModule } from '../users/users.module';
+import { InternalServiceGuard } from '../../common/guards/internal-service.guard';
 
 /**
  * UsersModule is imported for UsersRepository only. UsersModule does not
@@ -15,7 +16,7 @@ import { UsersModule } from '../users/users.module';
 @Module({
   imports: [TypeOrmModule.forFeature([DealerProfile]), UsersModule, JwtAuthModule],
   controllers: [DealerProfilesController, InternalDealersController],
-  providers: [DealerProfilesRepository, DealerProfilesService],
+  providers: [DealerProfilesRepository, DealerProfilesService, InternalServiceGuard],
   exports: [DealerProfilesRepository, DealerProfilesService],
 })
 export class DealerProfilesModule {}
