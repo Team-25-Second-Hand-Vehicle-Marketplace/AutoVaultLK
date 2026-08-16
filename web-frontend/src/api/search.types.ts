@@ -112,6 +112,29 @@ export interface FilterSearchResponse {
   relaxation?: Relaxation
 }
 
+/** Control params for GET /marketplace/search/nl — not sidebar filters. */
+export interface NlSearchParams {
+  q: string
+  sort?: SortOption
+  page?: number
+  limit?: number
+  facets?: boolean
+}
+
+export interface NlParse {
+  confidence: number
+  needsGroqFallback: boolean
+  usedGroqFallback: boolean
+  usedSemanticRanking: boolean
+  usedTrigramFallback: boolean
+  unresolvedTokens: string[]
+  semanticText: string
+}
+
+export interface NlSearchResponse extends FilterSearchResponse {
+  parse: NlParse
+}
+
 export interface MakeOption {
   id: string
   name: string

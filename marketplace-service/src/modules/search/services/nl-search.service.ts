@@ -5,17 +5,15 @@ import { NlSearchResponseDto } from '../dto/nl-search-response.dto';
 import { parseQuery } from '../parser/deterministic-parser';
 import type { ParsedQuery } from '../parser/types';
 import { GroqFallbackService } from '../groq/groq-fallback.service';
+import { chooseSearchRank } from '../filters/search-rank';
 import { VehicleDictionaryRepository } from '../repositories/vehicle-dictionary.repository';
 import { FilterSearchService } from './filter-search.service';
 import { QueryEmbeddingService } from './query-embedding.service';
 
 /**
- * SAD 4.1.4 steps 1–8 except trigram last-resort.
- *
- * Parses, optionally Groq-repairs, embeds leftover semanticText with MiniLM,
- * then runs the existing filter path with pgvector ranking when a vector
- * is available (FR-23). No leftover text → skip embed (NFR-12.1). MiniLM
- * failure → tsvector keyword fallback (FR-24).
+ * SAD 4.1.4: parse → Groq repair → MiniLM rank leftovers → filter search.
+ * pg_trgm is last-resort only (FR-24): rank leftovers among resolved
+ * filters when MiniLM is down; gate on search_text only when nothing resolved.
  */
 @Injectable()
 export class NlSearchService {
@@ -34,20 +32,22 @@ export class NlSearchService {
     const queryEmbedding = parsed.semanticText
       ? await this.embeddings.embedQuery(parsed.semanticText)
       : null;
-    const usedSemanticRanking = queryEmbedding !== null;
-    const filterDto = toFilterSearchDto(parsed, dto, {
-      keywordFallback: parsed.semanticText.length > 0 && !usedSemanticRanking,
+    const { rank, usedSemanticRanking, usedTrigramFallback } = chooseSearchRank({
+      filters: parsed.filters,
+      semanticText: parsed.semanticText,
+      rawQuery: dto.q,
+      queryEmbedding,
     });
 
     const results = await this.filterSearch.search(
-      filterDto,
+      toFilterSearchDto(parsed, dto),
       {
         rawText: dto.q,
         confidence: rules.confidence,
         unresolvedTokens: rules.unresolvedTokens,
         usedLlm,
       },
-      queryEmbedding ?? undefined,
+      rank,
     );
 
     return {
@@ -57,6 +57,7 @@ export class NlSearchService {
         needsGroqFallback: parsed.needsGroqFallback,
         usedGroqFallback: usedLlm,
         usedSemanticRanking,
+        usedTrigramFallback,
         unresolvedTokens: parsed.unresolvedTokens,
         semanticText: parsed.semanticText,
       },
@@ -64,20 +65,12 @@ export class NlSearchService {
   }
 }
 
-export function toFilterSearchDto(
-  parsed: ParsedQuery,
-  control: NlSearchDto,
-  options?: { keywordFallback?: boolean },
-): FilterSearchDto {
-  const dto: FilterSearchDto = {
+export function toFilterSearchDto(parsed: ParsedQuery, control: NlSearchDto): FilterSearchDto {
+  return {
     ...parsed.filters,
     page: control.page,
     limit: control.limit,
     sort: control.sort,
     facets: control.facets,
   };
-  if (options?.keywordFallback && parsed.semanticText.length > 0) {
-    dto.q = parsed.semanticText;
-  }
-  return dto;
 }

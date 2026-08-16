@@ -218,6 +218,12 @@
   margin-bottom: 14px;
 }
 
+.parse-notice {
+  font-size: 13px;
+  color: var(--text);
+  margin: -6px 0 14px;
+}
+
 /* ── Result cards ────────────────────────────────────────────── */
 
 .vehicle-grid {
