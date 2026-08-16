@@ -238,6 +238,45 @@ paths:
       responses:
         '200':
           description: Paginated, filtered listings
+  /marketplace/search/nl:
+    get:
+      tags:
+        - marketplace
+      summary: Natural-language search over LIVE listings (public — guest browsing)
+      description: |
+        Deterministic parser (FR-21) turns `q` into structured filters, then
+        reuses the filter-search path. Groq fallback and pgvector ranking are
+        not invoked on this route yet; leftover tokens are applied as a
+        keyword (`search_vector`) match.
+      operationId: nlSearch
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            maxLength: 500
+          description: Free-text query, e.g. "Toyata Corrola under 8.5m deisel"
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [relevance, price_asc, price_desc, year_desc, mileage_asc, newest]
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: facets
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Paginated listings plus parse metadata (confidence, unresolved tokens)
   /marketplace/search/facets:
     get:
       tags:
