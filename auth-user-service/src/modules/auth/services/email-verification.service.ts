@@ -36,13 +36,20 @@ export class EmailVerificationService {
       expiresAt: new Date(Date.now() + this.getTokenTtlMs()),
     });
 
-    this.logger.log(
-      `Email verification token issued for user ${user.id} (${user.email})`,
-    );
+    const includeInResponse = this.shouldReturnTokenInResponse();
+    if (includeInResponse) {
+      this.logger.log(
+        `DEV email verification token for ${user.email}: ${rawToken}`,
+      );
+    } else {
+      this.logger.log(
+        `Email verification token issued for user ${user.id} (${user.email})`,
+      );
+    }
 
     return {
       rawToken,
-      includeInResponse: this.shouldReturnTokenInResponse(),
+      includeInResponse,
     };
   }
 
