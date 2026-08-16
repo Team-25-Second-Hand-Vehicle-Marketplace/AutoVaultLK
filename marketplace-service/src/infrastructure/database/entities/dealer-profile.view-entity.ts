@@ -30,6 +30,12 @@ export class DealerProfileView {
   @Column({ name: 'dealer_type', type: 'enum', enum: ['individual', 'business'] })
   dealerType: DealerType;
 
+  @Column({ name: 'company_name', type: 'varchar', length: 255 })
+  companyName: string;
+
+  @Column({ name: 'contact_number', type: 'varchar', length: 50, nullable: true })
+  contactNumber: string | null;
+
   @Column({ type: 'varchar', length: 100 })
   city: string;
 
