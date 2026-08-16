@@ -21,27 +21,9 @@
   flex-wrap: wrap;
 }
 
-/* Capped rather than flex:1 — at 1400px a full-bleed input dwarfs the sort
-   and filter controls beside it, and the header already carries a
-   full-width search field. */
-.search-toolbar__input {
-  flex: 1 1 320px;
-  max-width: 520px;
-  min-width: 220px;
-  padding: 12px 16px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg);
-  color: var(--text-h);
-  font: inherit;
-  font-size: 14px;
-}
-
-.search-toolbar__input:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: -1px;
-}
-
+/* The toolbar's keyword input was removed — the header search box owns
+   keyword entry, and two identical fields within ~40px of each other made it
+   unclear which was live. Filters sits at the left, sort at the right. */
 .search-toolbar__filters-btn,
 .sort-dropdown select {
   padding: 11px 16px;

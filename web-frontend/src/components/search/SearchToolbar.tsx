@@ -1,10 +1,7 @@
-import { useState, useEffect } from 'react'
 import { SortDropdown } from './SortDropdown'
 import type { SortOption } from '../../api/search.types'
 
 interface Props {
-  q: string | undefined
-  onSubmitKeyword: (q: string | undefined) => void
   sort: SortOption
   onSortChange: (sort: SortOption) => void
   filtersOpen: boolean
@@ -16,18 +13,7 @@ interface Props {
  * like the sidebar), a Filters toggle for collapsing the sidebar on narrow
  * screens, and sort. Matches the design's top row above the results grid.
  */
-export function SearchToolbar({
-  q,
-  onSubmitKeyword,
-  sort,
-  onSortChange,
-  filtersOpen,
-  onToggleFilters,
-}: Props) {
-  const [keyword, setKeyword] = useState(q ?? '')
-
-  useEffect(() => setKeyword(q ?? ''), [q])
-
+export function SearchToolbar({ sort, onSortChange, filtersOpen, onToggleFilters }: Props) {
   return (
     <form
       className="search-toolbar"
@@ -49,6 +35,6 @@ export function SearchToolbar({
       </button>
 
       <SortDropdown value={sort} onChange={onSortChange} />
-    </form>
+    </div>
   )
 }
