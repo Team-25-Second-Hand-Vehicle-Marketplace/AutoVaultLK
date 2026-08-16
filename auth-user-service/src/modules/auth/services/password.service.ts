@@ -40,13 +40,20 @@ export class PasswordService {
       expiresAt: new Date(Date.now() + this.getResetTokenTtlMs()),
     });
 
-    this.logger.log(
-      `Password reset token issued for user ${user.id} (${user.email})`,
-    );
+    const includeInResponse = this.shouldReturnTokenInResponse();
+    if (includeInResponse) {
+      this.logger.log(
+        `DEV password reset token for ${user.email}: ${rawToken}`,
+      );
+    } else {
+      this.logger.log(
+        `Password reset token issued for user ${user.id} (${user.email})`,
+      );
+    }
 
     return {
       rawToken,
-      includeInResponse: this.shouldReturnTokenInResponse(),
+      includeInResponse,
     };
   }
 
