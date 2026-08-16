@@ -4,6 +4,7 @@ import { DataSource } from 'typeorm';
 import { FilterSearchDto } from '../dto/filter-search.dto';
 import { FilterSearchResponseDto, RelaxationDto } from '../dto/filter-search-response.dto';
 import { buildFilterQuery } from '../filters/filter-query.builder';
+import type { SearchRankOptions } from '../filters/search-rank';
 import { VehicleSearchRepository } from '../repositories/vehicle-search.repository';
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '../constants/vehicle-attributes.constants';
 
@@ -38,7 +39,7 @@ export class FilterSearchService {
       unresolvedTokens?: string[];
       usedLlm?: boolean;
     },
-    queryEmbedding?: number[],
+    rank?: SearchRankOptions,
   ): Promise<FilterSearchResponseDto> {
     const startedAt = Date.now();
     const page = dto.page ?? 1;
@@ -46,13 +47,15 @@ export class FilterSearchService {
     const normalizedDto = { ...dto, page, limit };
 
     let built = buildFilterQuery(normalizedDto);
-    let total = await this.repository.count(built, normalizedDto.verifiedDealersOnly);
+    let total = await this.repository.count(built, normalizedDto.verifiedDealersOnly, rank);
     let relaxation: RelaxationDto | undefined;
     // The filter set the results actually reflect — the original DTO, or the
     // relaxed one when the ladder fired. Facets must be counted against this,
     // not the original, or they would describe a result set nobody is seeing.
     let effectiveDto: FilterSearchDto = normalizedDto;
 
+    // Relaxation never drops a last-resort trigram WHERE. Showing every LIVE
+    // listing after a miss would be the "trigram bypass" the index comment forbids.
     if (total === 0) {
       const result = await this.relax(normalizedDto);
       if (result) {
@@ -64,7 +67,7 @@ export class FilterSearchService {
     }
 
     const [items, facets] = await Promise.all([
-      this.repository.search(built, effectiveDto, queryEmbedding),
+      this.repository.search(built, effectiveDto, rank),
       normalizedDto.facets ? this.repository.facets(effectiveDto) : undefined,
     ]);
 

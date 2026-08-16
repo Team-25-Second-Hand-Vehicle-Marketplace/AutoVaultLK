@@ -3,6 +3,8 @@ import type {
   FilterSearchParams,
   FilterSearchResponse,
   MarketplaceStats,
+  NlSearchParams,
+  NlSearchResponse,
   SearchOptionsResponse,
   VehicleDetail,
 } from './search.types'
@@ -49,6 +51,21 @@ export async function filterSearch(
 ): Promise<FilterSearchResponse> {
   const { data } = await apiClient.get<FilterSearchResponse>('/marketplace/search/filters', {
     params: toQueryParams(filters),
+    signal,
+  })
+  return data
+}
+
+/**
+ * Natural-language path (SAD 4.1.4). The backend parser owns filters;
+ * only q plus page/sort/facets are sent.
+ */
+export async function nlSearch(
+  params: NlSearchParams,
+  signal?: AbortSignal,
+): Promise<NlSearchResponse> {
+  const { data } = await apiClient.get<NlSearchResponse>('/marketplace/search/nl', {
+    params,
     signal,
   })
   return data
