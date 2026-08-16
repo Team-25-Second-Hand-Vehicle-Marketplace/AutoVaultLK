@@ -25,7 +25,20 @@ export class FilterSearchService {
     @InjectDataSource() private readonly dataSource: DataSource,
   ) {}
 
-  async search(dto: FilterSearchDto): Promise<FilterSearchResponseDto> {
+  /**
+   * Optional analytics overlay used by the NL path so search_queries.raw_text
+   * / confidence / unresolved_tokens are populated without a second INSERT.
+   * The filter path omits this and keeps the existing empty-raw_text row.
+   */
+  async search(
+    dto: FilterSearchDto,
+    log?: {
+      rawText?: string;
+      confidence?: number | null;
+      unresolvedTokens?: string[];
+      usedLlm?: boolean;
+    },
+  ): Promise<FilterSearchResponseDto> {
     const startedAt = Date.now();
     const page = dto.page ?? 1;
     const limit = Math.min(dto.limit ?? DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
@@ -54,7 +67,7 @@ export class FilterSearchService {
       normalizedDto.facets ? this.repository.facets(effectiveDto) : undefined,
     ]);
 
-    this.logSearch(normalizedDto, total, Date.now() - startedAt).catch((err) =>
+    this.logSearch(normalizedDto, total, Date.now() - startedAt, log).catch((err) =>
       this.logger.warn(`search_queries logging failed: ${err.message}`),
     );
 
@@ -181,16 +194,32 @@ export class FilterSearchService {
     return null; // truly nothing matches, even fully relaxed — return the empty result as-is
   }
 
-  private async logSearch(dto: FilterSearchDto, resultCount: number, elapsedMs: number): Promise<void> {
+  private async logSearch(
+    dto: FilterSearchDto,
+    resultCount: number,
+    elapsedMs: number,
+    log?: {
+      rawText?: string;
+      confidence?: number | null;
+      unresolvedTokens?: string[];
+      usedLlm?: boolean;
+    },
+  ): Promise<void> {
     // Fire-and-forget by design (caller wraps in .catch) — analytics must
-    // never fail a search. usedLlm is always false on this path; this
-    // table is shared with the future NL pipeline (search_queries schema
-    // already accounts for both).
+    // never fail a search. usedLlm stays false until the Groq step is wired.
     await this.dataSource.query(
       `INSERT INTO marketplace.search_queries
-         (raw_text, extracted_filters, used_llm, unresolved_tokens, result_count, search_time_ms)
-       VALUES ($1, $2::jsonb, false, '[]'::jsonb, $3, $4)`,
-      ['', JSON.stringify(this.toPlainFilters(dto)), resultCount, elapsedMs],
+         (raw_text, extracted_filters, used_llm, unresolved_tokens, result_count, search_time_ms, confidence)
+       VALUES ($1, $2::jsonb, $3, $4::jsonb, $5, $6, $7)`,
+      [
+        log?.rawText ?? '',
+        JSON.stringify(this.toPlainFilters(dto)),
+        log?.usedLlm ?? false,
+        JSON.stringify(log?.unresolvedTokens ?? []),
+        resultCount,
+        elapsedMs,
+        log?.confidence ?? null,
+      ],
     );
   }
 
