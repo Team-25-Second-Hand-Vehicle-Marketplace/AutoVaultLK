@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { UsersService } from '../../src/modules/users/services/users.service';
 
 describe('UsersService', () => {
@@ -46,5 +46,25 @@ describe('UsersService', () => {
     expect(usersRepository.update).toHaveBeenCalledWith('user-id', {
       name: 'Updated',
     });
+  });
+
+  it('deactivates another user via adminUpdate', async () => {
+    usersRepository.findById
+      .mockResolvedValueOnce({ id: 'admin-id', role: 'ADMIN' })
+      .mockResolvedValueOnce({ id: 'user-id', isActive: true });
+    usersRepository.update.mockResolvedValue({ id: 'user-id', isActive: false });
+
+    await expect(service.deactivate('user-id', 'admin-id')).resolves.toMatchObject({
+      id: 'user-id',
+      isActive: false,
+    });
+    expect(usersRepository.update).toHaveBeenCalledWith('user-id', { isActive: false });
+  });
+
+  it('rejects self-deactivation', async () => {
+    await expect(service.deactivate('admin-id', 'admin-id')).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+    expect(usersRepository.update).not.toHaveBeenCalled();
   });
 });
