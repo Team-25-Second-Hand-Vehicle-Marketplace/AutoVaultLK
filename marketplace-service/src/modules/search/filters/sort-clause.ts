@@ -11,19 +11,23 @@ const SORT_SQL: Record<SortOption, string> = {
 };
 
 /**
- * Builds a parameterized ORDER BY. Vector ranking (FR-23) wins over
- * ts_rank when a query embedding is present; both stay off the SQL string
- * as bound parameters.
+ * Builds a parameterized ORDER BY. Vector ranking (FR-23) wins; pg_trgm
+ * word_similarity is the MiniLM/Groq degradation path (FR-24); ts_rank is
+ * the filter-path keyword layer. User strings stay bound parameters.
  */
 export function buildOrderBy(
   sort: SortOption | undefined,
   params: unknown[],
-  options?: { keyword?: string; queryEmbedding?: number[] },
+  options?: { keyword?: string; queryEmbedding?: number[]; trigramQuery?: string },
 ): string {
   const key = sort ?? 'relevance';
   if (key === 'relevance' && options?.queryEmbedding?.length) {
     params.push(toPgVector(options.queryEmbedding));
     return `v.embedding <=> $${params.length}::vector ASC NULLS LAST, v.created_at DESC`;
+  }
+  if (key === 'relevance' && options?.trigramQuery?.trim()) {
+    params.push(options.trigramQuery.trim());
+    return `word_similarity($${params.length}, COALESCE(v.search_text, '')) DESC NULLS LAST, v.created_at DESC`;
   }
   if (key === 'relevance' && options?.keyword?.trim()) {
     params.push(options.keyword.trim());

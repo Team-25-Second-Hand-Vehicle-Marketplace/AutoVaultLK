@@ -15,7 +15,16 @@ describe('buildOrderBy', () => {
     expect(String(params[1])).toMatch(/^\[1,0,/);
   });
 
-  it('falls back to ts_rank when there is leftover keyword text but no vector', () => {
+  it('falls back to pg_trgm word_similarity when MiniLM is down (FR-24)', () => {
+    const params: unknown[] = ['LIVE'];
+    const sql = buildOrderBy('relevance', params, { trigramQuery: 'leather' });
+    expect(sql).toBe(
+      "word_similarity($2, COALESCE(v.search_text, '')) DESC NULLS LAST, v.created_at DESC",
+    );
+    expect(params[1]).toBe('leather');
+  });
+
+  it('falls back to ts_rank for the filter-path keyword layer', () => {
     const params: unknown[] = ['LIVE'];
     const sql = buildOrderBy('relevance', params, { keyword: 'leather' });
     expect(sql).toBe(
@@ -28,6 +37,16 @@ describe('buildOrderBy', () => {
     const params: unknown[] = ['LIVE'];
     expect(buildOrderBy('relevance', params, {})).toBe('v.created_at DESC');
     expect(params).toEqual(['LIVE']);
+  });
+
+  it('prefers a query embedding over trigram when both are present (FR-23)', () => {
+    const params: unknown[] = ['LIVE'];
+    const sql = buildOrderBy('relevance', params, {
+      queryEmbedding: unitVector(),
+      trigramQuery: 'leather',
+    });
+    expect(sql).toBe('v.embedding <=> $2::vector ASC NULLS LAST, v.created_at DESC');
+    expect(params).toHaveLength(2);
   });
 
   it('honours an explicit scalar sort even if an embedding was produced', () => {

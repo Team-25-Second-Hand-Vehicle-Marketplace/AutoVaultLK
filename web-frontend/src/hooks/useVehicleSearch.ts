@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import axios from 'axios'
-import { filterSearch } from '../api/search.api'
+import { filterSearch, nlSearch } from '../api/search.api'
 import { toErrorMessage } from '../api/client'
 import type {
   FilterSearchParams,
   FilterSearchResponse,
+  NlParse,
   SortOption,
   SpecFilter,
 } from '../api/search.types'
@@ -119,7 +120,7 @@ export function useVehicleSearch() {
   const appliedFilters = useMemo(() => paramsToFilters(searchParams), [searchParams])
 
   const [draft, setDraft] = useState<FilterSearchParams>(appliedFilters)
-  const [result, setResult] = useState<FilterSearchResponse | null>(null)
+  const [result, setResult] = useState<(FilterSearchResponse & { parse?: NlParse }) | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -141,7 +142,22 @@ export function useVehicleSearch() {
     setLoading(true)
     setError(null)
 
-    filterSearch({ ...appliedFilters, facets: true }, controller.signal)
+    // Free-text `q` is the NL path (SAD 4.1.4). Sidebar-only searches stay
+    // on /search/filters so structured clicks never go through the parser.
+    const request = appliedFilters.q
+      ? nlSearch(
+          {
+            q: appliedFilters.q,
+            sort: appliedFilters.sort,
+            page: appliedFilters.page,
+            limit: appliedFilters.limit,
+            facets: true,
+          },
+          controller.signal,
+        )
+      : filterSearch({ ...appliedFilters, facets: true }, controller.signal)
+
+    request
       .then((data) => setResult(data))
       .catch((err) => {
         // An aborted request is this effect superseding itself, not a
@@ -189,9 +205,12 @@ export function useVehicleSearch() {
     setDraft((prev) => ({ ...prev, ...patch }))
   }, [])
 
-  /** Pushes the staged draft to the URL — this is what "Apply Filters" calls. */
+  /** Pushes the staged draft to the URL — this is what "Apply Filters" calls.
+   *  Drop a leftover NL `q` so the sidebar path is not overridden by /search/nl. */
   const applyFilters = useCallback(() => {
-    applyToUrl(draft)
+    const next = { ...draft }
+    delete next.q
+    applyToUrl(next)
   }, [draft, applyToUrl])
 
   /** Discards draft edits and reverts the sidebar to the last applied state. */
@@ -246,8 +265,10 @@ export function useVehicleSearch() {
   )
 
   /**
-   * Applies a keyword immediately, bypassing the staged draft.
+   * Applies a free-text query immediately via GET /search/nl.
    *
+   * Clears structured sidebar filters: the parser owns those fields, and
+   * leaving them in the URL would show chips the NL request does not send.
    * Must not go through updateDraft + applyFilters: applyFilters is memoized
    * on the draft from the current render, so it would publish the state as it
    * was BEFORE the keyword was set — the first Enter press searched without
@@ -255,15 +276,12 @@ export function useVehicleSearch() {
    */
   const setKeyword = useCallback(
     (q: string | undefined) => {
-      const next = { ...appliedFilters }
-      if (q) {
-        next.q = q
-      } else {
-        delete next.q
-      }
+      const next: FilterSearchParams = {}
+      if (appliedFilters.sort) next.sort = appliedFilters.sort
+      if (q) next.q = q
       applyToUrl(next)
     },
-    [appliedFilters, applyToUrl],
+    [appliedFilters.sort, applyToUrl],
   )
 
   const clearFilters = useCallback(() => {
