@@ -38,6 +38,7 @@ export class FilterSearchService {
       unresolvedTokens?: string[];
       usedLlm?: boolean;
     },
+    queryEmbedding?: number[],
   ): Promise<FilterSearchResponseDto> {
     const startedAt = Date.now();
     const page = dto.page ?? 1;
@@ -63,7 +64,7 @@ export class FilterSearchService {
     }
 
     const [items, facets] = await Promise.all([
-      this.repository.search(built, effectiveDto),
+      this.repository.search(built, effectiveDto, queryEmbedding),
       normalizedDto.facets ? this.repository.facets(effectiveDto) : undefined,
     ]);
 
