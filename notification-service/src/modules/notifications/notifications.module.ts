@@ -19,5 +19,9 @@ import { NotificationEventHandler } from './services/notification-event.handler'
     NotificationEventHandler,
     InternalServiceGuard,
   ],
+
+  exports: [
+    NotificationEventHandler,
+  ],
 })
 export class NotificationsModule {}
