@@ -7,6 +7,8 @@ export interface AuthContextValue {
   /** True until the stored session has been read — routes must wait on this. */
   initializing: boolean
   login: (email: string, password: string) => Promise<void>
+  /** Admin portal sign-in via POST /auth/login/admin. */
+  loginAdmin: (email: string, password: string) => Promise<void>
   /** Resolves to a message when the backend requires email verification. */
   register: (payload: RegisterBuyerRequest) => Promise<{ message?: string }>
   logout: () => Promise<void>

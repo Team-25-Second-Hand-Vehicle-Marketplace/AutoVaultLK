@@ -36,6 +36,11 @@ export default defineConfig({
         target: "http://localhost:3001",
         changeOrigin: true,
       },
+      // nginx: location /admin/ -> admin_service/admin/ (prefix PRESERVED)
+      "/admin": {
+        target: "http://localhost:3004",
+        changeOrigin: true,
+      },
     },
   },
 });

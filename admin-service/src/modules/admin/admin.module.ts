@@ -7,9 +7,12 @@ import { NotificationView } from '../../infrastructure/database/entities/notific
 import { UploadJobView } from '../../infrastructure/database/entities/upload-job.view-entity';
 import { VehicleView } from '../../infrastructure/database/entities/vehicle.view-entity';
 import { JwtAuthModule } from '../auth/jwt-auth.module';
+import { AuthInternalClient } from './clients/auth-internal.client';
+import { NotificationInternalClient } from './clients/notification-internal.client';
 import { AdminController } from './controllers/admin.controller';
 import { AdminReadsRepository } from './repositories/admin-reads.repository';
 import { AuditLogsRepository } from './repositories/audit-logs.repository';
+import { AdminMutationsService } from './services/admin-mutations.service';
 import { AdminReadsService } from './services/admin-reads.service';
 
 @Module({
@@ -25,6 +28,13 @@ import { AdminReadsService } from './services/admin-reads.service';
     ]),
   ],
   controllers: [AdminController],
-  providers: [AdminReadsRepository, AuditLogsRepository, AdminReadsService],
+  providers: [
+    AdminReadsRepository,
+    AuditLogsRepository,
+    AdminReadsService,
+    AdminMutationsService,
+    AuthInternalClient,
+    NotificationInternalClient,
+  ],
 })
 export class AdminModule {}

@@ -455,6 +455,66 @@ paths:
           description: Audit log rows
         '403':
           description: Non-administrator JWT
+  /admin/dealers/{id}/approve:
+    post:
+      tags:
+        - admin
+      summary: Approve a pending dealer (Auth HTTP + audit + DEALER_VERIFIED)
+      operationId: adminApproveDealer
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Dealer approved; audit row written
+        '403':
+          description: Non-administrator JWT
+  /admin/dealers/{id}/reject:
+    post:
+      tags:
+        - admin
+      summary: Reject a pending dealer (Auth HTTP + audit + DEALER_REJECTED)
+      operationId: adminRejectDealer
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Dealer rejected; audit row written
+        '403':
+          description: Non-administrator JWT
+  /admin/users/{id}/deactivate:
+    post:
+      tags:
+        - admin
+      summary: Deactivate a user via Auth internal API and write audit_logs
+      operationId: adminDeactivateUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User deactivated; audit row written
+        '403':
+          description: Non-administrator JWT or self-deactivation
 components:
   securitySchemes:
     bearerAuth:
