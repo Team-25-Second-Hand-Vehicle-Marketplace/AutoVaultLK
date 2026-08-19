@@ -9,21 +9,27 @@ interface Props {
 }
 
 /**
- * Top toolbar above the results grid: the sidebar toggle on the left, sort on
- * the right.
- *
- * The keyword field that used to sit here has been removed — the header
- * carries a full-width search box on every page, and two identical inputs
- * stacked within ~40px of each other made it ambiguous which one was live.
- * The header field owns keyword entry now; it navigates to /search?q=… so the
- * `q` filter still reaches this page exactly as before.
- *
- * No longer a <form>: with the input gone there is nothing to submit, and a
- * form wrapper would let a stray Enter reload the page.
+ * Top toolbar: free-text NL search (GET /search/nl on submit — not staged
+ * like the sidebar), a Filters toggle for collapsing the sidebar on narrow
+ * screens, and sort. Matches the design's top row above the results grid.
  */
 export function SearchToolbar({ sort, onSortChange, filtersOpen, onToggleFilters }: Props) {
   return (
-    <div className="search-toolbar">
+    <form
+      className="search-toolbar"
+      onSubmit={(e) => {
+        e.preventDefault()
+        onSubmitKeyword(keyword.trim() === '' ? undefined : keyword.trim())
+      }}
+    >
+      <input
+        type="search"
+        className="search-toolbar__input"
+        placeholder="Try “Toyata Corrola under 8.5m deisel”…"
+        value={keyword}
+        onChange={(e) => setKeyword(e.target.value)}
+      />
+
       <button type="button" className="search-toolbar__filters-btn" onClick={onToggleFilters}>
         {filtersOpen ? 'Hide Filters' : 'Filters'}
       </button>
