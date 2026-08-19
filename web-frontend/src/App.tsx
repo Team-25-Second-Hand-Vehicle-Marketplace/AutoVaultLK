@@ -2,6 +2,7 @@ import { Routes, Route, useLocation } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { AuthProvider } from './auth/AuthContext'
 import { RequireAuth } from './auth/RequireAuth'
+import { RequireRole } from './auth/RequireRole'
 import { Header } from './components/layout/Header'
 import { Footer } from './components/layout/Footer'
 import { ErrorBoundary } from './components/layout/ErrorBoundary'
@@ -14,18 +15,23 @@ import { SavedPage } from './pages/SavedPage'
 import { DealerLoginPage } from './pages/DealerLoginPage'
 import { DealerRegisterPage } from './pages/DealerRegisterPage'
 import { NotFoundPage } from './pages/NotFoundPage'
+import { AdminLoginPage } from './pages/admin/AdminLoginPage'
+import { AdminLayout } from './pages/admin/AdminLayout'
+import { AdminDashboardPage } from './pages/admin/AdminDashboardPage'
+import { AdminUsersPage } from './pages/admin/AdminUsersPage'
+import { AdminUploadsPage } from './pages/admin/AdminUploadsPage'
+import { AdminReportsPage } from './pages/admin/AdminReportsPage'
+import { AdminAuditLogsPage } from './pages/admin/AdminAuditLogsPage'
 
 /**
- * The dealer screens are full-bleed layouts in the design — a split-screen
- * sign-in and a centred wizard, both carrying their own branding. Wrapping
- * them in the marketplace header and footer would fight that, so the shell
- * is suppressed on those routes.
+ * Full-bleed layouts that carry their own chrome — marketplace header/footer
+ * would fight these screens.
  */
-const BARE_ROUTES = ['/dealer/login', '/dealer/register']
+const BARE_ROUTES = ['/dealer/login', '/dealer/register', '/admin/login']
 
 function App() {
   const { pathname } = useLocation()
-  const bare = BARE_ROUTES.includes(pathname)
+  const bare = BARE_ROUTES.includes(pathname) || pathname.startsWith('/admin')
 
   return (
     <AuthProvider>
@@ -50,6 +56,21 @@ function App() {
                   </RequireAuth>
                 }
               />
+              <Route path="/admin/login" element={<AdminLoginPage />} />
+              <Route
+                path="/admin"
+                element={
+                  <RequireRole role="ADMIN" loginTo="/admin/login">
+                    <AdminLayout />
+                  </RequireRole>
+                }
+              >
+                <Route index element={<AdminDashboardPage />} />
+                <Route path="users" element={<AdminUsersPage />} />
+                <Route path="uploads" element={<AdminUploadsPage />} />
+                <Route path="reports" element={<AdminReportsPage />} />
+                <Route path="audit-logs" element={<AdminAuditLogsPage />} />
+              </Route>
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </ErrorBoundary>
