@@ -21,6 +21,9 @@ export const databaseConfig = (): TypeOrmModuleOptions => ({
   // Never true. Five services share one database; a single sync would
   // reshape tables out from under the others. Migrations own all DDL.
   synchronize: false,
+  // Opt-in TLS: RDS refuses non-SSL connections (rds.force_ssl), local Docker
+  // Postgres serves no certificate. Set DATABASE_SSL=true in AWS only.
+  ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
   // Small pool per Lambda container; RDS Proxy multiplexes in production.
   extra: { max: 5 },
 });

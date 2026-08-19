@@ -16,5 +16,15 @@ export const databaseConfig = (): TypeOrmModuleOptions => ({
   // Never true. Five services share one database; a single sync would
   // reshape tables out from under the others. Migrations own all DDL.
   synchronize: false,
+  // RDS enforces TLS via the rds.force_ssl parameter, so connections without
+  // SSL are refused outright. Local Docker Postgres serves no certificate, so
+  // this has to stay opt-in rather than always-on — set DATABASE_SSL=true in
+  // the Lambda environment, leave it unset locally.
+  //
+  // rejectUnauthorized: false encrypts the connection but does not verify the
+  // server certificate against a CA. That accepts a theoretical MITM inside
+  // AWS's network in exchange for not shipping the RDS CA bundle into the
+  // image. Revisit if this ever handles production data.
+  ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
   extra: { max: 5 },
 });
