@@ -7,6 +7,7 @@ import type { VehicleDetail } from '../api/search.types'
 import { SaveButton } from '../components/search/SaveButton'
 import { YearDisplay } from '../components/search/YearDisplay'
 import { formatMileage, formatPrice, humanizeEnum } from '../components/search/vehicle-format'
+import { demoImageFor, isContainImage } from '../assets/demo-images'
 
 /** specs is untyped JSONB; render whatever is there rather than a fixed list. */
 function formatSpecKey(key: string): string {
@@ -24,6 +25,9 @@ export function VehicleDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [notFound, setNotFound] = useState(false)
+  // Placeholder gallery photos come from a CDN — fall back to the "no
+  // photos" panel if one fails rather than showing a broken image.
+  const [galleryFailed, setGalleryFailed] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -90,6 +94,20 @@ export function VehicleDetailPage() {
     ([, value]) => value !== null && value !== '',
   )
 
+  // PLACEHOLDER PHOTOGRAPHY — see src/assets/demo-images.ts. Real images
+  // win; the stock photo fills the gap so a detail page opened from a demo
+  // screenshot doesn't read as an empty listing.
+  const primaryImage =
+    vehicle.images[0] ??
+    demoImageFor(vehicle.id, {
+      vehicleType: vehicle.vehicleType,
+      make: vehicle.make,
+      model: vehicle.model,
+      bodyType: typeof vehicle.specs.body_type === 'string' ? vehicle.specs.body_type : undefined,
+      fuelType: vehicle.fuelType,
+      price: vehicle.price,
+    })
+
   return (
     <div className="detail-page">
       <nav className="breadcrumb" aria-label="Breadcrumb">
@@ -103,11 +121,16 @@ export function VehicleDetailPage() {
       <div className="detail-page__grid">
         <div className="detail-page__main">
           <div className="detail-gallery">
-            {vehicle.images.length > 0 ? (
+            {vehicle.images.length > 0 || !galleryFailed ? (
               <img
-                src={vehicle.images[0]}
+                src={primaryImage}
                 alt={`${vehicle.make} ${vehicle.model}`}
-                className="detail-gallery__primary"
+                className={
+                  isContainImage(primaryImage)
+                    ? 'detail-gallery__primary detail-gallery__primary--contain'
+                    : 'detail-gallery__primary'
+                }
+                onError={() => setGalleryFailed(true)}
               />
             ) : (
               // No environment has image rows yet; say so plainly rather

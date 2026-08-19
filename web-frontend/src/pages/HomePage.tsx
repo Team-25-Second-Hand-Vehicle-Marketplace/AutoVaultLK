@@ -11,6 +11,7 @@ import { VehicleCard } from '../components/search/VehicleCard'
 import { VehicleCardSkeleton } from '../components/search/VehicleCardSkeleton'
 import { CategoryIcon } from '../components/home/CategoryIcon'
 import { humanizeEnum } from '../components/search/vehicle-format'
+import { HERO_IMAGE } from '../assets/demo-images'
 
 /** Quick-search chips under the hero, chosen from makes that really exist. */
 const QUICK_SEARCHES = ['Toyota Aqua', 'Honda Vezel', 'Suzuki Wagon R', 'Nissan Leaf']
@@ -56,14 +57,24 @@ export function HomePage() {
   return (
     <div className="home">
       {/* ── Hero ─────────────────────────────────────────────────
-          The design reference uses a full-bleed photo of a car behind the
-          headline. This project ships no licensed vehicle photography (the
-          only asset in src/assets is an unrelated abstract graphic), so the
-          backdrop is a rendered gradient instead of a stock image that
-          doesn't belong to the project. Drop a photo in as .hero__bg when
-          one is available — the scrim above it already handles contrast. */}
+          PLACEHOLDER PHOTOGRAPHY — see src/assets/demo-images.ts. This is a
+          generic stock car under the Unsplash license (free commercial use,
+          no attribution required), used so demo snapshots aren't empty. It
+          is not a project asset and not one of our listings. Replace with
+          licensed photography before launch.
+
+          The gradient backdrop stays mounted underneath: it is what renders
+          while the photo loads, and what remains if the CDN is unreachable,
+          so the headline never lands on bare white. */}
       <section className="hero">
         <div className="hero__backdrop" aria-hidden="true" />
+        <img
+          src={HERO_IMAGE}
+          alt=""
+          className="hero__bg"
+          fetchPriority="high"
+          aria-hidden="true"
+        />
         <div className="hero__scrim" aria-hidden="true" />
 
         <div className="hero__inner">
@@ -80,12 +91,6 @@ export function HomePage() {
             Second-Hand Vehicle
           </h1>
 
-          <p className="hero__subtitle">
-            {stats
-              ? `Browse ${nf.format(stats.vehicleCount)} live listings from ${stats.dealerCount} dealers across Sri Lanka.`
-              : 'Browse live listings from dealers across Sri Lanka.'}{' '}
-            Every listing checked before it goes live.
-          </p>
 
           <div className="hero__search">
             <form className="hero-search" onSubmit={submitSearch}>
