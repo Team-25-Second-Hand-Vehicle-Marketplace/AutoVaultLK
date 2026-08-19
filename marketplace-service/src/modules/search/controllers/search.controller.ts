@@ -9,7 +9,10 @@ import {
 import { FilterSearchDto } from '../dto/filter-search.dto';
 import { FilterSearchResponseDto, VehicleDetailDto } from '../dto/filter-search-response.dto';
 import { FilterSearchService } from '../services/filter-search.service';
+import { NlSearchService } from '../services/nl-search.service';
 import { SearchOptionsService } from '../services/search-options.service';
+import { NlSearchDto } from '../dto/nl-search.dto';
+import { NlSearchResponseDto } from '../dto/nl-search-response.dto';
 import {
   SearchOptionsResponseDto,
   MarketplaceStatsDto,
@@ -20,6 +23,7 @@ import { VehicleSearchRepository } from '../repositories/vehicle-search.reposito
 export class SearchController {
   constructor(
     private readonly filterSearchService: FilterSearchService,
+    private readonly nlSearchService: NlSearchService,
     private readonly optionsService: SearchOptionsService,
     private readonly repository: VehicleSearchRepository,
   ) {}
@@ -29,6 +33,14 @@ export class SearchController {
   @Get('filters')
   async filterSearch(@Query() dto: FilterSearchDto): Promise<FilterSearchResponseDto> {
     return this.filterSearchService.search(dto);
+  }
+
+  // Free-text path — SAD 4.1.4 / FR-21. Parser emits a FilterSearchDto,
+  // Groq fills unresolved tokens when confidence < 0.6; leftover
+  // semanticText is ranked with MiniLM/pgvector, or pg_trgm last-resort.
+  @Get('nl')
+  async nlSearch(@Query() dto: NlSearchDto): Promise<NlSearchResponseDto> {
+    return this.nlSearchService.search(dto);
   }
 
   // Standalone facet counts for the initial page load, before any filter
