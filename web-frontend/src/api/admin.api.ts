@@ -2,6 +2,7 @@ import { apiClient } from './client'
 import type {
   AdminAuditLog,
   AdminDashboard,
+  AdminDealerDetail,
   AdminReports,
   AdminUploadJob,
   AdminUserRow,
@@ -60,17 +61,50 @@ export async function searchAuditLogs(
   return data
 }
 
+export async function getDealer(
+  dealerId: string,
+  signal?: AbortSignal,
+): Promise<AdminDealerDetail> {
+  const { data } = await apiClient.get<AdminDealerDetail>(`/admin/dealers/${dealerId}`, {
+    signal,
+  })
+  return data
+}
+
 export async function approveDealer(dealerId: string): Promise<unknown> {
   const { data } = await apiClient.post(`/admin/dealers/${dealerId}/approve`)
   return data
 }
 
-export async function rejectDealer(dealerId: string): Promise<unknown> {
-  const { data } = await apiClient.post(`/admin/dealers/${dealerId}/reject`)
+/**
+ * `reason` is optional so existing callers keep working, but the backend
+ * records it in both the audit trail and the rejection email (FR-09), so
+ * prefer passing one.
+ */
+export async function rejectDealer(dealerId: string, reason?: string): Promise<unknown> {
+  const { data } = await apiClient.post(
+    `/admin/dealers/${dealerId}/reject`,
+    reason ? { reason } : {},
+  )
   return data
 }
 
 export async function deactivateUser(userId: string): Promise<unknown> {
   const { data } = await apiClient.post(`/admin/users/${userId}/deactivate`)
+  return data
+}
+
+export async function reactivateUser(userId: string): Promise<unknown> {
+  const { data } = await apiClient.post(`/admin/users/${userId}/reactivate`)
+  return data
+}
+
+/** FR-12: administrators are provisioned by an existing administrator. */
+export async function createAdmin(input: {
+  email: string
+  name: string
+  password: string
+}): Promise<unknown> {
+  const { data } = await apiClient.post('/admin/users', input)
   return data
 }

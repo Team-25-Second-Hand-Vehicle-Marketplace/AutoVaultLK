@@ -37,9 +37,24 @@ export default defineConfig({
         changeOrigin: true,
       },
       // nginx: location /admin/ -> admin_service/admin/ (prefix PRESERVED)
+      //
+      // The SPA also owns /admin/* routes (/admin/login, /admin/users, ...),
+      // so a bare prefix match would send browser navigations to the API and
+      // return its 404 JSON instead of rendering React. In production nginx
+      // serves the SPA and the API separately and never has this ambiguity.
+      //
+      // Only proxy requests that are actual API calls: XHR/fetch send
+      // Accept: application/json, while a navigation sends Accept: text/html.
       "/admin": {
         target: "http://localhost:3004",
         changeOrigin: true,
+        bypass(req) {
+          const accept = req.headers.accept ?? "";
+          // Returning the path tells vite to serve it locally (SPA fallback)
+          // rather than proxying; returning undefined proxies as normal.
+          if (accept.includes("text/html")) return "/index.html";
+          return undefined;
+        },
       },
     },
   },

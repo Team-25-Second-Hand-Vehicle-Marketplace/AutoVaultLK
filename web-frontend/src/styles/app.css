@@ -544,6 +544,14 @@
   display: block;
 }
 
+/* PLACEHOLDER PHOTOGRAPHY — see src/assets/demo-images.ts. Studio cut-outs
+   need letterboxing rather than cropping; 16/10 is wider than the source
+   images, so `cover` would slice the roof and wheels off. */
+.detail-gallery__primary--contain {
+  object-fit: contain;
+  background: #fff;
+}
+
 .detail-gallery__placeholder {
   display: flex;
   flex-direction: column;

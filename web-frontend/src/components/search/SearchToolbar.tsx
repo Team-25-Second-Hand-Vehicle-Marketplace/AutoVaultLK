@@ -1,7 +1,10 @@
+import { useEffect, useState, type FormEvent } from 'react'
 import { SortDropdown } from './SortDropdown'
 import type { SortOption } from '../../api/search.types'
 
 interface Props {
+  keyword: string
+  onSubmitKeyword: (keyword: string | undefined) => void
   sort: SortOption
   onSortChange: (sort: SortOption) => void
   filtersOpen: boolean
@@ -13,21 +16,40 @@ interface Props {
  * like the sidebar), a Filters toggle for collapsing the sidebar on narrow
  * screens, and sort. Matches the design's top row above the results grid.
  */
-export function SearchToolbar({ sort, onSortChange, filtersOpen, onToggleFilters }: Props) {
+export function SearchToolbar({
+  keyword,
+  onSubmitKeyword,
+  sort,
+  onSortChange,
+  filtersOpen,
+  onToggleFilters,
+}: Props) {
+  // The input is local while typing and only lifts on submit — searching per
+  // keystroke would fire an NL parse (and a Groq call) for every character.
+  const [draft, setDraft] = useState(keyword)
+
+  // Re-sync when the applied query changes from outside this input: a quick
+  // chip, a header search, or the back button. Without this the box keeps
+  // showing whatever was last typed here while the results say otherwise.
+  useEffect(() => {
+    setDraft(keyword)
+  }, [keyword])
+
+  const submitSearch = (e: FormEvent) => {
+    e.preventDefault()
+    const q = draft.trim()
+    onSubmitKeyword(q === '' ? undefined : q)
+  }
+
   return (
-    <form
-      className="search-toolbar"
-      onSubmit={(e) => {
-        e.preventDefault()
-        onSubmitKeyword(keyword.trim() === '' ? undefined : keyword.trim())
-      }}
-    >
+    <form className="search-toolbar" onSubmit={submitSearch} role="search">
       <input
         type="search"
         className="search-toolbar__input"
         placeholder="Try “Toyata Corrola under 8.5m deisel”…"
-        value={keyword}
-        onChange={(e) => setKeyword(e.target.value)}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        aria-label="Search vehicles"
       />
 
       <button type="button" className="search-toolbar__filters-btn" onClick={onToggleFilters}>
@@ -35,6 +57,6 @@ export function SearchToolbar({ sort, onSortChange, filtersOpen, onToggleFilters
       </button>
 
       <SortDropdown value={sort} onChange={onSortChange} />
-    </div>
+    </form>
   )
 }

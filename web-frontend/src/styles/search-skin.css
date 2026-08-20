@@ -253,6 +253,18 @@
   background: var(--bg-alt);
 }
 
+/* PLACEHOLDER PHOTOGRAPHY — see src/assets/demo-images.ts.
+   Supplied brochure shots are studio cut-outs on white: the vehicle is
+   centred with generous margins and no bleed. `object-fit: cover` (the
+   default for real listing photos, which are camera shots that should fill
+   the frame) would crop the nose and tail straight off a 508x305 press
+   image. `contain` letterboxes instead, and the white plate below blends
+   with the shot's own background so it reads as one panel. */
+.vehicle-card__image--contain {
+  object-fit: contain;
+  background: #fff;
+}
+
 .vehicle-card__image-placeholder {
   aspect-ratio: 4 / 3;
   display: flex;

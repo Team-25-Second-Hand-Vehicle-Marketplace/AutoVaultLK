@@ -188,6 +188,28 @@ const CLOSED_PHRASES: ClosedPhrase[] = [
   { words: ['4', 'wheel', 'drive'], field: 'driveType', value: '4WD' },
   { words: ['station', 'wagon'], field: 'bodyType', value: 'WAGON' },
   { words: ['double', 'cab'], field: 'bodyType', value: 'PICKUP' },
+
+  // Ported from the earlier deterministic-parser prototype when it was
+  // removed. Same rule as above: only compounds whose words are all
+  // unmasked by the tokenizer. "plug in hybrid" is deliberately absent —
+  // "in" is a stopword, so that spelling can never match a strict-adjacency
+  // phrase; "plugin hybrid" is the form that survives tokenization.
+  { words: ['heavy', 'equipment'], field: 'vehicleType', value: 'HEAVY_MACHINERY' },
+  { words: ['pick', 'up'], field: 'vehicleType', value: 'PICKUP' },
+  { words: ['re', 'conditioned'], field: 'condition', value: 'RECONDITIONED' },
+  { words: ['semi', 'automatic'], field: 'transmissionType', value: 'SEMI_AUTOMATIC' },
+  { words: ['semi', 'auto'], field: 'transmissionType', value: 'SEMI_AUTOMATIC' },
+  { words: ['auto', 'transmission'], field: 'transmissionType', value: 'AUTOMATIC' },
+  { words: ['automatic', 'transmission'], field: 'transmissionType', value: 'AUTOMATIC' },
+  { words: ['manual', 'transmission'], field: 'transmissionType', value: 'MANUAL' },
+  { words: ['petrol', 'hybrid'], field: 'fuelType', value: 'HYBRID' },
+  { words: ['plugin', 'hybrid'], field: 'fuelType', value: 'HYBRID' },
+  { words: ['fully', 'electric'], field: 'fuelType', value: 'ELECTRIC' },
+  { words: ['front', 'wheel', 'drive'], field: 'driveType', value: 'FWD' },
+  { words: ['rear', 'wheel', 'drive'], field: 'driveType', value: 'RWD' },
+  { words: ['mini', 'van'], field: 'bodyType', value: 'MINIVAN' },
+  { words: ['people', 'carrier'], field: 'bodyType', value: 'MINIVAN' },
+  { words: ['single', 'cab'], field: 'bodyType', value: 'PICKUP' },
 ];
 
 const CLOSED_SINGLES: Record<string, { field: ClosedField; value: string }> = {

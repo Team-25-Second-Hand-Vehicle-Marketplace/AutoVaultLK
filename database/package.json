@@ -11,9 +11,11 @@
     "grants": "docker exec -i vehicle_marketplace_postgres psql -U marketplace -d vehicle_marketplace -f - < src/grants.sql",
     "db:setup": "npm run migration:run && npm run grants",
     "seed:dictionaries": "ts-node src/seeds/vehicle-dictionaries.seed.ts",
-    "seed:vehicles": "ts-node src/seeds/vehicles.seed.ts"
+    "seed:vehicles": "ts-node src/seeds/vehicles.seed.ts",
+    "seed:admin": "ts-node src/seeds/admin-user.seed.ts"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "dotenv": "^16.4.7",
     "pg": "^8.13.1",
     "reflect-metadata": "^0.2.2",

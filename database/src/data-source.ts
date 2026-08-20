@@ -14,4 +14,8 @@ export default new DataSource({
   migrations: ['src/migrations/*.{ts,js}'],
   entities: [],
   synchronize: false,
+  // RDS refuses non-SSL connections (rds.force_ssl=1); local Docker Postgres
+  // serves no certificate. Opt in with DATABASE_SSL=true when pointing this
+  // at RDS to run migrations, and leave it unset for local work.
+  ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
 });

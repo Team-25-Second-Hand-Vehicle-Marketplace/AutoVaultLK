@@ -11,11 +11,23 @@ coverage/
 *.log
 __pycache__/
 *.pyc
-terraform/.terraform/
-terraform/*.tfstate
-terraform/*.tfstate.*
-terraform/.terraform.lock.hcl
+# Terraform.
+#
+# The patterns below are intentionally unanchored (no leading path). A pattern
+# like `terraform/*.tfstate` only matches a *top-level* terraform/ directory,
+# so it missed cloud-infrastructure/terraform/environments/*/terraform.tfstate
+# entirely. State files hold the RDS master password in plaintext, so a missed
+# match here means committing a live credential.
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.tfstate.lock.info
+tfplan
+*.auto.tfvars
+# .terraform.lock.hcl is deliberately NOT ignored — it pins provider versions
+# and hashes, and belongs in version control so every machine and CI run
+# resolves the same providers.
+
 cdk.out/
 build/
-.terraform/
 mywork.txt
