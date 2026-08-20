@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { mapDashboard } from '../mappers/dashboard.mapper';
 import { AdminReadsRepository } from '../repositories/admin-reads.repository';
 import { AuditLogsRepository } from '../repositories/audit-logs.repository';
@@ -17,6 +17,14 @@ export class AdminReadsService {
 
   listUsers(verificationStatus?: string) {
     return this.reads.listUsers(verificationStatus);
+  }
+
+  async findDealer(userId: string) {
+    const dealer = await this.reads.findDealer(userId);
+    if (!dealer) {
+      throw new NotFoundException(`No dealer profile for user ${userId}`);
+    }
+    return dealer;
   }
 
   listUploads(status?: string) {

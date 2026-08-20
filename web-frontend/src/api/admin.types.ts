@@ -28,6 +28,36 @@ export interface AdminUserRow {
     dealerType: string
     city: string
     verificationStatus: DealerVerificationStatus
+    // FR-02.1 evidence: what a Business dealer supplied at registration. An
+    // administrator approving from this list needs it in front of them.
+    businessRegistrationNumber: string
+    verificationDocuments: Record<string, unknown>
+    verifiedBy: string | null
+    verifiedAt: string | null
+  } | null
+}
+
+/** Full dealer record behind GET /admin/dealers/:id. */
+export interface AdminDealerDetail {
+  userId: string
+  companyName: string
+  contactNumber: string | null
+  dealerType: string
+  businessRegistrationNumber: string
+  businessAddress: string
+  city: string
+  verificationDocuments: Record<string, unknown>
+  verificationStatus: DealerVerificationStatus
+  verifiedBy: string | null
+  verifiedAt: string | null
+  createdAt: string
+  user: {
+    id: string
+    email: string
+    name: string
+    role: string
+    isActive: boolean
+    createdAt: string
   } | null
 }
 

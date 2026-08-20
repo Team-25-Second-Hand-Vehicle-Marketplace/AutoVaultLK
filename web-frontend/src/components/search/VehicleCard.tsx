@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { VehicleSearchResult } from '../../api/search.types'
+import { demoImageFor, isContainImage } from '../../assets/demo-images'
 import { SaveButton } from './SaveButton'
 import { YearDisplay } from './YearDisplay'
 import { formatMileage, formatPrice, humanizeEnum } from './vehicle-format'
@@ -25,7 +27,27 @@ function ImagePlaceholder({ vehicleType }: { vehicleType: string }) {
 }
 
 export function VehicleCard({ result }: { result: VehicleSearchResult }) {
-  const image = result.thumbnailUrl ?? result.imageUrl
+  // PLACEHOLDER PHOTOGRAPHY — see src/assets/demo-images.ts.
+  // A real thumbnail always wins; the stock photo only fills in where the
+  // listing has none, which today is every listing (vehicle_images is
+  // unseeded). Ordering it this way means seeding real images needs no
+  // change here — the placeholders just stop being reached.
+  const image =
+    result.thumbnailUrl ??
+    result.imageUrl ??
+    demoImageFor(result.id, {
+      vehicleType: result.vehicleType,
+      make: result.make,
+      model: result.model,
+      bodyType: typeof result.specs.body_type === 'string' ? result.specs.body_type : undefined,
+      fuelType: result.fuelType,
+      price: result.price,
+    })
+
+  // The placeholder photos load from a CDN, so they can fail in a way real
+  // uploads wouldn't. Falling back to the silhouette keeps a card that looks
+  // intentional instead of a browser broken-image icon.
+  const [failed, setFailed] = useState(false)
 
   return (
     <article className="vehicle-card">
@@ -37,12 +59,17 @@ export function VehicleCard({ result }: { result: VehicleSearchResult }) {
           className="vehicle-card__media-link"
           aria-label={`View ${result.make} ${result.model}`}
         >
-          {image ? (
+          {image && !failed ? (
             <img
               src={image}
               alt={`${result.make} ${result.model}`}
-              className="vehicle-card__image"
+              className={
+                isContainImage(image)
+                  ? 'vehicle-card__image vehicle-card__image--contain'
+                  : 'vehicle-card__image'
+              }
               loading="lazy"
+              onError={() => setFailed(true)}
             />
           ) : (
             <ImagePlaceholder vehicleType={result.vehicleType} />

@@ -15,7 +15,10 @@ export type NewAuditLog = {
   actorId: string;
   action: string;
   entityType: string;
-  entityId: string;
+  // Nullable to match the entity and the audit_logs column. Every existing
+  // caller passes an id; user.admin_created cannot, because the id only exists
+  // once auth has created the row and the response shape is not guaranteed.
+  entityId: string | null;
   changes: Record<string, unknown>;
   ipAddress: string | null;
 };

@@ -1,4 +1,9 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { User } from '../../../infrastructure/database/entities/user.entity';
 import { AdminUpdateUserDto } from '../dto/admin-update-user.dto';
@@ -63,6 +68,53 @@ export class UsersService {
     }
 
     return this.adminUpdate(userId, { isActive: false });
+  }
+
+  /**
+   * Reverses deactivate. FR-11 requires deactivation to preserve historical
+   * data rather than delete it, which only makes sense if the account can be
+   * restored — otherwise "not deleted" is a distinction without a difference.
+   */
+  async reactivate(userId: string, adminId: string) {
+    if (adminId === userId) {
+      throw new ForbiddenException(
+        'Administrators cannot change their own role or account status',
+      );
+    }
+
+    const admin = await this.usersRepository.findById(adminId);
+    if (!admin || admin.role !== 'ADMIN') {
+      throw new NotFoundException(`Administrator with ID ${adminId} was not found`);
+    }
+
+    return this.adminUpdate(userId, { isActive: true });
+  }
+
+  /**
+   * FR-12: ADMIN accounts are never publicly registerable. They come from the
+   * database seed or from an existing administrator — this is that second
+   * path, reachable only through the internal service key.
+   */
+  async createAdmin(input: { email: string; name: string; password: string }, adminId: string) {
+    const admin = await this.usersRepository.findById(adminId);
+    if (!admin || admin.role !== 'ADMIN') {
+      throw new NotFoundException(`Administrator with ID ${adminId} was not found`);
+    }
+
+    const existing = await this.usersRepository.findByEmail(input.email);
+    if (existing) {
+      throw new ConflictException(`Email ${input.email} is already registered`);
+    }
+
+    const created = await this.usersRepository.create({
+      email: input.email,
+      name: input.name,
+      passwordHash: await bcrypt.hash(input.password, 12),
+      role: 'ADMIN',
+      isActive: true,
+    });
+
+    return this.toPublicUser(created);
   }
 
   private toPublicUser(user: User): PublicUser {

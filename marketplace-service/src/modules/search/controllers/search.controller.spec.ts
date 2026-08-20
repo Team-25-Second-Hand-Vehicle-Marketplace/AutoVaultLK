@@ -18,18 +18,27 @@ function makeController() {
     getOptions: jest.fn().mockResolvedValue({ makes: [] }),
     getStats: jest.fn().mockResolvedValue({ vehicleCount: 0 }),
   };
+  const nlSearchService = {
+    search: jest.fn().mockResolvedValue({ items: [], total: 0, parse: {} }),
+  };
   const repository = {
     facets: jest.fn().mockResolvedValue({ make: [] }),
     findById: jest.fn().mockResolvedValue(null),
   };
 
+  // Order must match the constructor exactly. nlSearchService was inserted
+  // second when GET /search/nl landed; passing three args here silently slid
+  // repository into the optionsService slot and left repository undefined,
+  // which surfaced as "Cannot read properties of undefined (reading
+  // 'facets')" rather than an arity error.
   const controller = new SearchController(
     filterSearchService as never,
+    nlSearchService as never,
     optionsService as never,
     repository as never,
   );
 
-  return { controller, filterSearchService, optionsService, repository };
+  return { controller, filterSearchService, nlSearchService, optionsService, repository };
 }
 
 describe('SearchController — GET /search/filters', () => {

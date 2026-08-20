@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 
 import { InternalServiceGuard } from '../../../common/guards/internal-service.guard';
+import { CreateAdminUserDto } from '../dto/create-admin-user.dto';
 import { DeactivateUserDto } from '../dto/deactivate-user.dto';
 import { UsersService } from '../services/users.service';
 
@@ -26,5 +27,23 @@ export class InternalUsersController {
     @Body() dto: DeactivateUserDto,
   ) {
     return this.usersService.deactivate(userId, dto.adminId);
+  }
+
+  @Post(':id/reactivate')
+  reactivate(
+    @Param('id', ParseUUIDPipe) userId: string,
+    @Body() dto: DeactivateUserDto,
+  ) {
+    return this.usersService.reactivate(userId, dto.adminId);
+  }
+
+  // Declared before ':id/...' would matter only for a same-shape path; 'admin'
+  // is a distinct single segment under /internal/users, so there is no clash.
+  @Post('admin')
+  createAdmin(@Body() dto: CreateAdminUserDto) {
+    return this.usersService.createAdmin(
+      { email: dto.email, name: dto.name, password: dto.password },
+      dto.adminId,
+    );
   }
 }

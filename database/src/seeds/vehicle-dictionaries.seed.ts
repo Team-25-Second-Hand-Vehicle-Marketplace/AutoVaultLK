@@ -373,6 +373,9 @@ async function seed() {
     url: process.env.DATABASE_URL,
     entities: [],
     synchronize: false,
+    // Opt-in TLS so this can seed RDS (which forces SSL) as well as local
+    // Docker Postgres (which serves no certificate).
+    ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
   });
 
   await ds.initialize();
