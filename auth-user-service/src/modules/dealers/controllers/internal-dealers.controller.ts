@@ -34,6 +34,6 @@ export class InternalDealersController {
     @Param('id', ParseUUIDPipe) dealerUserId: string,
     @Body() dto: DealerVerificationDto,
   ) {
-    return this.dealerProfilesService.rejectDealer(dealerUserId, dto.adminId);
+    return this.dealerProfilesService.rejectDealer(dealerUserId, dto.adminId, dto.reason);
   }
 }

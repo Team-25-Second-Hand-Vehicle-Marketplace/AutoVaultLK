@@ -55,12 +55,13 @@ export class DealerProfilesService {
     );
   }
 
-  async rejectDealer(dealerUserId: string, adminId: string) {
+  async rejectDealer(dealerUserId: string, adminId: string, reason?: string) {
     return this.decideVerification(
       dealerUserId,
       adminId,
       VerificationStatus.REJECTED,
       false,
+      reason,
     );
   }
 
@@ -69,6 +70,7 @@ export class DealerProfilesService {
     adminId: string,
     status: VerificationStatus,
     activateAccount: boolean,
+    reason?: string,
   ) {
     const profile = await this.findByUserId(dealerUserId);
 
@@ -93,6 +95,9 @@ export class DealerProfilesService {
           verificationStatus: status,
           verifiedBy: adminId,
           verifiedAt: decidedAt,
+          // Clear any earlier reason on approve, so a re-approved profile does
+          // not keep displaying why it was once rejected.
+          rejectionReason: status === VerificationStatus.REJECTED ? (reason ?? null) : null,
         },
       );
 

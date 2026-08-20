@@ -107,6 +107,13 @@ export class DealerProfile {
   @Column({ name: 'verified_at', type: 'timestamptz', nullable: true })
   verifiedAt!: Date | null;
 
+  /**
+   * Why a rejection was made (FR-09). Null for approvals, and for rejections
+   * recorded before this column existed.
+   */
+  @Column({ name: 'rejection_reason', type: 'varchar', length: 500, nullable: true })
+  rejectionReason!: string | null;
+
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
