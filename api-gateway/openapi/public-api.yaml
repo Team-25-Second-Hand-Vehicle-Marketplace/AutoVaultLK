@@ -371,6 +371,47 @@ paths:
           description: Users with optional dealer profile
         '403':
           description: Non-administrator JWT
+    post:
+      tags:
+        - admin
+      summary: Provision a new administrator (FR-12)
+      description: >-
+        FR-12 forbids public registration for the ADMIN role. Administrators
+        come from the database seed or from an existing administrator; this is
+        the latter path.
+      operationId: adminCreateAdministrator
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, name, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  maxLength: 255
+                name:
+                  type: string
+                  maxLength: 255
+                password:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+                  description: >-
+                    Must satisfy FR-06: mixed case and a number.
+      responses:
+        '201':
+          description: Administrator created; audit row written
+        '400':
+          description: Validation failed
+        '403':
+          description: Non-administrator JWT
+        '409':
+          description: Email already registered
   /admin/uploads:
     get:
       tags:
@@ -490,6 +531,21 @@ paths:
           schema:
             type: string
             format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  minLength: 3
+                  maxLength: 500
+                  description: >-
+                    Stored on the dealer profile and included in the rejection
+                    email (FR-09). Optional, but a rejection without one tells
+                    the dealer nothing about what to fix.
       responses:
         '200':
           description: Dealer rejected; audit row written
@@ -515,6 +571,54 @@ paths:
           description: User deactivated; audit row written
         '403':
           description: Non-administrator JWT or self-deactivation
+  /admin/users/{id}/reactivate:
+    post:
+      tags:
+        - admin
+      summary: Restore a deactivated user via Auth internal API and write audit_logs
+      operationId: adminReactivateUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User reactivated; audit row written
+        '403':
+          description: Non-administrator JWT or self-reactivation
+        '404':
+          description: User or acting administrator not found
+  /admin/dealers/{id}:
+    get:
+      tags:
+        - admin
+      summary: Full dealer record for verification review (FR-02.1/FR-02.2)
+      description: >-
+        Returns the business registration number and uploaded verification
+        documents an administrator needs before approving or rejecting, plus
+        the linked user account and who decided previously.
+      operationId: adminGetDealer
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Dealer profile with verification evidence
+        '403':
+          description: Non-administrator JWT
+        '404':
+          description: No dealer profile for that user
 components:
   securitySchemes:
     bearerAuth:

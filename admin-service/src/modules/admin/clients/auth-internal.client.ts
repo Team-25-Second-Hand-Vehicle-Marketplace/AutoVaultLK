@@ -15,12 +15,20 @@ export class AuthInternalClient {
     return this.post(`/internal/dealers/${dealerId}/approve`, { adminId });
   }
 
-  rejectDealer(dealerId: string, adminId: string) {
-    return this.post(`/internal/dealers/${dealerId}/reject`, { adminId });
+  rejectDealer(dealerId: string, adminId: string, reason?: string) {
+    return this.post(`/internal/dealers/${dealerId}/reject`, { adminId, reason });
   }
 
   deactivateUser(userId: string, adminId: string) {
     return this.post(`/internal/users/${userId}/deactivate`, { adminId });
+  }
+
+  reactivateUser(userId: string, adminId: string) {
+    return this.post(`/internal/users/${userId}/reactivate`, { adminId });
+  }
+
+  createAdmin(input: { email: string; name: string; password: string }, adminId: string) {
+    return this.post('/internal/users/admin', { ...input, adminId });
   }
 
   private baseUrl(): string {

@@ -78,6 +78,10 @@ export class AdminReadsRepository {
         role: user.role,
         isActive: user.isActive,
         createdAt: user.createdAt,
+        // FR-02.1 requires Business dealers to supply a registration number and
+        // upload supporting documents. An administrator approving or rejecting
+        // from this list is making exactly that call, so the evidence has to
+        // travel with the row — otherwise the decision is taken blind.
         dealer: dealer
           ? {
               userId: dealer.userId,
@@ -85,6 +89,10 @@ export class AdminReadsRepository {
               dealerType: dealer.dealerType,
               city: dealer.city,
               verificationStatus: dealer.verificationStatus,
+              businessRegistrationNumber: dealer.businessRegistrationNumber,
+              verificationDocuments: dealer.verificationDocuments,
+              verifiedBy: dealer.verifiedBy,
+              verifiedAt: dealer.verifiedAt,
             }
           : null,
       };
@@ -92,6 +100,44 @@ export class AdminReadsRepository {
 
     if (!verificationStatus) return items;
     return items.filter((row) => row.dealer?.verificationStatus === verificationStatus);
+  }
+
+  /**
+   * Full dealer record for the review screen — FR-02.1/FR-02.2.
+   *
+   * Returns null rather than throwing so the service layer decides the HTTP
+   * shape; the repository has no opinion about 404s.
+   */
+  async findDealer(userId: string) {
+    const dealer = await this.dealers.findOne({ where: { userId } });
+    if (!dealer) return null;
+
+    const user = await this.users.findOne({ where: { id: userId } });
+
+    return {
+      userId: dealer.userId,
+      companyName: dealer.companyName,
+      contactNumber: dealer.contactNumber,
+      dealerType: dealer.dealerType,
+      businessRegistrationNumber: dealer.businessRegistrationNumber,
+      businessAddress: dealer.businessAddress,
+      city: dealer.city,
+      verificationDocuments: dealer.verificationDocuments,
+      verificationStatus: dealer.verificationStatus,
+      verifiedBy: dealer.verifiedBy,
+      verifiedAt: dealer.verifiedAt,
+      createdAt: dealer.createdAt,
+      user: user
+        ? {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+            isActive: user.isActive,
+            createdAt: user.createdAt,
+          }
+        : null,
+    };
   }
 
   listUploads(status?: string) {
