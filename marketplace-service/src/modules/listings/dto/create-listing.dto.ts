@@ -49,8 +49,13 @@ export enum ManualListingStatusDto {
 }
 
 export class CreateListingDto {
+  /**
+   * Ignored on write — the owner is taken from the verified JWT (FR-13/FR-58).
+   * Kept optional so existing clients that still send it are not rejected.
+   */
+  @IsOptional()
   @IsUUID()
-  dealerId: string;
+  dealerId?: string;
 
   @IsOptional()
   @IsEnum(VehicleTypeDto)
