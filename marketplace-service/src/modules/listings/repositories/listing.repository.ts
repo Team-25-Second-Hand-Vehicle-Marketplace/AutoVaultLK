@@ -78,27 +78,4 @@ export class ListingRepository {
     vehicle.status = 'ARCHIVED';
     return this.vehicleRepo.save(vehicle);
   }
-
-  createBulk(dtos: CreateListingDto[], status: VehicleStatus) {
-    const vehicles = dtos.map((dto) =>
-      this.vehicleRepo.create({
-        dealerId: dto.dealerId,
-        vehicleType: dto.vehicleType ?? 'CAR',
-        make: dto.make,
-        model: dto.model,
-        condition: dto.condition ?? 'USED',
-        manufactureYear: dto.manufactureYear,
-        registrationYear: dto.registrationYear ?? null,
-        price: dto.price,
-        mileage: dto.mileage,
-        fuelType: dto.fuelType,
-        transmissionType: dto.transmissionType,
-        description: dto.description ?? null,
-        status,
-        specs: dto.specs ?? {},
-      }),
-    );
-
-    return this.vehicleRepo.save(vehicles);
-  }
 }
