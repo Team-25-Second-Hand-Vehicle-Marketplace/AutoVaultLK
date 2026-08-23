@@ -26,4 +26,11 @@ export class AuthUserView {
 
   @Column({ name: 'is_active', type: 'boolean' })
   isActive: boolean;
+
+  /**
+   * Read by the JWT strategy: a token is refused for a non-ADMIN whose email
+   * was never verified, even if the signature is valid.
+   */
+  @Column({ name: 'email_verified_at', type: 'timestamptz', nullable: true })
+  emailVerifiedAt: Date | null;
 }
