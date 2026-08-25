@@ -309,6 +309,28 @@ export function exactClosedHit(
   return undefined;
 }
 
+/**
+ * Closed enums need a tighter fuzzy gate than makes/models.
+ *
+ * CLOSED_SINGLES holds short, common English words (wagon, sedan, coupe,
+ * van, bus, auto), so an unrelated query term collides with one far more
+ * readily than with a brand name. "volkswagon" scored 0.4706 against
+ * "wagon" — over the shared 0.45 threshold — and, with Volkswagen absent
+ * from the make dictionary, nothing outscored it: the query resolved at
+ * confidence 1.0 to body_type=WAGON, matched no listing, and the relaxation
+ * ladder then showed all 80. Groq was never consulted because no token
+ * looked unresolved.
+ *
+ * Unlike fuzzySpanHit this has no runner-up margin to fall back on (it scans
+ * a flat alias map, not ranked dictionary entries), so the threshold is the
+ * only guard. Measured separation: genuine misspellings of these words
+ * ("sedn" 0.545, "hachback" 0.737, "convertable" 0.750, "pickpup" 0.667)
+ * all sit at 0.545+, so 0.52 rejects the collision while keeping every real
+ * typo. Raising the global TRIGRAM_THRESHOLD instead would break make/model
+ * matches that legitimately land in the 0.45-0.52 band.
+ */
+const CLOSED_ENUM_THRESHOLD = 0.52;
+
 export function fuzzyClosedHit(
   tokens: ParserToken[],
   start: number,
@@ -327,7 +349,7 @@ export function fuzzyClosedHit(
       best = { field: hit.field, value: hit.value, start, span: 1 };
     }
   }
-  if (best && bestScore >= TRIGRAM_THRESHOLD) return best;
+  if (best && bestScore >= CLOSED_ENUM_THRESHOLD) return best;
   return undefined;
 }
 
