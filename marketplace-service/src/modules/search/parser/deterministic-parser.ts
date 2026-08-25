@@ -1,4 +1,5 @@
 import { extractNumeric } from './numeric';
+import { extractNumericSpecs } from './numeric-specs';
 import { tokenize } from './tokenize';
 import { CONFIDENCE_THRESHOLD } from './types';
 import type {
@@ -40,6 +41,9 @@ export function parseQuery(raw: string, vocab: ParserVocabulary): ParsedQuery {
   const bodies = indexEntries(vocab.bodyTypes);
 
   stagePhrases(tokens, filters, makes, models, bodies);
+  // Before extractNumeric: "7 seat" must be claimed as a seat count, or the
+  // generic numeric stage sees a bare 7 it cannot classify and drops it.
+  extractNumericSpecs(tokens, filters);
   extractNumeric(tokens, filters);
   stageExact(tokens, filters, makes, models, bodies);
   stageFuzzy(tokens, filters, vocab);

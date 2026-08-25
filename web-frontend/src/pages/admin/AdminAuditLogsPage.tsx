@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useState, type FormEvent } from 'react'
 import { searchAuditLogs } from '../../api/admin.api'
 import type { AdminAuditLog } from '../../api/admin.types'
 import { toErrorMessage } from '../../api/client'
+import { useAsyncData } from '../../hooks/useAsyncData'
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleString('en-LK', {
@@ -20,6 +21,8 @@ function toEndIso(date: string): string | undefined {
   return new Date(`${date}T23:59:59.999`).toISOString()
 }
 
+const auditError = (err: unknown) => toErrorMessage(err, 'Could not load audit logs.')
+
 export function AdminAuditLogsPage() {
   const [action, setAction] = useState('')
   const [entityType, setEntityType] = useState('')
@@ -35,42 +38,23 @@ export function AdminAuditLogsPage() {
     to: '',
   })
 
-  const [rows, setRows] = useState<AdminAuditLog[]>([])
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  const load = useCallback(
-    async (signal?: AbortSignal) => {
-      setLoading(true)
-      setError(null)
-      try {
-        const data = await searchAuditLogs(
-          {
-            action: applied.action || undefined,
-            entityType: applied.entityType || undefined,
-            actorId: applied.actorId || undefined,
-            from: toStartIso(applied.from),
-            to: toEndIso(applied.to),
-          },
-          signal,
-        )
-        if (!signal?.aborted) setRows(data)
-      } catch (err) {
-        if (!signal?.aborted) {
-          setError(toErrorMessage(err, 'Could not load audit logs.'))
-        }
-      } finally {
-        if (!signal?.aborted) setLoading(false)
-      }
-    },
+  const fetchLogs = useCallback(
+    (signal: AbortSignal) =>
+      searchAuditLogs(
+        {
+          action: applied.action || undefined,
+          entityType: applied.entityType || undefined,
+          actorId: applied.actorId || undefined,
+          from: toStartIso(applied.from),
+          to: toEndIso(applied.to),
+        },
+        signal,
+      ),
     [applied],
   )
-
-  useEffect(() => {
-    const controller = new AbortController()
-    void load(controller.signal)
-    return () => controller.abort()
-  }, [load])
+  const { data, error, loading } = useAsyncData<AdminAuditLog[]>(fetchLogs, auditError,
+  )
+  const rows = data ?? []
 
   const onSearch = (e: FormEvent) => {
     e.preventDefault()

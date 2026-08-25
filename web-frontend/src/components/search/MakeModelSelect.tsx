@@ -26,19 +26,29 @@ export function MakeModelSelect({
   onMakesChange,
   onModelsChange,
 }: Props) {
-  const [makes, setMakes] = useState<MakeOption[]>([])
-  const [error, setError] = useState(false)
-
   // Backend scopes options by a single vehicleType; with several selected we
   // fall back to the unscoped list rather than guessing an intersection.
   const scopeType = vehicleTypes.length === 1 ? vehicleTypes[0] : undefined
 
+  /**
+   * makes and the error flag move together — a successful load clears the
+   * error, a failure empties the list — so they are one state value rather
+   * than two. That removes the synchronous setError(false) this effect used
+   * to perform on every run just to reset the previous attempt.
+   */
+  const [state, setState] = useState<{ makes: MakeOption[]; error: boolean }>({
+    makes: [],
+    error: false,
+  })
+  const { makes, error } = state
+
   useEffect(() => {
     const controller = new AbortController()
-    setError(false)
 
     getSearchOptions(scopeType, controller.signal)
-      .then((res) => setMakes(res.makes))
+      .then((res) => {
+        if (!controller.signal.aborted) setState({ makes: res.makes, error: false })
+      })
       .catch((err) => {
         // An abort is this effect superseding itself, not a failure.
         if (controller.signal.aborted) return
@@ -46,7 +56,7 @@ export function MakeModelSelect({
         // unhandled rejection and the Make list silently stayed empty with no
         // indication anything had gone wrong.
         console.error('Failed to load makes:', err)
-        setError(true)
+        setState({ makes: [], error: true })
       })
 
     return () => controller.abort()
