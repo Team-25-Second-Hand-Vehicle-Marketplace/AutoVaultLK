@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { listUploads } from '../../api/admin.api'
 import type { AdminUploadJob, UploadJobStatus } from '../../api/admin.types'
 import { toErrorMessage } from '../../api/client'
+import { useAsyncData } from '../../hooks/useAsyncData'
 
 const STATUSES: Array<UploadJobStatus | ''> = [
   '',
@@ -27,6 +28,8 @@ function statusClass(status: string): string {
   return 'admin-pill'
 }
 
+const uploadsError = (err: unknown) => toErrorMessage(err, 'Could not load uploads.')
+
 export function AdminUploadsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const statusParam = searchParams.get('status') ?? ''
@@ -34,33 +37,13 @@ export function AdminUploadsPage() {
     ? statusParam
     : '') as UploadJobStatus | ''
 
-  const [rows, setRows] = useState<AdminUploadJob[]>([])
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  const load = useCallback(
-    async (signal?: AbortSignal) => {
-      setLoading(true)
-      setError(null)
-      try {
-        const data = await listUploads(status || undefined, signal)
-        if (!signal?.aborted) setRows(data)
-      } catch (err) {
-        if (!signal?.aborted) {
-          setError(toErrorMessage(err, 'Could not load uploads.'))
-        }
-      } finally {
-        if (!signal?.aborted) setLoading(false)
-      }
-    },
+  const fetchUploads = useCallback(
+    (signal: AbortSignal) => listUploads(status || undefined, signal),
     [status],
   )
-
-  useEffect(() => {
-    const controller = new AbortController()
-    void load(controller.signal)
-    return () => controller.abort()
-  }, [load])
+  const { data, error, loading } = useAsyncData<AdminUploadJob[]>(fetchUploads, uploadsError,
+  )
+  const rows = data ?? []
 
   return (
     <div className="admin-page">

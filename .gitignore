@@ -31,3 +31,5 @@ tfplan
 cdk.out/
 build/
 mywork.txt
+# Local run logs from starting a service in the background
+*.err
