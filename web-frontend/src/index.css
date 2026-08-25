@@ -1,7 +1,4 @@
 @import "tailwindcss";
-/* Poppins is loaded via <link> in index.html — more reliable with Vite's
-   dev-server reload behavior than an external @import here. */
-
 :root {
   --text: #4b5563;
   --text-h: #08060d;
@@ -15,10 +12,6 @@
   --warning-bg: #fef3c7;
   --warning-text: #92400e;
   --shadow: rgba(0, 0, 0, 0.06) 0 1px 3px, rgba(0, 0, 0, 0.04) 0 1px 2px;
-
-  /* Poppins: a geometric grotesque with circular bowls and wide, even
-     spacing — the closest freely-licensed match to the marketplace design
-     reference's headline face. */
   --sans: 'Poppins', system-ui, 'Segoe UI', sans-serif;
 
   font: 15px/1.5 var(--sans);
@@ -78,8 +71,6 @@ h3 {
   align-items: start;
 }
 
-/* Filters hidden: the sidebar element isn't rendered at all, so collapse
-   the reserved 280px column instead of leaving a blank gap on the left. */
 .search-page__body--no-sidebar {
   grid-template-columns: 1fr;
 }
