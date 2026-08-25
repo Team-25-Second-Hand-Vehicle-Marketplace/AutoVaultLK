@@ -1,5 +1,5 @@
 @import "tailwindcss";
-/* Roboto is loaded via <link> in index.html — more reliable with Vite's
+/* Poppins is loaded via <link> in index.html — more reliable with Vite's
    dev-server reload behavior than an external @import here. */
 
 :root {
@@ -16,10 +16,10 @@
   --warning-text: #92400e;
   --shadow: rgba(0, 0, 0, 0.06) 0 1px 3px, rgba(0, 0, 0, 0.04) 0 1px 2px;
 
-  /* "Google Sans" itself isn't published on Google Fonts (proprietary to
-     Google's own products) — Roboto is Google's actual open flagship font
-     and the real-world stand-in used across their web surfaces. */
-  --sans: 'Roboto', system-ui, 'Segoe UI', sans-serif;
+  /* Poppins: a geometric grotesque with circular bowls and wide, even
+     spacing — the closest freely-licensed match to the marketplace design
+     reference's headline face. */
+  --sans: 'Poppins', system-ui, 'Segoe UI', sans-serif;
 
   font: 15px/1.5 var(--sans);
   color: var(--text);
