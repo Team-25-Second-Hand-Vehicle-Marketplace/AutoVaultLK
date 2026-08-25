@@ -1,5 +1,5 @@
-import { useEffect, useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import axios from 'axios'
 import { filterSearch, getMarketplaceStats } from '../api/search.api'
 import type {
@@ -7,26 +7,23 @@ import type {
   VehicleSearchResult,
   VehicleTypeValue,
 } from '../api/search.types'
-import { VehicleCard } from '../components/search/VehicleCard'
-import { VehicleCardSkeleton } from '../components/search/VehicleCardSkeleton'
 import { CategoryIcon } from '../components/home/CategoryIcon'
+import { HeroSearchPanel } from '../components/home/HeroSearchPanel'
+import { VehicleCarousel } from '../components/home/VehicleCarousel'
 import { humanizeEnum } from '../components/search/vehicle-format'
 import { HERO_IMAGE } from '../assets/demo-images'
-
-/** Quick-search chips under the hero, chosen from makes that really exist. */
-const QUICK_SEARCHES = ['Toyota Aqua', 'Honda Vezel', 'Suzuki Wagon R', 'Nissan Leaf']
 
 const nf = new Intl.NumberFormat('en-LK')
 
 export function HomePage() {
-  const navigate = useNavigate()
-  const [keyword, setKeyword] = useState('')
   const [stats, setStats] = useState<MarketplaceStats | null>(null)
   const [featured, setFeatured] = useState<VehicleSearchResult[] | null>(null)
 
-  // Newest four live listings stand in for "featured": there is no `featured`
-  // column on vehicles and no backend concept of promotion, so ranking by
-  // recency is the honest interpretation rather than inventing a flag.
+  // Newest live listings stand in for "recommended": there is no `featured`
+  // column on vehicles, no backend concept of promotion, and no per-user
+  // signal to personalise on, so ranking by recency is the honest
+  // interpretation rather than inventing a flag. 16 fills four carousel
+  // pages of four.
   useEffect(() => {
     const controller = new AbortController()
 
@@ -36,7 +33,7 @@ export function HomePage() {
         if (!axios.isCancel(err)) console.error('Failed to load stats:', err)
       })
 
-    filterSearch({ sort: 'newest', limit: 4 }, controller.signal)
+    filterSearch({ sort: 'newest', limit: 16 }, controller.signal)
       .then((res) => setFeatured(res.items))
       .catch((err) => {
         if (!axios.isCancel(err)) {
@@ -47,12 +44,6 @@ export function HomePage() {
 
     return () => controller.abort()
   }, [])
-
-  const submitSearch = (e: FormEvent) => {
-    e.preventDefault()
-    const q = keyword.trim()
-    navigate(q ? `/search?q=${encodeURIComponent(q)}` : '/search')
-  }
 
   return (
     <div className="home">
@@ -91,99 +82,84 @@ export function HomePage() {
             Second-Hand Vehicle
           </h1>
 
-
-          <div className="hero__search">
-            <form className="hero-search" onSubmit={submitSearch}>
-              <div className="hero-search__row">
-                <div className="hero-search__field">
-                  <svg
-                    className="hero-search__icon"
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    aria-hidden="true"
-                  >
-                    <circle cx="11" cy="11" r="7" />
-                    <path d="M20 20l-3.5-3.5" />
-                  </svg>
-                  <input
-                    type="search"
-                    placeholder="Try “Toyata Corrola under 8.5m deisel”…"
-                    aria-label="Search vehicles"
-                    value={keyword}
-                    onChange={(e) => setKeyword(e.target.value)}
-                  />
-                </div>
-                <button type="submit" className="button button--primary button--lg">
-                  Search
-                </button>
-              </div>
-
-              <div className="hero-search__quick">
-                {QUICK_SEARCHES.map((term) => (
-                  <Link key={term} to={`/search?q=${encodeURIComponent(term)}`} className="chip">
-                    {term}
-                  </Link>
-                ))}
-              </div>
-            </form>
-          </div>
+          <HeroSearchPanel />
         </div>
       </section>
 
-      {/* ── Stats band ───────────────────────────────────────────
-          Only figures with a real source. The reference also shows
-          "Happy Buyers" and a satisfaction rate; this system has no orders
-          or reviews to compute either from, so they are omitted. */}
-      <section className="stats-band">
-        <div className="stats-band__inner">
-          <div className="stat">
-            <div className="stat__value">{stats ? nf.format(stats.vehicleCount) : '—'}</div>
-            <div className="stat__label">Vehicles Listed</div>
-          </div>
-          <div className="stat">
-            <div className="stat__value">{stats ? nf.format(stats.verifiedDealerCount) : '—'}</div>
-            <div className="stat__label">Verified Dealers</div>
-          </div>
-          <div className="stat">
-            <div className="stat__value">{stats ? nf.format(stats.makeCount) : '—'}</div>
-            <div className="stat__label">Brands Available</div>
-          </div>
-          <div className="stat">
-            <div className="stat__value">{stats ? nf.format(stats.categories.length) : '—'}</div>
-            <div className="stat__label">Vehicle Types</div>
-          </div>
+      {/* ── Trust bar ───────────────────────────────────────────
+          The reference promises a money-back guarantee, a technical-condition
+          guarantee, and a 6-month warranty. AutoVaultLK is a listings
+          marketplace, not the seller — it never takes payment or custody of a
+          vehicle, so it cannot honour any of the three. Stating them anyway
+          would be a false consumer guarantee, so these are the three
+          assurances the platform can actually back, each traceable to
+          something the system enforces. */}
+      <section className="trust-bar">
+        <div className="trust-bar__inner">
+          <article className="trust-card">
+            <span className="trust-card__icon" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 3l7.5 3v5.5c0 4.5-3 8-7.5 9.5-4.5-1.5-7.5-5-7.5-9.5V6z" />
+                <path d="m9 12 2 2 4-4" />
+              </svg>
+            </span>
+            <div>
+              <h3>Verified dealers</h3>
+              <p>
+                Dealer accounts are reviewed before approval, and every listing carries its
+                verification status on the card.
+              </p>
+            </div>
+          </article>
+
+          <article className="trust-card">
+            <span className="trust-card__icon" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 19V5m0 14h16" />
+                <path d="M8 16V9m4 7v-4m4 4V7" />
+              </svg>
+            </span>
+            <div>
+              <h3>Honest specifications</h3>
+              <p>
+                Where a dealer hasn&apos;t supplied a registration year, we say so rather than
+                showing the manufacture year in its place.
+              </p>
+            </div>
+          </article>
+
+          <article className="trust-card">
+            <span className="trust-card__icon" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="7" />
+                <path d="M20 20l-3.5-3.5" />
+              </svg>
+            </span>
+            <div>
+              <h3>Search that understands you</h3>
+              <p>
+                Type what you want in plain English — misspellings included — or narrow it
+                down with filters for price, year, mileage, fuel, and district.
+              </p>
+            </div>
+          </article>
         </div>
       </section>
 
-      {/* ── Featured vehicles ────────────────────────────────── */}
+      {/* ── Recommended vehicles ─────────────────────────────── */}
       <section className="section">
         <div className="section__inner">
           <div className="section__head">
-            <div>
-              <p className="section__eyebrow">Latest listings</p>
-              <h2 className="section__title">Recently Added</h2>
-            </div>
+            <h2 className="section__title">Recommended vehicles</h2>
             <Link to="/search?sort=newest" className="section__link">
-              View all
+              Show more
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <path d="M9 6l6 6-6 6" />
               </svg>
             </Link>
           </div>
 
-          <div className="vehicle-grid vehicle-grid--4">
-            {featured === null
-              ? Array.from({ length: 4 }, (_, i) => <VehicleCardSkeleton key={i} />)
-              : featured.map((item) => <VehicleCard key={item.id} result={item} />)}
-          </div>
-
-          {featured?.length === 0 && (
-            <p className="section__empty">No listings available right now.</p>
-          )}
+          <VehicleCarousel items={featured} />
         </div>
       </section>
 
@@ -239,75 +215,6 @@ export function HomePage() {
                 <span className="brand-tile__count">{brand.count}</span>
               </Link>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Why choose us ────────────────────────────────────── */}
-      <section className="section section--alt">
-        <div className="section__inner">
-          <div className="section__head section__head--center">
-            <div>
-              <p className="section__eyebrow">Why choose us</p>
-              <h2 className="section__title">Buy and Sell with Confidence</h2>
-            </div>
-          </div>
-
-          <div className="feature-grid">
-            <article className="feature-card">
-              <span className="feature-card__icon">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M12 3l7.5 3v5.5c0 4.5-3 8-7.5 9.5-4.5-1.5-7.5-5-7.5-9.5V6z" />
-                  <path d="m9 12 2 2 4-4" />
-                </svg>
-              </span>
-              <h3>Verified Dealers</h3>
-              <p>
-                Dealer accounts are reviewed before approval, and every listing shows its
-                verification status.
-              </p>
-            </article>
-
-            <article className="feature-card">
-              <span className="feature-card__icon">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <circle cx="11" cy="11" r="7" />
-                  <path d="M20 20l-3.5-3.5" />
-                </svg>
-              </span>
-              <h3>Precise Filters</h3>
-              <p>
-                Filter by type, make, price, year, mileage, fuel, transmission, district, and
-                detailed specs like seats and drive type.
-              </p>
-            </article>
-
-            <article className="feature-card">
-              <span className="feature-card__icon">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M12 21s-6.7-4.35-9.3-8.1C.8 10.1 1.4 6.6 4.3 5.1c2.2-1.1 4.6-.4 6 1.4l1.7 2.1 1.7-2.1c1.4-1.8 3.8-2.5 6-1.4 2.9 1.5 3.5 5 1.6 7.8C18.7 16.65 12 21 12 21z" />
-                </svg>
-              </span>
-              <h3>Save Your Shortlist</h3>
-              <p>
-                Keep the vehicles you like in one place, and pick your search back up exactly
-                where you left it.
-              </p>
-            </article>
-
-            <article className="feature-card">
-              <span className="feature-card__icon">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M4 19V5m0 14h16" />
-                  <path d="M8 16V9m4 7v-4m4 4V7" />
-                </svg>
-              </span>
-              <h3>Honest Listings</h3>
-              <p>
-                Where a dealer hasn&apos;t given a registration year, we say so instead of
-                showing the manufacture year in its place.
-              </p>
-            </article>
           </div>
         </div>
       </section>
