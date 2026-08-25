@@ -1,6 +1,7 @@
 import { VehicleSearchRepository } from './vehicle-search.repository';
 import { buildFilterQuery } from '../filters/filter-query.builder';
 import { FilterSearchDto } from '../dto/filter-search.dto';
+import { EMBEDDING_DIMENSIONS } from '../../../shared/normalize-embed';
 
 /**
  * The repository is the layer that turns a built WHERE clause into a real
@@ -134,6 +135,93 @@ describe('VehicleSearchRepository — search()', () => {
     expect(params[1]).toEqual(['Toyota']);
     expect(params[2]).toBe(5_000_000);
     expect(flat(sql)).toContain('LIMIT $4 OFFSET $5');
+  });
+});
+
+describe('VehicleSearchRepository — vector ranking (FR-23)', () => {
+  /**
+   * These assert the seam between the rank decision and the emitted SQL.
+   *
+   * buildOrderBy is unit-tested directly, but nothing else proves the
+   * repository actually forwards rank.queryEmbedding into the statement.
+   * That gap is not academic: every listing embedding was NULL and
+   * @xenova/transformers was absent for the whole life of this branch, so
+   * embedQuery() always returned null and semantic ranking silently never
+   * ran — while the suite stayed green, because no test reached this path.
+   */
+  const unitVector = () => {
+    const values = new Array(EMBEDDING_DIMENSIONS).fill(0);
+    values[0] = 1;
+    return values;
+  };
+
+  it('orders by cosine distance when a query embedding is supplied', async () => {
+    const { repository, calls } = makeRepository([[ROW]]);
+    const dto: FilterSearchDto = { sort: 'relevance' };
+
+    await repository.search(buildFilterQuery(dto), dto, {
+      queryEmbedding: unitVector(),
+    });
+    const { sql, params } = calls[0];
+
+    expect(flat(sql)).toContain('ORDER BY v.embedding <=> $');
+    expect(flat(sql)).toContain('::vector ASC NULLS LAST');
+    // NULLS LAST matters while ingestion is not built: an un-embedded row
+    // must sink to the bottom, not sort ahead of every real match.
+    expect(params.some((p) => typeof p === 'string' && p.startsWith('[1,0,'))).toBe(true);
+  });
+
+  it('binds the vector as a parameter rather than inlining 384 floats', async () => {
+    const { repository, calls } = makeRepository([[ROW]]);
+    const dto: FilterSearchDto = { sort: 'relevance' };
+
+    await repository.search(buildFilterQuery(dto), dto, {
+      queryEmbedding: unitVector(),
+    });
+
+    // Inlining would both blow past sane SQL sizes and defeat plan caching.
+    expect(flat(calls[0].sql)).not.toContain('[1,0,');
+  });
+
+  it('numbers the vector parameter before limit and offset', async () => {
+    const { repository, calls } = makeRepository([[ROW]]);
+    const dto: FilterSearchDto = { sort: 'relevance', page: 2, limit: 10 };
+
+    await repository.search(buildFilterQuery(dto), dto, {
+      queryEmbedding: unitVector(),
+    });
+    const { params, sql } = calls[0];
+
+    expect(params[params.length - 2]).toBe(10);
+    expect(params[params.length - 1]).toBe(10);
+    expect(flat(sql)).toContain(`v.embedding <=> $${params.length - 2}::vector`);
+  });
+
+  it('prefers the vector over trigram when MiniLM produced one (FR-24)', async () => {
+    const { repository, calls } = makeRepository([[ROW]]);
+    const dto: FilterSearchDto = { sort: 'relevance' };
+
+    await repository.search(buildFilterQuery(dto), dto, {
+      queryEmbedding: unitVector(),
+      trigramQuery: 'leather',
+    });
+
+    expect(flat(calls[0].sql)).toContain('v.embedding <=>');
+    expect(flat(calls[0].sql)).not.toContain('word_similarity');
+  });
+
+  it('leaves the vector out of COUNT, which must not be ordered', async () => {
+    const { repository, calls } = makeRepository([[{ count: '7' }]]);
+    const dto: FilterSearchDto = {};
+
+    await repository.count(buildFilterQuery(dto), false, {
+      queryEmbedding: unitVector(),
+    });
+
+    // Ranking cannot change a total, so paying for a vector scan here would
+    // be pure cost — and ORDER BY in a COUNT is meaningless anyway.
+    expect(flat(calls[0].sql)).not.toContain('<=>');
+    expect(flat(calls[0].sql)).not.toContain('ORDER BY');
   });
 });
 

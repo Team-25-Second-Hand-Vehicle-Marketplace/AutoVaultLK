@@ -1,0 +1,43 @@
+name: Web Frontend CI
+
+on:
+  push:
+    paths:
+      - 'web-frontend/**'
+      - '.github/workflows/web-frontend.yml'
+  pull_request:
+    paths:
+      - 'web-frontend/**'
+      - '.github/workflows/web-frontend.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web-frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web-frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Blocking: the react-hooks violations this used to trip on were fixed
+      # rather than suppressed, so a new one should fail the build.
+      - name: Lint
+        run: npm run lint
+
+      # `npm run build` is `tsc -b && vite build`, so type errors fail here.
+      # There is no test step because web-frontend has no test suite yet;
+      # add one to this job when it does.
+      - name: Type-check and build
+        run: npm run build

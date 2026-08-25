@@ -1,33 +1,25 @@
-import { useEffect, useState } from 'react'
+import { useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { getDashboard } from '../../api/admin.api'
 import type { AdminDashboard } from '../../api/admin.types'
 import { toErrorMessage } from '../../api/client'
+import { useAsyncData } from '../../hooks/useAsyncData'
 
 function statusCount(byStatus: Record<string, number>, keys: string[]): number {
   return keys.reduce((sum, key) => sum + (byStatus[key] ?? 0), 0)
 }
 
-export function AdminDashboardPage() {
-  const [data, setData] = useState<AdminDashboard | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+const dashboardError = (err: unknown) => toErrorMessage(err, 'Could not load dashboard.')
 
-  useEffect(() => {
-    const controller = new AbortController()
-    setLoading(true)
-    getDashboard(controller.signal)
-      .then(setData)
-      .catch((err) => {
-        if (!controller.signal.aborted) {
-          setError(toErrorMessage(err, 'Could not load dashboard.'))
-        }
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false)
-      })
-    return () => controller.abort()
-  }, [])
+export function AdminDashboardPage() {
+  const fetchDashboard = useCallback(
+    (signal: AbortSignal) => getDashboard(signal),
+    [],
+  )
+  const { data, error, loading } = useAsyncData<AdminDashboard>(
+    fetchDashboard,
+    dashboardError,
+  )
 
   if (loading) {
     return (

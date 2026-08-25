@@ -21,10 +21,20 @@ function formatSpecValue(value: unknown): string {
 
 export function VehicleDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const [vehicle, setVehicle] = useState<VehicleDetail | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [notFound, setNotFound] = useState(false)
+  /**
+   * One state value, because these four always change together: a load
+   * either yields a vehicle, a not-found, or an error, and each outcome
+   * fully replaces the previous one. As separate useState calls the effect
+   * had to reset three of them synchronously on every run before fetching,
+   * which is the cascading-render pattern React warns about.
+   */
+  const [state, setState] = useState<{
+    vehicle: VehicleDetail | null
+    loading: boolean
+    error: string | null
+    notFound: boolean
+  }>({ vehicle: null, loading: true, error: null, notFound: false })
+  const { vehicle, loading, error, notFound } = state
   // Placeholder gallery photos come from a CDN — fall back to the "no
   // photos" panel if one fails rather than showing a broken image.
   const [galleryFailed, setGalleryFailed] = useState(false)
@@ -32,25 +42,28 @@ export function VehicleDetailPage() {
   useEffect(() => {
     if (!id) return
     const controller = new AbortController()
-    setLoading(true)
-    setError(null)
-    setNotFound(false)
 
     getVehicleById(id, controller.signal)
-      .then(setVehicle)
+      .then((v) => {
+        if (!controller.signal.aborted) {
+          setState({ vehicle: v, loading: false, error: null, notFound: false })
+        }
+      })
       .catch((err) => {
-        if (axios.isCancel(err)) return
+        if (axios.isCancel(err) || controller.signal.aborted) return
         // The API returns 404 both for a listing that doesn't exist and one
         // that isn't LIVE — deliberately indistinguishable, so this page
         // says the same thing for both.
         if (axios.isAxiosError(err) && err.response?.status === 404) {
-          setNotFound(true)
+          setState({ vehicle: null, loading: false, error: null, notFound: true })
           return
         }
-        setError(toErrorMessage(err, 'Could not load this listing.'))
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false)
+        setState({
+          vehicle: null,
+          loading: false,
+          error: toErrorMessage(err, 'Could not load this listing.'),
+          notFound: false,
+        })
       })
 
     return () => controller.abort()
