@@ -21,21 +21,30 @@ import { VehicleCardSkeleton } from '../components/search/VehicleCardSkeleton'
  */
 export function SavedPage() {
   const { savedIds } = useSavedVehicles()
-  const [vehicles, setVehicles] = useState<VehicleDetail[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  // Single state value: a load resolves to either a list or an error, and
+  // the empty-ids case resolves synchronously to an empty list. Keeping them
+  // together removes the setLoading/setError reset the effect used to do
+  // synchronously before every fetch.
+  const [state, setState] = useState<{
+    vehicles: VehicleDetail[]
+    loading: boolean
+    error: string | null
+  }>({ vehicles: [], loading: true, error: null })
+  const { vehicles, loading, error } = state
 
   useEffect(() => {
     const controller = new AbortController()
 
     if (savedIds.length === 0) {
-      setVehicles([])
-      setLoading(false)
-      return
+      // Deferred to a microtask so this is not a synchronous setState in the
+      // effect body; there is nothing to fetch, so nothing to wait for.
+      queueMicrotask(() => {
+        if (!controller.signal.aborted) {
+          setState({ vehicles: [], loading: false, error: null })
+        }
+      })
+      return () => controller.abort()
     }
-
-    setLoading(true)
-    setError(null)
 
     Promise.all(
       savedIds.map((id) =>
@@ -46,14 +55,21 @@ export function SavedPage() {
       ),
     )
       .then((results) => {
-        setVehicles(results.filter((v): v is VehicleDetail => v !== null))
+        if (!controller.signal.aborted) {
+          setState({
+            vehicles: results.filter((v): v is VehicleDetail => v !== null),
+            loading: false,
+            error: null,
+          })
+        }
       })
       .catch((err) => {
-        if (axios.isCancel(err)) return
-        setError(toErrorMessage(err, 'Could not load your saved listings.'))
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false)
+        if (axios.isCancel(err) || controller.signal.aborted) return
+        setState({
+          vehicles: [],
+          loading: false,
+          error: toErrorMessage(err, 'Could not load your saved listings.'),
+        })
       })
 
     return () => controller.abort()

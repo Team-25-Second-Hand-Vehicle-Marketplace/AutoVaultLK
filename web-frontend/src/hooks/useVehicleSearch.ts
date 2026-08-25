@@ -120,17 +120,34 @@ export function useVehicleSearch() {
   const appliedFilters = useMemo(() => paramsToFilters(searchParams), [searchParams])
 
   const [draft, setDraft] = useState<FilterSearchParams>(appliedFilters)
-  const [result, setResult] = useState<(FilterSearchResponse & { parse?: NlParse }) | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+
+  /**
+   * Search state as one value: a request resolves to either a result or an
+   * error, and both end the loading phase. Three separate useState calls
+   * forced the effect to reset loading/error synchronously before each
+   * fetch,
+   * which is the cascading-render pattern React flags.
+   */
+  const [search, setSearch] = useState<{
+    result: (FilterSearchResponse & { parse?: NlParse }) | null
+    loading: boolean
+    error: string | null
+  }>({ result: null, loading: true, error: null })
+  const { result, loading, error } = search
 
   // Re-sync the draft whenever the applied (URL) filters change from
   // outside the sidebar itself — keeps chip removal / Clear all / back
   // button reflected in the sidebar's controls immediately.
-  useEffect(() => {
+  //
+  // Adjusted during render rather than in an effect: React re-runs this hook
+  // with the new draft before the DOM is touched, so the sidebar never
+  // paints a stale frame. This is React's documented pattern for state
+  // derived from props/URL.
+  const [lastParams, setLastParams] = useState(searchParams)
+  if (lastParams !== searchParams) {
+    setLastParams(searchParams)
     setDraft(appliedFilters)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams])
+  }
 
   // Depends on searchParams, not appliedFilters: appliedFilters is a fresh
   // object identity on every render of this hook (useMemo over searchParams),
@@ -139,8 +156,7 @@ export function useVehicleSearch() {
   // a pure function of it.
   useEffect(() => {
     const controller = new AbortController()
-    setLoading(true)
-    setError(null)
+    let settled = false
 
     // Free-text `q` is the NL path (SAD 4.1.4). Sidebar-only searches stay
     // on /search/filters so structured clicks never go through the parser.
@@ -158,16 +174,32 @@ export function useVehicleSearch() {
       : filterSearch({ ...appliedFilters, facets: true }, controller.signal)
 
     request
-      .then((data) => setResult(data))
+      .then((data) => {
+        settled = true
+        if (!controller.signal.aborted) {
+          setSearch({ result: data, loading: false, error: null })
+        }
+      })
       .catch((err) => {
+        settled = true
         // An aborted request is this effect superseding itself, not a
         // failure — surfacing it would flash an error on every filter change.
-        if (axios.isCancel(err)) return
-        setError(toErrorMessage(err, 'Search failed'))
+        if (axios.isCancel(err) || controller.signal.aborted) return
+        setSearch((prev) => ({
+          ...prev,
+          loading: false,
+          error: toErrorMessage(err, 'Search failed'),
+        }))
       })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false)
-      })
+
+    // Shows the spinner for a re-search without a synchronous setState in
+    // the effect body. Skipped when the request already resolved, so the
+    // first paint after a cached/immediate response stays a single render.
+    queueMicrotask(() => {
+      if (!settled && !controller.signal.aborted) {
+        setSearch((prev) => ({ ...prev, loading: true, error: null }))
+      }
+    })
 
     return () => controller.abort()
     // eslint-disable-next-line react-hooks/exhaustive-deps

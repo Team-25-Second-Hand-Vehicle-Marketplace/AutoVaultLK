@@ -1,0 +1,41 @@
+name: Marketplace Service CI
+
+on:
+  push:
+    paths:
+      - 'marketplace-service/**'
+      - '.github/workflows/marketplace-service.yml'
+  pull_request:
+    paths:
+      - 'marketplace-service/**'
+      - '.github/workflows/marketplace-service.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: marketplace-service
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: marketplace-service/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm run test:ci
+
+      - name: Build service
+        run: npm run build
+
+      - name: Build Docker image
+        run: docker build --tag marketplace-service:ci .

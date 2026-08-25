@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
@@ -9,6 +9,7 @@ import {
 } from '../../api/admin.api'
 import type { AdminUserRow } from '../../api/admin.types'
 import { toErrorMessage } from '../../api/client'
+import { useAsyncData } from '../../hooks/useAsyncData'
 import { useAuth } from '../../auth/useAuth'
 
 type Tab = 'all' | 'pending'
@@ -20,39 +21,30 @@ function formatDate(value: string): string {
   })
 }
 
+const usersError = (err: unknown) => toErrorMessage(err, 'Could not load users.')
+
 export function AdminUsersPage() {
   const { user: actor } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const tab = (searchParams.get('tab') === 'pending' ? 'pending' : 'all') as Tab
 
-  const [rows, setRows] = useState<AdminUserRow[]>([])
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState<string | null>(null)
 
-  const load = useCallback(async (signal?: AbortSignal) => {
-    setLoading(true)
-    setError(null)
-    try {
-      const data = await listUsers(
-        tab === 'pending' ? 'PENDING' : undefined,
-        signal,
-      )
-      if (!signal?.aborted) setRows(data)
-    } catch (err) {
-      if (!signal?.aborted) {
-        setError(toErrorMessage(err, 'Could not load users.'))
-      }
-    } finally {
-      if (!signal?.aborted) setLoading(false)
-    }
-  }, [tab])
-
-  useEffect(() => {
-    const controller = new AbortController()
-    void load(controller.signal)
-    return () => controller.abort()
-  }, [load])
+  const fetchUsers = useCallback(
+    (signal: AbortSignal) =>
+      listUsers(tab === 'pending' ? 'PENDING' : undefined, signal),
+    [tab],
+  )
+  const {
+    data,
+    error,
+    loading,
+    reload: load,
+  } = useAsyncData<AdminUserRow[]>(fetchUsers, usersError,
+  )
+  // useMemo so the fallback [] keeps a stable identity; a fresh array each
+  // render would invalidate the pendingCount memo below on every render.
+  const rows = useMemo(() => data ?? [], [data])
 
   const setTab = (next: Tab) => {
     if (next === 'pending') setSearchParams({ tab: 'pending' })
@@ -73,7 +65,7 @@ export function AdminUsersPage() {
     try {
       await action()
       toast.success(success)
-      await load()
+      load()
     } catch (err) {
       toast.error(toErrorMessage(err, 'Action failed.'))
     } finally {
