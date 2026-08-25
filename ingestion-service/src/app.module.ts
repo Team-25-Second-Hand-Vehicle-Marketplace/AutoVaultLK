@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { databaseConfig } from './config/database.config';
 import { HealthModule } from './health/health.module';
+import { JobStatusModule } from './modules/job-status/job-status.module';
 
 @Module({
   imports: [
@@ -12,6 +13,8 @@ import { HealthModule } from './health/health.module';
     }),
     TypeOrmModule.forRoot(databaseConfig()),
     HealthModule,
+    JobStatusModule,
+
   ],
 })
 export class AppModule {}
