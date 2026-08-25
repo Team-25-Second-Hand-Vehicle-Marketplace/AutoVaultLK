@@ -27,6 +27,25 @@ import {
 } from './vocabulary';
 
 /**
+ * Body types need a tighter fuzzy gate than makes/models.
+ *
+ * The body list is ten short, common English words, so unrelated query terms
+ * collide with them far more readily than with a brand name. "volkswagon"
+ * scored 0.4706 against "wagon" — over the shared 0.45 threshold — and,
+ * because Volkswagen is absent from the make dictionary, WAGON was the only
+ * candidate: the query resolved at confidence 1.0 to body_type=WAGON and
+ * returned all 80 listings, with Groq never consulted because nothing looked
+ * unresolved.
+ *
+ * Measured separation: genuine body-type typos ("sedn", "hachback",
+ * "convertable", "pickpup") score 0.545 and above, so 0.52 rejects the
+ * collision while keeping every real misspelling. Raising the global
+ * TRIGRAM_THRESHOLD instead would break make/model matches that legitimately
+ * sit in the 0.45-0.52 band.
+ */
+const BODY_TYPE_FUZZY_THRESHOLD = 0.52;
+
+/**
  * Deterministic 5-stage parser (SAD 4.1.4 / §6.7 / FR-21).
  *
  * Pure function: vocabulary is injected so Jest can run without Postgres.
@@ -172,6 +191,7 @@ function stageFuzzy(
     }
     const body = fuzzySpanHit(tokens, start, 1, vocab.bodyTypes, {
       rejectDigitAdjacent: false,
+      threshold: BODY_TYPE_FUZZY_THRESHOLD,
     });
     if (body && isBodyType(body.entry.canonical) && !isVehicleType(body.entry.canonical)) {
       addSpec(filters, 'body_type', body.entry.canonical);
