@@ -1,22 +1,7 @@
-/* ==========================================================================
-   Search page + result card, restyled to the marketplace design reference.
-
-   Overrides the earlier index.css/app.css rules for these components rather
-   than editing them, keeping the redesign reviewable as one layer.
-   ========================================================================== */
-
 .search-page {
   max-width: 1400px;
   margin: 0 auto;
-  /* Tighter at the top than the sides: the sticky header already provides a
-     visual break, so a full 24px on top of the toolbar's own margin left the
-     content floating well below the bar.
 
-     index.css also sets `display: flex` + `gap: 20px` here. That gap applied
-     BETWEEN the toolbar and the body on top of the toolbar's margin-bottom,
-     so the two stacked. The layout is a plain block stack — the children set
-     their own spacing — so the flex context is dropped rather than the gap
-     zeroed. */
   display: block;
   padding: 12px 24px 24px;
 }
@@ -31,11 +16,6 @@
   flex-wrap: wrap;
 }
 
-/* The toolbar's keyword input was removed — the header search box owns
-   keyword entry, and two identical fields within ~40px of each other made it
-   unclear which was live. The Filters button is mobile-only (desktop keeps
-   the sidebar as a permanent column), so on desktop the row holds sort
-   alone. */
 .search-toolbar__filters-btn,
 .sort-dropdown {
   padding: 11px 16px;
@@ -267,13 +247,6 @@
   background: var(--bg-alt);
 }
 
-/* PLACEHOLDER PHOTOGRAPHY — see src/assets/demo-images.ts.
-   Supplied brochure shots are studio cut-outs on white: the vehicle is
-   centred with generous margins and no bleed. `object-fit: cover` (the
-   default for real listing photos, which are camera shots that should fill
-   the frame) would crop the nose and tail straight off a 508x305 press
-   image. `contain` letterboxes instead, and the white plate below blends
-   with the shot's own background so it reads as one panel. */
 .vehicle-card__image--contain {
   object-fit: contain;
   background: #fff;
@@ -456,8 +429,6 @@
 
 /* ── Relaxation notice ──────────────────────────────────────── */
 
-/* Same slot and weight as the relaxation notice — both say "your results
-   aren't quite what you asked for", so they should look alike. */
 .parse-warning {
   display: flex;
   align-items: flex-start;

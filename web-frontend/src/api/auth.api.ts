@@ -35,14 +35,6 @@ export async function registerDealer(payload: RegisterDealerRequest): Promise<Re
   return data
 }
 
-/**
- * Exchanges a refresh token for a new pair.
- *
- * Uses a BARE axios instance rather than apiClient on purpose: apiClient's
- * response interceptor calls this function on 401, so refreshing through it
- * would recurse if the refresh endpoint itself 401s (expired or already
- * rotated token).
- */
 export async function refreshSession(refreshToken: string): Promise<AuthTokenResponse> {
   const { data } = await axios.post<AuthTokenResponse>(
     `${import.meta.env.VITE_API_BASE_URL ?? ''}/auth/refresh`,
@@ -52,19 +44,11 @@ export async function refreshSession(refreshToken: string): Promise<AuthTokenRes
   return data
 }
 
-/**
- * Best-effort server-side revocation.
- *
- * Never throws: the local session is cleared by the caller regardless, and a
- * user clicking "Log out" must not be left apparently-logged-in because the
- * network was down. The refresh token expires on its own either way.
- */
 export async function logout(): Promise<void> {
   const refreshToken = getRefreshToken()
   if (!refreshToken) return
   try {
     await apiClient.post('/auth/logout', { refreshToken })
   } catch {
-    // Intentionally ignored — see above.
   }
 }

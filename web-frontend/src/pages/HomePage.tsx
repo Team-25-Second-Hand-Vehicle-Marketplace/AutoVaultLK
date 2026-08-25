@@ -19,11 +19,6 @@ export function HomePage() {
   const [stats, setStats] = useState<MarketplaceStats | null>(null)
   const [featured, setFeatured] = useState<VehicleSearchResult[] | null>(null)
 
-  // Newest live listings stand in for "recommended": there is no `featured`
-  // column on vehicles, no backend concept of promotion, and no per-user
-  // signal to personalise on, so ranking by recency is the honest
-  // interpretation rather than inventing a flag. 16 fills four carousel
-  // pages of four.
   useEffect(() => {
     const controller = new AbortController()
 
@@ -47,16 +42,7 @@ export function HomePage() {
 
   return (
     <div className="home">
-      {/* ── Hero ─────────────────────────────────────────────────
-          PLACEHOLDER PHOTOGRAPHY — see src/assets/demo-images.ts. This is a
-          generic stock car under the Unsplash license (free commercial use,
-          no attribution required), used so demo snapshots aren't empty. It
-          is not a project asset and not one of our listings. Replace with
-          licensed photography before launch.
-
-          The gradient backdrop stays mounted underneath: it is what renders
-          while the photo loads, and what remains if the CDN is unreachable,
-          so the headline never lands on bare white. */}
+      {}
       <section className="hero">
         <div className="hero__backdrop" aria-hidden="true" />
         <img
