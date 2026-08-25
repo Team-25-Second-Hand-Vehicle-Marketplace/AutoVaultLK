@@ -115,6 +115,44 @@ function filtersToParams(filters: FilterSearchParams): URLSearchParams {
  * back/forward button — so the sidebar never goes stale relative to what's
  * actually applied.
  */
+/**
+ * Developer-facing record of how an NL query was parsed.
+ *
+ * The buyer-facing UI deliberately shows only what is actionable (see
+ * ParseWarning), but the full parse — which strategy answered, the
+ * confidence score, what could not be resolved — is exactly what is needed
+ * when someone reports "I searched X and got nothing". Dropping it entirely
+ * along with the old "Understood as …" line would have made those reports
+ * unreproducible, so it moves to the console instead of the page.
+ *
+ * Dev-only: this is per-search and would be noise in a production console.
+ */
+function logParseDiagnostics(
+  query: string | undefined,
+  data: FilterSearchResponse & { parse?: NlParse },
+): void {
+  if (!import.meta.env.DEV || !data.parse) return
+
+  const { parse } = data
+  const strategy =
+    [
+      parse.usedGroqFallback && 'groq',
+      parse.usedSemanticRanking && 'semantic',
+      parse.usedTrigramFallback && 'trigram',
+    ]
+      .filter(Boolean)
+      .join(' + ') || 'rules'
+
+  console.groupCollapsed(
+    `[nl-search] "${query}" → ${data.total} results · ${strategy} · confidence ${parse.confidence.toFixed(2)}`,
+  )
+  console.log('applied filters:', data.appliedFilters)
+  if (parse.unresolvedTokens.length > 0) console.warn('unresolved:', parse.unresolvedTokens)
+  if (parse.semanticText) console.log('semantic text:', parse.semanticText)
+  if (data.relaxation) console.warn('relaxed:', data.relaxation.message)
+  console.groupEnd()
+}
+
 export function useVehicleSearch() {
   const [searchParams, setSearchParams] = useSearchParams()
   const appliedFilters = useMemo(() => paramsToFilters(searchParams), [searchParams])
@@ -177,6 +215,7 @@ export function useVehicleSearch() {
       .then((data) => {
         settled = true
         if (!controller.signal.aborted) {
+          logParseDiagnostics(appliedFilters.q, data)
           setSearch({ result: data, loading: false, error: null })
         }
       })

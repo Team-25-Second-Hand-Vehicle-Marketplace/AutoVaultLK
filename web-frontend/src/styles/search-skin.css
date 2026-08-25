@@ -8,7 +8,17 @@
 .search-page {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 24px;
+  /* Tighter at the top than the sides: the sticky header already provides a
+     visual break, so a full 24px on top of the toolbar's own margin left the
+     content floating well below the bar.
+
+     index.css also sets `display: flex` + `gap: 20px` here. That gap applied
+     BETWEEN the toolbar and the body on top of the toolbar's margin-bottom,
+     so the two stacked. The layout is a plain block stack — the children set
+     their own spacing — so the flex context is dropped rather than the gap
+     zeroed. */
+  display: block;
+  padding: 12px 24px 24px;
 }
 
 /* ── Toolbar ─────────────────────────────────────────────────── */
@@ -17,15 +27,17 @@
   display: flex;
   gap: 12px;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
   flex-wrap: wrap;
 }
 
 /* The toolbar's keyword input was removed — the header search box owns
    keyword entry, and two identical fields within ~40px of each other made it
-   unclear which was live. Filters sits at the left, sort at the right. */
+   unclear which was live. The Filters button is mobile-only (desktop keeps
+   the sidebar as a permanent column), so on desktop the row holds sort
+   alone. */
 .search-toolbar__filters-btn,
-.sort-dropdown select {
+.sort-dropdown {
   padding: 11px 16px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -37,8 +49,16 @@
   cursor: pointer;
 }
 
+.search-toolbar__filters-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .search-toolbar__filters-btn:hover {
   background: var(--bg-alt);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 /* Sort sits at the far right, as in the reference's results header. */
@@ -216,12 +236,6 @@
   font-size: 14px;
   color: var(--text);
   margin-bottom: 14px;
-}
-
-.parse-notice {
-  font-size: 13px;
-  color: var(--text);
-  margin: -6px 0 14px;
 }
 
 /* ── Result cards ────────────────────────────────────────────── */
@@ -441,6 +455,26 @@
 }
 
 /* ── Relaxation notice ──────────────────────────────────────── */
+
+/* Same slot and weight as the relaxation notice — both say "your results
+   aren't quite what you asked for", so they should look alike. */
+.parse-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  background: var(--warning-bg);
+  color: var(--warning-text);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+
+.parse-warning svg {
+  flex: none;
+  margin-top: 2px;
+}
 
 .relaxation-notice {
   background: var(--warning-bg);
