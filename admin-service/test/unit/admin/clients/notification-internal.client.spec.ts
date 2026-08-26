@@ -1,6 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { NotificationInternalClient } from '../../../../src/admin/clients/notification-internal.client';
+import { NotificationInternalClient } from '../../../../src/modules/admin/clients/notification-internal.client';
 
 function config(): ConfigService {
   return {
