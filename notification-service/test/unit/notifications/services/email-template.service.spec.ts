@@ -1,4 +1,4 @@
-import { EmailTemplateService } from './email-template.service';
+import { EmailTemplateService } from '../../../../src/modules/notifications/services/email-template.service';
 
 describe('EmailTemplateService', () => {
   const templates = new EmailTemplateService();

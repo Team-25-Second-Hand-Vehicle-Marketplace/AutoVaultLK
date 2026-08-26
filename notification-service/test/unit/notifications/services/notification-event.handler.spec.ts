@@ -1,9 +1,9 @@
 import { NotFoundException } from '@nestjs/common';
 import { QueryFailedError } from 'typeorm';
-import { NotificationEventHandler } from './notification-event.handler';
-import { EmailTemplateService } from './email-template.service';
-import { SesUnavailableError } from '../adapters/ses.adapter';
-import type { Notification } from '../../../infrastructure/database/entities/notification.entity';
+import { NotificationEventHandler } from '../../../../src/modules/notifications/services/notification-event.handler';
+import { EmailTemplateService } from '../../../../src/modules/notifications/services/email-template.service';
+import { SesUnavailableError } from '../../../../src/modules/notifications/adapters/ses.adapter';
+import type { Notification } from '../../../../src/infrastructure/database/entities/notification.entity';
 
 function pending(overrides: Partial<Notification> = {}): Notification {
   return {

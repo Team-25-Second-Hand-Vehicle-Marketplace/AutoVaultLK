@@ -1,6 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { SesAdapter, SesUnavailableError } from './ses.adapter';
+import { SesAdapter, SesUnavailableError } from '../../../../src/modules/notifications/adapters/ses.adapter';
 
 function config(fromEmail = ''): ConfigService {
   const values: Record<string, string> = { SES_FROM_EMAIL: fromEmail };
