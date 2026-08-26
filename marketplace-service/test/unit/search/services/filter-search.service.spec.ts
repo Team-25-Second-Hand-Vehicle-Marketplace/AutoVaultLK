@@ -1,8 +1,8 @@
-import { FilterSearchService } from './filter-search.service';
-import { FilterSearchDto } from '../dto/filter-search.dto';
-import { VehicleSearchRepository } from '../repositories/vehicle-search.repository';
+import { FilterSearchService } from '../../../../src/modules/search/services/filter-search.service';
+import { FilterSearchDto } from '../../../../src/modules/search/dto/filter-search.dto';
+import { VehicleSearchRepository } from '../../../../src/modules/search/repositories/vehicle-search.repository';
 import { DataSource } from 'typeorm';
-import * as builderModuleRef from '../filters/filter-query.builder';
+import * as builderModuleRef from '../../../../src/modules/search/filters/filter-query.builder';
 
 /**
  * Tests for the zero-result relaxation ladder.

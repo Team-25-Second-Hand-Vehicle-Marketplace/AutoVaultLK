@@ -1,4 +1,4 @@
-import { rowsToVocabulary } from './vehicle-dictionary.repository';
+import { rowsToVocabulary } from '../../../../src/modules/search/repositories/vehicle-dictionary.repository';
 
 describe('rowsToVocabulary', () => {
   it('nests models under their parent make canonical', () => {

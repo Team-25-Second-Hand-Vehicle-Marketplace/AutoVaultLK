@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
-import { buildFilterQuery } from './filter-query.builder';
-import { FilterSearchDto } from '../dto/filter-search.dto';
+import { buildFilterQuery } from '../../../../src/modules/search/filters/filter-query.builder';
+import { FilterSearchDto } from '../../../../src/modules/search/dto/filter-search.dto';
 
 /**
  * buildFilterQuery is a pure function with no database access, which makes

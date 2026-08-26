@@ -1,5 +1,5 @@
-import { EMBEDDING_DIMENSIONS } from './constants';
-import { assertEmbedding, l2Normalize, toPgVector } from './vector';
+import { EMBEDDING_DIMENSIONS } from '../../../../src/shared/normalize-embed/constants';
+import { assertEmbedding, l2Normalize, toPgVector } from '../../../../src/shared/normalize-embed/vector';
 
 describe('normalize-embed vector helpers', () => {
   it('rejects a vector that is not 384-d', () => {

@@ -1,6 +1,6 @@
-import { mergeFilters, whitelistGroqOutput } from './groq-whitelist';
-import { FIXTURE_VOCABULARY } from '../parser/fixture-vocabulary';
-import { parseGroqJson } from './groq-client';
+import { mergeFilters, whitelistGroqOutput } from '../../../../src/modules/search/groq/groq-whitelist';
+import { FIXTURE_VOCABULARY } from '../../../../src/modules/search/parser/fixture-vocabulary';
+import { parseGroqJson } from '../../../../src/modules/search/groq/groq-client';
 
 describe('whitelistGroqOutput', () => {
   const unresolved = ['sporty', 'leather', 'honda'];

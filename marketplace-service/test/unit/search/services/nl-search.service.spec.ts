@@ -1,12 +1,12 @@
-import { NlSearchService, toFilterSearchDto } from './nl-search.service';
-import { FilterSearchService } from './filter-search.service';
-import { QueryEmbeddingService } from './query-embedding.service';
-import { GroqFallbackService } from '../groq/groq-fallback.service';
-import { VehicleDictionaryRepository } from '../repositories/vehicle-dictionary.repository';
-import { FIXTURE_VOCABULARY } from '../parser/fixture-vocabulary';
-import type { ParsedQuery } from '../parser/types';
-import { FilterSearchResponseDto } from '../dto/filter-search-response.dto';
-import { EMBEDDING_DIMENSIONS } from '../../../shared/normalize-embed';
+import { NlSearchService, toFilterSearchDto } from '../../../../src/modules/search/services/nl-search.service';
+import { FilterSearchService } from '../../../../src/modules/search/services/filter-search.service';
+import { QueryEmbeddingService } from '../../../../src/modules/search/services/query-embedding.service';
+import { GroqFallbackService } from '../../../../src/modules/search/groq/groq-fallback.service';
+import { VehicleDictionaryRepository } from '../../../../src/modules/search/repositories/vehicle-dictionary.repository';
+import { FIXTURE_VOCABULARY } from '../../../../src/modules/search/parser/fixture-vocabulary';
+import type { ParsedQuery } from '../../../../src/modules/search/parser/types';
+import { FilterSearchResponseDto } from '../../../../src/modules/search/dto/filter-search-response.dto';
+import { EMBEDDING_DIMENSIONS } from '../../../../src/shared/normalize-embed';
 
 function parsed(overrides: Partial<ParsedQuery> = {}): ParsedQuery {
   return {
