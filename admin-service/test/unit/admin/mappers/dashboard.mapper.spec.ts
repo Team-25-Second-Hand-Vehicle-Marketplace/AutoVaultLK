@@ -1,4 +1,4 @@
-import { mapDashboard } from './dashboard.mapper';
+import { mapDashboard } from '../../../../src/modules/admin/mappers/dashboard.mapper';
 
 describe('mapDashboard', () => {
   it('maps SQL aggregates onto dashboard tiles (FR-48)', () => {

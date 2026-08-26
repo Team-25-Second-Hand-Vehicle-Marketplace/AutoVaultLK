@@ -1,10 +1,10 @@
 import 'reflect-metadata';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import { AuditLogsQueryDto } from './audit-logs-query.dto';
-import { ListUploadsQueryDto } from './list-uploads-query.dto';
-import { ListUsersQueryDto } from './list-users-query.dto';
-import { ReportsQueryDto } from './reports-query.dto';
+import { AuditLogsQueryDto } from '../../../../src/modules/admin/dto/audit-logs-query.dto';
+import { ListUploadsQueryDto } from '../../../../src/modules/admin/dto/list-uploads-query.dto';
+import { ListUsersQueryDto } from '../../../../src/modules/admin/dto/list-users-query.dto';
+import { ReportsQueryDto } from '../../../../src/modules/admin/dto/reports-query.dto';
 
 describe('admin query DTOs', () => {
   it('accepts PENDING verificationStatus and rejects unknown values', async () => {

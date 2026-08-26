@@ -1,6 +1,6 @@
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import { CreateNotificationEventDto } from './create-notification-event.dto';
+import { CreateNotificationEventDto } from '../../../../src/modules/notifications/dto/create-notification-event.dto';
 
 describe('CreateNotificationEventDto', () => {
   async function check(plain: Record<string, unknown>) {

@@ -7,7 +7,7 @@ describe('JwtStrategy.validate', () => {
   const payload: AccessTokenPayload = {
     sub: 'user-1',
     email: 'user@test.com',
-    role: 'ADMIN',
+    role: 'DEALER',
   };
 
   function validate(user: Partial<AuthUserView> | null) {
@@ -15,11 +15,14 @@ describe('JwtStrategy.validate', () => {
     return JwtStrategy.prototype.validate.call(ctx, payload);
   }
 
-  it('rejects a missing or inactive account', async () => {
+  it('rejects when the account does not exist', async () => {
     await expect(validate(null)).rejects.toBeInstanceOf(UnauthorizedException);
-    await expect(validate({ id: 'user-1', isActive: false, role: 'ADMIN' })).rejects.toThrow(
-      'User account is inactive or not found',
-    );
+  });
+
+  it('rejects an inactive account', async () => {
+    await expect(
+      validate({ id: 'user-1', isActive: false, role: 'DEALER' }),
+    ).rejects.toThrow('User account is inactive or not found');
   });
 
   it('allows an active ADMIN without email verification', async () => {
@@ -38,7 +41,7 @@ describe('JwtStrategy.validate', () => {
     });
   });
 
-  it('rejects an unverified non-admin', async () => {
+  it('rejects an unverified non-admin (e.g. DEALER)', async () => {
     await expect(
       validate({
         id: 'user-1',
@@ -48,5 +51,21 @@ describe('JwtStrategy.validate', () => {
         emailVerifiedAt: null,
       }),
     ).rejects.toThrow('Please verify your email address before signing in.');
+  });
+
+  it('allows a verified, active non-admin', async () => {
+    await expect(
+      validate({
+        id: 'user-1',
+        email: 'dealer@test.com',
+        role: 'DEALER',
+        isActive: true,
+        emailVerifiedAt: new Date('2026-01-01'),
+      }),
+    ).resolves.toEqual({
+      id: 'user-1',
+      email: 'dealer@test.com',
+      role: 'DEALER',
+    });
   });
 });

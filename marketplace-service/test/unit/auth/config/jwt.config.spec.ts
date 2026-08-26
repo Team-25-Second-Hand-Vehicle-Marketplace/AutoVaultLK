@@ -19,8 +19,8 @@ function createConfig(overrides: Record<string, string> = {}) {
   } as ConfigService;
 }
 
-describe('jwt.config (admin-service)', () => {
-  it('verifies with the same issuer, audience, and HS256 as auth', () => {
+describe('jwt.config', () => {
+  it('verifies with the same issuer, audience, and HS256 as auth-user-service (SAD 3.5.1)', () => {
     const options = getAccessTokenVerifyOptions(createConfig());
     expect(options.issuer).toBe('autovault-lk-auth');
     expect(options.audience).toBe('autovault-lk-api');
@@ -28,9 +28,21 @@ describe('jwt.config (admin-service)', () => {
     expect(options.secret).toBe('a'.repeat(32));
   });
 
+  it('defaults the algorithm to HS256 when unset', () => {
+    expect(getJwtAlgorithm(createConfig({ JWT_ALGORITHM: undefined as never }))).toBe('HS256');
+  });
+
   it('rejects an unsupported JWT algorithm', () => {
     expect(() => getJwtAlgorithm(createConfig({ JWT_ALGORITHM: 'RS256' }))).toThrow(
       'Unsupported JWT algorithm: RS256',
     );
+  });
+
+  it('throws when a required config value is missing', () => {
+    const config = createConfig();
+    (config.getOrThrow as jest.Mock) = jest.fn(() => {
+      throw new Error('Missing config: JWT_ACCESS_SECRET');
+    });
+    expect(() => getAccessTokenVerifyOptions(config)).toThrow('Missing config: JWT_ACCESS_SECRET');
   });
 });

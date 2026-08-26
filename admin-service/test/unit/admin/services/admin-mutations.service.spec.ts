@@ -1,6 +1,6 @@
 import { BadRequestException, Logger } from '@nestjs/common';
-import { AdminMutationsService } from './admin-mutations.service';
-import type { AuthenticatedUser } from '../../auth/types/authenticated-user.type';
+import { AdminMutationsService } from '../../../../src/modules/admin/services/admin-mutations.service';
+import type { AuthenticatedUser } from '../../../../src/modules/auth/types/authenticated-user.type';
 
 const actor: AuthenticatedUser = {
   id: 'admin-1',

@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AuthInternalClient } from './auth-internal.client';
+import { AuthInternalClient } from '../../../../src/modules/admin/clients/auth-internal.client';
 
 function config(): ConfigService {
   return {
