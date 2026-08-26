@@ -3,7 +3,12 @@ import {
   ReceiveMessageCommand,
   SQSClient,
 } from '@aws-sdk/client-sqs';
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NotificationEventHandler } from '../../../modules/notifications/services/notification-event.handler';
 import type { CreateNotificationEventDto } from '../../../modules/notifications/dto/create-notification-event.dto';
@@ -13,7 +18,7 @@ const supportedTypes = [
   'UPLOAD_FAILED',
   'DEALER_VERIFIED',
   'DEALER_REJECTED',
-];
+] as const;
 
 @Injectable()
 export class SqsConsumer implements OnModuleInit, OnModuleDestroy {
@@ -29,11 +34,19 @@ export class SqsConsumer implements OnModuleInit, OnModuleDestroy {
     private readonly handler: NotificationEventHandler,
   ) {
     this.client = new SQSClient({
-      region: this.config.get<string>('AWS_REGION') ?? 'ap-southeast-1',
+      region:
+        this.config.get<string>('AWS_REGION') ??
+        'ap-southeast-1',
+
+      endpoint:
+        this.config.get<string>('AWS_SQS_ENDPOINT') ||
+        undefined,
     });
 
     this.queueUrl =
-      this.config.get<string>('NOTIFICATION_SQS_QUEUE_URL') ?? '';
+      this.config.get<string>(
+        'NOTIFICATION_SQS_QUEUE_URL',
+      ) ?? '';
   }
 
   async onModuleInit() {
@@ -44,7 +57,9 @@ export class SqsConsumer implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    this.logger.log(`Starting SQS consumer: ${this.queueUrl}`);
+    this.logger.log(
+      `Starting SQS consumer: ${this.queueUrl}`,
+    );
 
     void this.consume();
   }
@@ -72,11 +87,14 @@ export class SqsConsumer implements OnModuleInit, OnModuleDestroy {
         }
       } catch (error) {
         const message =
-          error instanceof Error ? error.message : String(error);
+          error instanceof Error
+            ? error.message
+            : String(error);
 
-        this.logger.error(`SQS polling failed: ${message}`);
+        this.logger.error(
+          `SQS polling failed: ${message}`,
+        );
 
-        // Prevent a tight retry loop if SQS is unavailable.
         await this.sleep(5000);
       }
     }
@@ -88,47 +106,59 @@ export class SqsConsumer implements OnModuleInit, OnModuleDestroy {
     Body?: string;
   }): Promise<void> {
     if (!message.Body || !message.ReceiptHandle) {
-      this.logger.warn('Received invalid SQS message');
+      this.logger.warn(
+        'Received invalid SQS message',
+      );
       return;
     }
 
     try {
-      const event = JSON.parse(message.Body) as CreateNotificationEventDto;
+      const event =
+        JSON.parse(message.Body) as CreateNotificationEventDto;
 
-      if (!supportedTypes.includes(event.type)) {
-        this.logger.warn(`Ignoring unsupported event type: ${event.type}`);
+      if (!supportedTypes.includes(event.type as any)) {
+        this.logger.warn(
+          `Ignoring unsupported event type: ${event.type}`,
+        );
 
-        await this.deleteMessage(message.ReceiptHandle);
+        await this.deleteMessage(
+          message.ReceiptHandle,
+        );
+
         return;
-}
+      }
+
       this.logger.log(
         `Processing notification event ${event.type}, key=${event.idempotencyKey}`,
       );
 
       await this.handler.handle(event);
 
-      await this.deleteMessage(message.ReceiptHandle);
+      await this.deleteMessage(
+        message.ReceiptHandle,
+      );
 
       this.logger.log(
         `Processed notification event ${event.idempotencyKey}`,
       );
     } catch (error) {
       const messageText =
-        error instanceof Error ? error.message : String(error);
+        error instanceof Error
+          ? error.message
+          : String(error);
 
-      this.logger.error(`Notification event processing failed: ${messageText}`);
+      this.logger.error(
+        `Notification event processing failed: ${messageText}`,
+      );
 
-      /*
-       * IMPORTANT:
-       * Do NOT delete the message when processing fails.
-       *
-       * SQS will make the message visible again after the
-       * visibility timeout and retry it.
-       */
+      // Do not delete the message.
+      // SQS will retry it after the visibility timeout.
     }
   }
 
-  private async deleteMessage(receiptHandle: string): Promise<void> {
+  private async deleteMessage(
+    receiptHandle: string,
+  ): Promise<void> {
     await this.client.send(
       new DeleteMessageCommand({
         QueueUrl: this.queueUrl,
@@ -138,6 +168,8 @@ export class SqsConsumer implements OnModuleInit, OnModuleDestroy {
   }
 
   private sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+    return new Promise((resolve) =>
+      setTimeout(resolve, ms),
+    );
   }
 }
