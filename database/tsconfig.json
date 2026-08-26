@@ -4,9 +4,6 @@
     "module": "commonjs",
     "moduleResolution": "node",
     "outDir": "dist",
-    // rootDir spans both packages because the embedding seed imports
-    // marketplace-service's shared normalize-embed module rather than
-    // duplicating the MiniLM config (FR-22.1 requires one shared library).
     "rootDir": "..",
     "strict": true,
     "esModuleInterop": true,
@@ -18,8 +15,5 @@
     "src/**/*.ts",
     "../marketplace-service/src/shared/normalize-embed/**/*.ts"
   ],
-  // The shared module's specs run under marketplace-service's jest, which
-  // supplies @types/jest. This package has no test runner, so compiling them
-  // here would fail on describe/it/expect.
   "exclude": ["../marketplace-service/src/shared/**/*.spec.ts"]
 }

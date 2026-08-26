@@ -5,32 +5,10 @@ import * as bcrypt from 'bcryptjs';
 
 config({ path: '../.env' });
 
-/**
- * Seeds the initial Administrator account — FR-12.
- *
- * FR-12 forbids public registration for the ADMIN role, so there is no
- * endpoint that can create the first administrator. Without this script the
- * system ships with no way to reach any admin-only route, and every
- * subsequent admin is provisioned by an existing one.
- *
- * Unlike vehicles.seed.ts, which writes 'SEEDED_ACCOUNT_NOT_LOGGABLE' into
- * password_hash because those dealer accounts are never authenticated
- * against, this account must actually log in. The hash is therefore a real
- * bcrypt digest at cost 12, matching auth.service.ts so the same
- * bcrypt.compare path validates it.
- *
- * Credentials come from the environment rather than being hardcoded, so a
- * deployed environment never inherits a password that is public in git.
- *
- * Idempotent: ON CONFLICT DO NOTHING on the email unique index. Re-running
- * will NOT rotate the password of an existing account — see the notice
- * printed when the insert is skipped.
- */
 
 const DEFAULT_EMAIL = 'admin@autovault.lk';
 const DEFAULT_NAME = 'System Administrator';
 
-/** Mirrors the policy enforced at registration (FR-06). */
 function assertPasswordMeetsPolicy(password: string): void {
   const failures: string[] = [];
 
@@ -51,9 +29,6 @@ async function seed() {
   const name = process.env.ADMIN_SEED_NAME ?? DEFAULT_NAME;
   const password = process.env.ADMIN_SEED_PASSWORD;
 
-  // Deliberately no default. A fallback password would be identical across
-  // every checkout of this repo and would silently become the production
-  // administrator credential.
   if (!password) {
     throw new Error(
       'ADMIN_SEED_PASSWORD is not set. Refusing to seed an administrator with a ' +
@@ -68,17 +43,12 @@ async function seed() {
     url: process.env.DATABASE_URL,
     entities: [],
     synchronize: false,
-    // Opt-in TLS so this can seed RDS (which forces SSL) as well as local
-    // Docker Postgres (which serves no certificate).
     ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
   });
 
   await ds.initialize();
   console.log(`Connected. Seeding administrator ${email}…`);
 
-  // Cost 12 matches auth.service.ts and password.service.ts. A mismatch would
-  // still verify — bcrypt reads the cost from the digest — but this keeps the
-  // seeded account indistinguishable from a registered one.
   const passwordHash = await bcrypt.hash(password, 12);
 
   await ds.query(
@@ -98,8 +68,7 @@ async function seed() {
   }
 
   if (row.role !== 'ADMIN') {
-    // The email already existed as a BUYER or DEALER. Silently leaving it
-    // would look like a successful seed while granting no admin access.
+
     throw new Error(
       `${email} already exists with role ${row.role}, not ADMIN. Refusing to ` +
         'change the role of an existing account — use a different ' +
