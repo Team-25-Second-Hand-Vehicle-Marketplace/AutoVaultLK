@@ -1,5 +1,5 @@
-import { parseQuery } from './deterministic-parser';
-import { FIXTURE_VOCABULARY } from './fixture-vocabulary';
+import { parseQuery } from '../../../../src/modules/search/parser/deterministic-parser';
+import { FIXTURE_VOCABULARY } from '../../../../src/modules/search/parser/fixture-vocabulary';
 
 const parse = (q: string) => parseQuery(q, FIXTURE_VOCABULARY);
 

@@ -1,8 +1,8 @@
-import { parseQuery } from './deterministic-parser';
-import { FIXTURE_VOCABULARY } from './fixture-vocabulary';
-import { tokenize } from './tokenize';
-import { trigramSimilarity } from './trigram';
-import { CONFIDENCE_THRESHOLD } from './types';
+import { parseQuery } from '../../../../src/modules/search/parser/deterministic-parser';
+import { FIXTURE_VOCABULARY } from '../../../../src/modules/search/parser/fixture-vocabulary';
+import { tokenize } from '../../../../src/modules/search/parser/tokenize';
+import { trigramSimilarity } from '../../../../src/modules/search/parser/trigram';
+import { CONFIDENCE_THRESHOLD } from '../../../../src/modules/search/parser/types';
 
 const parse = (q: string) => parseQuery(q, FIXTURE_VOCABULARY);
 

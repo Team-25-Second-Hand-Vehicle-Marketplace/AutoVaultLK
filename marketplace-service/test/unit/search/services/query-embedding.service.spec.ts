@@ -1,7 +1,7 @@
 import { ConfigService } from '@nestjs/config';
-import { QueryEmbeddingService } from './query-embedding.service';
-import type { Embedder } from '../../../shared/normalize-embed';
-import { EMBEDDING_DIMENSIONS } from '../../../shared/normalize-embed';
+import { QueryEmbeddingService } from '../../../../src/modules/search/services/query-embedding.service';
+import type { Embedder } from '../../../../src/shared/normalize-embed';
+import { EMBEDDING_DIMENSIONS } from '../../../../src/shared/normalize-embed';
 
 describe('QueryEmbeddingService', () => {
   const vector = new Array(EMBEDDING_DIMENSIONS).fill(0);

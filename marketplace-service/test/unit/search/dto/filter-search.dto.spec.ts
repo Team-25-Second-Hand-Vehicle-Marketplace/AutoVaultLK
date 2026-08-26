@@ -1,7 +1,7 @@
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import { BadRequestException } from '@nestjs/common';
-import { FilterSearchDto } from './filter-search.dto';
+import { FilterSearchDto } from '../../../../src/modules/search/dto/filter-search.dto';
 
 /**
  * The DTO is the security boundary: NestJS's global ValidationPipe runs these

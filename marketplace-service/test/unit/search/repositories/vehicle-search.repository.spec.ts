@@ -1,7 +1,7 @@
-import { VehicleSearchRepository } from './vehicle-search.repository';
-import { buildFilterQuery } from '../filters/filter-query.builder';
-import { FilterSearchDto } from '../dto/filter-search.dto';
-import { EMBEDDING_DIMENSIONS } from '../../../shared/normalize-embed';
+import { VehicleSearchRepository } from '../../../../src/modules/search/repositories/vehicle-search.repository';
+import { buildFilterQuery } from '../../../../src/modules/search/filters/filter-query.builder';
+import { FilterSearchDto } from '../../../../src/modules/search/dto/filter-search.dto';
+import { EMBEDDING_DIMENSIONS } from '../../../../src/shared/normalize-embed';
 
 /**
  * The repository is the layer that turns a built WHERE clause into a real

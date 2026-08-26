@@ -1,7 +1,7 @@
-import { GroqFallbackService } from './groq-fallback.service';
-import { GroqClient, GroqUnavailableError } from './groq-client';
-import { FIXTURE_VOCABULARY } from '../parser/fixture-vocabulary';
-import type { ParsedQuery } from '../parser/types';
+import { GroqFallbackService } from '../../../../src/modules/search/groq/groq-fallback.service';
+import { GroqClient, GroqUnavailableError } from '../../../../src/modules/search/groq/groq-client';
+import { FIXTURE_VOCABULARY } from '../../../../src/modules/search/parser/fixture-vocabulary';
+import type { ParsedQuery } from '../../../../src/modules/search/parser/types';
 
 function parsed(overrides: Partial<ParsedQuery> = {}): ParsedQuery {
   return {

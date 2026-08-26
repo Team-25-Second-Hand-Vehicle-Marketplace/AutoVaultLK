@@ -1,6 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
-import { SearchController } from './search.controller';
-import { FilterSearchDto } from '../dto/filter-search.dto';
+import { SearchController } from '../../../../src/modules/search/controllers/search.controller';
+import { FilterSearchDto } from '../../../../src/modules/search/dto/filter-search.dto';
 
 /**
  * Controller-level contract: which collaborator each route delegates to, and

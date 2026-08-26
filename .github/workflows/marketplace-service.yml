@@ -34,6 +34,9 @@ jobs:
       - name: Run tests
         run: npm run test:ci
 
+      - name: Run e2e tests
+        run: npm run test:e2e
+
       - name: Build service
         run: npm run build
 

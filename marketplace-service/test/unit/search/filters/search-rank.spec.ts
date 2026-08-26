@@ -1,10 +1,10 @@
-import { EMBEDDING_DIMENSIONS } from '../../../shared/normalize-embed';
+import { EMBEDDING_DIMENSIONS } from '../../../../src/shared/normalize-embed';
 import {
   LAST_RESORT_WORD_SIMILARITY,
   appendTrigramWhere,
   chooseSearchRank,
   hasResolvedFilters,
-} from './search-rank';
+} from '../../../../src/modules/search/filters/search-rank';
 
 describe('hasResolvedFilters', () => {
   it('is false when the parser extracted nothing', () => {

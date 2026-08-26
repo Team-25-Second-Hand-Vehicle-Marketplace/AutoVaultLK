@@ -1,5 +1,5 @@
-import { EMBEDDING_DIMENSIONS } from '../../../shared/normalize-embed';
-import { buildOrderBy } from './sort-clause';
+import { EMBEDDING_DIMENSIONS } from '../../../../src/shared/normalize-embed';
+import { buildOrderBy } from '../../../../src/modules/search/filters/sort-clause';
 
 function unitVector(): number[] {
   const values = new Array(EMBEDDING_DIMENSIONS).fill(0);
