@@ -50,5 +50,6 @@ export async function logout(): Promise<void> {
   try {
     await apiClient.post('/auth/logout', { refreshToken })
   } catch {
+    return
   }
 }
