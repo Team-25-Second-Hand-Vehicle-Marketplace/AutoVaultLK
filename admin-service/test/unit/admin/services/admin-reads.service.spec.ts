@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
-import { AdminReadsService } from './admin-reads.service';
-import { mapDashboard } from '../mappers/dashboard.mapper';
+import { AdminReadsService } from '../../../../src/modules/admin/services/admin-reads.service';
+import { mapDashboard } from '../../../../src/modules/admin/mappers/dashboard.mapper';
 
 describe('AdminReadsService', () => {
   const raw = {

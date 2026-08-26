@@ -1,6 +1,6 @@
 import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InternalServiceGuard } from './internal-service.guard';
+import { InternalServiceGuard } from '../../../../src/common/guards/internal-service.guard';
 
 function context(headerValue: string | undefined): ExecutionContext {
   return {

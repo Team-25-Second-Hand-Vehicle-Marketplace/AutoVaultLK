@@ -23,8 +23,13 @@ describe('JwtAuthGuard', () => {
     );
   });
 
+  it('propagates a passport-level error before checking the user', () => {
+    const err = new Error('strategy exploded');
+    expect(() => guard.handleRequest(err, null, undefined)).toThrow(err);
+  });
+
   it('returns the authenticated user', () => {
-    const user = { id: 'a1', email: 'admin@test.com', role: 'ADMIN' };
+    const user = { id: 'd1', email: 'dealer@test.com', role: 'DEALER' };
     expect(guard.handleRequest(null, user, undefined)).toBe(user);
   });
 });

@@ -1,4 +1,4 @@
-import { AdminReadsRepository } from './admin-reads.repository';
+import { AdminReadsRepository } from '../../../../src/modules/admin/repositories/admin-reads.repository';
 
 describe('AdminReadsRepository.listUsers', () => {
   function makeRepo() {
