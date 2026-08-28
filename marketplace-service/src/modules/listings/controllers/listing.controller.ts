@@ -18,11 +18,7 @@ import { ListingService } from '../services/listing.service';
 import { CreateListingDto } from '../dto/create-listing.dto';
 import { UpdateListingDto } from '../dto/update-listing.dto';
 
-/**
- * Reads stay public (FR-54: guests browse without registering). Writes require
- * a DEALER or ADMIN JWT, and the service asserts per-listing ownership on top
- * of the role check (FR-13/FR-58).
- */
+
 @Controller('listings')
 export class ListingController {
   constructor(

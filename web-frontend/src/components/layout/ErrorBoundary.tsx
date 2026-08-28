@@ -9,18 +9,6 @@ interface State {
   error: Error | null
 }
 
-/**
- * Catches render-time exceptions anywhere below it.
- *
- * Without this, a single bad render unmounts the whole tree and leaves a
- * blank white page with nothing but a console trace — which is exactly the
- * failure mode this app already hit once when main.tsx lost its mount call.
- * A blank page is indistinguishable from a network hang to a user, so the
- * boundary exists to make a crash say so.
- *
- * Must stay a class component: there is no hook equivalent of
- * componentDidCatch.
- */
 export class ErrorBoundary extends Component<Props, State> {
   state: State = { error: null }
 
@@ -29,8 +17,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    // Console is the only sink available — no error-reporting service is
-    // wired into this project yet. The component stack is the useful half.
+
     console.error('Unhandled render error:', error, errorInfo.componentStack)
   }
 

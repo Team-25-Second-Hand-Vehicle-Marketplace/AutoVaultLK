@@ -9,26 +9,12 @@ interface Props {
   perPage?: number
 }
 
-/**
- * Paged carousel of vehicle cards, matching the reference's arrows-and-dots
- * pattern.
- *
- * Paging is done by scrolling the track rather than by swapping which cards
- * are mounted: the cards stay in the DOM, so scroll-snap, keyboard tabbing,
- * and touch swipe all work without extra handling, and the browser keeps the
- * lazy-loaded images it already fetched.
- */
 export function VehicleCarousel({ items, perPage = 4 }: Props) {
   const trackRef = useRef<HTMLDivElement>(null)
   const [page, setPage] = useState(0)
 
   const pageCount = items ? Math.max(1, Math.ceil(items.length / perPage)) : 1
 
-  /**
-   * Derive the active dot from real scroll position rather than tracking it
-   * only on arrow clicks — otherwise a touch swipe or a keyboard tab moves
-   * the track while the dots keep pointing at the old page.
-   */
   useEffect(() => {
     const track = trackRef.current
     if (!track) return

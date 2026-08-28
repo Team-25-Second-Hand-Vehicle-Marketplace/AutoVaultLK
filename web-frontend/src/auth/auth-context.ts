@@ -14,9 +14,4 @@ export interface AuthContextValue {
   logout: () => Promise<void>
 }
 
-/**
- * Lives in its own module so AuthContext.tsx exports only components, which
- * is what react-refresh needs to hot-reload the provider without dropping
- * the session on every edit.
- */
 export const AuthContext = createContext<AuthContextValue | null>(null)

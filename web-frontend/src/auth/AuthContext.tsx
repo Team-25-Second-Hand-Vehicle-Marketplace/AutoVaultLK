@@ -11,19 +11,7 @@ import { isTokenResponse, type AuthUser, type RegisterBuyerRequest } from '../ap
 import { AuthContext, type AuthContextValue } from './auth-context'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  /**
-   * Restore the session synchronously from localStorage.
-   *
-   * Done in a lazy initializer rather than an effect: localStorage is a
-   * synchronous read, so there is no asynchronous state to synchronize and
-   * the value is already known at first render. Restoring in an effect
-   * would render one frame as logged-out before correcting itself, which
-   * is both a visible flash and an extra render.
-   *
-   * Only trusted far enough to render a logged-in shell immediately — the
-   * token still has to satisfy the backend on the first protected request,
-   * and the client's interceptor will refresh or clear it as needed.
-   */
+
   const [user, setUser] = useState<AuthUser | null>(() => {
     const stored = getStoredUser()
     if (stored && getRefreshToken()) return stored
@@ -33,14 +21,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return null
   })
 
-  // Kept so consumers that branch on it keep working. The restore above is
-  // synchronous, so there is never a frame where this is meaningfully true.
   const [initializing] = useState(false)
 
-  /**
-   * The axios client can't import this provider (it isn't React-aware), so it
-   * calls back here when a refresh fails and the session is unrecoverable.
-   */
   useEffect(() => {
     setSessionExpiredHandler(() => setUser(null))
     return () => setSessionExpiredHandler(() => {})
@@ -60,9 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = useCallback(async (payload: RegisterBuyerRequest) => {
     const result = await authApi.registerBuyer(payload)
-    // Today the service returns tokens and logs the user straight in. Once
-    // email verification merges it will return { message } instead; handling
-    // both here means that change needs no frontend edit.
+
     if (isTokenResponse(result)) {
       saveSession(result)
       setUser(result.user)

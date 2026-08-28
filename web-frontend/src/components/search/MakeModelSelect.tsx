@@ -10,15 +10,6 @@ interface Props {
   onModelsChange: (models: string[]) => void
 }
 
-/**
- * Cascading make → model filter.
- *
- * The make list is scoped to the selected vehicle type where possible (the
- * dictionary's vehicle_types column is what makes "bikes exclude Toyota"
- * work). Models are only offered once at least one make is chosen —
- * a flat list of all 133 models across 30 makes is unusable, and model names
- * are not unique across makes.
- */
 export function MakeModelSelect({
   vehicleTypes,
   selectedMakes,
@@ -26,16 +17,10 @@ export function MakeModelSelect({
   onMakesChange,
   onModelsChange,
 }: Props) {
-  // Backend scopes options by a single vehicleType; with several selected we
-  // fall back to the unscoped list rather than guessing an intersection.
+  
   const scopeType = vehicleTypes.length === 1 ? vehicleTypes[0] : undefined
 
-  /**
-   * makes and the error flag move together — a successful load clears the
-   * error, a failure empties the list — so they are one state value rather
-   * than two. That removes the synchronous setError(false) this effect used
-   * to perform on every run just to reset the previous attempt.
-   */
+
   const [state, setState] = useState<{ makes: MakeOption[]; error: boolean }>({
     makes: [],
     error: false,
@@ -52,9 +37,7 @@ export function MakeModelSelect({
       .catch((err) => {
         // An abort is this effect superseding itself, not a failure.
         if (controller.signal.aborted) return
-        // Previously this had no catch at all, so a failed request became an
-        // unhandled rejection and the Make list silently stayed empty with no
-        // indication anything had gone wrong.
+      
         console.error('Failed to load makes:', err)
         setState({ makes: [], error: true })
       })
@@ -62,13 +45,7 @@ export function MakeModelSelect({
     return () => controller.abort()
   }, [scopeType])
 
-  /**
-   * Models available for the chosen makes.
-   *
-   * Tagged with their make so the UI can disambiguate — two makes can both
-   * have a "Civic"-like name collision, and the backend filters models by
-   * name alone.
-   */
+  
   const availableModels = useMemo(() => {
     if (selectedMakes.length === 0) return []
     return makes
@@ -81,9 +58,6 @@ export function MakeModelSelect({
       const nextMakes = selectedMakes.filter((m) => m !== name)
       onMakesChange(nextMakes)
 
-      // Drop any selected model that belonged to the make just removed —
-      // leaving it applied would filter on a model whose make is no longer
-      // selected, which reliably produces zero results.
       const stillValid = makes
         .filter((make) => nextMakes.includes(make.name))
         .flatMap((make) => make.models.map((model) => model.name))

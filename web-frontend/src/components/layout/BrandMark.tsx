@@ -1,13 +1,5 @@
 import { Link } from 'react-router-dom'
 
-/**
- * The AutoVaultLK wordmark: a rounded blue tile holding a car glyph, followed
- * by the name. Shared by the header, footer, and both dealer screens so the
- * logo is defined once.
- *
- * `to={null}` renders it as plain markup for contexts that are already inside
- * a link or where navigation would be wrong (e.g. the dealer auth panels).
- */
 export function BrandMark({ to = '/' }: { to?: string | null }) {
   const content = (
     <>

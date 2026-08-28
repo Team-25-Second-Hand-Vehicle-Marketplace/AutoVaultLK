@@ -63,49 +63,11 @@ const CDN = 'https://images.unsplash.com/'
 /** Sized and cropped for the full-bleed hero; the scrim handles contrast. */
 export const HERO_IMAGE = `${CDN}photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1920&q=70`
 
-/**
- * Locally-supplied model photos, served from public/demo/.
- *
- * ⚠️ DIFFERENT LICENSING FROM EVERYTHING ELSE IN THIS FILE. These were
- * supplied by the project owner and appear to be manufacturer marketing /
- * brochure imagery (the Viking shot carries Ashok Leyland's own title
- * card). They are almost certainly copyright of the respective
- * manufacturers — NOT free-to-use like the Unsplash set below.
- *
- * Fine for internal demo snapshots. Before any public or commercial use —
- * a published site, a portfolio, a pitch deck — clear these with the
- * rights holders or replace them.
- *
- * They cover exactly the models free stock libraries do not: Indian and
- * Sri Lankan market vehicles.
- */
-/*
- * Keyed `VEHICLE_TYPE|make model`, not `make model` alone. The seed reuses
- * the same badge across different vehicle types, and the supplied photo is
- * only right for one of them:
- *
- *   Kubota L3408         -> TRACTOR *and* HEAVY_MACHINERY (photo is a tractor)
- *   Mahindra Bolero      -> PICKUP  *and* TRACTOR         (photo is the SUV/pickup)
- *   Ashok Leyland Viking -> BUS     *and* TRUCK           (photo is the bus)
- *
- * Keying on the badge alone would put a tractor on the excavator listings, a
- * bus on the truck listings, and an SUV on the tractor listings. The rows
- * left out here fall through to their category pool, which is correct for
- * them.
- */
 const LOCAL_EXACT: Record<string, string> = {
   'BUS|tata indica': '/demo/tata-indica.png',
   'BUS|ashok leyland viking': '/demo/ashok-leyland-viking.png',
 }
 
-/**
- * Per-model overrides drawn from the verified Unsplash pools, for models
- * whose category default was wrong or unwanted.
- *
- * Mahindra Bolero -> a crew-cab pickup, and Kubota L3408 -> a cargo truck,
- * both by explicit request. Every photo referenced here was opened and
- * visually confirmed to show that kind of vehicle as the main subject.
- */
 const MODEL_OVERRIDE: Record<string, string> = {
   'PICKUP|mahindra bolero': 'photo-1628464682320-6a9ae020cb2b',
   'TRACTOR|mahindra bolero': 'photo-1628464682320-6a9ae020cb2b',
@@ -113,15 +75,6 @@ const MODEL_OVERRIDE: Record<string, string> = {
   'HEAVY_MACHINERY|kubota l3408': 'photo-1519003722824-194d4455a60c',
 }
 
-/**
- * Models where a verified Unsplash photo of that actual model exists. Keyed
- * `MAKE MODEL`, lowercased. Checked after LOCAL_EXACT, before the category
- * pools.
- *
- * Kept deliberately small — an entry here is a promise that the photo really
- * is that vehicle. When in doubt, leave it out and let the category pools
- * handle it; a plausible category photo beats a confidently wrong badge.
- */
 const MODEL_EXACT: Record<string, string> = {
   'toyota corolla': 'photo-1623869675781-80aa31012a5a',
   'toyota land cruiser': 'photo-1554841649-de947c4b954a',
@@ -130,12 +83,6 @@ const MODEL_EXACT: Record<string, string> = {
   'jcb 3dx': 'photo-1780319233376-e3c0235a0055',
 }
 
-// ── Category pools ───────────────────────────────────────────────────
-// Split finer than vehicle_type alone. The seed's CAR bucket spans a LKR
-// 2.2M Perodua Viva to a 24.5M Mercedes C200; one "car" pool would put a
-// city runabout photo on a luxury sedan.
-
-/** Small city/kei-sized hatchbacks: Alto, Viva, i10, Picanto, Panda, Vitz. */
 const CITY_HATCH = [
   'photo-1780534906959-986703bec0ed',
   'photo-1571607388263-1044f9ea01dd',
@@ -195,16 +142,6 @@ const SPORT_BIKE = [
 /** Basic commuter bikes: CT100, Splendor. */
 const COMMUTER_BIKE = ['photo-1558981806-ec527fa84c39', 'photo-1449426468159-d96dbf08f19f']
 
-/**
- * Auto-rickshaws: Bajaj RE, TVS King, Piaggio Ape, Mahindra Alfa.
- *
- * Deliberately empty. Both IDs this pool used to hold had been reassigned by
- * Unsplash to unrelated photos — a ping-pong paddle and the Pyramids — and a
- * re-search turned up no free stock photo of a tuk-tuk where the vehicle is
- * the clear subject. An empty pool falls through to the silhouette
- * placeholder in VehicleCard, which reads as intentional; a wrong photo does
- * not. Add IDs here only after opening them.
- */
 const THREE_WHEELER: string[] = []
 
 /** Double-cab pickups: Hilux, Navara, D-Max, L200, Bolero. */
@@ -219,15 +156,6 @@ const HEAVY_TRUCK = ['photo-1601584115197-04ecc0da31d7', 'photo-1592838064575-70
 /** Buses and coaches. */
 const BUS = ['photo-1544620347-c4fd4a3d5957', 'photo-1570125909232-eb263c188f7e']
 
-/**
- * Agricultural tractors: John Deere 5045D, Kubota L3408, Mahindra.
- *
- * Both entries were opened and visually confirmed to show a tractor as the
- * main subject. The previous pool here contained a photo of cows in a field
- * — it had been picked from a "tractor" search and never looked at. An HTTP
- * 200 only proves an image exists, not that it shows a vehicle; anything
- * added to these pools must actually be viewed first.
- */
 const TRACTOR = ['photo-1595702852378-f9c79111413f', 'photo-1630394257979-0104638432aa']
 
 /** Construction plant: backhoe loaders and excavators. */
@@ -238,11 +166,6 @@ const LUXURY_PRICE_LKR = 17_000_000
 /** Below this a hatchback is treated as a city/kei-sized car. */
 const CITY_CAR_PRICE_LKR = 5_000_000
 
-/**
- * Models that are body-on-frame 4x4s rather than car-based crossovers.
- * Both are vehicle_type SUV in the seed, but they look nothing alike at
- * card size, so the split is worth making explicit.
- */
 const RUGGED_MODELS = new Set([
   'land cruiser',
   'prado',
@@ -261,18 +184,6 @@ const COMMUTER_MODELS = new Set(['ct100', 'splendor'])
 /** Vans used commercially rather than as family transport. */
 const COMMERCIAL_VAN_MODELS = new Set(['hiace', 'caravan', 'sprinter'])
 
-/**
- * Turns an id into a stable index. The same listing must get the same photo
- * on every render and every reload — picking at random would reshuffle the
- * grid on each keystroke of a search, which looks broken in a screen
- * recording and makes a screenshot impossible to reproduce.
- *
- * FNV-1a rather than the usual `hash * 31 + c`. With a 31-multiplier the
- * low bits are dominated by the last character or two, so UUIDs sharing a
- * suffix land on the same index mod a 2-3 entry pool — a whole page of SUVs
- * came back with an identical photo. FNV's xor-then-multiply diffuses every
- * byte into the low bits, which is exactly what `% pool.length` reads.
- */
 function hashToIndex(id: string, length: number): number {
   let hash = 0x811c9dc5
   for (let i = 0; i < id.length; i += 1) {
@@ -282,11 +193,7 @@ function hashToIndex(id: string, length: number): number {
   return hash % length
 }
 
-/**
- * True for the locally-supplied brochure shots, which are studio cut-outs
- * that need `object-fit: contain` rather than the `cover` used for real
- * camera photography. Call sites use this to pick the CSS class.
- */
+
 export function isContainImage(url: string): boolean {
   return url.startsWith('/demo/')
 }
@@ -313,8 +220,6 @@ function poolFor(hints: DemoImageHints): string[] {
       if (bodyType === 'SEDAN') {
         return price !== undefined && price >= LUXURY_PRICE_LKR ? LUXURY_SEDAN : SEDAN
       }
-      // Hatchbacks, and rows with no body_type at all (March, Panda), split
-      // on price — the cheap end of this catalogue really is kei-sized.
       if (price !== undefined && price < CITY_CAR_PRICE_LKR) return CITY_HATCH
       return FAMILY_HATCH
     }
@@ -350,31 +255,17 @@ function poolFor(hints: DemoImageHints): string[] {
   }
 }
 
-/**
- * A deterministic placeholder photo for one listing.
- *
- * Exact model match wins; otherwise `id` selects within the best-fitting
- * category pool, so two listings of the same kind get different photos
- * while any one listing stays stable across reloads.
- */
 export function demoImageFor(id: string, hints: DemoImageHints = {}): string | null {
   const key = `${hints.make ?? ''} ${hints.model ?? ''}`.toLowerCase().trim()
 
   const typedKey = `${hints.vehicleType ?? ''}|${key}`
 
-  // Locally-hosted files are already complete paths — they must not get the
-  // CDN prefix or the Unsplash sizing query appended.
   const local = LOCAL_EXACT[typedKey]
   if (local) return local
 
   let photo = MODEL_OVERRIDE[typedKey] ?? MODEL_EXACT[key]
   if (!photo) {
     const pool = poolFor(hints)
-    // A pool can legitimately be empty — THREE_WHEELER is, because no
-    // usable stock photo of a tuk-tuk exists. Returning null hands the
-    // decision back to the caller, which renders its silhouette. Indexing
-    // an empty pool would instead yield undefined and build the literal
-    // src "undefined?auto=format…", i.e. a broken-image icon.
     if (pool.length === 0) return null
     photo = pool[hashToIndex(id, pool.length)]
   }
