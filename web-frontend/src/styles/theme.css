@@ -1,13 +1,13 @@
 /* ==========================================================================
    AutoVaultLK theme — matches the marketplace design reference.
 
-   Loaded AFTER index.css, so these values win. Kept as a token override
-   rather than edits to index.css so the original palette stays intact and
+   Loaded AFTER app.css, so these values win. Kept as a token override
+   rather than edits to app.css so the original palette stays intact and
    diffable, and so the whole visual language can be adjusted from one place.
 
    The reference design is light-only: it uses white surfaces, a near-black
    ink for headings, and a single saturated blue for every action. The dark
-   scheme that index.css defines under prefers-color-scheme is therefore
+   scheme that app.css defines under prefers-color-scheme is therefore
    neutralised below — a half-applied dark mode (dark tokens, light-only
    component styles) reads as broken, and the reference has no dark variant
    to copy.
@@ -55,7 +55,7 @@
   background: var(--bg);
 }
 
-/* Neutralise index.css's dark scheme — see the header note. */
+/* Neutralise app.css's dark scheme — see the header note. */
 @media (prefers-color-scheme: dark) {
   :root {
     --text: #5b6472;
@@ -152,7 +152,7 @@ a {
 }
 
 /* ── Buttons ─────────────────────────────────────────────────────
-   Redefined here (index.css/app.css also define .button) so the reference's
+   Redefined here (app.css also defines .button) so the reference's
    pill-ish radius, weight, and blue win. */
 
 .button {
