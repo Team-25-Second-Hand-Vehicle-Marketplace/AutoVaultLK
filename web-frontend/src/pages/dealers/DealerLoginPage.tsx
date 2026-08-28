@@ -3,11 +3,14 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useAuth } from '../auth/useAuth'
-import { toErrorMessage } from '../api/client'
-import { BrandMark } from '../components/layout/BrandMark'
-import { getMarketplaceStats } from '../api/search.api'
-import type { MarketplaceStats } from '../api/search.types'
+import { useAuth } from '../../auth/useAuth'
+import { toErrorMessage } from '../../api/client'
+import { BrandMark } from '../../components/layout/BrandMark'
+import { Button } from '../../components/ui/Button'
+import { FormField } from '../../components/ui/FormField'
+import { ErrorBanner } from '../../components/ui/ErrorBanner'
+import { getMarketplaceStats } from '../../api/search.api'
+import type { MarketplaceStats } from '../../api/search.types'
 
 const schema = z.object({
   email: z.string().min(1, 'Email is required').email('Enter a valid email address'),
@@ -112,58 +115,34 @@ export function DealerLoginPage() {
           <p className="dealer-auth__subtitle">Access your dealer account to manage listings</p>
 
           <form onSubmit={onSubmit} noValidate>
-            {formError && (
-              <div className="form-error form-error--banner" role="alert">
-                {formError}
-              </div>
-            )}
+            <ErrorBanner message={formError} />
 
-            <label className="form-field">
-              <span>Email Address</span>
-              <input
-                type="email"
-                autoComplete="email"
-                placeholder="you@dealership.lk"
-                aria-invalid={Boolean(errors.email)}
-                aria-describedby={errors.email ? 'dealer-email-error' : undefined}
-                {...register('email')}
-              />
-              {errors.email && (
-                <span className="form-error" id="dealer-email-error">
-                  {errors.email.message}
-                </span>
-              )}
-            </label>
+            <FormField
+              label="Email Address"
+              type="email"
+              autoComplete="email"
+              placeholder="you@dealership.lk"
+              error={errors.email?.message}
+              {...register('email')}
+            />
 
-            <label className="form-field">
-              <span>Password</span>
-              <input
-                type="password"
-                autoComplete="current-password"
-                placeholder="Enter your password"
-                aria-invalid={Boolean(errors.password)}
-                aria-describedby={errors.password ? 'dealer-password-error' : undefined}
-                {...register('password')}
-              />
-              {errors.password && (
-                <span className="form-error" id="dealer-password-error">
-                  {errors.password.message}
-                </span>
-              )}
-            </label>
+            <FormField
+              label="Password"
+              type="password"
+              autoComplete="current-password"
+              placeholder="Enter your password"
+              error={errors.password?.message}
+              {...register('password')}
+            />
 
             {/* The reference shows "Remember me" and "Forgot password?" here.
                 Sessions already persist across reloads, and no password-reset
                 endpoint exists on this branch, so neither control is shown
                 rather than rendering one that does nothing. */}
 
-            <button
-              type="submit"
-              className="button button--primary button--block button--lg"
-              disabled={isSubmitting}
-            >
+            <Button type="submit" size="lg" block disabled={isSubmitting}>
               {isSubmitting ? 'Signing in…' : 'Sign In'}
-            </button>
+            </Button>
           </form>
 
           <p className="dealer-auth__footer">

@@ -1,4 +1,5 @@
 import type { Relaxation } from '../../api/search.types'
+import { Button } from '../ui/Button'
 
 /** Human-readable names for the ladder's internal step identifiers. */
 const DROPPED_FILTER_LABELS: Record<string, string> = {
@@ -56,9 +57,9 @@ export function EmptyState({
       )}
 
       {onClearFilters && (
-        <button type="button" className="button button--ghost" onClick={onClearFilters}>
+        <Button type="button" variant="ghost" onClick={onClearFilters}>
           Clear all filters
-        </button>
+        </Button>
       )}
     </div>
   )

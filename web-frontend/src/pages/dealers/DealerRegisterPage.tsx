@@ -3,11 +3,14 @@ import { Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { registerDealer } from '../api/auth.api'
-import { isTokenResponse } from '../api/auth.types'
-import { saveSession } from '../api/auth.storage'
-import { toErrorMessage } from '../api/client'
-import { BrandMark } from '../components/layout/BrandMark'
+import { registerDealer } from '../../api/auth.api'
+import { isTokenResponse } from '../../api/auth.types'
+import { saveSession } from '../../api/auth.storage'
+import { toErrorMessage } from '../../api/client'
+import { BrandMark } from '../../components/layout/BrandMark'
+import { Button } from '../../components/ui/Button'
+import { FormField } from '../../components/ui/FormField'
+import { ErrorBanner } from '../../components/ui/ErrorBanner'
 
 /**
  * Dealer registration, as the four-step wizard in the design reference.
@@ -165,27 +168,20 @@ export function DealerRegisterPage() {
       </ol>
 
       <form className="wizard-card" onSubmit={onSubmit} noValidate>
-        {formError && (
-          <div className="form-error form-error--banner" role="alert">
-            {formError}
-          </div>
-        )}
+        <ErrorBanner message={formError} />
 
         {step === 0 && (
           <>
             <h1>Company Information</h1>
             <p className="wizard-card__subtitle">Tell us about your dealership</p>
 
-            <label className="form-field">
-              <span>Company Name *</span>
-              <input
-                type="text"
-                placeholder="e.g. Colombo Auto Traders"
-                aria-invalid={Boolean(errors.companyName)}
-                {...register('companyName')}
-              />
-              {errors.companyName && <span className="form-error">{errors.companyName.message}</span>}
-            </label>
+            <FormField
+              label="Company Name *"
+              type="text"
+              placeholder="e.g. Colombo Auto Traders"
+              error={errors.companyName?.message}
+              {...register('companyName')}
+            />
 
             <fieldset className="form-field">
               <span className="form-field__legend">Dealer Type *</span>
@@ -207,42 +203,29 @@ export function DealerRegisterPage() {
               </div>
             </fieldset>
 
-            <label className="form-field">
-              <span>Business Registration Number *</span>
-              <input
-                type="text"
-                placeholder="e.g. PV 12345"
-                aria-invalid={Boolean(errors.businessRegistrationNumber)}
-                {...register('businessRegistrationNumber')}
-              />
-              {errors.businessRegistrationNumber && (
-                <span className="form-error">{errors.businessRegistrationNumber.message}</span>
-              )}
-            </label>
+            <FormField
+              label="Business Registration Number *"
+              type="text"
+              placeholder="e.g. PV 12345"
+              error={errors.businessRegistrationNumber?.message}
+              {...register('businessRegistrationNumber')}
+            />
 
-            <label className="form-field">
-              <span>Business Address *</span>
-              <input
-                type="text"
-                placeholder="Street address"
-                aria-invalid={Boolean(errors.businessAddress)}
-                {...register('businessAddress')}
-              />
-              {errors.businessAddress && (
-                <span className="form-error">{errors.businessAddress.message}</span>
-              )}
-            </label>
+            <FormField
+              label="Business Address *"
+              type="text"
+              placeholder="Street address"
+              error={errors.businessAddress?.message}
+              {...register('businessAddress')}
+            />
 
-            <label className="form-field">
-              <span>City *</span>
-              <input
-                type="text"
-                placeholder="e.g. Colombo"
-                aria-invalid={Boolean(errors.city)}
-                {...register('city')}
-              />
-              {errors.city && <span className="form-error">{errors.city.message}</span>}
-            </label>
+            <FormField
+              label="City *"
+              type="text"
+              placeholder="e.g. Colombo"
+              error={errors.city?.message}
+              {...register('city')}
+            />
           </>
         )}
 
@@ -251,31 +234,23 @@ export function DealerRegisterPage() {
             <h1>Contact Details</h1>
             <p className="wizard-card__subtitle">How buyers and our team reach you</p>
 
-            <label className="form-field">
-              <span>Contact Name *</span>
-              <input
-                type="text"
-                autoComplete="name"
-                placeholder="Full name"
-                aria-invalid={Boolean(errors.name)}
-                {...register('name')}
-              />
-              {errors.name && <span className="form-error">{errors.name.message}</span>}
-            </label>
+            <FormField
+              label="Contact Name *"
+              type="text"
+              autoComplete="name"
+              placeholder="Full name"
+              error={errors.name?.message}
+              {...register('name')}
+            />
 
-            <label className="form-field">
-              <span>Contact Number *</span>
-              <input
-                type="tel"
-                autoComplete="tel"
-                placeholder="e.g. +94 11 234 5678"
-                aria-invalid={Boolean(errors.contactNumber)}
-                {...register('contactNumber')}
-              />
-              {errors.contactNumber && (
-                <span className="form-error">{errors.contactNumber.message}</span>
-              )}
-            </label>
+            <FormField
+              label="Contact Number *"
+              type="tel"
+              autoComplete="tel"
+              placeholder="e.g. +94 11 234 5678"
+              error={errors.contactNumber?.message}
+              {...register('contactNumber')}
+            />
           </>
         )}
 
@@ -284,41 +259,30 @@ export function DealerRegisterPage() {
             <h1>Account Setup</h1>
             <p className="wizard-card__subtitle">Credentials for your dealer sign-in</p>
 
-            <label className="form-field">
-              <span>Email Address *</span>
-              <input
-                type="email"
-                autoComplete="email"
-                placeholder="you@dealership.lk"
-                aria-invalid={Boolean(errors.email)}
-                {...register('email')}
-              />
-              {errors.email && <span className="form-error">{errors.email.message}</span>}
-            </label>
+            <FormField
+              label="Email Address *"
+              type="email"
+              autoComplete="email"
+              placeholder="you@dealership.lk"
+              error={errors.email?.message}
+              {...register('email')}
+            />
 
-            <label className="form-field">
-              <span>Password *</span>
-              <input
-                type="password"
-                autoComplete="new-password"
-                aria-invalid={Boolean(errors.password)}
-                {...register('password')}
-              />
-              {errors.password && <span className="form-error">{errors.password.message}</span>}
-            </label>
+            <FormField
+              label="Password *"
+              type="password"
+              autoComplete="new-password"
+              error={errors.password?.message}
+              {...register('password')}
+            />
 
-            <label className="form-field">
-              <span>Confirm Password *</span>
-              <input
-                type="password"
-                autoComplete="new-password"
-                aria-invalid={Boolean(errors.confirmPassword)}
-                {...register('confirmPassword')}
-              />
-              {errors.confirmPassword && (
-                <span className="form-error">{errors.confirmPassword.message}</span>
-              )}
-            </label>
+            <FormField
+              label="Confirm Password *"
+              type="password"
+              autoComplete="new-password"
+              error={errors.confirmPassword?.message}
+              {...register('confirmPassword')}
+            />
           </>
         )}
 
@@ -372,19 +336,19 @@ export function DealerRegisterPage() {
               ← Back to Login
             </Link>
           ) : (
-            <button type="button" className="button button--ghost" onClick={back}>
+            <Button type="button" variant="ghost" onClick={back}>
               ← Back
-            </button>
+            </Button>
           )}
 
           {step < STEPS.length - 1 ? (
-            <button type="button" className="button button--primary" onClick={next}>
+            <Button type="button" onClick={next}>
               Continue →
-            </button>
+            </Button>
           ) : (
-            <button type="submit" className="button button--primary" disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? 'Creating account…' : 'Create Dealer Account'}
-            </button>
+            </Button>
           )}
         </div>
       </form>

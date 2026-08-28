@@ -5,6 +5,9 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useAuth } from '../auth/useAuth'
 import { toErrorMessage } from '../api/client'
+import { Button } from '../components/ui/Button'
+import { FormField } from '../components/ui/FormField'
+import { ErrorBanner } from '../components/ui/ErrorBanner'
 
 /**
  * Client-side validation carries real weight here, not just UX polish:
@@ -92,81 +95,43 @@ export function RegisterPage() {
         </p>
 
         <form onSubmit={onSubmit} noValidate>
-          {formError && (
-            <div className="form-error form-error--banner" role="alert">
-              {formError}
-            </div>
-          )}
+          <ErrorBanner message={formError} />
 
-          <label className="form-field">
-            <span>Full name</span>
-            <input
-              type="text"
-              autoComplete="name"
-              aria-invalid={Boolean(errors.name)}
-              aria-describedby={errors.name ? 'register-name-error' : undefined}
-              {...register('name')}
-            />
-            {errors.name && (
-              <span className="form-error" id="register-name-error">
-                {errors.name.message}
-              </span>
-            )}
-          </label>
+          <FormField
+            label="Full name"
+            type="text"
+            autoComplete="name"
+            error={errors.name?.message}
+            {...register('name')}
+          />
 
-          <label className="form-field">
-            <span>Email</span>
-            <input
-              type="email"
-              autoComplete="email"
-              aria-invalid={Boolean(errors.email)}
-              aria-describedby={errors.email ? 'register-email-error' : undefined}
-              {...register('email')}
-            />
-            {errors.email && (
-              <span className="form-error" id="register-email-error">
-                {errors.email.message}
-              </span>
-            )}
-          </label>
+          <FormField
+            label="Email"
+            type="email"
+            autoComplete="email"
+            error={errors.email?.message}
+            {...register('email')}
+          />
 
-          <label className="form-field">
-            <span>Password</span>
-            <input
-              type="password"
-              autoComplete="new-password"
-              aria-invalid={Boolean(errors.password)}
-              aria-describedby={errors.password ? 'register-password-error' : undefined}
-              {...register('password')}
-            />
-            {errors.password && (
-              <span className="form-error" id="register-password-error">
-                {errors.password.message}
-              </span>
-            )}
-          </label>
+          <FormField
+            label="Password"
+            type="password"
+            autoComplete="new-password"
+            error={errors.password?.message}
+            {...register('password')}
+          />
 
-          <label className="form-field">
-            <span>Confirm password</span>
-            <input
-              type="password"
-              autoComplete="new-password"
-              aria-invalid={Boolean(errors.confirmPassword)}
-              aria-describedby={
-                errors.confirmPassword ? 'register-confirm-error' : undefined
-              }
-              {...register('confirmPassword')}
-            />
-            {errors.confirmPassword && (
-              <span className="form-error" id="register-confirm-error">
-                {errors.confirmPassword.message}
-              </span>
-            )}
-          </label>
+          <FormField
+            label="Confirm password"
+            type="password"
+            autoComplete="new-password"
+            error={errors.confirmPassword?.message}
+            {...register('confirmPassword')}
+          />
 
-          <button type="submit" className="button button--primary" disabled={isSubmitting}>
+          <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? 'Creating account…' : 'Create account'}
-          </button>
+          </Button>
         </form>
 
         <p className="auth-card__footer">

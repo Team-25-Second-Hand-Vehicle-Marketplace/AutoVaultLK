@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { filterSearch, getSearchOptions } from '../../api/search.api'
 import type { MakeOption } from '../../api/search.types'
+import { Button } from '../ui/Button'
 
 /**
  * Structured quick-search panel in the hero.
@@ -203,9 +204,9 @@ export function HeroSearchPanel() {
           </svg>
         </button>
 
-        <button type="submit" className="button button--primary hero-panel__submit">
+        <Button type="submit" className="hero-panel__submit">
           {count === null ? 'Search vehicles' : `${nf.format(count)} vehicles`}
-        </button>
+        </Button>
       </div>
     </form>
   )

@@ -4,6 +4,7 @@ import { getDashboard } from '../../api/admin.api'
 import type { AdminDashboard } from '../../api/admin.types'
 import { toErrorMessage } from '../../api/client'
 import { useAsyncData } from '../../hooks/useAsyncData'
+import { ErrorBanner } from '../../components/ui/ErrorBanner'
 
 function statusCount(byStatus: Record<string, number>, keys: string[]): number {
   return keys.reduce((sum, key) => sum + (byStatus[key] ?? 0), 0)
@@ -34,9 +35,7 @@ export function AdminDashboardPage() {
   if (error || !data) {
     return (
       <div className="admin-page">
-        <div className="form-error form-error--banner" role="alert">
-          {error ?? 'No data'}
-        </div>
+        <ErrorBanner message={error ?? 'No data'} />
       </div>
     )
   }
