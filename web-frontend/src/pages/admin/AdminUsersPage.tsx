@@ -11,15 +11,13 @@ import type { AdminUserRow } from '../../api/admin.types'
 import { toErrorMessage } from '../../api/client'
 import { useAsyncData } from '../../hooks/useAsyncData'
 import { useAuth } from '../../auth/useAuth'
+import { Button } from '../../components/ui/Button'
+import { ErrorBanner } from '../../components/ui/ErrorBanner'
+import { Pill } from '../../components/ui/Pill'
+import { AdminTable } from '../../components/ui/AdminTable'
+import { formatDate } from '../../utils/format'
 
 type Tab = 'all' | 'pending'
-
-function formatDate(value: string): string {
-  return new Date(value).toLocaleString('en-LK', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  })
-}
 
 const usersError = (err: unknown) => toErrorMessage(err, 'Could not load users.')
 
@@ -101,139 +99,111 @@ export function AdminUsersPage() {
         </button>
       </div>
 
-      {error && (
-        <div className="form-error form-error--banner" role="alert">
-          {error}
-        </div>
-      )}
+      <ErrorBanner message={error} />
 
-      {loading ? (
-        <p className="admin-muted" role="status">
-          Loading users…
-        </p>
-      ) : (
-        <div className="admin-table-wrap">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th>Dealer</th>
-                <th>Joined</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="admin-table__empty">
-                    No users match this view.
-                  </td>
-                </tr>
-              ) : (
-                rows.map((row) => {
-                  const isSelf = row.id === actor?.id
-                  const pending = row.dealer?.verificationStatus === 'PENDING'
-                  const dealerId = row.dealer?.userId
-                  const busy = busyId === row.id || (dealerId != null && busyId === dealerId)
+      <AdminTable
+        columns={['Name', 'Email', 'Role', 'Status', 'Dealer', 'Joined', 'Actions']}
+        rows={rows}
+        loading={loading}
+        loadingLabel="Loading users…"
+        emptyLabel="No users match this view."
+        renderRow={(row) => {
+          const isSelf = row.id === actor?.id
+          const pending = row.dealer?.verificationStatus === 'PENDING'
+          const dealerId = row.dealer?.userId
+          const busy = busyId === row.id || (dealerId != null && busyId === dealerId)
 
-                  return (
-                    <tr key={row.id}>
-                      <td>{row.name}</td>
-                      <td>{row.email}</td>
-                      <td>
-                        <span className="admin-pill">{row.role}</span>
-                      </td>
-                      <td>
-                        <span
-                          className={`admin-pill${row.isActive ? ' admin-pill--ok' : ' admin-pill--danger'}`}
-                        >
-                          {row.isActive ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                      <td>
-                        {row.dealer ? (
-                          <>
-                            <div>{row.dealer.companyName}</div>
-                            <span className="admin-muted">
-                              {row.dealer.city} · {row.dealer.verificationStatus}
-                            </span>
-                          </>
-                        ) : (
-                          <span className="admin-muted">—</span>
-                        )}
-                      </td>
-                      <td>{formatDate(row.createdAt)}</td>
-                      <td>
-                        <div className="admin-actions">
-                          {pending && dealerId && (
-                            <>
-                              <button
-                                type="button"
-                                className="button button--primary button--sm"
-                                disabled={busy}
-                                onClick={() =>
-                                  void runMutation(
-                                    dealerId,
-                                    () => approveDealer(dealerId),
-                                    'Dealer approved',
-                                  )
-                                }
-                              >
-                                Approve
-                              </button>
-                              <button
-                                type="button"
-                                className="button button--ghost button--sm"
-                                disabled={busy}
-                                onClick={() =>
-                                  void runMutation(
-                                    dealerId,
-                                    () => rejectDealer(dealerId),
-                                    'Dealer rejected',
-                                  )
-                                }
-                              >
-                                Reject
-                              </button>
-                            </>
-                          )}
-                          {row.isActive && !isSelf && row.role !== 'ADMIN' && (
-                            <button
-                              type="button"
-                              className="button button--danger button--sm"
-                              disabled={busy}
-                              onClick={() => {
-                                if (
-                                  !window.confirm(
-                                    `Deactivate ${row.email}? They will not be able to sign in.`,
-                                  )
-                                ) {
-                                  return
-                                }
-                                void runMutation(
-                                  row.id,
-                                  () => deactivateUser(row.id),
-                                  'User deactivated',
-                                )
-                              }}
-                            >
-                              Deactivate
-                            </button>
-                          )}
-                          {isSelf && <span className="admin-muted">You</span>}
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+          return (
+            <tr key={row.id}>
+              <td>{row.name}</td>
+              <td>{row.email}</td>
+              <td>
+                <Pill>{row.role}</Pill>
+              </td>
+              <td>
+                <Pill variant={row.isActive ? 'ok' : 'danger'}>
+                  {row.isActive ? 'Active' : 'Inactive'}
+                </Pill>
+              </td>
+              <td>
+                {row.dealer ? (
+                  <>
+                    <div>{row.dealer.companyName}</div>
+                    <span className="admin-muted">
+                      {row.dealer.city} · {row.dealer.verificationStatus}
+                    </span>
+                  </>
+                ) : (
+                  <span className="admin-muted">—</span>
+                )}
+              </td>
+              <td>{formatDate(row.createdAt)}</td>
+              <td>
+                <div className="admin-actions">
+                  {pending && dealerId && (
+                    <>
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={busy}
+                        onClick={() =>
+                          void runMutation(
+                            dealerId,
+                            () => approveDealer(dealerId),
+                            'Dealer approved',
+                          )
+                        }
+                      >
+                        Approve
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={busy}
+                        onClick={() =>
+                          void runMutation(
+                            dealerId,
+                            () => rejectDealer(dealerId),
+                            'Dealer rejected',
+                          )
+                        }
+                      >
+                        Reject
+                      </Button>
+                    </>
+                  )}
+                  {row.isActive && !isSelf && row.role !== 'ADMIN' && (
+                    <Button
+                      type="button"
+                      variant="danger"
+                      size="sm"
+                      disabled={busy}
+                      onClick={() => {
+                        if (
+                          !window.confirm(
+                            `Deactivate ${row.email}? They will not be able to sign in.`,
+                          )
+                        ) {
+                          return
+                        }
+                        void runMutation(
+                          row.id,
+                          () => deactivateUser(row.id),
+                          'User deactivated',
+                        )
+                      }}
+                    >
+                      Deactivate
+                    </Button>
+                  )}
+                  {isSelf && <span className="admin-muted">You</span>}
+                </div>
+              </td>
+            </tr>
+          )
+        }}
+      />
     </div>
   )
 }

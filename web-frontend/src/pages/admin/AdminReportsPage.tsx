@@ -2,6 +2,8 @@ import { useState, type FormEvent } from 'react'
 import { getReports } from '../../api/admin.api'
 import type { AdminReports } from '../../api/admin.types'
 import { toErrorMessage } from '../../api/client'
+import { Button } from '../../components/ui/Button'
+import { ErrorBanner } from '../../components/ui/ErrorBanner'
 
 function defaultRange(): { from: string; to: string } {
   const to = new Date()
@@ -64,16 +66,12 @@ export function AdminReportsPage() {
           <span>To</span>
           <input type="date" required value={to} onChange={(e) => setTo(e.target.value)} />
         </label>
-        <button type="submit" className="button button--primary" disabled={loading}>
+        <Button type="submit" disabled={loading}>
           {loading ? 'Loading…' : 'Run report'}
-        </button>
+        </Button>
       </form>
 
-      {error && (
-        <div className="form-error form-error--banner" role="alert">
-          {error}
-        </div>
-      )}
+      <ErrorBanner message={error} />
 
       {data && (
         <div className="admin-tiles">

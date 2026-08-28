@@ -6,6 +6,9 @@ import { z } from 'zod'
 import { useAuth } from '../../auth/useAuth'
 import { toErrorMessage } from '../../api/client'
 import { BrandMark } from '../../components/layout/BrandMark'
+import { Button } from '../../components/ui/Button'
+import { FormField } from '../../components/ui/FormField'
+import { ErrorBanner } from '../../components/ui/ErrorBanner'
 
 const schema = z.object({
   email: z.string().min(1, 'Email is required').email('Enter a valid email address'),
@@ -62,43 +65,29 @@ export function AdminLoginPage() {
           <p className="admin-auth__subtitle">Use your administrator account</p>
 
           <form onSubmit={onSubmit} noValidate>
-            {formError && (
-              <div className="form-error form-error--banner" role="alert">
-                {formError}
-              </div>
-            )}
+            <ErrorBanner message={formError} />
 
-            <label className="form-field">
-              <span>Email</span>
-              <input
-                type="email"
-                autoComplete="username"
-                placeholder="admin@autovault.lk"
-                aria-invalid={Boolean(errors.email)}
-                {...register('email')}
-              />
-              {errors.email && <span className="form-error">{errors.email.message}</span>}
-            </label>
+            <FormField
+              label="Email"
+              type="email"
+              autoComplete="username"
+              placeholder="admin@autovault.lk"
+              error={errors.email?.message}
+              {...register('email')}
+            />
 
-            <label className="form-field">
-              <span>Password</span>
-              <input
-                type="password"
-                autoComplete="current-password"
-                placeholder="Enter your password"
-                aria-invalid={Boolean(errors.password)}
-                {...register('password')}
-              />
-              {errors.password && <span className="form-error">{errors.password.message}</span>}
-            </label>
+            <FormField
+              label="Password"
+              type="password"
+              autoComplete="current-password"
+              placeholder="Enter your password"
+              error={errors.password?.message}
+              {...register('password')}
+            />
 
-            <button
-              type="submit"
-              className="button button--primary button--block button--lg"
-              disabled={isSubmitting}
-            >
+            <Button type="submit" size="lg" block disabled={isSubmitting}>
               {isSubmitting ? 'Signing in…' : 'Sign in'}
-            </button>
+            </Button>
           </form>
 
           <p className="admin-auth__back">

@@ -17,6 +17,55 @@ cloud-native-marketplace-org/
 └── docker-compose.dev.yml      Local nginx API gateway shim (port 8080)
 ```
 
+## Running the whole stack
+
+From the repo root, in PowerShell:
+
+```powershell
+.\scripts\start-all.ps1        # Postgres + all 5 services + frontend
+.\scripts\stop-all.ps1         # stop everything (keeps the data volume)
+```
+
+Then open <http://localhost:5173>.
+
+`start-all.ps1` waits on the Postgres container healthcheck before launching
+services, opens each service in its own window, and runs `npm install` for any
+package that is missing `node_modules`. Add `-Gateway` to also start the nginx
+shim on :8080, or `-SkipFrontend` for backend-only.
+
+The nginx gateway is **not** needed for frontend work: `web-frontend/vite.config.ts`
+proxies `/auth`, `/users`, `/marketplace`, and `/admin` to the services directly,
+mirroring the same route prefixes nginx uses.
+
+| Service | Port |
+|---|---|
+| web-frontend (Vite) | 5173 |
+| auth-user-service | 3001 |
+| marketplace-service | 3002 |
+| ingestion-service | 3003 |
+| admin-service | 3004 |
+| notification-service | 3005 |
+| Postgres | 5433 |
+| nginx gateway (optional) | 8080 |
+
+### First-time setup only
+
+```powershell
+copy .env.example .env          # then set ADMIN_SEED_PASSWORD
+docker compose up -d
+cd database
+npm install; npm run db:setup   # migrations + role grants
+npm run seed:dictionaries; npm run seed:vehicles; npm run seed:admin
+npm run seed:embeddings         # optional: enables vector search ranking
+```
+
+> **Port gotcha:** the root `.env` sets a single `PORT=3001`. `marketplace`,
+> `admin`, and `notification` read their own `*_PORT` variable first, but
+> `auth` and `ingestion` read only `PORT` — so starting ingestion without
+> overriding it makes it collide with auth on 3001. `start-all.ps1` sets
+> `PORT` per service to avoid this; do the same if you start one by hand:
+> `$env:PORT=3003; npm run start:dev`.
+
 ## Local Docker Compose files
 
 | File | What it runs | Typical command |

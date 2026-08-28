@@ -6,7 +6,7 @@ import { VehicleCard } from '../components/search/VehicleCard'
 import { VehicleCardSkeleton } from '../components/search/VehicleCardSkeleton'
 import { EmptyState } from '../components/search/EmptyState'
 import { RelaxationNotice } from '../components/search/RelaxationNotice'
-import { ParseNotice } from '../components/search/ParseNotice'
+import { ParseWarning } from '../components/search/ParseWarning'
 import { Pagination } from '../components/search/Pagination'
 import { ActiveFilterChips } from '../components/search/ActiveFilterChips'
 
@@ -27,7 +27,6 @@ export function SearchPage() {
     error,
     setSort,
     setPage,
-    setKeyword,
     removeAppliedFilters,
     clearFilters,
   } = useVehicleSearch()
@@ -84,12 +83,10 @@ export function SearchPage() {
   return (
     <div className="search-page">
       <SearchToolbar
-        keyword={appliedFilters.q ?? ''}
-        onSubmitKeyword={setKeyword}
         sort={appliedFilters.sort ?? 'relevance'}
         onSortChange={setSort}
-        filtersOpen={filtersOpen}
-        onToggleFilters={() => setFiltersOpen((v) => !v)}
+        isMobile={isMobile}
+        onOpenFilters={() => setFiltersOpen(true)}
       />
 
       <div className={bodyClass}>
@@ -142,9 +139,7 @@ export function SearchPage() {
                 : ''}
           </div>
 
-          {result?.parse && !loading && (
-            <ParseNotice parse={result.parse} appliedFilters={result.appliedFilters} />
-          )}
+          {result?.parse && !loading && <ParseWarning parse={result.parse} />}
 
           {result?.relaxation && <RelaxationNotice relaxation={result.relaxation} />}
 

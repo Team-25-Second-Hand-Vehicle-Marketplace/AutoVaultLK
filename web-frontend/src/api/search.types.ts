@@ -10,8 +10,6 @@ export interface SpecFilter {
   value: string
 }
 
-// Mirrors marketplace-service FilterSearchDto. All values are what get
-// serialized into the query string — arrays become comma-joined.
 export interface FilterSearchParams {
   vehicleType?: VehicleTypeValue[]
   make?: string[]
@@ -58,8 +56,6 @@ export interface VehicleSearchResult {
   locationDistrict: string | null
   specs: Record<string, unknown>
   dealerVerified: boolean
-  // Null until image upload is wired up — every environment currently has
-  // zero rows in vehicle_images, so the card renders a placeholder.
   imageUrl: string | null
   thumbnailUrl: string | null
   createdAt: string
@@ -141,13 +137,6 @@ export interface MakeOption {
   models: { id: string; name: string }[]
 }
 
-/**
- * Landing-page headline figures, all computed from live inventory.
- *
- * The design reference also shows "Happy Buyers" and a "Satisfaction Rate";
- * neither has any source in this system (no orders, no reviews), so they are
- * absent rather than invented.
- */
 export interface MarketplaceStats {
   vehicleCount: number
   dealerCount: number
@@ -164,7 +153,5 @@ export interface SearchOptionsResponse {
   transmissionTypes: readonly string[]
   bodyTypes: string[]
   makes: MakeOption[]
-  // Districts that actually have live inventory — derived from vehicles, so
-  // the filter can never offer a district with nothing in it.
   districts: string[]
 }

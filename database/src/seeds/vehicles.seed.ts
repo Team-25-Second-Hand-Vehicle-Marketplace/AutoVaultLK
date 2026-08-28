@@ -4,26 +4,6 @@ import { DataSource } from 'typeorm';
 
 config({ path: '../.env' });
 
-/**
- * Seeds auth.users -> auth.dealer_profiles -> marketplace.vehicles.
- *
- * Crosses into the `auth` schema, which marketplace does not own. That is
- * acceptable here only because this script runs as the migration-runner role
- * (DATABASE_URL), not a scoped service role. Application code must never do
- * this — see database/src/grants.sql.
- *
- * The distribution is deliberately shaped to exercise the edge cases this
- * feature was built around:
- *   - ~25% registration_year NULL  -> Decision 3: these rows must NOT vanish
- *                                     from a year-filtered search
- *   - ~20% sparse/empty specs      -> the `@>` containment path and the
- *                                     "spec key absent" path
- *   - mixed statuses               -> proves the status='LIVE' gate excludes
- *   - 3 VERIFIED / 1 PENDING /
- *     1 REJECTED dealer            -> makes verifiedDealersOnly testable
- *
- * Idempotent: ON CONFLICT DO NOTHING. Safe to re-run.
- */
 
 const DEALERS = [
   { email: 'auto.lanka@example.com',    name: 'Auto Lanka',        company: 'Auto Lanka (Pvt) Ltd',   city: 'Colombo',    status: 'VERIFIED', type: 'business'   },
@@ -163,8 +143,6 @@ async function seed() {
     url: process.env.DATABASE_URL,
     entities: [],
     synchronize: false,
-    // Opt-in TLS so this can seed RDS (which forces SSL) as well as local
-    // Docker Postgres (which serves no certificate).
     ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
   });
 
@@ -204,9 +182,6 @@ async function seed() {
     // Round-robin across dealers so every verification status owns listings.
     const dealerId = dealerIds[n % dealerIds.length];
 
-    // search_text feeds the tsvector trigger (the `q` keyword layer) and,
-    // later, the embedding. Built from the same fields ETL's enrich stage
-    // would use, so search behaviour here matches production.
     const searchText = [
       v.make, v.model, String(v.year), v.type,
       v.fuel, v.trans, v.city, v.district,
