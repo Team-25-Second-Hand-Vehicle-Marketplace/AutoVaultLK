@@ -12,7 +12,6 @@ export function assertEmbedding(values: number[]): number[] {
   return values;
 }
 
-/** pgvector text form: '[0.1,0.2,...]'. Parameterize as $n::vector. */
 export function toPgVector(values: number[]): string {
   return `[${assertEmbedding(values).join(',')}]`;
 }

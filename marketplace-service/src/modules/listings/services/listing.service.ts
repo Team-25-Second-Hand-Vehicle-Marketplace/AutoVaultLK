@@ -22,11 +22,6 @@ export class ListingService {
     private readonly dealerService: DealerService,
   ) {}
 
-  /**
-   * FR-13/FR-58: the owner comes from the verified JWT, never from the request
-   * body. A body-supplied dealerId would let any authenticated dealer create
-   * listings attributed to someone else.
-   */
   async createListing(dto: CreateListingDto, actor: AuthenticatedUser) {
     await this.dealerService.getDealerById(actor.id);
 

@@ -20,10 +20,7 @@ export type WhitelistResult = {
   consumedTokens: string[];
 };
 
-/**
- * FR-21.3: drop any Groq field that is not in the live schema / dictionary.
- * Never throws — a malformed payload becomes an empty filter set.
- */
+
 export function whitelistGroqOutput(
   raw: unknown,
   vocab: ParserVocabulary,

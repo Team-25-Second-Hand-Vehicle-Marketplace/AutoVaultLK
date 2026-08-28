@@ -31,16 +31,13 @@ export function SearchPage() {
   } = useVehicleSearch()
 
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < MOBILE_BREAKPOINT)
-  // Open by default on desktop (it's a column), closed on mobile (it's an
-  // overlay that would otherwise cover the results on first paint).
+
   const [filtersOpen, setFiltersOpen] = useState(() => window.innerWidth >= MOBILE_BREAKPOINT)
 
   useEffect(() => {
     const onResize = () => {
       const mobile = window.innerWidth < MOBILE_BREAKPOINT
       setIsMobile(mobile)
-      // Crossing into desktop should reveal the sidebar again; crossing into
-      // mobile should not leave an overlay covering the results.
       setFiltersOpen(!mobile)
     }
     window.addEventListener('resize', onResize)
@@ -57,8 +54,6 @@ export function SearchPage() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [isMobile, filtersOpen])
 
-  // Paging while scrolled to the bottom would otherwise land the buyer at the
-  // bottom of the next page.
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [result?.page])
@@ -80,6 +75,7 @@ export function SearchPage() {
     .join(' ')
 
   return (
+    
     <div className="search-page">
       <SearchToolbar
         sort={appliedFilters.sort ?? 'relevance'}
@@ -146,9 +142,6 @@ export function SearchPage() {
             </div>
           )}
 
-          {/* Skeletons replace the grid while loading rather than sitting
-              beside stale results, which previously made it ambiguous whether
-              the listed cards matched the filters just applied. */}
           {loading && (
             <div className="vehicle-grid" aria-hidden="true">
               {Array.from({ length: 6 }, (_, i) => (

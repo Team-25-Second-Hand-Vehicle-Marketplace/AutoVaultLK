@@ -26,32 +26,8 @@ import {
   type DictionaryIndex,
 } from './vocabulary';
 
-/**
- * Body types need a tighter fuzzy gate than makes/models.
- *
- * The body list is ten short, common English words, so unrelated query terms
- * collide with them far more readily than with a brand name. "volkswagon"
- * scored 0.4706 against "wagon" — over the shared 0.45 threshold — and,
- * because Volkswagen is absent from the make dictionary, WAGON was the only
- * candidate: the query resolved at confidence 1.0 to body_type=WAGON and
- * returned all 80 listings, with Groq never consulted because nothing looked
- * unresolved.
- *
- * Measured separation: genuine body-type typos ("sedn", "hachback",
- * "convertable", "pickpup") score 0.545 and above, so 0.52 rejects the
- * collision while keeping every real misspelling. Raising the global
- * TRIGRAM_THRESHOLD instead would break make/model matches that legitimately
- * sit in the 0.45-0.52 band.
- */
 const BODY_TYPE_FUZZY_THRESHOLD = 0.52;
 
-/**
- * Deterministic 5-stage parser (SAD 4.1.4 / §6.7 / FR-21).
- *
- * Pure function: vocabulary is injected so Jest can run without Postgres.
- * Groq, pgvector, and the HTTP route are intentionally not here — they
- * consume this output in later steps.
- */
 export function parseQuery(raw: string, vocab: ParserVocabulary): ParsedQuery {
   const tokens = tokenize(raw);
   const filters: ExtractedFilters = {};
@@ -60,8 +36,7 @@ export function parseQuery(raw: string, vocab: ParserVocabulary): ParsedQuery {
   const bodies = indexEntries(vocab.bodyTypes);
 
   stagePhrases(tokens, filters, makes, models, bodies);
-  // Before extractNumeric: "7 seat" must be claimed as a seat count, or the
-  // generic numeric stage sees a bare 7 it cannot classify and drops it.
+
   extractNumericSpecs(tokens, filters);
   extractNumeric(tokens, filters);
   stageExact(tokens, filters, makes, models, bodies);
@@ -113,7 +88,7 @@ function stageExact(
   models: DictionaryIndex,
   bodies: DictionaryIndex,
 ): void {
-  // SAD 6.7: strictly resolve Make before Model.
+
   walk(tokens, (start) => {
     const make = exactSpanHit(tokens, start, 3, makes, 1);
     if (make) {
@@ -181,7 +156,6 @@ function stageFuzzy(
     return 0;
   });
 
-  // Small closed enums: type-gating does not apply (SAD 6.7 is for makes/models).
   walk(tokens, (start) => {
     const closed = fuzzyClosedHit(tokens, start);
     if (closed) {

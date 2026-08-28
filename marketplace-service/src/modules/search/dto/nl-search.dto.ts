@@ -13,11 +13,7 @@ import {
 import { MAX_PAGE_SIZE, SORT_OPTIONS } from '../constants/vehicle-attributes.constants';
 import type { SortOption } from '../constants/vehicle-attributes.constants';
 
-/**
- * Control params for GET /search/nl. The free-text query is parsed into
- * FilterSearchDto fields; page/sort/facets stay caller-controlled because
- * they are not tokens in the sentence.
- */
+
 export class NlSearchDto {
   @IsString()
   @IsNotEmpty()

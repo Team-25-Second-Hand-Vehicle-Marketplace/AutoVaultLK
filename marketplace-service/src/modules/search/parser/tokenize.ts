@@ -1,15 +1,5 @@
 import type { ParserToken } from './types';
 
-/**
- * Domain stopwords are masked, not deleted (SAD 6.7). They stay in the
- * token stream so digit-adjacency and operators like "from 2018" / "up to"
- * still see the original layout. They are excluded from the FR-21.1
- * confidence denominator.
- *
- * Intent words ("looking", "find") belong here. Descriptive leftovers
- * ("red", "cheap", "well maintained") must stay meaningful so they flow
- * into semanticText for MiniLM in a later step.
- */
 export const STOPWORDS = new Set([
   'a',
   'an',

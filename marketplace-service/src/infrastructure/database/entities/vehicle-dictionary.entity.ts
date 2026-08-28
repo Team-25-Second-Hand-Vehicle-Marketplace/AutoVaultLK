@@ -40,20 +40,11 @@ export class VehicleDictionary {
   canonicalValue: string;
 
 
-    // Which vehicle types this entry applies to. MAKE rows span several
-  // ('Toyota' -> CAR, VAN, SUV, LORRY); MODEL rows carry exactly one.
-  // Empty array means "applies to all types" — used by flat dictionary
-  // types (BODY_TYPE, COLOR) that have no type scoping.
+
   @Column({ name: 'vehicle_types', type: 'text', array: true, default: () => `'{}'` })
   vehicleTypes: string[];
 
-  
-  /**
-   * Known misspellings and colloquial forms — e.g. ["toyata"] for Toyota,
-   * ["benz"] for Mercedes-Benz. Seeded by hand and grown by the
-   * alias-promotion loop: corrections logged often enough get promoted here,
-   * so the next identical query resolves in the rules path at zero cost.
-   */
+
   @Column({ type: 'jsonb', default: () => `'[]'::jsonb` })
   aliases: string[];
 
