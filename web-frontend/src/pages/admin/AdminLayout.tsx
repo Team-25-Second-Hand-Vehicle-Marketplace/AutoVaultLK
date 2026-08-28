@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/useAuth'
 import { BrandMark } from '../../components/layout/BrandMark'
+import { Button } from '../../components/ui/Button'
 
 const NAV = [
   { to: '/admin', end: true, label: 'Dashboard' },
@@ -44,13 +45,9 @@ export function AdminLayout() {
 
         <div className="admin-shell__footer">
           <p className="admin-shell__user">{user?.email}</p>
-          <button
-            type="button"
-            className="button button--ghost button--sm"
-            onClick={() => void onSignOut()}
-          >
+          <Button type="button" variant="ghost" size="sm" onClick={() => void onSignOut()}>
             Sign out
-          </button>
+          </Button>
         </div>
       </aside>
 

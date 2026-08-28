@@ -5,6 +5,7 @@ import { RangeInput } from './RangeInput'
 import { PresetSelect } from './PresetSelect'
 import { MakeModelSelect } from './MakeModelSelect'
 import { getSearchOptions } from '../../api/search.api'
+import { Button } from '../ui/Button'
 import type {
   FilterSearchParams,
   Facets,
@@ -325,14 +326,14 @@ export function FilterSidebar({
         </label>
       </div>
 
-      <button
+      <Button
         type="button"
-        className="button button--primary apply-filters-button"
+        className="apply-filters-button"
         onClick={onApply}
         disabled={!hasUnappliedChanges}
       >
         {hasUnappliedChanges ? 'Apply Filters' : 'Filters Applied'}
-      </button>
+      </Button>
     </aside>
   )
 }
