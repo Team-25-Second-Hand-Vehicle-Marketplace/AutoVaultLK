@@ -2,7 +2,13 @@ import {
   SendMessageCommand,
   SQSClient,
 } from '@aws-sdk/client-sqs';
-import { Injectable, Logger } from '@nestjs/common';
+
+import {
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
+
 import { ConfigService } from '@nestjs/config';
 
 export type NotificationEvent = {
@@ -21,20 +27,25 @@ export type NotificationEvent = {
 
 @Injectable()
 export class SqsPublisher {
-  private readonly logger = new Logger(SqsPublisher.name);
+  private readonly logger = new Logger(
+    SqsPublisher.name,
+  );
 
   private readonly client: SQSClient;
   private readonly queueUrl: string;
 
-  constructor(private readonly config: ConfigService) {
+  constructor(
+    private readonly config: ConfigService,
+  ) {
     this.client = new SQSClient({
       region:
         this.config.get<string>('AWS_REGION') ??
         'ap-southeast-1',
 
       endpoint:
-        this.config.get<string>('AWS_SQS_ENDPOINT') ||
-        undefined,
+        this.config.get<string>(
+          'AWS_SQS_ENDPOINT',
+        ) || undefined,
     });
 
     this.queueUrl =
@@ -43,9 +54,11 @@ export class SqsPublisher {
       ) ?? '';
   }
 
-  async publish(event: NotificationEvent): Promise<void> {
+  async publish(
+    event: NotificationEvent,
+  ): Promise<void> {
     if (!this.queueUrl) {
-      throw new Error(
+      throw new ServiceUnavailableException(
         'NOTIFICATION_SQS_QUEUE_URL is not configured',
       );
     }

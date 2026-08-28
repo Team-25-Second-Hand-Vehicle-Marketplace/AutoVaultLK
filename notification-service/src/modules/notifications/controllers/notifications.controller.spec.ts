@@ -12,8 +12,10 @@ describe('NotificationsController', () => {
     const controller = new NotificationsController(publisher as never);
 
     await expect(controller.createEvent(event)).resolves.toEqual({
-      queued: true,
-    });
+    queued: true,
+    idempotencyKey:
+    'dealer.verified:5b132c13-c433-4066-9c90-a6307c61fe47',
+});
     expect(publisher.publish).toHaveBeenCalledWith(event);
   });
 });
