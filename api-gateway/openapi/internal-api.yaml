@@ -91,7 +91,7 @@ paths:
   /notifications/events:
     post:
       tags: [internal-notifications]
-      summary: Enqueue and send a templated notification (FR-49–FR-53)
+      summary: Enqueue a templated notification event (FR-49–FR-53)
       operationId: createNotificationEvent
       requestBody:
         required: true
@@ -112,12 +112,12 @@ paths:
                 payload:
                   type: object
       responses:
-        '200':
-          description: Notification row (SENT, FAILED, or already SENT)
+        '202':
+          description: Notification event accepted for asynchronous processing
         '401':
           description: Missing or invalid X-Internal-Service-Key
-        '404':
-          description: Recipient user not found
+        '503':
+          description: Notification queue is unavailable or not configured
 
 components:
   securitySchemes:

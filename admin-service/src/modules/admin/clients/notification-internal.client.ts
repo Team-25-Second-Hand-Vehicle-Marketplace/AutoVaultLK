@@ -42,6 +42,9 @@ export class NotificationInternalClient {
 
     if (!res.ok) {
       this.logger.warn(`Notification event failed (${res.status}): ${await res.text()}`);
+      return;
     }
+
+    this.logger.log(`Notification event emitted ${event.type}, key=${event.idempotencyKey}`);
   }
 }
