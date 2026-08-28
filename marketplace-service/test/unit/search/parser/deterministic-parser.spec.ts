@@ -6,16 +6,10 @@ import { CONFIDENCE_THRESHOLD } from '../../../../src/modules/search/parser/type
 
 const parse = (q: string) => parseQuery(q, FIXTURE_VOCABULARY);
 
-/**
- * The parser is a pure function over an injected vocabulary — no Postgres,
- * no Groq, no HTTP. These tests lock the SAD 6.7 / FR-21 contract so later
- * steps can plug the output into buildFilterQuery without rewriting it.
- */
 describe('parseQuery', () => {
   describe('SRS Appendix B messy row', () => {
     it('normalizes Toyata/Corrola/8.5m/95k/deisel/auto without Groq', () => {
-      // Appendix B row 2 is a CSV listing; this is the equivalent search bar
-      // phrasing of the same misspellings and shortened measurements.
+
       const result = parse('Toyata Corrola used 2018 8.5m 95k deisel auto');
 
       expect(result.filters).toMatchObject({
@@ -138,6 +132,13 @@ describe('parseQuery', () => {
       const result = parse('under 500k');
       expect(result.filters.maxPrice).toBe(500_000);
       expect(result.filters.maxMileage).toBeUndefined();
+    });
+
+    it('reads "mil" as a million-scale price, not an unresolved token', () => {
+      const result = parse('electric and less than 5 mil');
+      expect(result.filters.maxPrice).toBe(5_000_000);
+      expect(result.filters.fuelType).toEqual(['ELECTRIC']);
+      expect(result.unresolvedTokens).not.toContain('mil');
     });
   });
 
