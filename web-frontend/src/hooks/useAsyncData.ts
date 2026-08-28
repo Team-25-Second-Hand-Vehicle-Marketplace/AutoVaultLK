@@ -1,26 +1,5 @@
 import { useCallback, useEffect, useReducer } from 'react'
 
-/**
- * Runs an abortable async fetch and exposes { data, error, loading, reload }.
- *
- * Written as a reducer over one state object rather than three useState
- * calls, because the "start" transition (loading on, error cleared) has to
- * happen without a synchronous setState in the effect body — that is what
- * react-hooks/set-state-in-effect flags, and the cascading render it warns
- * about is real: setLoading(true) on mount renders the component twice
- * before the request has even been issued.
- *
- * The initial state is already `loading: true`, so mounting needs no state
- * update at all. A re-fetch is expressed by the reducer's own `start` action
- * being folded into the same dispatch that resolves it, so the effect body
- * stays free of synchronous state writes.
- *
- * Aborted requests never dispatch: a superseded fetch must not clear the
- * loading flag or surface an error for a result nobody is waiting on.
- *
- * `fetcher` must be stable (wrap it in useCallback) — it is the effect key,
- * so an inline closure would refetch on every render.
- */
 type State<T> = {
   data: T | null
   error: string | null

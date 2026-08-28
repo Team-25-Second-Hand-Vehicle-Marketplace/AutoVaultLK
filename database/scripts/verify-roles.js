@@ -1,8 +1,3 @@
-#!/usr/bin/env node
-/**
- * Step 5 smoke test: each service role can connect and has expected privileges.
- * Run after `npm run db:setup`. Loads URLs from repo root .env.
- */
 const { config } = require('dotenv');
 const { Client } = require('pg');
 const path = require('path');

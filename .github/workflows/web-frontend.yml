@@ -31,13 +31,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Blocking: the react-hooks violations this used to trip on were fixed
-      # rather than suppressed, so a new one should fail the build.
       - name: Lint
         run: npm run lint
 
-      # `npm run build` is `tsc -b && vite build`, so type errors fail here.
-      # There is no test step because web-frontend has no test suite yet;
-      # add one to this job when it does.
       - name: Type-check and build
         run: npm run build

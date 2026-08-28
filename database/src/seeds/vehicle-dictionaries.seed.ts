@@ -4,27 +4,6 @@ import { DataSource } from 'typeorm';
 
 config({ path: '../.env' });
 
-/**
- * Seeds the make/model vocabulary — plan-b §12 step 7, the item that blocks
- * both the search parser and ETL normalization ("nothing to match against
- * until the dictionary has rows").
- *
- * Sri Lanka-weighted: deep model lists for the high-volume Japanese and
- * Indian makes, shallow for the premium European ones that appear rarely.
- * A global 200-make list would pad every dropdown with brands that will
- * never have a listing.
- *
- * `vehicleTypes` on a MAKE row lists every type that make builds, so the UI
- * can scope the Make dropdown to the selected vehicle type. MODEL rows carry
- * exactly one type.
- *
- * `aliases` carries known misspellings and colloquial forms. These resolve in
- * the deterministic rules path at zero cost — the alias-promotion loop grows
- * this list over time from logged Groq corrections.
- *
- * Idempotent: ON CONFLICT DO NOTHING against uq_vehicle_dictionaries_value.
- * Safe to re-run; safe to extend and re-run.
- */
 
 type MakeSeed = {
   name: string;

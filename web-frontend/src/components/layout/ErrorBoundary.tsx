@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
+import { Button } from '../ui/Button'
 
 interface Props {
   children: ReactNode
@@ -50,9 +51,9 @@ export class ErrorBoundary extends Component<Props, State> {
             <pre className="error-page__details">{this.state.error.message}</pre>
           )}
           <div className="error-page__actions">
-            <button type="button" className="button button--primary" onClick={this.handleReset}>
+            <Button type="button" onClick={this.handleReset}>
               Try again
-            </button>
+            </Button>
             <a className="button button--ghost" href="/search">
               Back to search
             </a>

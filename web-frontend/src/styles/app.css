@@ -1,13 +1,3 @@
-/* ==========================================================================
-   App shell, auth, detail page, and search additions.
-
-   Kept in its own file rather than appended to index.css so this feature's
-   styles are reviewable on their own and don't conflict with other branches
-   editing the original stylesheet. Everything here builds on the design
-   tokens defined at the top of index.css, so light/dark mode is inherited
-   without any additional media queries.
-   ========================================================================== */
-
 .app-shell {
   min-height: 100vh;
   display: flex;

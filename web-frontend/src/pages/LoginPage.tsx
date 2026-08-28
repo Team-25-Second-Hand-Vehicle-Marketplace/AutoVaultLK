@@ -5,6 +5,9 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useAuth } from '../auth/useAuth'
 import { toErrorMessage } from '../api/client'
+import { Button } from '../components/ui/Button'
+import { FormField } from '../components/ui/FormField'
+import { ErrorBanner } from '../components/ui/ErrorBanner'
 
 const loginSchema = z.object({
   email: z.string().min(1, 'Email is required').email('Enter a valid email address'),
@@ -53,49 +56,27 @@ export function LoginPage() {
         <p className="auth-card__subtitle">Sign in to save listings and manage your searches.</p>
 
         <form onSubmit={onSubmit} noValidate>
-          {formError && (
-            <div className="form-error form-error--banner" role="alert">
-              {formError}
-            </div>
-          )}
+          <ErrorBanner message={formError} />
 
-          <label className="form-field">
-            <span>Email</span>
-            <input
-              type="email"
-              autoComplete="email"
-              // Surfaces the field to assistive tech as invalid, and links it
-              // to the message below without relying on visual proximity.
-              aria-invalid={Boolean(errors.email)}
-              aria-describedby={errors.email ? 'login-email-error' : undefined}
-              {...register('email')}
-            />
-            {errors.email && (
-              <span className="form-error" id="login-email-error">
-                {errors.email.message}
-              </span>
-            )}
-          </label>
+          <FormField
+            label="Email"
+            type="email"
+            autoComplete="email"
+            error={errors.email?.message}
+            {...register('email')}
+          />
 
-          <label className="form-field">
-            <span>Password</span>
-            <input
-              type="password"
-              autoComplete="current-password"
-              aria-invalid={Boolean(errors.password)}
-              aria-describedby={errors.password ? 'login-password-error' : undefined}
-              {...register('password')}
-            />
-            {errors.password && (
-              <span className="form-error" id="login-password-error">
-                {errors.password.message}
-              </span>
-            )}
-          </label>
+          <FormField
+            label="Password"
+            type="password"
+            autoComplete="current-password"
+            error={errors.password?.message}
+            {...register('password')}
+          />
 
-          <button type="submit" className="button button--primary" disabled={isSubmitting}>
+          <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? 'Signing in…' : 'Sign in'}
-          </button>
+          </Button>
         </form>
 
         <p className="auth-card__footer">

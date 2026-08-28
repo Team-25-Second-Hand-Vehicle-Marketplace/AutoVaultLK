@@ -1,14 +1,9 @@
-/* ==========================================================================
-   Search page + result card, restyled to the marketplace design reference.
-
-   Overrides the earlier index.css/app.css rules for these components rather
-   than editing them, keeping the redesign reviewable as one layer.
-   ========================================================================== */
-
 .search-page {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 24px;
+
+  display: block;
+  padding: 12px 24px 24px;
 }
 
 /* ── Toolbar ─────────────────────────────────────────────────── */
@@ -17,15 +12,12 @@
   display: flex;
   gap: 12px;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
   flex-wrap: wrap;
 }
 
-/* The toolbar's keyword input was removed — the header search box owns
-   keyword entry, and two identical fields within ~40px of each other made it
-   unclear which was live. Filters sits at the left, sort at the right. */
 .search-toolbar__filters-btn,
-.sort-dropdown select {
+.sort-dropdown {
   padding: 11px 16px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -37,8 +29,16 @@
   cursor: pointer;
 }
 
+.search-toolbar__filters-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .search-toolbar__filters-btn:hover {
   background: var(--bg-alt);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 /* Sort sits at the far right, as in the reference's results header. */
@@ -218,12 +218,6 @@
   margin-bottom: 14px;
 }
 
-.parse-notice {
-  font-size: 13px;
-  color: var(--text);
-  margin: -6px 0 14px;
-}
-
 /* ── Result cards ────────────────────────────────────────────── */
 
 .vehicle-grid {
@@ -253,13 +247,6 @@
   background: var(--bg-alt);
 }
 
-/* PLACEHOLDER PHOTOGRAPHY — see src/assets/demo-images.ts.
-   Supplied brochure shots are studio cut-outs on white: the vehicle is
-   centred with generous margins and no bleed. `object-fit: cover` (the
-   default for real listing photos, which are camera shots that should fill
-   the frame) would crop the nose and tail straight off a 508x305 press
-   image. `contain` letterboxes instead, and the white plate below blends
-   with the shot's own background so it reads as one panel. */
 .vehicle-card__image--contain {
   object-fit: contain;
   background: #fff;
@@ -441,6 +428,24 @@
 }
 
 /* ── Relaxation notice ──────────────────────────────────────── */
+
+.parse-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  background: var(--warning-bg);
+  color: var(--warning-text);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+
+.parse-warning svg {
+  flex: none;
+  margin-top: 2px;
+}
 
 .relaxation-notice {
   background: var(--warning-bg);

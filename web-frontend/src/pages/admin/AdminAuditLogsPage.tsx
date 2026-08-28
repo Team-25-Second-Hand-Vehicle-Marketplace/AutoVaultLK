@@ -3,13 +3,11 @@ import { searchAuditLogs } from '../../api/admin.api'
 import type { AdminAuditLog } from '../../api/admin.types'
 import { toErrorMessage } from '../../api/client'
 import { useAsyncData } from '../../hooks/useAsyncData'
-
-function formatDate(value: string): string {
-  return new Date(value).toLocaleString('en-LK', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  })
-}
+import { Button } from '../../components/ui/Button'
+import { ErrorBanner } from '../../components/ui/ErrorBanner'
+import { Pill } from '../../components/ui/Pill'
+import { AdminTable } from '../../components/ui/AdminTable'
+import { formatDate } from '../../utils/format'
 
 function toStartIso(date: string): string | undefined {
   if (!date) return undefined
@@ -101,66 +99,38 @@ export function AdminAuditLogsPage() {
           <span>To</span>
           <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
         </label>
-        <button type="submit" className="button button--primary">
-          Search
-        </button>
+        <Button type="submit">Search</Button>
       </form>
 
-      {error && (
-        <div className="form-error form-error--banner" role="alert">
-          {error}
-        </div>
-      )}
+      <ErrorBanner message={error} />
 
-      {loading ? (
-        <p className="admin-muted" role="status">
-          Loading audit logs…
-        </p>
-      ) : (
-        <div className="admin-table-wrap">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>When</th>
-                <th>Action</th>
-                <th>Entity</th>
-                <th>Actor</th>
-                <th>IP</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="admin-table__empty">
-                    No audit events match these filters.
-                  </td>
-                </tr>
-              ) : (
-                rows.map((row) => (
-                  <tr key={row.id}>
-                    <td>{formatDate(row.createdAt)}</td>
-                    <td>
-                      <span className="admin-pill">{row.action}</span>
-                    </td>
-                    <td>
-                      <div>
-                        {row.entityType}
-                        {row.entityId ? (
-                          <span className="admin-muted"> · {row.entityId.slice(0, 8)}…</span>
-                        ) : null}
-                      </div>
-                    </td>
-                    <td>
-                      <span className="admin-mono">{row.actorId ?? '—'}</span>
-                    </td>
-                    <td>{row.ipAddress ?? '—'}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <AdminTable
+        columns={['When', 'Action', 'Entity', 'Actor', 'IP']}
+        rows={rows}
+        loading={loading}
+        loadingLabel="Loading audit logs…"
+        emptyLabel="No audit events match these filters."
+        renderRow={(row) => (
+          <tr key={row.id}>
+            <td>{formatDate(row.createdAt)}</td>
+            <td>
+              <Pill>{row.action}</Pill>
+            </td>
+            <td>
+              <div>
+                {row.entityType}
+                {row.entityId ? (
+                  <span className="admin-muted"> · {row.entityId.slice(0, 8)}…</span>
+                ) : null}
+              </div>
+            </td>
+            <td>
+              <span className="admin-mono">{row.actorId ?? '—'}</span>
+            </td>
+            <td>{row.ipAddress ?? '—'}</td>
+          </tr>
+        )}
+      />
     </div>
   )
 }

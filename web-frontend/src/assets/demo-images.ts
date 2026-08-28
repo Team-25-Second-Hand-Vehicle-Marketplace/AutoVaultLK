@@ -37,10 +37,16 @@
  *   - and a broken image at demo time is a visible signal that these are
  *     still placeholders, rather than something that quietly ships.
  *
- * The tradeoff is that they need network access, and they will 404 if
- * Unsplash rotates an ID (several candidates already had, and were dropped
- * while authoring this). Every ID below was verified to return 200
- * image/jpeg. If you need offline snapshots, download them into
+ * The tradeoff is that they need network access, and Unsplash can REASSIGN
+ * an ID to a completely different photo. That failure is silent and far
+ * worse than a 404: the ID keeps returning 200 image/jpeg, so nothing here
+ * or in CI notices, and the card cheerfully renders the wrong picture. It
+ * has already happened four times — one lorry ID became a photo of a pug in
+ * a t-shirt, a pickup became abstract liquid, and both three-wheeler IDs
+ * became a ping-pong paddle and the Pyramids.
+ *
+ * So: a 200 is NOT verification. Any ID added or audited here must be
+ * OPENED AND LOOKED AT, and re-checked whenever these photos are touched. If you need offline snapshots, download them into
  * public/demo/ and switch the constants to local paths — no call site
  * changes.
  *
@@ -189,17 +195,26 @@ const SPORT_BIKE = [
 /** Basic commuter bikes: CT100, Splendor. */
 const COMMUTER_BIKE = ['photo-1558981806-ec527fa84c39', 'photo-1449426468159-d96dbf08f19f']
 
-/** Auto-rickshaws: Bajaj RE, TVS King, Piaggio Ape, Mahindra Alfa. */
-const THREE_WHEELER = ['photo-1609710228159-0fa9bd7c0827', 'photo-1553913861-c0fddf2619ee']
+/**
+ * Auto-rickshaws: Bajaj RE, TVS King, Piaggio Ape, Mahindra Alfa.
+ *
+ * Deliberately empty. Both IDs this pool used to hold had been reassigned by
+ * Unsplash to unrelated photos — a ping-pong paddle and the Pyramids — and a
+ * re-search turned up no free stock photo of a tuk-tuk where the vehicle is
+ * the clear subject. An empty pool falls through to the silhouette
+ * placeholder in VehicleCard, which reads as intentional; a wrong photo does
+ * not. Add IDs here only after opening them.
+ */
+const THREE_WHEELER: string[] = []
 
 /** Double-cab pickups: Hilux, Navara, D-Max, L200, Bolero. */
-const PICKUP = ['photo-1559416523-140ddc3d238c', 'photo-1586191582151-f73872dfd183', 'photo-1601584115197-04ecc0da31d7']
+const PICKUP = ['photo-1559416523-140ddc3d238c', 'photo-1605893477799-b99e3b8b93fe']
 
 /** Light goods/box lorries: Elf, Canter, Ace, Dost, Aumark. */
-const LIGHT_LORRY = ['photo-1519003722824-194d4455a60c', 'photo-1591768575198-88dac53fbd0a']
+const LIGHT_LORRY = ['photo-1519003722824-194d4455a60c']
 
 /** Heavy rigid trucks: Isuzu Forward, Ashok Leyland Viking. */
-const HEAVY_TRUCK = ['photo-1591768575198-88dac53fbd0a', 'photo-1519003722824-194d4455a60c']
+const HEAVY_TRUCK = ['photo-1601584115197-04ecc0da31d7', 'photo-1592838064575-70ed626d3a0e']
 
 /** Buses and coaches. */
 const BUS = ['photo-1544620347-c4fd4a3d5957', 'photo-1570125909232-eb263c188f7e']
@@ -342,7 +357,7 @@ function poolFor(hints: DemoImageHints): string[] {
  * category pool, so two listings of the same kind get different photos
  * while any one listing stays stable across reloads.
  */
-export function demoImageFor(id: string, hints: DemoImageHints = {}): string {
+export function demoImageFor(id: string, hints: DemoImageHints = {}): string | null {
   const key = `${hints.make ?? ''} ${hints.model ?? ''}`.toLowerCase().trim()
 
   const typedKey = `${hints.vehicleType ?? ''}|${key}`
@@ -355,6 +370,12 @@ export function demoImageFor(id: string, hints: DemoImageHints = {}): string {
   let photo = MODEL_OVERRIDE[typedKey] ?? MODEL_EXACT[key]
   if (!photo) {
     const pool = poolFor(hints)
+    // A pool can legitimately be empty — THREE_WHEELER is, because no
+    // usable stock photo of a tuk-tuk exists. Returning null hands the
+    // decision back to the caller, which renders its silhouette. Indexing
+    // an empty pool would instead yield undefined and build the literal
+    // src "undefined?auto=format…", i.e. a broken-image icon.
+    if (pool.length === 0) return null
     photo = pool[hashToIndex(id, pool.length)]
   }
   return `${CDN}${photo}?auto=format&fit=crop&w=640&h=480&q=70`

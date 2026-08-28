@@ -9,17 +9,6 @@ import type {
   VehicleDetail,
 } from './search.types'
 
-// Serializes array/object fields into the flat forms the backend's DTO
-// expects: comma-joined for plain arrays (@Transform(toArray())), and
-// "key:value,key:value" for specs (@Transform(parseSpecs())).
-//
-// specs was originally sent as specs[0][key]=x&specs[0][value]=y, matching
-// a @ValidateNested + @Type(() => SpecFilterDto) field on the backend. That
-// combination turned out to be a known-fragile interaction with
-// ValidationPipe's whitelist:true — the nested array's own properties got
-// rejected as "should not exist" even though qs parsed the bracket syntax
-// correctly. The backend DTO now parses a flat string instead, so this
-// must match that format exactly.
 function toQueryParams(filters: FilterSearchParams): Record<string, string> {
   const params: Record<string, string> = {}
 
@@ -56,10 +45,7 @@ export async function filterSearch(
   return data
 }
 
-/**
- * Natural-language path (SAD 4.1.4). The backend parser owns filters;
- * only q plus page/sort/facets are sent.
- */
+
 export async function nlSearch(
   params: NlSearchParams,
   signal?: AbortSignal,
@@ -77,7 +63,7 @@ export async function getMarketplaceStats(signal?: AbortSignal): Promise<Marketp
   return data
 }
 
-/** One listing for the detail page. Throws on 404 (non-existent or not LIVE). */
+/** One listing for the detail page. Throws on 404 */
 export async function getVehicleById(id: string, signal?: AbortSignal): Promise<VehicleDetail> {
   const { data } = await apiClient.get<VehicleDetail>(`/marketplace/search/vehicles/${id}`, {
     signal,
