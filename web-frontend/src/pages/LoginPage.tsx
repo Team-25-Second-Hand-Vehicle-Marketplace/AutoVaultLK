@@ -42,9 +42,7 @@ export function LoginPage() {
       await login(values.email, values.password)
       navigate(redirectTo, { replace: true })
     } catch (error) {
-      // The service returns 401 "Invalid email or password" for both an
-      // unknown email and a wrong password — deliberately not distinguished
-      // here either, since doing so would confirm which emails are registered.
+
       setFormError(toErrorMessage(error, 'Could not sign you in. Please try again.'))
     }
   })

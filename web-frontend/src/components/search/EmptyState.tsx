@@ -39,9 +39,7 @@ export function EmptyState({
 
       {relaxation ? (
         <>
-          {/* This component only renders when the result set is empty, so a
-              relaxation object here means every step of the ladder ran and
-              still found nothing. */}
+          {}
           <p>No matches, even after widening your search.</p>
           <p className="empty-state__detail">
             We tried relaxing {describeDropped(relaxation.droppedFilters)}.

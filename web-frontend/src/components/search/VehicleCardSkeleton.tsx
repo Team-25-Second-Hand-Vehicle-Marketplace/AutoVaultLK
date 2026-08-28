@@ -1,11 +1,4 @@
-/**
- * Shape-matched placeholder for VehicleCard.
- *
- * Mirrors the real card's media/title/price/spec-row layout so the grid
- * doesn't reflow when results arrive. Marked aria-hidden by the caller —
- * the loading state is announced once via the results count's live region
- * rather than repeated by every skeleton.
- */
+
 export function VehicleCardSkeleton() {
   return (
     <article className="vehicle-card vehicle-card--skeleton">

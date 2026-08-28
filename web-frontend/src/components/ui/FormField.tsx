@@ -6,13 +6,6 @@ interface FormFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   error?: string
 }
 
-/**
- * Wraps the label + input + error-span pattern repeated across every
- * login/register form (see form-field / form-error in app.css). Handles the
- * aria-invalid / aria-describedby wiring that was previously hand-typed at
- * each call site — react-hook-form's register() spreads onto the input via
- * {...rest} exactly as before.
- */
 export const FormField = forwardRef<HTMLInputElement, FormFieldProps>(
   ({ label, error, id, ...rest }, ref) => {
     const autoId = useId()

@@ -72,14 +72,6 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* ── Trust bar ───────────────────────────────────────────
-          The reference promises a money-back guarantee, a technical-condition
-          guarantee, and a 6-month warranty. AutoVaultLK is a listings
-          marketplace, not the seller — it never takes payment or custody of a
-          vehicle, so it cannot honour any of the three. Stating them anyway
-          would be a false consumer guarantee, so these are the three
-          assurances the platform can actually back, each traceable to
-          something the system enforces. */}
       <section className="trust-bar">
         <div className="trust-bar__inner">
           <article className="trust-card">

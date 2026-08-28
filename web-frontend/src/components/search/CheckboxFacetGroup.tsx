@@ -24,10 +24,6 @@ export function CheckboxFacetGroup({ label, options, facets, selected, onChange 
       <legend>{label}</legend>
       {options.map((option) => {
         const count = countFor(option)
-        // A facet count of 0 for an unselected option means "no results
-        // would remain" — still shown, just visibly disabled, rather than
-        // hidden. Hiding it would make the filter list jump around as the
-        // buyer narrows their search, which is disorienting.
         const disabled = count === 0 && !selected.includes(option)
         return (
           <label key={option} className={disabled ? 'facet-option facet-option--empty' : 'facet-option'}>

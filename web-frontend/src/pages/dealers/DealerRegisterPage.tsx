@@ -12,17 +12,6 @@ import { Button } from '../../components/ui/Button'
 import { FormField } from '../../components/ui/FormField'
 import { ErrorBanner } from '../../components/ui/ErrorBanner'
 
-/**
- * Dealer registration, as the four-step wizard in the design reference.
- *
- * Every field maps to a real column on `auth.dealer_profiles` or
- * `auth.users`. The reference's "VAT Number" and "Postcode" inputs are
- * deliberately absent — there are no columns for them, so anything typed
- * would be silently dropped on submit.
- *
- * The whole form is one react-hook-form instance; steps are validation
- * subsets of it, so moving back and forth never loses what was typed.
- */
 const schema = z
   .object({
     // Step 1 — company

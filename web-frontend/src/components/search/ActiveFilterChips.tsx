@@ -2,29 +2,17 @@ import type { FilterSearchParams } from '../../api/search.types'
 
 interface Props {
   appliedFilters: FilterSearchParams
-  /**
-   * Removes every listed key in ONE update. Range chips span two keys
-   * (minPrice+maxPrice), and removing them with two single-key calls clears
-   * only one half — both calls read the same pre-removal filter snapshot.
-   */
+
   onRemove: (keys: string[]) => void
   onClearAll: () => void
 }
 
-// page/limit/facets/sort are control params, not user-facing filters — never
-// shown as removable chips.
 const HIDDEN_KEYS = new Set(['page', 'limit', 'facets', 'sort'])
 
 function formatCurrency(n: number): string {
   return new Intl.NumberFormat('en-LK', { maximumFractionDigits: 0 }).format(n)
 }
 
-/**
- * Renders one applied filter as a readable chip, matching the design's
- * "SUV ×", "Under £50,000 ×" style rather than a raw "key: value" dump.
- * Range pairs (min/max price, min/max year, etc.) collapse into one chip
- * each instead of two, and removing either half of a pair clears both.
- */
 function describeFilter(key: string, value: unknown): { label: string; removeKeys: string[] } | null {
   switch (key) {
     case 'minPrice':

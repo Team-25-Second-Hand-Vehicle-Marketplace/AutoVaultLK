@@ -1,7 +1,5 @@
 import type { SortOption } from '../../api/search.types'
 
-// Wording matches the design's dropdown ("Most Recent" etc.) rather than
-// the more verbose internal labels used earlier.
 const SORT_LABELS: Record<SortOption, string> = {
   relevance: 'Relevance',
   newest: 'Most Recent',

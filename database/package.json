@@ -13,7 +13,8 @@
     "seed:dictionaries": "ts-node src/seeds/vehicle-dictionaries.seed.ts",
     "seed:vehicles": "ts-node src/seeds/vehicles.seed.ts",
     "seed:embeddings": "ts-node src/seeds/embeddings.seed.ts",
-    "seed:admin": "ts-node src/seeds/admin-user.seed.ts"
+    "seed:admin": "ts-node src/seeds/admin-user.seed.ts",
+    "verify": "ts-node scripts/verify-roles.ts"
   },
   "dependencies": {
     "@xenova/transformers": "^2.17.2",
@@ -24,6 +25,7 @@
     "typeorm": "^0.3.20"
   },
   "devDependencies": {
+    "@types/pg": "^8.11.10",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.2"
   }
