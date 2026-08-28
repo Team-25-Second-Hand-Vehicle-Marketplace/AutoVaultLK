@@ -1,10 +1,24 @@
-const { config } = require('dotenv');
-const { Client } = require('pg');
-const path = require('path');
+import { config } from 'dotenv';
+import { Client } from 'pg';
+import path from 'node:path';
 
 config({ path: path.resolve(__dirname, '../../.env') });
 
-const ROLES = {
+interface Check {
+  name: string;
+  sql: string;
+  rollback?: boolean;
+  expectError?: boolean;
+  expectRows?: number;
+}
+
+interface RoleConfig {
+  url: string | undefined;
+  label: string;
+  checks: Check[];
+}
+
+const ROLES: Record<string, RoleConfig> = {
   auth: {
     url: process.env.AUTH_DATABASE_URL,
     label: 'auth_service_role',
@@ -112,7 +126,7 @@ const ROLES = {
   },
 };
 
-const SCHEMA_CHECKS = [
+const SCHEMA_CHECKS: Check[] = [
   {
     name: 'migration 1800 — verified_by on dealer_profiles',
     sql: `SELECT 1 FROM information_schema.columns
@@ -128,11 +142,22 @@ const SCHEMA_CHECKS = [
   },
 ];
 
-function isPermissionError(err) {
-  return err.code === '42501' || /permission denied/i.test(err.message);
+interface CheckResult {
+  ok: boolean;
+  detail?: string;
 }
 
-async function runCheck(client, check) {
+interface ReportRow extends CheckResult {
+  role: string;
+  name: string;
+}
+
+function isPermissionError(err: unknown): boolean {
+  const pgErr = err as { code?: string; message?: string };
+  return pgErr.code === '42501' || /permission denied/i.test(pgErr.message ?? '');
+}
+
+async function runCheck(client: Client, check: Check): Promise<CheckResult> {
   if (check.expectError) {
     try {
       await client.query('BEGIN');
@@ -144,7 +169,7 @@ async function runCheck(client, check) {
       if (isPermissionError(err)) {
         return { ok: true };
       }
-      return { ok: false, detail: err.message };
+      return { ok: false, detail: (err as Error).message };
     }
   }
 
@@ -158,17 +183,17 @@ async function runCheck(client, check) {
     }
     return { ok: true };
   } catch (err) {
-    return { ok: false, detail: err.message };
+    return { ok: false, detail: (err as Error).message };
   }
 }
 
-async function verifyRole(key, role) {
+async function verifyRole(key: string, role: RoleConfig): Promise<ReportRow[]> {
   if (!role.url) {
-    return [{ name: `${role.label} URL`, ok: false, detail: 'missing env var' }];
+    return [{ role: key, name: `${role.label} URL`, ok: false, detail: 'missing env var' }];
   }
 
   const client = new Client({ connectionString: role.url });
-  const results = [];
+  const results: { name: string; ok: boolean; detail?: string }[] = [];
 
   try {
     await client.connect();
@@ -179,7 +204,7 @@ async function verifyRole(key, role) {
       results.push({ name: check.name, ...result });
     }
   } catch (err) {
-    results.push({ name: 'connect', ok: false, detail: err.message });
+    results.push({ name: 'connect', ok: false, detail: (err as Error).message });
   } finally {
     await client.end().catch(() => {});
   }
@@ -187,9 +212,9 @@ async function verifyRole(key, role) {
   return results.map((r) => ({ role: key, ...r }));
 }
 
-async function verifySchema(url) {
+async function verifySchema(url: string): Promise<ReportRow[]> {
   const client = new Client({ connectionString: url });
-  const results = [];
+  const results: ReportRow[] = [];
 
   try {
     await client.connect();
@@ -208,7 +233,7 @@ async function verifySchema(url) {
       role: 'schema',
       name: 'schema checks',
       ok: false,
-      detail: err.message,
+      detail: (err as Error).message,
     });
   } finally {
     await client.end().catch(() => {});
@@ -217,7 +242,7 @@ async function verifySchema(url) {
   return results;
 }
 
-async function main() {
+async function main(): Promise<void> {
   const migrationUrl = process.env.DATABASE_URL;
   if (!migrationUrl) {
     console.error('DATABASE_URL is not set (repo root .env)');
