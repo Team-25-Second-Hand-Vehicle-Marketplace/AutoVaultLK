@@ -1,19 +1,20 @@
 import type { ExtractedFilters } from '../parser/types';
+import { toPgVector } from '../../../shared/normalize-embed';
 
 export type SearchRankOptions = {
   queryEmbedding?: number[];
+
+  embeddingWhere?: boolean;
   /** Leftover text ranked with pg_trgm word_similarity (filter + trigram). */
   trigramQuery?: string;
-  /**
-   * When true, also require search_text to be word-similar to trigramQuery.
-   * Only for the "nothing resolved" last-resort path — never to re-match
-   * a make/model the parser already extracted.
-   */
+
   trigramWhere?: boolean;
 };
 
 /** Looser than parser make/model gating (0.45); pg_trgm's default similarity. */
 export const LAST_RESORT_WORD_SIMILARITY = 0.3;
+
+export const MAX_EMBEDDING_DISTANCE = 0.7;
 
 export function hasResolvedFilters(filters: ExtractedFilters): boolean {
   return Boolean(
@@ -47,16 +48,17 @@ export function chooseSearchRank(input: {
   usedSemanticRanking: boolean;
   usedTrigramFallback: boolean;
 } {
+  const resolved = hasResolvedFilters(input.filters);
+
   if (input.queryEmbedding?.length) {
     return {
-      rank: { queryEmbedding: input.queryEmbedding },
+      rank: { queryEmbedding: input.queryEmbedding, embeddingWhere: !resolved },
       usedSemanticRanking: true,
       usedTrigramFallback: false,
     };
   }
 
   const leftover = input.semanticText.trim();
-  const resolved = hasResolvedFilters(input.filters);
 
   if (leftover && resolved) {
     return {
@@ -80,17 +82,30 @@ export function chooseSearchRank(input: {
 
 /**
  * Last-resort retrieval gate. Mutates `params` in place (callers pass a copy).
- * Ranking-only trigram (filters already resolved) must not call this.
+ * Ranking-only trigram/embedding (filters already resolved) must not call this.
  */
 export function appendTrigramWhere(
   where: string,
   params: unknown[],
   rank?: SearchRankOptions,
 ): string {
-  if (!rank?.trigramWhere || !rank.trigramQuery?.trim()) return where;
-  params.push(rank.trigramQuery.trim());
-  const qIdx = params.length;
-  params.push(LAST_RESORT_WORD_SIMILARITY);
-  const tIdx = params.length;
-  return `${where} AND word_similarity($${qIdx}, COALESCE(v.search_text, '')) >= $${tIdx}`;
+  let gated = where;
+
+  if (rank?.embeddingWhere && rank.queryEmbedding?.length) {
+    params.push(toPgVector(rank.queryEmbedding));
+    const eIdx = params.length;
+    params.push(MAX_EMBEDDING_DISTANCE);
+    const dIdx = params.length;
+    gated = `${gated} AND v.embedding IS NOT NULL AND v.embedding <=> $${eIdx}::vector <= $${dIdx}`;
+  }
+
+  if (rank?.trigramWhere && rank.trigramQuery?.trim()) {
+    params.push(rank.trigramQuery.trim());
+    const qIdx = params.length;
+    params.push(LAST_RESORT_WORD_SIMILARITY);
+    const tIdx = params.length;
+    gated = `${gated} AND word_similarity($${qIdx}, COALESCE(v.search_text, '')) >= $${tIdx}`;
+  }
+
+  return gated;
 }

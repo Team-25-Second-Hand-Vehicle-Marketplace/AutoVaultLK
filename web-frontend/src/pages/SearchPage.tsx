@@ -6,7 +6,6 @@ import { VehicleCard } from '../components/search/VehicleCard'
 import { VehicleCardSkeleton } from '../components/search/VehicleCardSkeleton'
 import { EmptyState } from '../components/search/EmptyState'
 import { RelaxationNotice } from '../components/search/RelaxationNotice'
-import { ParseWarning } from '../components/search/ParseWarning'
 import { Pagination } from '../components/search/Pagination'
 import { ActiveFilterChips } from '../components/search/ActiveFilterChips'
 
@@ -138,8 +137,6 @@ export function SearchPage() {
                   : 'No vehicles found'
                 : ''}
           </div>
-
-          {result?.parse && !loading && <ParseWarning parse={result.parse} />}
 
           {result?.relaxation && <RelaxationNotice relaxation={result.relaxation} />}
 

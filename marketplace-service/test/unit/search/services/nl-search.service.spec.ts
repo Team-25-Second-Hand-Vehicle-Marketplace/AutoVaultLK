@@ -140,6 +140,19 @@ describe('NlSearchService', () => {
     expect(groqFallback.repair).toHaveBeenCalled();
   });
 
+  it('expands bare "family friendly" to a noun-anchored phrase before parsing', async () => {
+    const { service, groqFallback, embeddings } = makeService();
+
+    await service.search({ q: 'family friendly' });
+
+    expect(groqFallback.repair).toHaveBeenCalledWith(
+      'family friendly vehicles',
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(embeddings.embedQuery).toHaveBeenCalledWith('family friendly vehicles');
+  });
+
   it('does not ask Groq to invent filters when coverage is already high', async () => {
     const { service, groqFallback } = makeService();
     await service.search({ q: 'Toyata Corrola used 2018 8.5m 95k deisel auto' });
