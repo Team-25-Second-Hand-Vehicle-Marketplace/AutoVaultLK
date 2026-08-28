@@ -10,13 +10,6 @@ type FeaturePipeline = (
   opts: { pooling: 'mean'; normalize: boolean },
 ) => Promise<{ data: ArrayLike<number> | BigInt64Array }>;
 
-/**
- * Lazy MiniLM embedder. The ~90 MB ONNX model loads on first call so unit
- * tests that inject a fake Embedder never download it.
- *
- * If `@xenova/transformers` is not installed, the import throws and
- * QueryEmbeddingService skips ranking (FR-24).
- */
 export function createXenovaEmbedder(): Embedder {
   let pipeline: FeaturePipeline | undefined;
 
@@ -29,12 +22,6 @@ export function createXenovaEmbedder(): Embedder {
   };
 }
 
-/**
- * feature-extraction returns float data, but the Tensor type also admits
- * BigInt64Array for integer-output tasks. Narrowing here keeps assertEmbedding
- * working on plain numbers instead of silently producing bigints, which would
- * fail Number.isFinite and surface as a confusing dimension error.
- */
 function toNumbers(data: ArrayLike<number> | BigInt64Array): number[] {
   return data instanceof BigInt64Array
     ? Array.from(data, (n) => Number(n))

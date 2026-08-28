@@ -144,8 +144,6 @@ export function useVehicleSearch() {
     const controller = new AbortController()
     let settled = false
 
-    // Free-text `q` is the NL path (SAD 4.1.4). Sidebar-only searches stay
-    // on /search/filters so structured clicks never go through the parser.
     const request = appliedFilters.q
       ? nlSearch(
           {
@@ -169,8 +167,7 @@ export function useVehicleSearch() {
       })
       .catch((err) => {
         settled = true
-        // An aborted request is this effect superseding itself, not a
-        // failure — surfacing it would flash an error on every filter change.
+
         if (axios.isCancel(err) || controller.signal.aborted) return
         setSearch((prev) => ({
           ...prev,

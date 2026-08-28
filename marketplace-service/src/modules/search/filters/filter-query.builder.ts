@@ -6,8 +6,7 @@ import { SEARCHABLE_STATUS } from '../constants/vehicle-attributes.constants';
 export interface BuiltFilterQuery {
   whereSql: string; // e.g. "v.status = $1 AND v.price <= $2"
   params: unknown[];
-  // Which top-level filter categories were present, in application order.
-  // Used by the relaxation ladder (§8) to know what it's allowed to drop.
+
   appliedFilterKeys: string[];
 }
 
@@ -26,17 +25,6 @@ const COLUMN_ARRAY_FILTERS: Array<{
   { dtoKey: 'locationDistrict', column: 'v.location_district' },
 ];
 
-/**
- * Validates one spec filter against KNOWN_SPEC_KEYS and returns the SQL
- * fragment for it. Throws BadRequestException on an unknown key or a value
- * that doesn't fit the key's declared type — the whitelist discipline the
- * design doc applies to LLM output (§6.6), applied here to buyer input.
- *
- * Equality on enum/bool specs uses `@>` containment (Decision 2) so it hits
- * idx_vehicles_specs. Range-shaped int specs (seats, load_capacity_kg) use
- * the cast form, which is why migration 19000 added expression indexes for
- * them specifically — @> cannot express a range.
- */
 import { SpecKeyDefinition } from '../constants/known-spec-keys.constants';
 
 function buildSpecClause(
@@ -70,7 +58,6 @@ function buildSpecClause(
     return `v.specs @> $${p}::jsonb`;
   }
 
-  // int: equality via cast, bounds-checked against the key's declared range.
   const n = Number(filter.value);
   if (!Number.isInteger(n) || n < def.min || n > def.max) {
     throw new BadRequestException(
@@ -90,9 +77,6 @@ export function buildFilterQuery(dto: FilterSearchDto): BuiltFilterQuery {
   const clauses: string[] = [];
   const appliedFilterKeys: string[] = [];
 
-  // Always leads. Every index on this table is composited with status
-  // first (migrations 14000, 19000) — design doc §10: every buyer-facing
-  // query gates on status = 'LIVE' before anything else.
   params.push(SEARCHABLE_STATUS);
   clauses.push(`v.status = $${nextParam()}`);
 
@@ -116,15 +100,6 @@ export function buildFilterQuery(dto: FilterSearchDto): BuiltFilterQuery {
     clauses.push(`v.price <= $${nextParam()}`);
     appliedFilterKeys.push('maxPrice');
   }
-
-  // Decision 3: COALESCE, never registration_year alone. registration_year
-  // is nullable because dealers omit it; filtering on it directly would
-  // make those listings invisible with no error (verified: 42 vs 65 rows
-  // on the seeded data — see Phase 0.5). manufacture_year is NOT NULL, so
-  // every vehicle always has a value to compare.
-  //
-  // hasRegistrationYear is the opt-in escape hatch for a buyer who wants
-  // only confirmed registration years — off by default.
   const yearExpr = dto.hasRegistrationYear
     ? 'v.registration_year'
     : 'COALESCE(v.registration_year, v.manufacture_year)';
@@ -166,11 +141,7 @@ export function buildFilterQuery(dto: FilterSearchDto): BuiltFilterQuery {
   }
 
   if (dto.specs && dto.specs.length > 0) {
-    // Group by key: several values for the SAME key are alternatives a
-    // buyer is willing to accept (body_type=SUV or SEDAN) and must be
-    // OR'd, not AND'd — a vehicle cannot be both body types at once, so
-    // ANDing them always produced zero rows. Different keys stay AND'd
-    // (body_type=SUV AND drive_type=4WD is a real, valid combination).
+ 
     const byKey = new Map<string, SpecFilterDto[]>();
     for (const spec of dto.specs) {
       const group = byKey.get(spec.key) ?? [];
@@ -185,8 +156,7 @@ export function buildFilterQuery(dto: FilterSearchDto): BuiltFilterQuery {
     appliedFilterKeys.push('specs');
   }
 
-  // D5 keyword layer — the tsvector path (design doc §11.5). plainto_tsquery
-  // handles user punctuation/casing safely; never string-concatenated.
+
   if (dto.q && dto.q.trim().length > 0) {
     params.push(dto.q.trim());
     clauses.push(`v.search_vector @@ plainto_tsquery('english', $${nextParam()})`);

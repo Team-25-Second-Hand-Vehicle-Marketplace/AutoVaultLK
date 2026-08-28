@@ -11,18 +11,6 @@ import {
   FacetBucketDto,
 } from '../dto/filter-search-response.dto';
 
-/**
- * Primary listing photo, or NULL when the dealer hasn't uploaded one.
- *
- * LEFT JOIN, never INNER: vehicle_images is empty in every environment right
- * now, and an inner join here would silently return zero results for every
- * search. idx_vehicle_images_one_primary (UNIQUE on vehicle_id WHERE
- * is_primary) guarantees at most one row per vehicle, so this cannot fan out
- * and inflate COUNT(*).
- *
- * COALESCE order is display-quality order: a processed/optimized render if
- * ETL produced one, otherwise the original upload.
- */
 const IMAGE_JOIN = `
   LEFT JOIN marketplace.vehicle_images vi
     ON vi.vehicle_id = v.id AND vi.is_primary = true
@@ -33,19 +21,6 @@ const IMAGE_COLUMNS = `
   vi.thumbnail_path AS thumbnail_path
 `;
 
-/**
- * Per-row dealer verification.
- *
- * Previously this was hardcoded to `dto.verifiedDealersOnly ?? false`, which
- * meant the "Verified Dealer" badge could only ever appear on a search that
- * had already filtered to verified dealers — i.e. exactly where it carried no
- * information — and every card on a normal search claimed the dealer was
- * unverified. This LEFT JOIN reports the real value on every row.
- *
- * Kept separate from the verifiedDealersOnly INNER JOIN below: this one must
- * never remove rows, so a vehicle whose dealer has no profile row still shows
- * up (as unverified) rather than vanishing.
- */
 const DEALER_JOIN = `
   LEFT JOIN auth.dealer_profiles dpv ON dpv.user_id = v.dealer_id
 `;
@@ -103,15 +78,6 @@ interface VehicleDetailRow extends VehicleRow {
 export class VehicleSearchRepository {
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
-  /**
-   * verifiedDealersOnly is applied here, not in the query builder — it
-   * changes FROM, not just WHERE, and the builder is deliberately scoped to
-   * vehicles-table-only clauses so it stays a pure, testable function.
-   *
-   * `extraJoins` carries the display-only joins (image, dealer verification)
-   * that SELECT needs but COUNT does not — counting with them attached is
-   * wasted work, and they must never change the row count.
-   */
   private buildFromAndWhere(
     built: BuiltFilterQuery,
     verifiedDealersOnly?: boolean,
@@ -183,21 +149,6 @@ export class VehicleSearchRepository {
     return parseInt(count, 10);
   }
 
-  /**
-   * Per-dimension counts for the sidebar ("SUV (14)").
-   *
-   * Each dimension is counted against every filter EXCEPT its own — standard
-   * faceted-search semantics. Counting a dimension against its own filter
-   * makes the facet list collapse to just the selected value the moment a
-   * buyer clicks anything ("PETROL (34)" and nothing else), which destroys
-   * the affordance the counts exist to provide: "if I also picked DIESEL,
-   * how many more would I see?"
-   *
-   * That requires rebuilding the WHERE clause per dimension from a modified
-   * DTO, so this takes the DTO rather than the prebuilt query.
-   *
-   * The five queries are independent, so they run concurrently.
-   */
   async facets(dto: FilterSearchDto): Promise<Record<string, FacetBucketDto[]>> {
     const dimensions: Array<{
       key: keyof FilterSearchDto;
@@ -239,13 +190,7 @@ export class VehicleSearchRepository {
     return Object.fromEntries(entries);
   }
 
-  /**
-   * Single vehicle for the detail page. Gated on the same SEARCHABLE_STATUS
-   * as search itself — a direct link to a DRAFT/SOLD/ARCHIVED listing must
-   * 404 rather than expose a row search would never return.
-   *
-   * Returns null (not a throw) so the controller owns the HTTP shape.
-   */
+
   async findById(id: string): Promise<VehicleDetailDto | null> {
     const rows: VehicleDetailRow[] = await this.dataSource.query(
       `SELECT ${SELECT_COLUMNS},
@@ -303,8 +248,6 @@ export class VehicleSearchRepository {
       locationCity: row.location_city,
       locationDistrict: row.location_district,
       specs: row.specs,
-      // LEFT JOIN yields NULL for a vehicle whose dealer has no profile row;
-      // that is "not verified", not "unknown", for badge purposes.
       dealerVerified: row.dealer_verified === true,
       imageUrl: row.image_path,
       thumbnailUrl: row.thumbnail_path,
