@@ -104,8 +104,8 @@ why migration `1735000001000` re-does the same two things idempotently.
   privileges — that needs the tables to exist first, hence `grants.sql`
   running after migrations, not here.
 
-### `scripts/verify-roles.js`
-A standalone Node script (not TypeScript, run directly) that proves the
+### `scripts/verify-roles.ts`
+A standalone Node script (run via `ts-node`, `npm run verify`) that proves the
 Plan B boundary actually works, not just that it was written correctly. For
 each of the five roles it opens a connection **using that role's own
 credentials** (`AUTH_DATABASE_URL`, `MARKETPLACE_DATABASE_URL`, etc. — not
