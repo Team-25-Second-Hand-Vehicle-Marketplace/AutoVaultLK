@@ -61,7 +61,7 @@ export function SearchPage() {
   const rangeStart = result && result.total > 0 ? (result.page - 1) * result.limit + 1 : 0
   const rangeEnd = result ? Math.min(result.page * result.limit, result.total) : 0
 
-  const applyAndCloseOnMobile = () => {
+  const applyAndCloseFilters = () => {
     applyFilters()
     if (isMobile) setFiltersOpen(false)
   }
@@ -109,7 +109,7 @@ export function SearchPage() {
               facets={result?.facets}
               onUpdate={updateDraft}
               onUpdateMany={updateDraftMany}
-              onApply={applyAndCloseOnMobile}
+              onApply={applyAndCloseFilters}
               onReset={resetDraft}
               hasUnappliedChanges={hasUnappliedChanges}
             />
