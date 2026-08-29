@@ -103,22 +103,15 @@ export class Vehicle {
   @Column({ type: 'varchar', length: 20, default: 'PENDING_REVIEW' })
   status: VehicleStatus;
 
-  // Type-specific attributes (body_type, seats, doors, sunroof, airbags,
-  // drive_type, etc.) live here, not as columns — a bike has no body_type,
-  // a truck has no seats. Backing dictionary is KNOWN_SPEC_KEYS.
+
   @Column({ type: 'jsonb', default: () => `'{}'::jsonb` })
   specs: Record<string, unknown>;
 
-  // Built by Enrich from the columns above + description. No enrichment
-  // band words — those derivations were deliberately removed.
+
   @Column({ name: 'search_text', type: 'text', nullable: true })
   searchText: string | null;
 
-  // pgvector column. TypeORM has no native vector type — 'text' is the
-  // transport, and pgvector casts it. Write as '[0.1,0.2,...]'.
-  // Similarity search must use a raw query (embedding <=> $1::vector),
-  // never the query builder. select: false keeps 384 floats out of every
-  // ordinary SELECT.
+  
   @Column({ type: 'text', nullable: true, select: false })
   embedding: string | null;
 

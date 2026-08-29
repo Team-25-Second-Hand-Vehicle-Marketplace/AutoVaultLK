@@ -2,6 +2,8 @@ import 'reflect-metadata';
 import { config } from 'dotenv';
 import { DataSource } from 'typeorm';
 
+import { buildSearchText } from '../../../marketplace-service/src/shared/normalize-embed';
+
 config({ path: '../.env' });
 
 
@@ -182,11 +184,18 @@ async function seed() {
     // Round-robin across dealers so every verification status owns listings.
     const dealerId = dealerIds[n % dealerIds.length];
 
-    const searchText = [
-      v.make, v.model, String(v.year), v.type,
-      v.fuel, v.trans, v.city, v.district,
-      v.specs.body_type, v.desc,
-    ].filter(Boolean).join(' ');
+    const searchText = buildSearchText({
+      make: v.make,
+      model: v.model,
+      manufactureYear: v.year,
+      vehicleType: v.type,
+      fuelType: v.fuel,
+      transmissionType: v.trans,
+      locationCity: v.city,
+      locationDistrict: v.district,
+      specs: v.specs,
+      description: v.desc,
+    });
 
     await ds.query(
       `INSERT INTO marketplace.vehicles
