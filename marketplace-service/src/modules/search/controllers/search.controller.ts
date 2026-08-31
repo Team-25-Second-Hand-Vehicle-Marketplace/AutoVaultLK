@@ -5,9 +5,13 @@ import {
   Param,
   ParseUUIDPipe,
   Query,
+  Post,
 } from '@nestjs/common';
 import { FilterSearchDto } from '../dto/filter-search.dto';
-import { FilterSearchResponseDto, VehicleDetailDto } from '../dto/filter-search-response.dto';
+import {
+  FilterSearchResponseDto,
+  VehicleDetailDto,
+} from '../dto/filter-search-response.dto';
 import { FilterSearchService } from '../services/filter-search.service';
 import { NlSearchService } from '../services/nl-search.service';
 import { SearchOptionsService } from '../services/search-options.service';
@@ -18,6 +22,7 @@ import {
   MarketplaceStatsDto,
 } from '../dto/search-options-response.dto';
 import { VehicleSearchRepository } from '../repositories/vehicle-search.repository';
+import { AliasPromotionService } from '../services/alias-promotion.service';
 
 @Controller('search')
 export class SearchController {
@@ -26,12 +31,15 @@ export class SearchController {
     private readonly nlSearchService: NlSearchService,
     private readonly optionsService: SearchOptionsService,
     private readonly repository: VehicleSearchRepository,
+    private readonly aliasPromotionService: AliasPromotionService,
   ) {}
 
   // Main entry point — design doc §10's "UI filters" path. Straight to
   // WHERE, no tokenizing, no parser, no LLM, no vector.
   @Get('filters')
-  async filterSearch(@Query() dto: FilterSearchDto): Promise<FilterSearchResponseDto> {
+  async filterSearch(
+    @Query() dto: FilterSearchDto,
+  ): Promise<FilterSearchResponseDto> {
     return this.filterSearchService.search(dto);
   }
 
@@ -52,7 +60,9 @@ export class SearchController {
   // to discard them, and write an analytics row for a request the buyer
   // never made.
   @Get('facets')
-  async facets(@Query() dto: FilterSearchDto): Promise<FilterSearchResponseDto['facets']> {
+  async facets(
+    @Query() dto: FilterSearchDto,
+  ): Promise<FilterSearchResponseDto['facets']> {
     return this.repository.facets(dto);
   }
 
@@ -86,7 +96,14 @@ export class SearchController {
   // Dropdown values: enums from constants (cheap, static), makes/models
   // from vehicle_dictionaries (cacheable — changes rarely).
   @Get('options')
-  async options(@Query('vehicleType') vehicleType?: string): Promise<SearchOptionsResponseDto> {
+  async options(
+    @Query('vehicleType') vehicleType?: string,
+  ): Promise<SearchOptionsResponseDto> {
     return this.optionsService.getOptions(vehicleType);
+  }
+
+  @Post('aliases/promote')
+  async promoteAliases() {
+    return this.aliasPromotionService.promoteAliases();
   }
 }
