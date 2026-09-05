@@ -4,10 +4,20 @@ on:
   push:
     paths:
       - 'ingestion-service/**'
+      # Drift guard: ingestion keeps a byte-identical copy of this directory
+      # (test/unit/shared/normalize-embed-parity.spec.ts). Editing the
+      # marketplace copy must re-run ingestion's suite, or the guard never
+      # fires in the direction drift is most likely to come from.
+      - 'marketplace-service/src/shared/normalize-embed/**'
       - '.github/workflows/ingestion-service.yml'
   pull_request:
     paths:
       - 'ingestion-service/**'
+      # Drift guard: ingestion keeps a byte-identical copy of this directory
+      # (test/unit/shared/normalize-embed-parity.spec.ts). Editing the
+      # marketplace copy must re-run ingestion's suite, or the guard never
+      # fires in the direction drift is most likely to come from.
+      - 'marketplace-service/src/shared/normalize-embed/**'
       - '.github/workflows/ingestion-service.yml'
 
 jobs:
