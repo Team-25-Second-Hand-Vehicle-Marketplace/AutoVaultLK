@@ -5,6 +5,7 @@ import { databaseConfig } from './config/database.config';
 import { HealthModule } from './health/health.module';
 import { QueueModule } from './infrastructure/queue/queue.module';
 import { StorageModule } from './infrastructure/storage/storage.module';
+import { IngestionModule } from './modules/ingestion/ingestion.module';
 import { JobStatusModule } from './modules/job-status/job-status.module';
 
 @Module({
@@ -19,6 +20,7 @@ import { JobStatusModule } from './modules/job-status/job-status.module';
     StorageModule,
     QueueModule,
     HealthModule,
+    IngestionModule,
     JobStatusModule,
 
   ],
