@@ -33,3 +33,7 @@ build/
 mywork.txt
 # Local run logs from starting a service in the background
 *.err
+
+# LocalObjectStore driver root (ADR-007): raw dealer uploads and inter-stage
+# payloads. Never committed — recreated on demand.
+.storage/
