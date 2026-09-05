@@ -13,7 +13,6 @@ import {
 import { MAX_PAGE_SIZE, SORT_OPTIONS } from '../constants/vehicle-attributes.constants';
 import type { SortOption } from '../constants/vehicle-attributes.constants';
 
-
 export class NlSearchDto {
   @IsString()
   @IsNotEmpty()

@@ -21,7 +21,6 @@ export interface SearchOptionsResponseDto {
   districts: string[];
 }
 
-
 export interface MarketplaceStatsDto {
 
   vehicleCount: number;
