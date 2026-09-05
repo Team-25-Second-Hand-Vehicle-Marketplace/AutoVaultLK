@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Notification } from '../../infrastructure/database/entities/notification.entity';
 import { AuthUserView } from '../../infrastructure/database/entities/auth-user.view-entity';
 import { InternalServiceGuard } from '../../common/guards/internal-service.guard';
+import { SqsPublisher } from '../../infrastructure/aws/sqs/sqs.publisher';
 import { SesAdapter } from './adapters/ses.adapter';
 import { NotificationsController } from './controllers/notifications.controller';
 import { NotificationsRepository } from './repositories/notifications.repository';
@@ -17,7 +18,10 @@ import { NotificationEventHandler } from './services/notification-event.handler'
     EmailTemplateService,
     SesAdapter,
     NotificationEventHandler,
+    SqsPublisher,
     InternalServiceGuard,
   ],
+
+  exports: [NotificationEventHandler],
 })
 export class NotificationsModule {}
