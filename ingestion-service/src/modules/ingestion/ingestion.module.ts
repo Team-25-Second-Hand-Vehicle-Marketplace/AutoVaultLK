@@ -5,8 +5,9 @@ import { EtlStageLog } from '../../infrastructure/database/entities/etl-stage-lo
 import { RejectedRecord } from '../../infrastructure/database/entities/rejected-record.entity';
 import { UploadJob } from '../../infrastructure/database/entities/upload-job.entity';
 import { VehicleDictionaryView } from '../../infrastructure/database/entities/vehicle-dictionary.view-entity';
+import { EtlWorkerService } from '../../workers/etl-worker/etl-worker.service';
+import { LocalOrchestrator } from '../../workers/etl-worker/local-orchestrator';
 import { MarketplaceVehiclesWriteAdapter } from '../../workers/etl-worker/pipeline/persistence/marketplace-vehicles-write.adapter';
-import { QueueBootstrapService } from './queue-bootstrap.service';
 import { DealerProfileRepository } from './repositories/dealer-profile.repository';
 import { DictionaryRepository } from './repositories/dictionary.repository';
 import { EtlStageLogRepository } from './repositories/etl-stage-log.repository';
@@ -38,8 +39,11 @@ import { UploadJobRepository } from './repositories/upload-job.repository';
     // pipeline module because it needs the DataSource; the orchestrator hands
     // it to the Load stage. Do not add a second writer — see its header.
     MarketplaceVehiclesWriteAdapter,
-    // Placeholder ETL trigger; replaced by LocalOrchestrator in Phase A.
-    QueueBootstrapService,
+    // The ETL itself: EtlWorkerService binds the queue to the orchestrator at
+    // boot (ADR-007). Under Step Functions the orchestrator is replaced by ASL
+    // and the stages are called by Lambda wrappers instead.
+    LocalOrchestrator,
+    EtlWorkerService,
   ],
   exports: [
     UploadJobRepository,
