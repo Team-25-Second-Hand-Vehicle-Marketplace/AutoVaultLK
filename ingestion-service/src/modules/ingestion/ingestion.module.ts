@@ -5,6 +5,7 @@ import { EtlStageLog } from '../../infrastructure/database/entities/etl-stage-lo
 import { RejectedRecord } from '../../infrastructure/database/entities/rejected-record.entity';
 import { UploadJob } from '../../infrastructure/database/entities/upload-job.entity';
 import { VehicleDictionaryView } from '../../infrastructure/database/entities/vehicle-dictionary.view-entity';
+import { MarketplaceVehiclesWriteAdapter } from '../../workers/etl-worker/pipeline/persistence/marketplace-vehicles-write.adapter';
 import { QueueBootstrapService } from './queue-bootstrap.service';
 import { DealerProfileRepository } from './repositories/dealer-profile.repository';
 import { DictionaryRepository } from './repositories/dictionary.repository';
@@ -33,6 +34,10 @@ import { UploadJobRepository } from './repositories/upload-job.repository';
     EtlStageLogRepository,
     DealerProfileRepository,
     DictionaryRepository,
+    // The ONE cross-schema write (ADR-002). Provided here rather than in a
+    // pipeline module because it needs the DataSource; the orchestrator hands
+    // it to the Load stage. Do not add a second writer — see its header.
+    MarketplaceVehiclesWriteAdapter,
     // Placeholder ETL trigger; replaced by LocalOrchestrator in Phase A.
     QueueBootstrapService,
   ],
@@ -42,6 +47,7 @@ import { UploadJobRepository } from './repositories/upload-job.repository';
     EtlStageLogRepository,
     DealerProfileRepository,
     DictionaryRepository,
+    MarketplaceVehiclesWriteAdapter,
   ],
 })
 export class IngestionModule {}
