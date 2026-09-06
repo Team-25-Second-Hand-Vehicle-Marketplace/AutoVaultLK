@@ -4,8 +4,10 @@ import { DealerProfileView } from '../../infrastructure/database/entities/dealer
 import { EtlStageLog } from '../../infrastructure/database/entities/etl-stage-log.entity';
 import { RejectedRecord } from '../../infrastructure/database/entities/rejected-record.entity';
 import { UploadJob } from '../../infrastructure/database/entities/upload-job.entity';
+import { VehicleDictionaryView } from '../../infrastructure/database/entities/vehicle-dictionary.view-entity';
 import { QueueBootstrapService } from './queue-bootstrap.service';
 import { DealerProfileRepository } from './repositories/dealer-profile.repository';
+import { DictionaryRepository } from './repositories/dictionary.repository';
 import { EtlStageLogRepository } from './repositories/etl-stage-log.repository';
 import { RejectedRecordRepository } from './repositories/rejected-record.repository';
 import { UploadJobRepository } from './repositories/upload-job.repository';
@@ -18,12 +20,19 @@ import { UploadJobRepository } from './repositories/upload-job.repository';
  * be built against a stable surface (the 0.3/0.4 handoff point).
  */
 @Module({
-  imports: [TypeOrmModule.forFeature([UploadJob, RejectedRecord, EtlStageLog, DealerProfileView])],
+  imports: [TypeOrmModule.forFeature([
+      UploadJob,
+      RejectedRecord,
+      EtlStageLog,
+      DealerProfileView,
+      VehicleDictionaryView,
+    ])],
   providers: [
     UploadJobRepository,
     RejectedRecordRepository,
     EtlStageLogRepository,
     DealerProfileRepository,
+    DictionaryRepository,
     // Placeholder ETL trigger; replaced by LocalOrchestrator in Phase A.
     QueueBootstrapService,
   ],
@@ -32,6 +41,7 @@ import { UploadJobRepository } from './repositories/upload-job.repository';
     RejectedRecordRepository,
     EtlStageLogRepository,
     DealerProfileRepository,
+    DictionaryRepository,
   ],
 })
 export class IngestionModule {}
