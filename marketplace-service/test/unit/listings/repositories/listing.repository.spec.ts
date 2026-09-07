@@ -8,9 +8,15 @@ describe('ListingRepository', () => {
     find: jest.fn(),
     findOne: jest.fn(),
   };
-  const repository = new ListingRepository(vehicleRepo as never);
+  const searchIndexService = {
+    build: jest.fn(),
+  };
+  const repository = new ListingRepository(vehicleRepo as never, searchIndexService as never);
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    searchIndexService.build.mockResolvedValue({ searchText: null, embedding: null });
+  });
 
   function vehicle(overrides: Partial<Vehicle> = {}): Vehicle {
     return {
@@ -57,6 +63,24 @@ describe('ListingRepository', () => {
       await repository.create({ dealerId: 'dealer-1', make: 'Toyota', model: 'Aqua' } as never, 'LIVE');
 
       expect(vehicleRepo.save).toHaveBeenCalledWith(created);
+    });
+
+    it('computes searchText/embedding via ListingSearchIndexService and saves them (FR-13.1)', async () => {
+      const created = vehicle();
+      vehicleRepo.create.mockReturnValue(created);
+      vehicleRepo.save.mockImplementation((v) => Promise.resolve(v));
+      searchIndexService.build.mockResolvedValue({
+        searchText: 'Toyota Aqua',
+        embedding: '[0.1,0.2]',
+      });
+
+      const result = await repository.create(
+        { dealerId: 'dealer-1', make: 'Toyota', model: 'Aqua' } as never,
+        'LIVE',
+      );
+
+      expect(searchIndexService.build).toHaveBeenCalledWith(created);
+      expect(result).toMatchObject({ searchText: 'Toyota Aqua', embedding: '[0.1,0.2]' });
     });
   });
 
@@ -110,6 +134,34 @@ describe('ListingRepository', () => {
 
       // description was not in the patch (undefined), so it must be untouched
       expect(result).toMatchObject({ description: 'Great car' });
+    });
+
+    it('recomputes searchText/embedding when a searchable field changes (FR-13.1/FR-13.2)', async () => {
+      const existing = vehicle({ make: 'Toyota', model: 'Aqua' });
+      vehicleRepo.findOne.mockResolvedValue(existing);
+      vehicleRepo.save.mockImplementation((v) => Promise.resolve(v));
+      searchIndexService.build.mockResolvedValue({
+        searchText: 'Honda Aqua',
+        embedding: '[0.9,0.1]',
+      });
+
+      const result = await repository.update('v-1', { make: 'Honda' });
+
+      expect(searchIndexService.build).toHaveBeenCalledWith(
+        expect.objectContaining({ make: 'Honda' }),
+      );
+      expect(result).toMatchObject({ searchText: 'Honda Aqua', embedding: '[0.9,0.1]' });
+    });
+
+    it('does not touch searchText/embedding when only non-searchable fields change', async () => {
+      const existing = vehicle({ price: 5_000_000, searchText: 'Toyota Aqua', embedding: '[1]' });
+      vehicleRepo.findOne.mockResolvedValue(existing);
+      vehicleRepo.save.mockImplementation((v) => Promise.resolve(v));
+
+      const result = await repository.update('v-1', { price: 6_000_000 });
+
+      expect(searchIndexService.build).not.toHaveBeenCalled();
+      expect(result).toMatchObject({ searchText: 'Toyota Aqua', embedding: '[1]' });
     });
   });
 

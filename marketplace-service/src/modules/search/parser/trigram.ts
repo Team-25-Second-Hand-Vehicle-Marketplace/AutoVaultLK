@@ -1,8 +1,4 @@
-/**
- * In-memory stand-in for pg_trgm `similarity()` so the parser stays a pure
- * function (unit tests, no Postgres). Production Stage 4 will keep this for
- * the cached dictionary snapshot SAD already requires at container start.
- */
+
 export function trigramSimilarity(a: string, b: string): number {
   const left = trigrams(a);
   const right = trigrams(b);

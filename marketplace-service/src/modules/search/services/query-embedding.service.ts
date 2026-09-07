@@ -4,11 +4,6 @@ import { createXenovaEmbedder, type Embedder } from '../../../shared/normalize-e
 
 export const QUERY_EMBEDDER = 'QUERY_EMBEDDER';
 
-/**
- * Query-time MiniLM (FR-22). Returns null when there is nothing to embed,
- * the model is disabled, or the ONNX runtime fails to load — callers then
- * skip vector ranking instead of failing the search (FR-24 / NFR-12.1).
- */
 @Injectable()
 export class QueryEmbeddingService {
   private readonly logger = new Logger(QueryEmbeddingService.name);

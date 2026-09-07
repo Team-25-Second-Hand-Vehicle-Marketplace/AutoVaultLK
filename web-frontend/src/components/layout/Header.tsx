@@ -10,8 +10,6 @@ export function Header() {
   const [keyword, setKeyword] = useState('')
   const menuRef = useRef<HTMLDivElement>(null)
 
-  // A dropdown that only closes via its own trigger feels stuck — close on an
-  // outside click and on Escape, the two things users actually try.
   useEffect(() => {
     if (!menuOpen) return
     const onPointerDown = (e: MouseEvent) => {
@@ -89,8 +87,6 @@ export function Header() {
         </nav>
 
         <div className="site-header__actions">
-          {/* Saved is a guarded route, so while signed out this links to
-              login rather than dead-ending on a redirect. */}
           <Link to={isAuthenticated ? '/saved' : '/login'} className="site-header__saved">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M12 21s-6.7-4.35-9.3-8.1C.8 10.1 1.4 6.6 4.3 5.1c2.2-1.1 4.6-.4 6 1.4l1.7 2.1 1.7-2.1c1.4-1.8 3.8-2.5 6-1.4 2.9 1.5 3.5 5 1.6 7.8C18.7 16.65 12 21 12 21z" />
