@@ -10,11 +10,6 @@ const SORT_SQL: Record<SortOption, string> = {
   newest: 'v.created_at DESC',
 };
 
-/**
- * Builds a parameterized ORDER BY. Vector ranking (FR-23) wins; pg_trgm
- * word_similarity is the MiniLM/Groq degradation path (FR-24); ts_rank is
- * the filter-path keyword layer. User strings stay bound parameters.
- */
 export function buildOrderBy(
   sort: SortOption | undefined,
   params: unknown[],
