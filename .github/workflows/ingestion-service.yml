@@ -47,6 +47,42 @@ jobs:
       - name: Run e2e tests
         run: npm run test:e2e
 
+      # Integration tests need a real Postgres: they assert that the partial
+      # index ON CONFLICT target actually matches, that pgvector accepts the
+      # ::vector cast, and that trg_vehicles_search_vector fires. Unit tests
+      # assert on the SQL string and cannot see any of that.
+      #
+      # The suite skips itself when no database is reachable, so a developer
+      # without Docker gets a green local build; here the service container
+      # opts in explicitly.
+      - name: Start Postgres
+        run: docker compose up -d postgres
+        working-directory: .
+
+      - name: Wait for Postgres
+        run: |
+          for i in $(seq 1 30); do
+            if docker exec vehicle_marketplace_postgres \
+                 pg_isready -U marketplace -d vehicle_marketplace; then exit 0; fi
+            sleep 2
+          done
+          echo "Postgres did not become ready" >&2
+          exit 1
+
+      # seed:vehicles is what creates the DEALER users the integration suite
+      # needs an owner from; there is no separate user seed.
+      - name: Prepare database
+        working-directory: database
+        run: |
+          npm ci
+          npm run migration:run
+          npm run grants
+          npm run seed:dictionaries
+          npm run seed:vehicles
+
+      - name: Run integration tests
+        run: npm run test:integration
+
       - name: Build service
         run: npm run build
 
