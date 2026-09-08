@@ -247,7 +247,12 @@ export class LocalOrchestrator {
       // before this point leaves no partial rejection set behind.
       await this.rejectedRecords.insertMany(jobId, rejections);
 
-      return { chunkId, loaded: loaded.loaded.length, rejections, failed: false };
+      return {
+        chunkId,
+        loaded: loaded.loaded.length,
+        rejections,
+        failed: false,
+      };
     } catch (err) {
       // The isolation boundary. A chunk that throws is reported, not rethrown,
       // so the remaining chunks still run and the job can end PARTIAL.
@@ -332,9 +337,14 @@ export class LocalOrchestrator {
     totalRecords: number,
     outcomes: ChunkOutcome[],
   ): Promise<void> {
-    const loaded = sum(outcomes.map((o) => o.loaded));
-    const rejected = sum(outcomes.map((o) => o.rejections.length));
     const anyFailed = outcomes.some((o) => o.failed);
+
+    // Counted from the database, not from this run's outcomes. A resumed job
+    // loads nothing new — its rows were written by the previous run — and
+    // tallying only what happened here would report 0 loaded and downgrade a
+    // finished job to FAILED on a harmless retry.
+    const loaded = await this.vehicles.countForJob(jobId);
+    const rejected = await this.rejectedRecords.countForJob(jobId);
 
     await this.uploadJobs.updateCounts(jobId, {
       validRecords: loaded,
@@ -385,10 +395,6 @@ const UNAVAILABLE_DICTIONARY: DictionarySnapshot = {
     throw new Error('Dictionary is not available to whole-file stages');
   },
 };
-
-function sum(values: number[]): number {
-  return values.reduce((total, value) => total + value, 0);
-}
 
 function messageOf(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
