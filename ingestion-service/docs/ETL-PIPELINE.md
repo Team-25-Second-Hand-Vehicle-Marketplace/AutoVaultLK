@@ -45,7 +45,7 @@ Three requirements shaped every decision:
 ## 2. Shape
 
 ```
-POST /ingest/upload                                    [Dev B, not built yet]
+POST /ingest/upload                                      [B1, not built yet]
   └─ store file → insert job PENDING → JobQueue.publish → 202 { jobId }
                           │
              LocalOrchestrator.run(jobId)
@@ -259,23 +259,35 @@ falls to Groq, which has context a trigram score does not.
 The LLM fallback for rows the dictionary could not resolve (ADR-004: rules
 first, LLM second).
 
-**Currently a pass-through.** With no `GROQ_API_KEY` the stage logs `SKIPPED`
-and rows pass through untouched — *that is correct behaviour, not a stub*. CI
-has no key, and a dealer upload cannot fail because a third party is down.
+**With no `GROQ_API_KEY` the stage logs `SKIPPED` and rows pass through
+untouched** — *correct behaviour, not a stub*. CI has no key, and a dealer
+upload cannot fail because a third party is down. That path is the one under
+test, which is why it was built first.
 
-Candidate selection is real and worth understanding: rows are selected
-**strictly below** the threshold. A fuzzy hit scores exactly `0.6` and the
-default threshold is `0.6`, so a trigram match the snapshot already vouched for
-— with an ambiguity margin — is not re-litigated by an LLM. Only genuine
-failures are worth the call.
+Rows are selected **strictly below** the threshold. A fuzzy hit scores exactly
+`0.6` and the default threshold is `0.6`, so a trigram match the snapshot
+already vouched for — with an ambiguity margin — is not re-litigated by an LLM.
+Only genuine failures are worth the call.
 
-`metrics.candidates` counts what *would* have been sent, so the value of
-enabling Groq is measurable before anyone pays for it.
+`metrics.candidates` counts how many rows were sent, so the value of enabling
+Groq is measurable.
 
-> **When the live call lands, three rules must not break:** every returned value
-> is checked against the snapshot (an LLM inventing "Toyota Corrolla" would
-> write a pair no facet can match); failure degrades rather than rejects; it
-> never rejects a row.
+Three rules the live call obeys:
+
+1. **Every returned value is re-resolved through the dictionary snapshot.** A
+   prompt supplies the allowed vocabulary but cannot constrain the response, and
+   an invented pair like `Toyota Supra` — a real vehicle, absent from this
+   dictionary — would be a make/model no search facet, filter or lookup could
+   ever match: worse than the unresolved value it replaced.
+2. **A model is accepted only if it resolves under the repaired make**, so one
+   paired with the wrong manufacturer is dropped rather than written against it.
+3. **Failure degrades, never rejects.** Rows keep whatever `parseNormalize`
+   determined and continue — low confidence is not invalidity. A Groq outage
+   costs enrichment, not stock.
+
+Verified against the live API: `Toyota Motor Corporation Japan` and `Merc` both
+repaired to canonical makes, neither reachable by trigram matching, while
+`Lamborghini` was refused by the whitelist.
 
 ### validateRows
 
@@ -520,7 +532,7 @@ directly — `npm run generate:vehicles --` swallows them.
 ### Tests
 
 ```bash
-npm run test:ci            # 26 suites / 375 tests, no database needed
+npm run test:ci            # 34 suites / 531 tests, no database needed
 npm run test:integration   # 25 tests, needs the Postgres above
 ```
 

@@ -1,15 +1,16 @@
-# HANDOVER.md
-# ingestion-service — handover to Dev B 
+# ingestion-service — building B1 and B2
 
+> **Start with `docs/HANDOVER-VIRUSAN.md`.** It covers the whole B1-B6 scope and
+> who owns what. This file is the deeper reference for the two endpoints: the
+> interfaces, the upload flow, and the things that will bite you.
 
-Phase 0 (foundations) and Phase A (the ETL pipeline) are complete. This
-document is what you need to build **B1 (`POST /ingest/upload`)** and
-**B2 (job-status extension)** without reading the rest of the codebase first.
+Phase 0 (foundations), Phase A (the ETL pipeline) and the Step Functions
+migration are complete. This document is what you need to build
+**B1 (`POST /ingest/upload`)** and **B2 (job-status extension)** without reading
+the rest of the codebase first.
 
 **The pipeline is live.** Publishing a job to the queue runs all eight stages
 and writes real rows to `marketplace.vehicles`.
-
-Full plan: `C:\Users\Admin\.claude\plans\analyse-the-full-codebase-composed-corbato.md`
 
 ---
 
@@ -25,7 +26,7 @@ npm --prefix database run seed:vehicles   # creates the DEALER users you log in 
 
 cd ingestion-service
 npm ci
-npm run test:ci                        # 26 suites / 375 tests must pass
+npm run test:ci                        # 34 suites / 531 tests must pass
 npm run test:integration               # 25 tests, needs the database above
 npm run build && node dist/main.js     # listens on 3003
 ```
