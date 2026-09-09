@@ -23,6 +23,16 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    env:
+      DB_HOST: localhost
+      DB_PORT: 5433
+      DB_NAME: vehicle_marketplace
+      DB_OWNER_USER: marketplace
+      DB_OWNER_PASSWORD: marketplace
+      DB_INGESTION_USER: ingestion_service_role
+      DB_INGESTION_PASSWORD: dev_ingestion
+      DATABASE_URL: postgresql://${{ env.DB_OWNER_USER }}:${{ env.DB_OWNER_PASSWORD }}@${{ env.DB_HOST }}:${{ env.DB_PORT }}/${{ env.DB_NAME }}
+      INGESTION_DATABASE_URL: postgresql://${{ env.DB_INGESTION_USER }}:${{ env.DB_INGESTION_PASSWORD }}@${{ env.DB_HOST }}:${{ env.DB_PORT }}/${{ env.DB_NAME }}
     defaults:
       run:
         working-directory: ingestion-service
@@ -79,8 +89,6 @@ jobs:
       # maps the container's 5432 to avoid a native Postgres on the host.
       - name: Prepare database
         working-directory: database
-        env:
-          DATABASE_URL: postgresql://marketplace:marketplace@127.0.0.1:5433/vehicle_marketplace
         run: |
           npm ci
           npm run migration:run
@@ -93,9 +101,6 @@ jobs:
       # its assertions is that the role CANNOT delete from marketplace.vehicles
       # — and cleans up as the owner, which is the only role that can.
       - name: Run integration tests
-        env:
-          INGESTION_DATABASE_URL: postgresql://ingestion_service_role:dev_ingestion@127.0.0.1:5433/vehicle_marketplace
-          DATABASE_URL: postgresql://marketplace:marketplace@127.0.0.1:5433/vehicle_marketplace
         run: npm run test:integration
 
       - name: Build service
