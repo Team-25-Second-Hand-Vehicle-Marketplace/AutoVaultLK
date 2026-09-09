@@ -188,11 +188,22 @@ ADR-002 confines the *entire* platform's cross-schema write exception to one
 class, `MarketplaceVehiclesWriteAdapter`. It is already exported from
 `IngestionModule`, so inject it rather than writing SQL.
 
-For B3 (images) you need `marketplace.vehicle_images`. That writer does not
-exist yet — **ask me and I will add it to that directory.** Two writers breaks
-the architectural claim the whole design rests on, and an integration test
-asserts the role holds no DELETE precisely so the boundary is checked rather
-than assumed.
+For B3 (images) `MarketplaceVehicleImagesWriteAdapter` is **already built and
+exported from `IngestionModule`** — inject it:
+
+```ts
+insertForVehicle(vehicleId, images, primaryIndex = 0): Promise<InsertedImage[]>
+vehicleIdsByRegistration(jobId): Promise<Map<string, string>>
+countForJob(jobId): Promise<number>
+```
+
+It handles the single-primary invariant for you: `primaryIndex` names which
+image is primary and every other row is forced false, so a batch cannot violate
+`idx_vehicle_images_one_primary` however it was assembled upstream.
+
+Two writers breaks the architectural claim the whole design rests on, and an
+integration test asserts the role holds no DELETE precisely so the boundary is
+checked rather than assumed.
 
 **4. One primary image per vehicle, enforced by the database.**
 `idx_vehicle_images_one_primary` is a partial unique index on
@@ -226,18 +237,27 @@ copy of marketplace-service's, enforced by
 
 ## What is NOT built yet
 
-Everything below is yours (B1-B6) unless marked otherwise:
+Everything below is yours. **Nothing here is blocked on me** — the two things
+that used to be ("ask me for the image adapter", "ask me for the CSV header")
+are both built and documented.
 
 | | Status |
 |---|---|
-| `POST /ingest/upload` | **nothing exists** - no controller, dto or service |
-| Job-status extension (stage progress, rejected rows) | endpoint exists, needs extending |
-| Image processing (B3) | not started; needs an image write adapter from me |
-| Aggregate + notify (B4) | not started |
-| Dealer frontend (B5) | not started |
-| `MarketplaceVehicleImagesWriteAdapter` | **mine** - ask when you reach B3 |
-| Live Groq call | **mine** - the stage currently logs `SKIPPED` and passes rows through, which is correct behaviour, not a bug |
-| `src/lambda/*` handlers | deferred to the deployment phase; all Dockerfiles CMD into handlers that do not exist, so no image can cold-start yet |
+| `POST /ingest/upload` (B1) | **nothing exists** - no controller, dto or service |
+| Job-status extension (B2) | endpoint exists, needs stage progress and paginated rejections |
+| Image processing (B3) | not started - **the write adapter is built and exported**, inject it |
+| Aggregate + notify (B4) | AGGREGATE is done (`src/lambda/aggregate-results.ts`); NOTIFY is not |
+| Dealer frontend (B5) | not started - `TEMPLATE_HEADER` in `csv-contract.ts` is the CSV header |
+| Tests (B6) | `test/e2e/` is empty |
+| Step Functions S4-S8 | state machine, drift guard, RDS Proxy, packaging, Terraform |
+
+**Already built, do not rebuild:** the whole ETL pipeline, both cross-schema
+write adapters, the S3 and SQS drivers, 9 Lambda handlers, and the live Groq
+call. The Groq stage logging `SKIPPED` with no API key is correct behaviour,
+not a gap — CI has no key and a dealer upload cannot fail because a third party
+is unreachable.
+
+For the full brief on S4-S8 and B3-B6, see **`docs/HANDOVER-VIRUSAN.md`**.
 
 ---
 
