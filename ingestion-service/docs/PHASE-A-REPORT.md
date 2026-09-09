@@ -1,3 +1,4 @@
+# Phase-A-Report.md
 # Ingestion Service — Phase 0 + Phase A Report
 
 *State as of 6 September 2026, branch `feat/ingestion-pipeline`.*
