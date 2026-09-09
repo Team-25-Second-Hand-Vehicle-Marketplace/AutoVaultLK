@@ -99,7 +99,28 @@ async function connect(): Promise<DataSource> {
 
   const dataSource = new DataSource({
     ...base,
-    extra: { max: 1 },
+    extra: {
+      max: 1,
+
+      // Lambda freezes the process between invocations rather than tearing it
+      // down, so a socket can sit idle for minutes and still be reused. Long
+      // enough that a warm container does not reconnect on every request;
+      // short enough that an abandoned container releases its slot rather than
+      // holding one until the platform reaps it.
+      idleTimeoutMillis: 120_000,
+
+      // Fail fast rather than burning the invocation's whole timeout waiting.
+      // Under RDS Proxy a borrow that takes this long means the proxy's own
+      // pool is exhausted, and a retry with backoff is a better answer than a
+      // Lambda that times out holding a pending connection.
+      connectionTimeoutMillis: 10_000,
+
+      // A query that hangs holds the container's only connection for the whole
+      // invocation and, under RDS Proxy, a backend connection with it. Bounded
+      // below the shortest Lambda timeout so the query dies before the
+      // function does, leaving a clean connection rather than an orphaned one.
+      statement_timeout: 55_000,
+    },
   } as never);
 
   await dataSource.initialize();

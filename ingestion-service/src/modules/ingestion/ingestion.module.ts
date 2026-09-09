@@ -7,6 +7,7 @@ import { UploadJob } from '../../infrastructure/database/entities/upload-job.ent
 import { VehicleDictionaryView } from '../../infrastructure/database/entities/vehicle-dictionary.view-entity';
 import { EtlWorkerService } from '../../workers/etl-worker/etl-worker.service';
 import { LocalOrchestrator } from '../../workers/etl-worker/local-orchestrator';
+import { MarketplaceVehicleImagesWriteAdapter } from '../../workers/etl-worker/pipeline/persistence/marketplace-vehicle-images-write.adapter';
 import { MarketplaceVehiclesWriteAdapter } from '../../workers/etl-worker/pipeline/persistence/marketplace-vehicles-write.adapter';
 import { DealerProfileRepository } from './repositories/dealer-profile.repository';
 import { DictionaryRepository } from './repositories/dictionary.repository';
@@ -39,6 +40,9 @@ import { UploadJobRepository } from './repositories/upload-job.repository';
     // pipeline module because it needs the DataSource; the orchestrator hands
     // it to the Load stage. Do not add a second writer — see its header.
     MarketplaceVehiclesWriteAdapter,
+    // The image half of the same ADR-002 exception. B3 injects this rather
+    // than writing marketplace.vehicle_images directly.
+    MarketplaceVehicleImagesWriteAdapter,
     // The ETL itself: EtlWorkerService binds the queue to the orchestrator at
     // boot (ADR-007). Under Step Functions the orchestrator is replaced by ASL
     // and the stages are called by Lambda wrappers instead.
@@ -52,6 +56,7 @@ import { UploadJobRepository } from './repositories/upload-job.repository';
     DealerProfileRepository,
     DictionaryRepository,
     MarketplaceVehiclesWriteAdapter,
+    MarketplaceVehicleImagesWriteAdapter,
   ],
 })
 export class IngestionModule {}

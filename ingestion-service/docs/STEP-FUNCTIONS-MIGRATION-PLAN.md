@@ -1,6 +1,19 @@
 # Step Functions Migration — Plan
 
-**Status: proposed, not started.** Approve before execution.
+**Status: S1–S7 complete. S8 (Terraform) remains.**
+
+| Step | State |
+|---|---|
+| S1 envelope + `asChunkStage` | ✅ done |
+| S2 S3 + SQS drivers | ✅ done |
+| S3 Lambda handlers | ✅ done — 10 handlers in `src/lambda/` |
+| S4 ASL state machine | ✅ done — `src/infrastructure/step-functions/etl-state-machine.asl.json` |
+| S5 drift guard | ✅ done — `test/unit/step-functions/state-machine.spec.ts` |
+| S6 pooling | ✅ code side done (`max: 1`, timeouts); **RDS Proxy is infrastructure, lands with S8** |
+| S7 packaging | ✅ done — `function-config.ts` + the `docker/` Dockerfiles |
+| S8 Terraform | ⬜ **not started** |
+
+34 suites / 531 unit tests, 25 integration, build clean.
 
 Moves the ETL from `LocalOrchestrator` to Step Functions with one Lambda per
 stage, keeping `LocalOrchestrator` as the local and test path.
