@@ -67,7 +67,7 @@ const harness = (o: { csv?: string; chunkSize?: number } = {}) => {
 
   let rejectedCount = 0;
   const rejectedRecords = {
-    insertMany: jest.fn(async (_j: string, rows: unknown[]) => {
+    insertMany: jest.fn(async (_j: string, _stage: string, rows: unknown[]) => {
       rejectedCount += rows.length;
     }),
     countForJob: jest.fn(async () => rejectedCount),
@@ -331,7 +331,7 @@ describe('LocalOrchestrator', () => {
       await h.orchestrator.run('job-1');
 
       expect(statuses(h)).toContain('FAILED');
-      expect(h.rejectedRecords.insertMany).toHaveBeenCalledWith('job-1', [
+      expect(h.rejectedRecords.insertMany).toHaveBeenCalledWith('job-1', 'VALIDATE_FILE', [
         expect.objectContaining({ rowNumber: 0, reason: expect.stringMatching(/year/) }),
       ]);
     });
@@ -354,13 +354,22 @@ describe('LocalOrchestrator', () => {
     });
   });
 
-  it('writes rejections once per chunk', async () => {
+  it('attributes each rejection to the stage that produced it', async () => {
+    // Under Step Functions each stage is its own Lambda, so rejections cannot
+    // be accumulated across stages and written once — that accumulator does not
+    // exist. Each stage persists its own, which is also what lets an ASL retry
+    // replace exactly its own set rather than duplicating it.
     const h = harness({ csv: [HEADER, ROW(1), 'CAB-9,Toyota,Vitz,1850,3500000,45000'].join('\n') });
 
     await h.orchestrator.run('job-1');
 
-    expect(h.rejectedRecords.insertMany).toHaveBeenCalledTimes(1);
-    expect(h.rejectedRecords.insertMany.mock.calls[0][1]).toHaveLength(1);
+    const withRows = h.rejectedRecords.insertMany.mock.calls.filter(
+      (c) => (c[2] as unknown[]).length > 0,
+    );
+
+    expect(withRows).toHaveLength(1);
+    expect(withRows[0][1]).toBe('VALIDATE_ROWS');
+    expect(withRows[0][2]).toHaveLength(1);
   });
 
   it('passes the dealer id from the job to the writer', async () => {
