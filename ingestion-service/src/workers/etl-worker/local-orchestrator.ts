@@ -217,7 +217,14 @@ export class LocalOrchestrator {
 
       const groq = await this.runStage(log, 'GROQ_NORMALIZE', chunkId, async () => {
         const result = await groqNormalizeStage.run(ctx, parsed.rows);
-        return { result, metrics: result.metrics, status: result.outcome };
+        // DEGRADED carries why: without it the stage log shows a degraded run
+        // with no way to tell a timeout from a bad key.
+        return {
+          result,
+          metrics: result.metrics,
+          status: result.outcome,
+          errorMessage: result.error,
+        };
       });
 
       const validated = await this.runStage(log, 'VALIDATE_ROWS', chunkId, async () => {
@@ -312,12 +319,13 @@ export class LocalOrchestrator {
       result: T;
       metrics?: Record<string, unknown>;
       status?: 'SUCCEEDED' | 'SKIPPED' | 'DEGRADED';
+      errorMessage?: string;
     }>,
   ): Promise<T> {
     const logId = await log.start(stage, chunkId);
     try {
-      const { result, metrics, status } = await body();
-      await log.finish(logId, status ?? 'SUCCEEDED', { metrics });
+      const { result, metrics, status, errorMessage } = await body();
+      await log.finish(logId, status ?? 'SUCCEEDED', { metrics, errorMessage });
       return result;
     } catch (err) {
       await log.finish(logId, 'FAILED', { errorMessage: messageOf(err) });
@@ -392,6 +400,9 @@ const UNAVAILABLE_DICTIONARY: DictionarySnapshot = {
     throw new Error('Dictionary is not available to whole-file stages');
   },
   resolve: () => {
+    throw new Error('Dictionary is not available to whole-file stages');
+  },
+  vocabulary: () => {
     throw new Error('Dictionary is not available to whole-file stages');
   },
 };

@@ -203,4 +203,38 @@ describe('InMemoryDictionarySnapshot', () => {
       expect(CONFIDENCE_ALIAS).toBeGreaterThan(CONFIDENCE_FUZZY);
     });
   });
+
+  describe('vocabulary', () => {
+    // Feeds the Groq stage's prompt and its whitelist: the model is offered
+    // this list, and every value it returns is checked back against the
+    // snapshot before being written.
+    const snapshot = new InMemoryDictionarySnapshot([TOYOTA, HONDA, COROLLA, CIVIC]);
+
+    it('lists every canonical make', () => {
+      expect(snapshot.vocabulary().makes.sort()).toEqual(['Honda', 'Toyota']);
+    });
+
+    it('groups models under their make', () => {
+      const { modelsByMake } = snapshot.vocabulary();
+
+      expect(modelsByMake.get('Toyota')).toEqual(['Corolla']);
+      expect(modelsByMake.get('Honda')).toEqual(['Civic']);
+    });
+
+    it('gives a make with no models an empty list, not undefined', () => {
+      const bare = new InMemoryDictionarySnapshot([TOYOTA]);
+
+      expect(bare.vocabulary().modelsByMake.get('Toyota')).toEqual([]);
+    });
+
+    it('omits a model whose parent make is absent', () => {
+      // resolveModel scopes by make id, so such a model could never be
+      // accepted back even if the LLM returned it. Offering it would invite a
+      // repair the whitelist then silently discards.
+      const orphaned = new InMemoryDictionarySnapshot([TOYOTA, CIVIC]);
+      const { modelsByMake } = orphaned.vocabulary();
+
+      expect([...modelsByMake.values()].flat()).not.toContain('Civic');
+    });
+  });
 });

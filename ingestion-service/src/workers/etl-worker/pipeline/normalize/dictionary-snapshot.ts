@@ -1,6 +1,7 @@
 import type {
   DictionaryHit,
   DictionarySnapshot,
+  DictionaryVocabulary,
 } from '../types';
 import { compact, trigramSimilarity } from './trigram';
 
@@ -96,6 +97,37 @@ export class InMemoryDictionarySnapshot implements DictionarySnapshot {
 
   resolve(type: string, raw: string): DictionaryHit | null {
     return this.lookup(raw, (e) => e.row.dictionaryType === type);
+  }
+
+  /**
+   * The canonical vocabulary, for the Groq stage's whitelist.
+   *
+   * Built on demand rather than cached: it is used once per chunk that has
+   * low-confidence rows, not per row, and a cached copy would be one more
+   * thing to invalidate if the snapshot ever became refreshable.
+   */
+  vocabulary(): DictionaryVocabulary {
+    const makesById = new Map<string, string>();
+    for (const entry of this.all) {
+      if (entry.row.dictionaryType === 'MAKE') {
+        makesById.set(entry.row.id, entry.row.canonicalValue);
+      }
+    }
+
+    const modelsByMake = new Map<string, string[]>();
+    for (const make of makesById.values()) modelsByMake.set(make, []);
+
+    for (const entry of this.all) {
+      if (entry.row.dictionaryType !== 'MODEL' || !entry.row.parentId) continue;
+
+      const make = makesById.get(entry.row.parentId);
+      // A model whose parent is absent from the snapshot cannot be offered:
+      // the stage scopes resolveModel by make id, so it could never be
+      // accepted back even if the model returned it.
+      if (make) modelsByMake.get(make)?.push(entry.row.canonicalValue);
+    }
+
+    return { makes: [...makesById.values()], modelsByMake };
   }
 
   get size(): number {

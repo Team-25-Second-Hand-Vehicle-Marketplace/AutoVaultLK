@@ -17,13 +17,20 @@ npm --prefix database run migration:run
 npm --prefix database run grants       # REQUIRED — see "Dealer gate" below
 npm --prefix database run seed:dictionaries
 
+npm --prefix database run seed:vehicles   # creates the DEALER users you log in as
+
 cd ingestion-service
 npm ci
-npm run test:ci                        # 14 suites / 135 tests must pass
+npm run test:ci                        # 26 suites / 375 tests must pass
+npm run test:integration               # 25 tests, needs the database above
 npm run build && node dist/main.js     # listens on 3003
 ```
 
 Sanity check: `GET http://localhost:3003/health` → `{"status":"ok",...}`
+
+`test:integration` is separate from `test:ci` on purpose — it needs a live
+Postgres, and skips itself when none is reachable, so `test:ci` stays green
+without Docker.
 
 ---
 
@@ -38,6 +45,25 @@ Sanity check: `GET http://localhost:3003/health` → `{"status":"ok",...}`
 | Repositories (jobs, rejections, stage logs, dealer profile) | `src/modules/ingestion/repositories/` |
 | ETL stage contract + row types | `src/workers/etl-worker/pipeline/types.ts` |
 | Entities (7, incl. read-only views) | `src/infrastructure/database/entities/` |
+| **The whole ETL pipeline** — 8 stages, orchestrator, queue handler | `src/workers/etl-worker/` |
+| **The dealer CSV contract** — required columns, header aliases, template | `src/workers/etl-worker/pipeline/parse/csv-contract.ts` |
+
+### The CSV header for your B5 template
+
+Import it, don't retype it — `TEMPLATE_HEADER` in `csv-contract.ts`:
+
+```
+registration_number, make, model, year, price, mileage,
+fuel_type, transmission, body_type
+```
+
+Required: `make, model, year, price, mileage`. Everything else is optional.
+`registration_number` is deliberately **not** required — unregistered imports
+are legitimate stock — but it is what B3 matches images on, so encourage it.
+
+The parser also accepts ~35 header aliases (`Manufacturer`→`make`,
+`YOM`→`year`, `Odometer`→`mileage`), so a dealer's own export usually works
+without editing.
 
 ---
 
@@ -117,11 +143,25 @@ POST /ingest/upload
 
 ## Five things that will bite you if you don't know them
 
-**1. The pipeline does not exist yet.** A placeholder handler
-(`src/modules/ingestion/queue-bootstrap.service.ts`) marks every job `FAILED`
-right after upload and logs a warning at boot. That is expected. Your endpoint
-returning `202` and the job then showing `FAILED` means **your code worked.**
-The placeholder is deleted when the orchestrator lands (§A8).
+**1. The pipeline is live — your upload really will load vehicles.**
+`JobQueue.publish({ jobId })` triggers `LocalOrchestrator`, which runs all eight
+stages and writes `marketplace.vehicles`. A successful upload ends `COMPLETED`
+or `PARTIAL`, not `FAILED`.
+
+Two consequences for you:
+
+- **`PARTIAL` is a success.** It means some rows were rejected with reasons —
+  the dealer's file had bad rows, not your endpoint. `FAILED` means nothing
+  loaded at all, usually a malformed file (no `year` column, not UTF-8).
+- Test uploads write real rows. To see what the pipeline does with a file
+  before wiring your endpoint:
+  ```bash
+  npm run build
+  node dist/tools/run-pipeline.js test/fixtures/e2e-mixed.csv
+  ```
+  That tool does exactly what B1 must do — store the file, insert the job,
+  run the pipeline — then prints the job row, the stage logs and the rejections.
+  It is the reference for your handler.
 
 **2. Dealer gate needs a grant that may not be applied in your database.**
 `GRANT SELECT ON auth.dealer_profiles TO ingestion_service_role` was added to
@@ -133,9 +173,13 @@ SELECT has_table_privilege('ingestion_service_role','auth.dealer_profiles','SELE
 
 **3. `pipeline/persistence/` is mine — do not add a second writer.**
 ADR-002 confines the *entire* platform's cross-schema write exception to one
-adapter class. For B3 (images) you need to write `marketplace.vehicle_images`;
-**ask me for the method signature**, don't add a repository. Two writers breaks
-the architectural claim the whole design rests on.
+class, `MarketplaceVehiclesWriteAdapter`. It is already exported from
+`IngestionModule`, so inject it rather than writing SQL.
+
+For B3 (images) you need `marketplace.vehicle_images`. **Ask me for the method
+signature** — I will add it to that adapter's directory. Two writers breaks the
+architectural claim the whole design rests on, and an integration test asserts
+the role holds no DELETE precisely so the boundary is checked, not assumed.
 
 **4. One primary image per vehicle, enforced by the database.**
 `idx_vehicle_images_one_primary` is a partial unique index on
@@ -178,3 +222,6 @@ copy of marketplace-service's, enforced by
 - [ ] A dealer cannot read another dealer's job (**404, not 403**)
 - [ ] OpenAPI stubs for both routes filled in (`api-gateway/openapi/public-api.yaml`)
 - [ ] `npm run test:ci` and `npm run test:e2e` green
+- [ ] An upload of `test/fixtures/e2e-mixed.csv` through your endpoint ends
+      `PARTIAL` with rows in `marketplace.vehicles` — proving the whole path
+      works, not just the 202

@@ -61,7 +61,24 @@ export interface DictionarySnapshot {
   resolveModel(raw: string, makeId: string | null): DictionaryHit | null;
   /** BODY_TYPE / COLOR and any other flat dictionary type. */
   resolve(type: string, raw: string): DictionaryHit | null;
+
+  /**
+   * Every canonical make, and the models under each.
+   *
+   * Exists for the Groq stage's whitelist: the model is given the allowed
+   * vocabulary in its prompt and every value it returns is checked against
+   * this before being written. An LLM inventing "Toyota Corrolla" would
+   * otherwise produce a make/model pair no search facet, filter or dictionary
+   * lookup can ever match — worse than the unresolved value it replaced.
+   */
+  vocabulary(): DictionaryVocabulary;
 }
+
+export type DictionaryVocabulary = {
+  makes: string[];
+  /** Canonical make → its canonical model names. */
+  modelsByMake: Map<string, string[]>;
+};
 
 export type DictionaryHit = {
   id: string;
