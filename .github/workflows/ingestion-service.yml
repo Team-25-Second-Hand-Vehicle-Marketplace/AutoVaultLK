@@ -71,8 +71,16 @@ jobs:
 
       # seed:vehicles is what creates the DEALER users the integration suite
       # needs an owner from; there is no separate user seed.
+      #
+      # DATABASE_URL is set explicitly because .env is gitignored and does not
+      # exist on a runner: data-source.ts and every seed read it, so without
+      # this the migrations fail and the integration step then skips silently
+      # because nothing is reachable. Port 5433 matches docker-compose, which
+      # maps the container's 5432 to avoid a native Postgres on the host.
       - name: Prepare database
         working-directory: database
+        env:
+          DATABASE_URL: postgresql://marketplace:marketplace@127.0.0.1:5433/vehicle_marketplace
         run: |
           npm ci
           npm run migration:run
@@ -80,14 +88,23 @@ jobs:
           npm run seed:dictionaries
           npm run seed:vehicles
 
+      # Two URLs, deliberately different roles. The suite connects as
+      # ingestion_service_role so it exercises the real ADR-002 grants — one of
+      # its assertions is that the role CANNOT delete from marketplace.vehicles
+      # — and cleans up as the owner, which is the only role that can.
       - name: Run integration tests
+        env:
+          INGESTION_DATABASE_URL: postgresql://ingestion_service_role:dev_ingestion@127.0.0.1:5433/vehicle_marketplace
+          DATABASE_URL: postgresql://marketplace:marketplace@127.0.0.1:5433/vehicle_marketplace
         run: npm run test:integration
 
       - name: Build service
         run: npm run build
 
-      # NOTE: the image CMDs point at dist/lambda/* handlers that do not exist
-      # yet (src/lambda/* is still empty), so the image builds but cannot cold
-      # start. That is expected until the deployment phase.
+      # The default Dockerfile targets the ingest API, whose handler is Dev B's
+      # (B1) and does not exist yet — so this image builds but cannot cold
+      # start. Every ETL stage handler does exist; those are packaged
+      # separately per docker/etl-zip-lambdas.Dockerfile and
+      # docker/embed.Dockerfile.
       - name: Build Docker image
         run: docker build --tag ingestion-service:ci .
