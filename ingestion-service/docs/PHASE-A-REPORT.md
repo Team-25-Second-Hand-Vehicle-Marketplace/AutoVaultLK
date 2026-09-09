@@ -1,14 +1,16 @@
-# Phase-A-Report.md
-# Ingestion Service — Phase 0 + Phase A Report
+# Ingestion Service — build report
 
-*State as of 6 September 2026, branch `feat/ingestion-pipeline`.*
+*Sections 1–4 record Phase 0 and Phase A as of 6 September 2026. Section 5 is
+kept current; it was last updated on 10 September 2026 with the Step Functions
+migration.*
 
-**Status:** the ETL pipeline runs end to end against a real database. 40-row
-mixed fixture → 34 loaded, 6 rejected, job `PARTIAL`, every invariant clean.
-Re-running the same job changes nothing.
+**Status:** the ETL pipeline runs end to end against a real database and is
+migrated to Step Functions with one Lambda per stage. A 40-row mixed fixture
+gives 34 loaded, 6 rejected, job `PARTIAL`, every invariant clean. Re-running
+the same job changes nothing.
 
-**Scale:** 2,778 lines of pipeline source, 3,514 lines of test, 26 suites,
-375 tests, all passing. Typecheck and build clean.
+**Scale:** 6,830 lines of source, 5,829 lines of test, 34 suites, 531 unit
+tests plus 25 integration tests. Typecheck and build clean.
 
 ---
 
@@ -66,7 +68,7 @@ every level.
 ### The flow
 
 ```
-POST /ingest/upload  (Dev B, not built yet)
+POST /ingest/upload  (B1, not built yet)
   └─ store file → insert job PENDING → JobQueue.publish → 202 { jobId }
                           │
               LocalOrchestrator.run(jobId)
@@ -180,7 +182,7 @@ platform disagree about what a dealer meant.
 ### A2 — file intake
 
 **`csv-contract.ts`** is the single definition of the dealer CSV. `validateFile`
-checks headers against it, `splitChunks` parses with it, and Dev B's
+checks headers against it, `splitChunks` parses with it, and B5's
 downloadable template is generated from it. Three consumers, one list.
 
 Required: `make, model, year, price, mileage`. **`registration_number` is
@@ -498,45 +500,65 @@ Fixed by counting from the database (`countForJob`) rather than from the run.
 
 ## 5. Where things stand
 
-### Built (12 commits on `feat/ingestion-pipeline`)
+*Updated 10 September 2026.*
+
+### Built
 
 ```
 Phase 0   hygiene · shared module + drift guard · ports · repositories · CI
 A1        dictionary seed fixes · in-memory snapshot
 A2        csv-contract · validateFile · splitChunks
 A3        coerce · enum-vocabulary · parseNormalize
-A4/A5     validateRows gate · keyless Groq fallback
+A4        Groq fallback, live HTTP call and whitelist
+A5        validateRows gate
 A6        enrich · embed  (FR-22.1 parity)
 A7        MarketplaceVehiclesWriteAdapter · load stage
 A8        LocalOrchestrator · EtlWorkerService  (placeholder deleted)
+A9        integration tests against live Postgres
+
+          search-text enrichment: price, mileage and age bands, equipment terms
+          MarketplaceVehicleImagesWriteAdapter (the ADR-002 pair completed)
+
+S1        chunk envelopes — stages exchange S3 pointers, not rows
+S2        S3ObjectStore · SqsJobQueue
+S3        12 Lambda handlers · per-container bootstrap
+S4        the ASL state machine
+S5        drift guard — the ASL is asserted against pipeline/graph.ts
+S6        connection pooling for Lambda (max: 1, timeouts)
+S7        per-function packaging: memory, timeouts, zip vs container image
 ```
 
-**26 suites, 375 tests, typecheck and build clean.**
+**34 suites, 531 unit tests, 25 integration tests. Typecheck and build clean.**
 
-### Remaining — Dev A
+### Remaining — mine
 
-- **A9** — integration tests on Docker Postgres. Every persistence test so far
-  asserts on the *statement*; A9 proves Postgres accepts it.
-- **A4 live** — the real Groq HTTP call, deferred until A5–A7 were green.
-- **Step 7 (joint)** — full run through the gateway once B1 lands, plus the
-  model-parity SQL check: create a listing manually, compare `search_text` and
-  cosine distance against the bulk row. The unit test proves the *text* matches;
-  that check proves the *vectors* do.
+- **S8 — Terraform.** 11 Lambda functions, IAM per function, the state machine
+  resource, an S3 bucket with a 7-day lifecycle on `staging/`, the SQS queue,
+  **RDS Proxy** (the infrastructure half of S6), and the EventBridge Pipe that
+  turns a queue message into an execution.
+  `src/infrastructure/step-functions/function-config.ts` already declares
+  memory, timeout and environment per function for it to consume.
 
-### Remaining — Dev B
+- **The model-parity SQL check.** Blocked on B1: create a listing manually,
+  then compare `search_text` and cosine distance against the equivalent bulk
+  row. The unit test proves the *text* matches; only this proves the *vectors*
+  do.
 
-B1 upload API · B2 job-status extension · B3 images · B4 aggregate + notify ·
-B5 frontend · B6 e2e tests.
+### Remaining — Virusan
 
-**Unblocked now:** `MarketplaceVehiclesWriteAdapter` is exported from
-`IngestionModule`, so B3 needs only the image-write method signature.
-`TEMPLATE_HEADER` in `csv-contract.ts` is the answer to B5's template question.
+B1 upload API · B2 job-status extension · B3 images · B4 notify ·
+B5 dealer frontend · B6 e2e tests.
+
+Briefed in `docs/HANDOVER-VIRUSAN.md`. **Nothing there is blocked on me** — the
+image write adapter and the CSV header, the two things that would have required
+a hand-off, are both built and documented.
 
 ### Deferred by decision
 
-Terraform, Step Functions ASL, ECR, RDS Proxy, the `@aws-sdk` drivers, and the
-13 empty `src/lambda/*` directories. The ports make these additive, not a
-rewrite.
+ECR pushes and the deployment pipeline itself, until S8 lands. The ports made
+the AWS drivers additive rather than a rewrite, and the same holds here: the
+state machine and the handlers exist, only the infrastructure that hosts them
+does not.
 
 ---
 
