@@ -39,6 +39,79 @@ const INT_SPECS: Record<string, { column: string; min: number; max: number }> = 
 
 const DRIVE_TYPES = ['FWD', 'RWD', 'AWD', '4WD'] as const;
 
+/**
+ * Boolean spec keys, and the header spellings dealers use for them.
+ *
+ * Every target key must exist in marketplace-service's KNOWN_SPEC_KEYS or the
+ * value is unqueryable: filter-query.builder.ts rejects any key absent from
+ * that table, so an unknown key is weight on every row that still looks like
+ * data to anyone reading it.
+ *
+ * The aliases matter as much as the keys. A dealer writes "full option",
+ * "fulloption" or "full_option" for the same thing, and the header has already
+ * been folded to snake_case by csv-contract.ts before it reaches here.
+ */
+const BOOL_SPECS: Record<string, string> = {
+  sunroof: 'sunroof',
+  moonroof: 'sunroof',
+  full_option: 'full_option',
+  fulloption: 'full_option',
+  fully_loaded: 'full_option',
+  alloy_wheels: 'alloy_wheels',
+  alloys: 'alloy_wheels',
+  alloy: 'alloy_wheels',
+  reverse_camera: 'reverse_camera',
+  reversing_camera: 'reverse_camera',
+  backup_camera: 'reverse_camera',
+  rear_camera: 'reverse_camera',
+  leather_seats: 'leather_seats',
+  leather: 'leather_seats',
+  power_steering: 'power_steering',
+  ps: 'power_steering',
+  air_conditioning: 'air_conditioning',
+  ac: 'air_conditioning',
+  aircon: 'air_conditioning',
+  air_con: 'air_conditioning',
+};
+
+/**
+ * Columns the pipeline consumes as vehicle fields rather than specs. Listed so
+ * carryUnmappedColumns can tell "already used" from "extra".
+ */
+const CONSUMED_COLUMNS = new Set([
+  'make',
+  'model',
+  'year',
+  'price',
+  'mileage',
+  'registration_number',
+  'registration_year',
+  'fuel_type',
+  'transmission',
+  'body_type',
+  'condition',
+  'vehicle_type',
+  'engine_capacity_cc',
+  'color',
+  'owners_count',
+  'location_city',
+  'location_district',
+  'chassis_number',
+  'description',
+  'is_negotiable',
+  'drive_type',
+  ...Object.keys(INT_SPECS),
+  ...Object.keys(BOOL_SPECS),
+]);
+
+/**
+ * Cap on what unmapped columns may add to a description. A dealer export can
+ * carry dozens of internal columns; appending all of them would bury whatever
+ * the dealer actually wrote and dominate the embedding's input.
+ */
+const MAX_CARRIED_COLUMNS = 8;
+const MAX_CARRIED_VALUE_LENGTH = 60;
+
 /** marketplace.vehicles.condition defaults to USED; stated here rather than relied on. */
 export const DEFAULT_CONDITION = 'USED';
 
@@ -54,10 +127,16 @@ export const DEFAULT_CONDITION = 'USED';
  * text embeds to a different vector. That is FR-22.1 drift arriving through
  * the side door, so body type is resolved here and not left to Load.
  *
- * Unknown spec keys are dropped, not passed through. `specs` is queried by
- * search facets against KNOWN_SPEC_KEYS; an arbitrary dealer column stored
- * there is unqueryable weight on every row, and looks like data to anyone
- * reading the table.
+ * Unknown spec keys are never written to `specs`. That column is queried by
+ * search facets against KNOWN_SPEC_KEYS, so an arbitrary dealer column stored
+ * there is unqueryable weight on every row that still looks like data to
+ * anyone reading the table.
+ *
+ * They are not discarded either. A dealer writing "Warranty: 2 years" or
+ * "Service records: full" is describing the vehicle, and that is worth keeping
+ * — so unmapped columns are appended to `description`, which is human-readable
+ * on the listing and reaches the embedding through buildSearchText. Text is
+ * the right home for information we cannot filter on.
  */
 export const enrichStage: StageRunner<ValidatedRow[], StageResult<EnrichedRow>> = {
   stage: 'ENRICH',
@@ -80,6 +159,9 @@ function enrichRow(ctx: StageContext, row: ValidatedRow): EnrichedRow {
 
   const specs = buildSpecs(ctx, row);
   if (Object.keys(specs).length > 0) normalized.specs = specs;
+
+  const description = carryUnmappedColumns(row, normalized.description ?? null);
+  if (description) normalized.description = description;
 
   return { ...row, normalized };
 }
@@ -104,10 +186,61 @@ function buildSpecs(ctx: StageContext, row: ValidatedRow): Record<string, unknow
     specs.drive_type = driveType;
   }
 
-  const sunroof = coerceBooleanSpec(row.raw['sunroof']);
-  if (sunroof !== null) specs.sunroof = sunroof;
+  for (const [column, key] of Object.entries(BOOL_SPECS)) {
+    const value = coerceBooleanSpec(row.raw[column]);
+    // First column wins: "alloys" and "alloy_wheels" in the same file map to
+    // one key, and a later blank must not overwrite an earlier true.
+    if (value !== null && !(key in specs)) specs[key] = value;
+  }
 
   return specs;
+}
+
+/**
+ * Appends columns the pipeline has no field for to the description.
+ *
+ * A dealer's export carries whatever their own system tracks. Most of it is
+ * noise, but "Warranty: 2 years" or "Extras: body kit, spoiler" is real
+ * information a buyer would search for, and dropping it silently loses the
+ * only place it existed.
+ *
+ * Rendered as "Key: value" so the text reads naturally in a listing and gives
+ * the embedding a term to latch onto. Capped, because a dealer export with
+ * forty internal columns would otherwise bury whatever they actually wrote.
+ */
+function carryUnmappedColumns(row: ValidatedRow, description: string | null): string | null {
+  const extras: string[] = [];
+
+  for (const [column, raw] of Object.entries(row.raw)) {
+    if (CONSUMED_COLUMNS.has(column)) continue;
+    if (extras.length >= MAX_CARRIED_COLUMNS) break;
+
+    const value = coerceText(raw);
+    if (!value) continue;
+
+    // A column already quoted verbatim in the dealer's own description would
+    // read as a duplicate.
+    if (description && description.toLowerCase().includes(value.toLowerCase())) continue;
+
+    extras.push(`${humanize(column)}: ${truncate(value)}`);
+  }
+
+  if (extras.length === 0) return description;
+
+  const suffix = `${extras.join('. ')}.`;
+  return description ? `${description} ${suffix}` : suffix;
+}
+
+/** `service_records` -> `Service records`. */
+function humanize(column: string): string {
+  const words = column.replace(/_/g, ' ').trim();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+function truncate(value: string): string {
+  return value.length > MAX_CARRIED_VALUE_LENGTH
+    ? `${value.slice(0, MAX_CARRIED_VALUE_LENGTH - 1)}…`
+    : value;
 }
 
 /**

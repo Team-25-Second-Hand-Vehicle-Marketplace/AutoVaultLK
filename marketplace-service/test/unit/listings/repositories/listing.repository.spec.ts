@@ -1,5 +1,6 @@
 import { ListingRepository } from '../../../../src/modules/listings/repositories/listing.repository';
 import type { Vehicle } from '../../../../src/infrastructure/database/entities/vehicle.entity';
+import { ManualListingStatusDto } from '../../../../src/modules/listings/dto/create-listing.dto';
 
 describe('ListingRepository', () => {
   const vehicleRepo = {
@@ -154,14 +155,37 @@ describe('ListingRepository', () => {
     });
 
     it('does not touch searchText/embedding when only non-searchable fields change', async () => {
-      const existing = vehicle({ price: 5_000_000, searchText: 'Toyota Aqua', embedding: '[1]' });
+      const existing = vehicle({ searchText: 'Toyota Aqua', embedding: '[1]' });
       vehicleRepo.findOne.mockResolvedValue(existing);
       vehicleRepo.save.mockImplementation((v) => Promise.resolve(v));
 
-      const result = await repository.update('v-1', { price: 6_000_000 });
+      const result = await repository.update('v-1', { status: ManualListingStatusDto.LIVE });
 
       expect(searchIndexService.build).not.toHaveBeenCalled();
       expect(result).toMatchObject({ searchText: 'Toyota Aqua', embedding: '[1]' });
+    });
+
+    it('recomputes searchText/embedding when the price changes', async () => {
+      // price feeds a band phrase in buildSearchText: dropping 6M to 4M moves
+      // the listing from "upper mid range" to "mid range". Without a recompute
+      // the vector would still claim the old band.
+      const existing = vehicle({ price: 6_000_000, searchText: 'Toyota Aqua', embedding: '[1]' });
+      vehicleRepo.findOne.mockResolvedValue(existing);
+      vehicleRepo.save.mockImplementation((v) => Promise.resolve(v));
+
+      await repository.update('v-1', { price: 4_000_000 });
+
+      expect(searchIndexService.build).toHaveBeenCalled();
+    });
+
+    it('recomputes searchText/embedding when the mileage changes', async () => {
+      const existing = vehicle({ mileage: 15_000, searchText: 'Toyota Aqua', embedding: '[1]' });
+      vehicleRepo.findOne.mockResolvedValue(existing);
+      vehicleRepo.save.mockImplementation((v) => Promise.resolve(v));
+
+      await repository.update('v-1', { mileage: 90_000 });
+
+      expect(searchIndexService.build).toHaveBeenCalled();
     });
   });
 

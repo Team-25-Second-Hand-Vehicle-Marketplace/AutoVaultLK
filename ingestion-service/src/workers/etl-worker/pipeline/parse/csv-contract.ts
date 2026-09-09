@@ -23,10 +23,12 @@
 export const REQUIRED_COLUMNS = ['make', 'model', 'year', 'price', 'mileage'] as const;
 
 /**
- * Every column the pipeline reads. Anything outside this set is preserved in
- * rejected_records.raw_data for the dealer to inspect but is otherwise ignored
- * — an unknown column is not an error, because dealers export from their own
- * DMS and routinely carry extra fields we have no use for.
+ * Every column the pipeline reads as a field or a spec.
+ *
+ * A column outside this set is not an error — dealers export from their own
+ * DMS and routinely carry fields we have no schema for. Those are appended to
+ * the listing's description by the enrich stage rather than dropped, so they
+ * stay readable and searchable without adding an unqueryable key to specs.
  */
 export const KNOWN_COLUMNS = [
   ...REQUIRED_COLUMNS,
@@ -44,6 +46,21 @@ export const KNOWN_COLUMNS = [
   'description',
   'is_negotiable',
   'registration_year',
+  // Spec columns. These land in specs jsonb via the enrich stage, and each has
+  // a matching entry in marketplace-service's KNOWN_SPEC_KEYS — without one the
+  // value would be unqueryable.
+  'seats',
+  'doors',
+  'airbags',
+  'load_capacity_kg',
+  'drive_type',
+  'sunroof',
+  'full_option',
+  'alloy_wheels',
+  'reverse_camera',
+  'leather_seats',
+  'power_steering',
+  'air_conditioning',
 ] as const;
 
 export type KnownColumn = (typeof KNOWN_COLUMNS)[number];
