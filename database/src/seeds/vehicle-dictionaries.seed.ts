@@ -195,7 +195,9 @@ const MAKES: MakeSeed[] = [
     models: [
       { name: '320i', type: 'CAR' },
       { name: '520d', type: 'CAR' },
+      { name: '520i', type: 'CAR' },
       { name: 'X1', type: 'SUV' },
+      { name: 'X3', type: 'SUV' },
       { name: 'X5', type: 'SUV' },
     ],
   },
@@ -205,8 +207,10 @@ const MAKES: MakeSeed[] = [
     aliases: ['benz', 'mercedes', 'merc'],
     models: [
       { name: 'C200', type: 'CAR' },
+      { name: 'E200', type: 'CAR' },
       { name: 'E250', type: 'CAR' },
       { name: 'GLA', type: 'SUV' },
+      { name: 'GLC', type: 'SUV' },
       { name: 'Sprinter', type: 'VAN' },
     ],
   },
@@ -364,13 +368,21 @@ async function seed() {
   let modelCount = 0;
 
   for (const make of MAKES) {
+    // Conflict target is uq_vehicle_dictionaries_value_null_parent, NOT the
+    // 3-column uq_vehicle_dictionaries_value. MAKE rows always have
+    // parent_id = NULL, and Postgres never treats two NULLs as equal in a
+    // unique constraint, so the 3-column target never matches — the row
+    // reaches the partial index and raises 23505 instead, which is why
+    // re-running this seed used to fail. A conflict target must name the
+    // columns the index is built on plus its WHERE clause (migration 22000).
+    //
     // RETURNING gives nothing on a conflict, so re-select to get the id on
     // a re-run. Needed either way — models require the parent id.
     await ds.query(
       `INSERT INTO marketplace.vehicle_dictionaries
          (dictionary_type, parent_id, canonical_value, aliases, vehicle_types)
        VALUES ('MAKE', NULL, $1, $2::jsonb, $3::text[])
-       ON CONFLICT (dictionary_type, parent_id, canonical_value) DO NOTHING`,
+       ON CONFLICT (dictionary_type, canonical_value) WHERE parent_id IS NULL DO NOTHING`,
       [make.name, JSON.stringify(make.aliases ?? []), make.types],
     );
 
@@ -382,6 +394,8 @@ async function seed() {
     makeCount++;
 
     for (const model of make.models) {
+      // MODEL rows carry a real parent_id, so the 3-column constraint does
+      // match and stays the correct target here.
       await ds.query(
         `INSERT INTO marketplace.vehicle_dictionaries
            (dictionary_type, parent_id, canonical_value, aliases, vehicle_types)
@@ -395,11 +409,12 @@ async function seed() {
 
   
   for (const body of BODY_TYPES) {
+    // parent_id = NULL, same as MAKE — partial-index conflict target.
     await ds.query(
       `INSERT INTO marketplace.vehicle_dictionaries
          (dictionary_type, parent_id, canonical_value, aliases, vehicle_types)
        VALUES ('BODY_TYPE', NULL, $1, $2::jsonb, '{}'::text[])
-       ON CONFLICT (dictionary_type, parent_id, canonical_value) DO NOTHING`,
+       ON CONFLICT (dictionary_type, canonical_value) WHERE parent_id IS NULL DO NOTHING`,
       [body.name, JSON.stringify(body.aliases ?? [])],
     );
   }

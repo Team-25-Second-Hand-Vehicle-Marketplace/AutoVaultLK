@@ -19,7 +19,7 @@ npm --prefix database run seed:dictionaries
 
 cd ingestion-service
 npm ci
-npm run test:ci                        # 13 suites / 109 tests must pass
+npm run test:ci                        # 14 suites / 135 tests must pass
 npm run build && node dist/main.js     # listens on 3003
 ```
 
