@@ -87,6 +87,16 @@ jobs:
       # this the migrations fail and the integration step then skips silently
       # because nothing is reachable. Port 5433 matches docker-compose, which
       # maps the container's 5432 to avoid a native Postgres on the host.
+      # seed:vehicles imports buildSearchText from marketplace-service so the
+      # seeded listings carry the same search text the services produce — the
+      # FR-22.1 parity the whole embedding design rests on. That import pulls in
+      # the shared module's index, which re-exports the MiniLM embedder, so
+      # marketplace-service's dependencies have to be installed even though this
+      # job never runs its code.
+      - name: Install marketplace-service dependencies
+        working-directory: marketplace-service
+        run: npm ci
+
       - name: Prepare database
         working-directory: database
         run: |
