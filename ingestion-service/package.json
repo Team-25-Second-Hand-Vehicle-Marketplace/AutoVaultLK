@@ -19,6 +19,7 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json --passWithNoTests",
+    "test:integration": "jest --config ./test/integration/jest-integration.json --runInBand",
     "generate:vehicles": "tsx src/tools/vehicle-generator/vehicle-generator.ts"
   },
   "dependencies": {
@@ -78,6 +79,11 @@
     ],
     "rootDir": ".",
     "testRegex": ".*\\.spec\\.ts$",
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "<rootDir>/test/integration/",
+      "<rootDir>/test/e2e/"
+    ],
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },

@@ -60,6 +60,23 @@ export class MarketplaceVehiclesWriteAdapter {
     }
   }
 
+  /**
+   * How many vehicles this job has actually landed.
+   *
+   * The orchestrator counts from here rather than tallying its own outcomes,
+   * because a resumed run loads nothing new — the rows belong to the previous
+   * run — and tallying this run alone would report zero and downgrade a
+   * finished job to FAILED.
+   */
+  async countForJob(jobId: string): Promise<number> {
+    const [row] = (await this.dataSource.query(
+      `SELECT count(*)::int AS count FROM marketplace.vehicles WHERE upload_job_id = $1`,
+      [jobId],
+    )) as { count: number }[];
+
+    return row?.count ?? 0;
+  }
+
   private async insertMany(
     jobId: string,
     dealerId: string,
