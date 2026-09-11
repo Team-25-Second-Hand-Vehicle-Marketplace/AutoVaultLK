@@ -20,6 +20,7 @@ import {
   PHONE_MESSAGE,
   PHONE_REGEX,
 } from '../../../common/validation/validation.constants';
+import { IsVerificationDocumentsForDealerType } from '../../../common/validation/verification-documents.decorator';
 import { DealerType } from '../../../infrastructure/database/entities/dealer-profile.entity';
 
 export class RegisterDealerDto {
@@ -63,7 +64,10 @@ export class RegisterDealerDto {
   @MaxLength(100)
   city!: string;
 
+  // Cross-checked against dealerType: individual dealers submit a NIC,
+  // business dealers submit a business registration document.
   @IsObject({ message: 'verificationDocuments must be an object' })
+  @IsVerificationDocumentsForDealerType()
   verificationDocuments!: Record<string, unknown>;
 
   @IsString()

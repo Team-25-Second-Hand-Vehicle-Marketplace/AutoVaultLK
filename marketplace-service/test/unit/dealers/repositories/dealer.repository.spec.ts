@@ -19,6 +19,7 @@ describe('DealerRepository', () => {
 
   const PROFILE: Partial<DealerProfileView> = {
     userId: 'dealer-1',
+    dealerType: 'individual',
     companyName: 'Acme Motors',
     contactNumber: '+94771234567',
     city: 'Colombo',
@@ -63,6 +64,7 @@ describe('DealerRepository', () => {
         phone: '+94771234567',
         city: 'Colombo',
         verificationStatus: 'VERIFIED',
+        dealerType: 'individual',
       });
     });
   });
