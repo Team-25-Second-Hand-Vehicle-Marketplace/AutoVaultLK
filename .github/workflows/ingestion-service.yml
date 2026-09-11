@@ -23,6 +23,17 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    env:
+      DB_HOST: localhost
+      DB_PORT: 5433
+      DB_NAME: vehicle_marketplace
+      DB_OWNER_USER: marketplace
+      DB_OWNER_PASSWORD: marketplace
+      DB_INGESTION_USER: ingestion_service_role
+      DB_INGESTION_PASSWORD: dev_ingestion
+      DATABASE_URL: postgresql://marketplace:marketplace@localhost:5433/vehicle_marketplace
+      INGESTION_DATABASE_URL: postgresql://ingestion_service_role:dev_ingestion@localhost:5433/vehicle_marketplace
+
     defaults:
       run:
         working-directory: ingestion-service
@@ -47,11 +58,69 @@ jobs:
       - name: Run e2e tests
         run: npm run test:e2e
 
+      # Integration tests need a real Postgres: they assert that the partial
+      # index ON CONFLICT target actually matches, that pgvector accepts the
+      # ::vector cast, and that trg_vehicles_search_vector fires. Unit tests
+      # assert on the SQL string and cannot see any of that.
+      #
+      # The suite skips itself when no database is reachable, so a developer
+      # without Docker gets a green local build; here the service container
+      # opts in explicitly.
+      - name: Start Postgres
+        run: docker compose up -d postgres
+        working-directory: .
+
+      - name: Wait for Postgres
+        run: |
+          for i in $(seq 1 30); do
+            if docker exec vehicle_marketplace_postgres \
+                 pg_isready -U marketplace -d vehicle_marketplace; then exit 0; fi
+            sleep 2
+          done
+          echo "Postgres did not become ready" >&2
+          exit 1
+
+      # seed:vehicles is what creates the DEALER users the integration suite
+      # needs an owner from; there is no separate user seed.
+      #
+      # DATABASE_URL is set explicitly because .env is gitignored and does not
+      # exist on a runner: data-source.ts and every seed read it, so without
+      # this the migrations fail and the integration step then skips silently
+      # because nothing is reachable. Port 5433 matches docker-compose, which
+      # maps the container's 5432 to avoid a native Postgres on the host.
+      # seed:vehicles imports buildSearchText from marketplace-service so the
+      # seeded listings carry the same search text the services produce — the
+      # FR-22.1 parity the whole embedding design rests on. That import pulls in
+      # the shared module's index, which re-exports the MiniLM embedder, so
+      # marketplace-service's dependencies have to be installed even though this
+      # job never runs its code.
+      - name: Install marketplace-service dependencies
+        working-directory: marketplace-service
+        run: npm ci
+
+      - name: Prepare database
+        working-directory: database
+        run: |
+          npm ci
+          npm run migration:run
+          npm run grants
+          npm run seed:dictionaries
+          npm run seed:vehicles
+
+      # Two URLs, deliberately different roles. The suite connects as
+      # ingestion_service_role so it exercises the real ADR-002 grants — one of
+      # its assertions is that the role CANNOT delete from marketplace.vehicles
+      # — and cleans up as the owner, which is the only role that can.
+      - name: Run integration tests
+        run: npm run test:integration
+
       - name: Build service
         run: npm run build
 
-      # NOTE: the image CMDs point at dist/lambda/* handlers that do not exist
-      # yet (src/lambda/* is still empty), so the image builds but cannot cold
-      # start. That is expected until the deployment phase.
+      # The default Dockerfile targets the ingest API, whose handler is Dev B's
+      # (B1) and does not exist yet — so this image builds but cannot cold
+      # start. Every ETL stage handler does exist; those are packaged
+      # separately per docker/etl-zip-lambdas.Dockerfile and
+      # docker/embed.Dockerfile.
       - name: Build Docker image
         run: docker build --tag ingestion-service:ci .

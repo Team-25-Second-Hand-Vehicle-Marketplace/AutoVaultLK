@@ -136,12 +136,98 @@ describe('enrichStage', () => {
     });
   });
 
-  it('drops unknown dealer columns', async () => {
-    // specs is queried against KNOWN_SPEC_KEYS; an arbitrary column stored
-    // there is unqueryable weight on every row.
-    const result = await enrich(row({}, { dealer_stock_code: 'ABC123', warranty: '2 years' }));
+  describe('boolean equipment specs', () => {
+    it.each([
+      ['full_option', 'full_option'],
+      ['fulloption', 'full_option'],
+      ['alloys', 'alloy_wheels'],
+      ['reverse_camera', 'reverse_camera'],
+      ['ac', 'air_conditioning'],
+      ['leather', 'leather_seats'],
+    ])('maps the dealer column %s to specs.%s', async (column, key) => {
+      // Every target key must exist in marketplace's KNOWN_SPEC_KEYS, or
+      // filter-query.builder.ts rejects it and the value is unqueryable.
+      const result = await enrich(row({}, { [column]: 'yes' }));
 
-    expect(result.normalized.specs).toBeUndefined();
+      expect(result.normalized.specs).toMatchObject({ [key]: true });
+    });
+
+    it('records an explicit false', async () => {
+      expect((await enrich(row({}, { sunroof: 'no' }))).normalized.specs).toEqual({
+        sunroof: false,
+      });
+    });
+
+    it('lets the first column win when two aliases target one key', async () => {
+      // "alloys" and "alloy_wheels" in the same file map to one key; a later
+      // blank must not overwrite an earlier true.
+      const result = await enrich(row({}, { alloy_wheels: 'yes', alloys: '' }));
+
+      expect(result.normalized.specs).toMatchObject({ alloy_wheels: true });
+    });
+
+    it('omits the key when the cell is blank or unreadable', async () => {
+      expect((await enrich(row({}, { sunroof: '' }))).normalized.specs).toBeUndefined();
+      expect((await enrich(row({}, { sunroof: 'maybe' }))).normalized.specs).toBeUndefined();
+    });
+  });
+
+  describe('unmapped dealer columns', () => {
+    it('carries them into the description rather than dropping them', async () => {
+      // "Warranty: 2 years" is real information a buyer would search for, and
+      // dropping it silently loses the only place it existed. It cannot go in
+      // specs — that column is queried against KNOWN_SPEC_KEYS, so an unknown
+      // key is unqueryable weight that still looks like data.
+      const result = await enrich(row({}, { warranty: '2 years', service_records: 'full' }));
+
+      expect(result.normalized.specs).toBeUndefined();
+      expect(result.normalized.description).toBe('Warranty: 2 years. Service records: full.');
+    });
+
+    it('appends to a description the dealer already wrote', async () => {
+      const result = await enrich(
+        row({ description: 'Excellent condition.' }, { warranty: '2 years' }),
+      );
+
+      expect(result.normalized.description).toBe('Excellent condition. Warranty: 2 years.');
+    });
+
+    it('does not repeat something the description already says', async () => {
+      const result = await enrich(
+        row({ description: 'Comes with a body kit.' }, { extras: 'body kit' }),
+      );
+
+      expect(result.normalized.description).toBe('Comes with a body kit.');
+    });
+
+    it('ignores columns the pipeline already consumed', async () => {
+      // make/model/price are vehicle fields, not extras; echoing them into the
+      // description would duplicate them in the search text.
+      const result = await enrich(row({}, { make: 'Toyota', price: '3500000', year: '2015' }));
+
+      expect(result.normalized.description).toBeUndefined();
+    });
+
+    it('ignores blank columns', async () => {
+      expect((await enrich(row({}, { warranty: '   ' }))).normalized.description).toBeUndefined();
+    });
+
+    it('caps how much it appends', async () => {
+      // A dealer export with forty internal columns would otherwise bury what
+      // they actually wrote and dominate the embedding's input.
+      const raw: Record<string, string> = {};
+      for (let i = 0; i < 20; i++) raw[`extra_${i}`] = `value ${i}`;
+
+      const description = (await enrich(row({}, raw))).normalized.description ?? '';
+
+      expect(description.split('. ')).toHaveLength(8);
+    });
+
+    it('truncates an over-long value', async () => {
+      const result = await enrich(row({}, { notes_internal: 'x'.repeat(200) }));
+
+      expect((result.normalized.description ?? '').length).toBeLessThan(100);
+    });
   });
 
   it('leaves specs absent rather than writing an empty object', async () => {

@@ -8,9 +8,13 @@ import { ListingSearchIndexService } from '../services/listing-search-index.serv
 
 // Editing any of these fields changes what buildSearchText() produces, so
 // search_text/embedding must be recomputed — not just the plain column.
+//
+// price and mileage are here because they feed the band phrases: dropping a
+// price from 6M to 4M moves the listing from "upper mid range" to "mid range",
+// and without a recompute the vector would still say the old one.
 const SEARCHABLE_FIELDS = [
-  'make', 'model', 'manufactureYear', 'vehicleType',
-  'fuelType', 'transmissionType', 'specs', 'description',
+  'make', 'model', 'manufactureYear', 'vehicleType', 'condition',
+  'fuelType', 'transmissionType', 'price', 'mileage', 'specs', 'description',
 ] as const satisfies readonly (keyof CreateListingDto)[];
 
 @Injectable()

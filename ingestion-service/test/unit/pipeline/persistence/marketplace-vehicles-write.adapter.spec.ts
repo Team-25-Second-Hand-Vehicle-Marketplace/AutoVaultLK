@@ -244,6 +244,25 @@ describe('MarketplaceVehiclesWriteAdapter', () => {
     });
   });
 
+  describe('countForJob', () => {
+    it('counts the rows this job landed', async () => {
+      // The orchestrator reads this rather than tallying its own outcomes: a
+      // resumed run loads nothing new, and tallying it alone would report zero
+      // and downgrade a finished job to FAILED.
+      const query = jest.fn().mockResolvedValue([{ count: 34 }]);
+      const { adapter } = harness(query);
+
+      await expect(adapter.countForJob('job-1')).resolves.toBe(34);
+      expect(String(query.mock.calls[0][0])).toMatch(/count\(\*\)::int/);
+    });
+
+    it('returns 0 when the job has landed nothing', async () => {
+      const { adapter } = harness(jest.fn().mockResolvedValue([]));
+
+      await expect(adapter.countForJob('job-1')).resolves.toBe(0);
+    });
+  });
+
   it('makes no query for an empty batch', async () => {
     const { adapter, query } = harness();
 

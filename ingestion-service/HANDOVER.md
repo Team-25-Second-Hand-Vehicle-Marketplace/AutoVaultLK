@@ -1,10 +1,16 @@
-# ingestion-service — handover to Dev B
+# ingestion-service — building B1 and B2
 
-Phase 0 (foundations) is complete. This document is what you need to build
-**B1 (`POST /ingest/upload`)** and **B2 (job-status extension)** without
-reading the rest of the codebase first.
+> **Start with `docs/HANDOVER-VIRUSAN.md`.** It covers the whole B1-B6 scope and
+> who owns what. This file is the deeper reference for the two endpoints: the
+> interfaces, the upload flow, and the things that will bite you.
 
-Full plan: `C:\Users\Admin\.claude\plans\analyse-the-full-codebase-composed-corbato.md`
+Phase 0 (foundations), Phase A (the ETL pipeline) and the Step Functions
+migration are complete. This document is what you need to build
+**B1 (`POST /ingest/upload`)** and **B2 (job-status extension)** without reading
+the rest of the codebase first.
+
+**The pipeline is live.** Publishing a job to the queue runs all eight stages
+and writes real rows to `marketplace.vehicles`.
 
 ---
 
@@ -16,12 +22,18 @@ docker compose up -d postgres          # pgvector on host port 5433
 npm --prefix database run migration:run
 npm --prefix database run grants       # REQUIRED — see "Dealer gate" below
 npm --prefix database run seed:dictionaries
+npm --prefix database run seed:vehicles   # creates the DEALER users you log in as
 
 cd ingestion-service
 npm ci
-npm run test:ci                        # 14 suites / 135 tests must pass
+npm run test:ci                        # 34 suites / 531 tests must pass
+npm run test:integration               # 25 tests, needs the database above
 npm run build && node dist/main.js     # listens on 3003
 ```
+
+`test:integration` is separate from `test:ci` on purpose: it needs a live
+Postgres and skips itself when none is reachable, so `test:ci` stays green
+without Docker.
 
 Sanity check: `GET http://localhost:3003/health` → `{"status":"ok",...}`
 
@@ -38,6 +50,26 @@ Sanity check: `GET http://localhost:3003/health` → `{"status":"ok",...}`
 | Repositories (jobs, rejections, stage logs, dealer profile) | `src/modules/ingestion/repositories/` |
 | ETL stage contract + row types | `src/workers/etl-worker/pipeline/types.ts` |
 | Entities (7, incl. read-only views) | `src/infrastructure/database/entities/` |
+| **The whole ETL pipeline** - 8 stages, orchestrator, queue handler | `src/workers/etl-worker/` |
+| **The dealer CSV contract** - required columns, header aliases, template | `.../pipeline/parse/csv-contract.ts` |
+| **The cross-schema write adapter** (inject it, do not reimplement) | `.../pipeline/persistence/` |
+
+### The CSV header for your B5 template
+
+Import it, do not retype it - `TEMPLATE_HEADER` in `csv-contract.ts`:
+
+```
+registration_number, make, model, year, price, mileage,
+fuel_type, transmission, body_type
+```
+
+Required: `make, model, year, price, mileage`. Everything else is optional.
+`registration_number` is deliberately **not** required - unregistered imports
+are legitimate stock - but it is what B3 matches images on, so encourage it.
+
+The parser also accepts ~35 header aliases (`Manufacturer`->`make`,
+`YOM`->`year`, `Odometer`->`mileage`), so a dealer's own export usually works
+unedited.
 
 ---
 
@@ -117,11 +149,32 @@ POST /ingest/upload
 
 ## Five things that will bite you if you don't know them
 
-**1. The pipeline does not exist yet.** A placeholder handler
-(`src/modules/ingestion/queue-bootstrap.service.ts`) marks every job `FAILED`
-right after upload and logs a warning at boot. That is expected. Your endpoint
-returning `202` and the job then showing `FAILED` means **your code worked.**
-The placeholder is deleted when the orchestrator lands (§A8).
+**1. The pipeline is live — your upload really will load vehicles.**
+`JobQueue.publish({ jobId })` triggers `LocalOrchestrator`, which runs all
+eight stages and writes `marketplace.vehicles`. There is no placeholder any
+more; the old `queue-bootstrap.service.ts` was deleted when the orchestrator
+landed.
+
+Read the terminal status correctly:
+
+| Status | Means |
+|---|---|
+| `COMPLETED` | every row loaded |
+| `PARTIAL` | **a success** — some rows rejected with reasons, the rest loaded |
+| `FAILED` | nothing loaded: usually a malformed file, or every row invalid |
+
+`PARTIAL` is the normal outcome for a real dealer file. It is not your bug.
+
+To see what the pipeline does with a file before your endpoint exists:
+
+```bash
+npm run build
+node dist/tools/run-pipeline.js test/fixtures/e2e-mixed.csv
+```
+
+That tool does exactly what B1 must do — store the file, insert the job, run
+the pipeline — then prints the job row, the stage logs and the rejections.
+**It is the reference implementation for your handler.**
 
 **2. Dealer gate needs a grant that may not be applied in your database.**
 `GRANT SELECT ON auth.dealer_profiles TO ingestion_service_role` was added to
@@ -133,9 +186,25 @@ SELECT has_table_privilege('ingestion_service_role','auth.dealer_profiles','SELE
 
 **3. `pipeline/persistence/` is mine — do not add a second writer.**
 ADR-002 confines the *entire* platform's cross-schema write exception to one
-adapter class. For B3 (images) you need to write `marketplace.vehicle_images`;
-**ask me for the method signature**, don't add a repository. Two writers breaks
-the architectural claim the whole design rests on.
+class, `MarketplaceVehiclesWriteAdapter`. It is already exported from
+`IngestionModule`, so inject it rather than writing SQL.
+
+For B3 (images) `MarketplaceVehicleImagesWriteAdapter` is **already built and
+exported from `IngestionModule`** — inject it:
+
+```ts
+insertForVehicle(vehicleId, images, primaryIndex = 0): Promise<InsertedImage[]>
+vehicleIdsByRegistration(jobId): Promise<Map<string, string>>
+countForJob(jobId): Promise<number>
+```
+
+It handles the single-primary invariant for you: `primaryIndex` names which
+image is primary and every other row is forced false, so a batch cannot violate
+`idx_vehicle_images_one_primary` however it was assembled upstream.
+
+Two writers breaks the architectural claim the whole design rests on, and an
+integration test asserts the role holds no DELETE precisely so the boundary is
+checked rather than assumed.
 
 **4. One primary image per vehicle, enforced by the database.**
 `idx_vehicle_images_one_primary` is a partial unique index on
@@ -167,6 +236,32 @@ copy of marketplace-service's, enforced by
 
 ---
 
+## What is NOT built yet
+
+Everything below is yours. **Nothing here is blocked on me** — the two things
+that used to be ("ask me for the image adapter", "ask me for the CSV header")
+are both built and documented.
+
+| | Status |
+|---|---|
+| `POST /ingest/upload` (B1) | **nothing exists** - no controller, dto or service |
+| Job-status extension (B2) | endpoint exists, needs stage progress and paginated rejections |
+| Image processing (B3) | not started - **the write adapter is built and exported**, inject it |
+| Aggregate + notify (B4) | AGGREGATE is done (`src/lambda/aggregate-results.ts`); NOTIFY is not |
+| Dealer frontend (B5) | not started - `TEMPLATE_HEADER` in `csv-contract.ts` is the CSV header |
+| Tests (B6) | `test/e2e/` is empty |
+| Step Functions S4-S8 | state machine, drift guard, RDS Proxy, packaging, Terraform |
+
+**Already built, do not rebuild:** the whole ETL pipeline, both cross-schema
+write adapters, the S3 and SQS drivers, 9 Lambda handlers, and the live Groq
+call. The Groq stage logging `SKIPPED` with no API key is correct behaviour,
+not a gap — CI has no key and a dealer upload cannot fail because a third party
+is unreachable.
+
+For the full brief on S4-S8 and B3-B6, see **`docs/HANDOVER-VIRUSAN.md`**.
+
+---
+
 ## Definition of done for B1/B2
 
 - [ ] `POST /ingest/upload` returns `202 { jobId }` for a verified business dealer
@@ -177,4 +272,7 @@ copy of marketplace-service's, enforced by
 - [ ] `GET /jobs/:id` returns stage progress + paginated rejected rows
 - [ ] A dealer cannot read another dealer's job (**404, not 403**)
 - [ ] OpenAPI stubs for both routes filled in (`api-gateway/openapi/public-api.yaml`)
-- [ ] `npm run test:ci` and `npm run test:e2e` green
+- [ ] `npm run test:ci`, `npm run test:e2e` and `npm run test:integration` green
+- [ ] An upload of `test/fixtures/e2e-mixed.csv` through your endpoint ends
+      `PARTIAL` with rows in `marketplace.vehicles` — proving the whole path
+      works, not just the 202
