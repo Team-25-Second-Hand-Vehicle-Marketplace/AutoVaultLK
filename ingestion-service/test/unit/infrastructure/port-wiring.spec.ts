@@ -4,7 +4,9 @@ import { JOB_QUEUE } from '../../../src/infrastructure/ports/job-queue.port';
 import { OBJECT_STORE } from '../../../src/infrastructure/ports/object-store.port';
 import { InProcessJobQueue } from '../../../src/infrastructure/queue/in-process-job-queue';
 import { QueueModule } from '../../../src/infrastructure/queue/queue.module';
+import { SqsJobQueue } from '../../../src/infrastructure/queue/sqs-job-queue';
 import { LocalObjectStore } from '../../../src/infrastructure/storage/local-object-store';
+import { S3ObjectStore } from '../../../src/infrastructure/storage/s3-object-store';
 import { StorageModule } from '../../../src/infrastructure/storage/storage.module';
 
 /**
@@ -43,17 +45,39 @@ describe('infrastructure port wiring', () => {
 
   // Falling back to local disk when s3 was asked for would write dealer uploads
   // to storage that vanishes on the next cold start, with the job row still
-  // claiming success.
-  it('refuses the not-yet-built s3 storage driver instead of falling back', async () => {
-    await expect(build({ INGESTION_STORAGE_DRIVER: 's3' })).rejects.toThrow(
-      /INGESTION_STORAGE_DRIVER=s3 is not implemented yet/,
-    );
+  // claiming success. Now that the driver exists, the same fail-loud posture
+  // applies to its configuration: an s3 driver with no bucket must not start.
+  it('refuses the s3 driver when no bucket is configured', async () => {
+    await expect(
+      build({ INGESTION_STORAGE_DRIVER: 's3', INGESTION_S3_BUCKET: '' }),
+    ).rejects.toThrow(/INGESTION_S3_BUCKET/);
   });
 
-  it('refuses the not-yet-built sqs queue driver instead of falling back', async () => {
-    await expect(build({ INGESTION_QUEUE_DRIVER: 'sqs' })).rejects.toThrow(
-      /INGESTION_QUEUE_DRIVER=sqs is not implemented yet/,
-    );
+  it('builds the s3 driver when a bucket is configured', async () => {
+    const moduleRef = await build({
+      INGESTION_STORAGE_DRIVER: 's3',
+      INGESTION_S3_BUCKET: 'test-bucket',
+    });
+
+    expect(moduleRef.get(OBJECT_STORE)).toBeInstanceOf(S3ObjectStore);
+    await moduleRef.close();
+  });
+
+  it('refuses the sqs driver when no queue url is configured', async () => {
+    await expect(
+      build({ INGESTION_QUEUE_DRIVER: 'sqs', INGESTION_SQS_QUEUE_URL: '' }),
+    ).rejects.toThrow(/INGESTION_SQS_QUEUE_URL/);
+  });
+
+  it('builds the sqs driver when a queue url is configured', async () => {
+    const moduleRef = await build({
+      INGESTION_QUEUE_DRIVER: 'sqs',
+      INGESTION_SQS_QUEUE_URL:
+        'https://sqs.ap-southeast-1.amazonaws.com/123456789012/ingestion-jobs',
+    });
+
+    expect(moduleRef.get(JOB_QUEUE)).toBeInstanceOf(SqsJobQueue);
+    await moduleRef.close();
   });
 
   it.each([['nfs'], ['S3'], ['gcs']])(
