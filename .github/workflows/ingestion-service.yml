@@ -31,8 +31,9 @@ jobs:
       DB_OWNER_PASSWORD: marketplace
       DB_INGESTION_USER: ingestion_service_role
       DB_INGESTION_PASSWORD: dev_ingestion
-      DATABASE_URL: postgresql://${{ env.DB_OWNER_USER }}:${{ env.DB_OWNER_PASSWORD }}@${{ env.DB_HOST }}:${{ env.DB_PORT }}/${{ env.DB_NAME }}
-      INGESTION_DATABASE_URL: postgresql://${{ env.DB_INGESTION_USER }}:${{ env.DB_INGESTION_PASSWORD }}@${{ env.DB_HOST }}:${{ env.DB_PORT }}/${{ env.DB_NAME }}
+      DATABASE_URL: postgresql://marketplace:marketplace@localhost:5433/vehicle_marketplace
+      INGESTION_DATABASE_URL: postgresql://ingestion_service_role:dev_ingestion@localhost:5433/vehicle_marketplace
+
     defaults:
       run:
         working-directory: ingestion-service
