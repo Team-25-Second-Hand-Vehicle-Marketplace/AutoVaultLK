@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { config } from 'dotenv';
 import { DataSource } from 'typeorm';
 
-import { buildSearchText } from '../../../marketplace-service/src/shared/normalize-embed';
+import { buildSearchText } from '../../../marketplace-service/src/shared/normalize-embed/search-text';
 
 config({ path: '../.env' });
 

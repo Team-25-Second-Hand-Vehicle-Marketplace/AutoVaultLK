@@ -122,7 +122,7 @@ export const embedStage: StageRunner<EnrichedRow[], EmbedResult> = {
 };
 
 /**
- * The 10 fields, in the order ListingSearchIndexService passes them.
+ * The fields ListingSearchIndexService passes, in the same order.
  *
  * Do not reorder, add or remove a field here without making the identical
  * change in marketplace-service/src/modules/listings/services/
@@ -138,8 +138,11 @@ export function searchTextFor(row: EnrichedRow): string | null {
     model: f.model,
     manufactureYear: f.manufactureYear,
     vehicleType: f.vehicleType,
+    condition: f.condition,
     fuelType: f.fuelType,
     transmissionType: f.transmissionType,
+    price: f.price,
+    mileage: f.mileage,
     locationCity: f.locationCity,
     locationDistrict: f.locationDistrict,
     specs: f.specs,

@@ -65,13 +65,29 @@ const harness = (o: { csv?: string; chunkSize?: number } = {}) => {
     succeededChunks: jest.fn().mockResolvedValue(new Set<number>()),
   };
 
-  const rejectedRecords = { insertMany: jest.fn().mockResolvedValue(undefined) };
+  let rejectedCount = 0;
+  const rejectedRecords = {
+    insertMany: jest.fn(async (_j: string, _stage: string, rows: unknown[]) => {
+      rejectedCount += rows.length;
+    }),
+    countForJob: jest.fn(async () => rejectedCount),
+  };
   const dictionary = { loadSnapshot: jest.fn().mockResolvedValue(DICTIONARY) };
+  // countForJob reports what the database holds; the fake tallies every row
+  // upsertBatch accepted, which is the same thing for a single run.
+  let persisted = 0;
   const vehicles = {
-    upsertBatch: jest.fn(async (_j: string, _d: string, rows: unknown[]) => ({
-      loaded: rows.map((_, i) => ({ id: `v${i}`, registration_number: null })),
-      rejections: [],
-    })),
+    upsertBatch: jest.fn(async (_j: string, _d: string, rows: unknown[]) => {
+      persisted += rows.length;
+      return {
+        loaded: rows.map((_, i) => ({ id: `v${i}`, registration_number: null })),
+        rejections: [],
+      };
+    }),
+    countForJob: jest.fn(async () => persisted),
+    setPersisted: (n: number) => {
+      persisted = n;
+    },
   };
 
   const config = {
@@ -194,12 +210,17 @@ describe('LocalOrchestrator', () => {
       // Keyed on the row rather than call order: chunks run concurrently, so
       // "reject the next two calls" would land on two different chunks' first
       // attempts and both would then succeed on retry.
-      h.vehicles.upsertBatch.mockImplementation(async (_j, _d, rows: { rowNumber: number }[]) => {
-        if (rows[0]?.rowNumber === 1) throw new Error('write failed');
-        return {
-          loaded: rows.map((_, i) => ({ id: `v${i}`, registration_number: null })),
-          rejections: [],
-        };
+      const accepted = h.vehicles.upsertBatch.getMockImplementation() as (
+        j: string,
+        d: string,
+        rows: unknown[],
+      ) => Promise<never>;
+
+      h.vehicles.upsertBatch.mockImplementation(async (j, d, rows) => {
+        if ((rows[0] as { rowNumber: number })?.rowNumber === 1) {
+          throw new Error('write failed');
+        }
+        return accepted(j, d, rows);
       });
 
       await h.orchestrator.run('job-1');
@@ -225,9 +246,10 @@ describe('LocalOrchestrator', () => {
       // Load failures are typically transient — a dropped connection or a lock
       // timeout — unlike a stage that rejected a row deterministically.
       const h = harness({ chunkSize: 2 });
+      const accepted = jest.fn(h.vehicles.upsertBatch.getMockImplementation() as never);
       h.vehicles.upsertBatch
         .mockRejectedValueOnce(new Error('deadlock'))
-        .mockResolvedValueOnce({ loaded: [{ id: 'v1', registration_number: null }], rejections: [] });
+        .mockImplementationOnce(accepted as never);
 
       await h.orchestrator.run('job-1');
 
@@ -269,6 +291,37 @@ describe('LocalOrchestrator', () => {
 
       expect(h.vehicles.upsertBatch).not.toHaveBeenCalled();
     });
+
+    it('does not downgrade a finished job to FAILED', async () => {
+      // A fully resumed run loads nothing new — its rows belong to the
+      // previous run. Tallying only this run's outcomes would report 0 loaded
+      // and turn a COMPLETED job into FAILED on a harmless retry.
+      const h = harness({ chunkSize: 1 });
+      h.stageLogs.succeededChunks.mockResolvedValue(new Set([0, 1]));
+      h.vehicles.setPersisted(2);
+
+      await h.orchestrator.run('job-1');
+
+      expect(statuses(h)).toEqual(['PROCESSING', 'COMPLETED']);
+      expect(h.uploadJobs.updateCounts).toHaveBeenCalledWith('job-1', {
+        validRecords: 2,
+        invalidRecords: 0,
+      });
+    });
+
+    it('counts from the database, not from this run', async () => {
+      const h = harness({ chunkSize: 1 });
+      h.stageLogs.succeededChunks.mockResolvedValue(new Set([0]));
+      h.vehicles.setPersisted(1);
+
+      await h.orchestrator.run('job-1');
+
+      // One chunk skipped (already persisted), one loaded now.
+      expect(h.uploadJobs.updateCounts).toHaveBeenCalledWith('job-1', {
+        validRecords: 2,
+        invalidRecords: 0,
+      });
+    });
   });
 
   describe('whole-file failure', () => {
@@ -278,7 +331,7 @@ describe('LocalOrchestrator', () => {
       await h.orchestrator.run('job-1');
 
       expect(statuses(h)).toContain('FAILED');
-      expect(h.rejectedRecords.insertMany).toHaveBeenCalledWith('job-1', [
+      expect(h.rejectedRecords.insertMany).toHaveBeenCalledWith('job-1', 'VALIDATE_FILE', [
         expect.objectContaining({ rowNumber: 0, reason: expect.stringMatching(/year/) }),
       ]);
     });
@@ -301,13 +354,22 @@ describe('LocalOrchestrator', () => {
     });
   });
 
-  it('writes rejections once per chunk', async () => {
+  it('attributes each rejection to the stage that produced it', async () => {
+    // Under Step Functions each stage is its own Lambda, so rejections cannot
+    // be accumulated across stages and written once — that accumulator does not
+    // exist. Each stage persists its own, which is also what lets an ASL retry
+    // replace exactly its own set rather than duplicating it.
     const h = harness({ csv: [HEADER, ROW(1), 'CAB-9,Toyota,Vitz,1850,3500000,45000'].join('\n') });
 
     await h.orchestrator.run('job-1');
 
-    expect(h.rejectedRecords.insertMany).toHaveBeenCalledTimes(1);
-    expect(h.rejectedRecords.insertMany.mock.calls[0][1]).toHaveLength(1);
+    const withRows = h.rejectedRecords.insertMany.mock.calls.filter(
+      (c) => (c[2] as unknown[]).length > 0,
+    );
+
+    expect(withRows).toHaveLength(1);
+    expect(withRows[0][1]).toBe('VALIDATE_ROWS');
+    expect(withRows[0][2]).toHaveLength(1);
   });
 
   it('passes the dealer id from the job to the writer', async () => {

@@ -7,7 +7,9 @@ import { EtlStageLogRepository } from '../../modules/ingestion/repositories/etl-
 import { RejectedRecordRepository } from '../../modules/ingestion/repositories/rejected-record.repository';
 import { UploadJobRepository } from '../../modules/ingestion/repositories/upload-job.repository';
 import { pipelineConfig } from '../../config/pipeline.config';
+import { asChunkStage, type ChunkStage } from './pipeline/chunk-stage';
 import { mapWithConcurrency } from './pipeline/concurrency';
+import { initialEnvelope, type ChunkEnvelope } from './pipeline/envelope';
 import { embedStage } from './pipeline/embed/embed.stage';
 import { enrichStage } from './pipeline/enrich/enrich.stage';
 import { groqNormalizeStage } from './pipeline/normalize/groq-normalize.stage';
@@ -22,6 +24,7 @@ import {
 import { validateRowsStage } from './pipeline/validate/validate-rows.stage';
 import type {
   DictionarySnapshot,
+  EmbeddedRow,
   RawRow,
   Rejection,
   StageContext,
@@ -65,7 +68,23 @@ export class LocalOrchestrator {
     private readonly rejectedRecords: RejectedRecordRepository,
     private readonly dictionary: DictionaryRepository,
     private readonly vehicles: MarketplaceVehiclesWriteAdapter,
-  ) {}
+  ) {
+    // Built once, in the order pipeline/graph.ts declares. Each entry is the
+    // same object a Lambda handler will wrap, so the two executors run the
+    // identical chain and differ only in who calls the next link.
+    //
+    // LOAD is absent: it needs a retry loop and returns no rows file, so it is
+    // driven by this.load() rather than the generic chain.
+    this.chunkStages = [
+      asChunkStage(parseNormalizeStage, { rejections: this.rejectedRecords }),
+      asChunkStage(groqNormalizeStage, { rejections: this.rejectedRecords }),
+      asChunkStage(validateRowsStage, { rejections: this.rejectedRecords }),
+      asChunkStage(enrichStage, { rejections: this.rejectedRecords }),
+      asChunkStage(embedStage, { rejections: this.rejectedRecords }),
+    ];
+  }
+
+  private readonly chunkStages: ChunkStage[];
 
   async run(jobId: string): Promise<void> {
     const job = await this.uploadJobs.findById(jobId);
@@ -128,7 +147,11 @@ export class LocalOrchestrator {
       this.logger.error(`Job ${jobId} failed: ${message}`);
 
       if (err instanceof FileValidationError) {
-        await this.rejectedRecords.insertMany(jobId, [
+        // Row 0 is the whole-file rejection. VALIDATE_FILE is the only stage
+        // that produces one, and the partial unique index on
+        // (upload_job_id, stage) WHERE row_number = 0 keeps a retry from
+        // stacking duplicates.
+        await this.rejectedRecords.insertMany(jobId, 'VALIDATE_FILE', [
           { rowNumber: 0, rawData: {}, reason: message },
         ]);
       }
@@ -205,64 +228,50 @@ export class LocalOrchestrator {
     }
 
     const ctx = this.contextFor(jobId, dealerId, chunkId, snapshot);
-    const rejections: Rejection[] = [];
 
     try {
-      const raw = JSON.parse((await this.store.get(key)).toString('utf8')) as RawRow[];
+      // Row counts come from the chunk file, which splitChunks wrote. Reading
+      // it here rather than threading the count through means a resumed run
+      // needs no state beyond the key.
+      const rawRows = JSON.parse((await this.store.get(key)).toString('utf8')) as RawRow[];
+      let envelope = initialEnvelope(jobId, dealerId, chunkId, rawRows.length);
 
-      const parsed = await this.runStage(log, 'PARSE_NORMALIZE', chunkId, async () => {
-        const result = await parseNormalizeStage.run(ctx, raw);
-        return { result, metrics: { rows: result.rows.length } };
-      });
+      // The same chain Step Functions runs, in the same order, from the same
+      // declaration (pipeline/graph.ts). The difference is only who calls the
+      // next stage: here a loop, there a state transition.
+      for (const stage of this.chunkStages) {
+        envelope = await this.runStage(log, stage.stage, chunkId, async () => {
+          const result = await stage.run(ctx, envelope);
+          return {
+            result,
+            metrics: { in: result.counts.in, out: result.counts.out },
+            // SKIPPED is not SUCCEEDED: a Groq stage that ran without a key
+            // did nothing, and logging it as a success would claim the LLM ran.
+            status: result.outcome,
+            errorMessage: result.degraded,
+          };
+        });
+      }
 
-      const groq = await this.runStage(log, 'GROQ_NORMALIZE', chunkId, async () => {
-        const result = await groqNormalizeStage.run(ctx, parsed.rows);
-        return { result, metrics: result.metrics, status: result.outcome };
-      });
+      const loaded = await this.load(ctx, log, envelope);
 
-      const validated = await this.runStage(log, 'VALIDATE_ROWS', chunkId, async () => {
-        const result = await validateRowsStage.run(ctx, groq.rows);
-        return {
-          result,
-          metrics: { valid: result.rows.length, rejected: result.rejections.length },
-        };
-      });
-      rejections.push(...validated.rejections);
-
-      const enriched = await this.runStage(log, 'ENRICH', chunkId, async () => {
-        const result = await enrichStage.run(ctx, validated.rows);
-        return { result, metrics: { rows: result.rows.length } };
-      });
-
-      const embedded = await this.runStage(log, 'EMBED', chunkId, async () => {
-        const result = await embedStage.run(ctx, enriched.rows);
-        return { result, metrics: result.metrics, status: result.outcome };
-      });
-
-      const loaded = await this.load(ctx, log, chunkId, embedded.rows);
-      rejections.push(...loaded.rejections);
-
-      // Written once per chunk rather than per stage: rejections from
-      // validateRows and Load land in one statement, and a chunk that dies
-      // before this point leaves no partial rejection set behind.
-      await this.rejectedRecords.insertMany(jobId, rejections);
-
-      return { chunkId, loaded: loaded.loaded.length, rejections, failed: false };
+      return {
+        chunkId,
+        loaded: loaded.counts.out,
+        rejections: [],
+        failed: false,
+      };
     } catch (err) {
       // The isolation boundary. A chunk that throws is reported, not rethrown,
       // so the remaining chunks still run and the job can end PARTIAL.
+      //
+      // Rejections need no rescue here: each stage persisted its own before
+      // returning, which is what makes a stage's work survive a later stage's
+      // failure — and what lets a Lambda retry replace them rather than
+      // duplicate them.
       this.logger.error(`Chunk ${chunkId} of job ${jobId} failed: ${messageOf(err)}`);
 
-      // Best-effort: a chunk that failed after validateRows still has real
-      // rejections worth showing the dealer. If this write also fails, the
-      // chunk is already lost — do not let it take the job with it.
-      try {
-        await this.rejectedRecords.insertMany(jobId, rejections);
-      } catch {
-        /* already failing; the outcome below is what matters */
-      }
-
-      return { chunkId, loaded: 0, rejections, failed: true };
+      return { chunkId, loaded: 0, rejections: [], failed: true };
     }
   }
 
@@ -274,20 +283,40 @@ export class LocalOrchestrator {
   private async load(
     ctx: StageContext,
     log: StageLogger,
-    chunkId: number,
-    rows: Parameters<ReturnType<typeof createLoadStage>['run']>[1],
-  ) {
+    envelope: ChunkEnvelope,
+  ): Promise<ChunkEnvelope> {
     const stage = createLoadStage(this.vehicles);
+    const rows = envelope.key
+      ? (JSON.parse((await this.store.get(envelope.key)).toString('utf8')) as EmbeddedRow[])
+      : [];
+
     let lastError: unknown;
 
     for (let attempt = 0; attempt < LOAD_ATTEMPTS; attempt++) {
-      const logId = await log.start('LOAD', chunkId, attempt);
+      const logId = await log.start('LOAD', envelope.chunkId, attempt);
       try {
         const result = await stage.run(ctx, rows);
+
+        // Load's rejections are cross-job duplicate registrations the database
+        // refused. Persisted under LOAD rather than merged into an earlier
+        // stage's set, so a retry replaces exactly its own.
+        await this.rejectedRecords.insertMany(envelope.jobId, 'LOAD', result.rejections);
+
         await log.finish(logId, 'SUCCEEDED', {
           metrics: { loaded: result.loaded.length, rejected: result.rejections.length },
         });
-        return result;
+
+        return {
+          ...envelope,
+          // Nothing consumes rows after Load; a null key says so rather than
+          // leaving a stale pointer that looks consumable.
+          key: null,
+          counts: {
+            in: rows.length,
+            out: result.loaded.length,
+            rejected: envelope.counts.rejected + result.rejections.length,
+          },
+        };
       } catch (err) {
         lastError = err;
         await log.finish(logId, 'FAILED', { errorMessage: messageOf(err) });
@@ -307,12 +336,13 @@ export class LocalOrchestrator {
       result: T;
       metrics?: Record<string, unknown>;
       status?: 'SUCCEEDED' | 'SKIPPED' | 'DEGRADED';
+      errorMessage?: string;
     }>,
   ): Promise<T> {
     const logId = await log.start(stage, chunkId);
     try {
-      const { result, metrics, status } = await body();
-      await log.finish(logId, status ?? 'SUCCEEDED', { metrics });
+      const { result, metrics, status, errorMessage } = await body();
+      await log.finish(logId, status ?? 'SUCCEEDED', { metrics, errorMessage });
       return result;
     } catch (err) {
       await log.finish(logId, 'FAILED', { errorMessage: messageOf(err) });
@@ -332,9 +362,14 @@ export class LocalOrchestrator {
     totalRecords: number,
     outcomes: ChunkOutcome[],
   ): Promise<void> {
-    const loaded = sum(outcomes.map((o) => o.loaded));
-    const rejected = sum(outcomes.map((o) => o.rejections.length));
     const anyFailed = outcomes.some((o) => o.failed);
+
+    // Counted from the database, not from this run's outcomes. A resumed job
+    // loads nothing new — its rows were written by the previous run — and
+    // tallying only what happened here would report 0 loaded and downgrade a
+    // finished job to FAILED on a harmless retry.
+    const loaded = await this.vehicles.countForJob(jobId);
+    const rejected = await this.rejectedRecords.countForJob(jobId);
 
     await this.uploadJobs.updateCounts(jobId, {
       validRecords: loaded,
@@ -385,10 +420,6 @@ const UNAVAILABLE_DICTIONARY: DictionarySnapshot = {
     throw new Error('Dictionary is not available to whole-file stages');
   },
 };
-
-function sum(values: number[]): number {
-  return values.reduce((total, value) => total + value, 0);
-}
 
 function messageOf(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
