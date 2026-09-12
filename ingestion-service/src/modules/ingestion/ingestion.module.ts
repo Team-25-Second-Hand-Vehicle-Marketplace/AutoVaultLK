@@ -14,6 +14,8 @@ import { DictionaryRepository } from './repositories/dictionary.repository';
 import { EtlStageLogRepository } from './repositories/etl-stage-log.repository';
 import { RejectedRecordRepository } from './repositories/rejected-record.repository';
 import { UploadJobRepository } from './repositories/upload-job.repository';
+import { IngestionController } from './controllers/ingestion.controller';
+import { IngestionUploadService } from './services/ingestion-upload.service';
 
 /**
  * Owns the write side of the `ingestion` schema.
@@ -30,6 +32,10 @@ import { UploadJobRepository } from './repositories/upload-job.repository';
       DealerProfileView,
       VehicleDictionaryView,
     ])],
+
+  controllers: [
+    IngestionController,
+  ],
   providers: [
     UploadJobRepository,
     RejectedRecordRepository,
@@ -48,6 +54,7 @@ import { UploadJobRepository } from './repositories/upload-job.repository';
     // and the stages are called by Lambda wrappers instead.
     LocalOrchestrator,
     EtlWorkerService,
+    IngestionUploadService,
   ],
   exports: [
     UploadJobRepository,
