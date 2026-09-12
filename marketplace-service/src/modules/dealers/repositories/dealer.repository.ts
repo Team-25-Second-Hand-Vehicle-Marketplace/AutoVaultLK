@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import { AuthUserView } from '../../../infrastructure/database/entities/auth-user.view-entity';
-import { DealerProfileView } from '../../../infrastructure/database/entities/dealer-profile.view-entity';
+import { DealerProfileView, DealerType } from '../../../infrastructure/database/entities/dealer-profile.view-entity';
 
 export type DealerSummary = {
   id: string;
@@ -13,6 +13,7 @@ export type DealerSummary = {
   phone: string | null;
   city: string;
   verificationStatus: string;
+  dealerType: DealerType;
 };
 
 @Injectable()
@@ -55,6 +56,7 @@ export class DealerRepository {
       phone: profile.contactNumber,
       city: profile.city,
       verificationStatus: profile.verificationStatus,
+      dealerType: profile.dealerType,
     };
   }
 }

@@ -23,7 +23,8 @@ export class ListingService {
   ) {}
 
   async createListing(dto: CreateListingDto, actor: AuthenticatedUser) {
-    await this.dealerService.getDealerById(actor.id);
+    const dealer = await this.dealerService.getDealerById(actor.id);
+    this.assertManualUploadAllowed(dealer);
 
     const status = dto.status ?? 'LIVE';
     const listing = await this.listingRepository.create(
@@ -101,6 +102,19 @@ export class ListingService {
       message: 'Vehicle listing deactivated successfully',
       data: listing,
     };
+  }
+
+  /**
+   * Manual, one-at-a-time listing creation is for individual dealers only.
+   * Business dealers list their stock through the bulk upload pipeline
+   * instead, so a stray manual listing here would bypass it.
+   */
+  private assertManualUploadAllowed(dealer: DealerSummary) {
+    if (dealer.dealerType !== 'individual') {
+      throw new ForbiddenException(
+        'Business dealers must add vehicles through bulk upload, not manual listing creation',
+      );
+    }
   }
 
   /**
