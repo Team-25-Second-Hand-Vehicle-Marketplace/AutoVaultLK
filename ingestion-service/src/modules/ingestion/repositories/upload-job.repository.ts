@@ -89,4 +89,18 @@ export class UploadJobRepository {
   ): Promise<void> {
     await this.repo.update({ id }, counts);
   }
+
+  async updateStoragePaths(
+    id: string,
+    csvS3Path: string,
+    zipS3Path: string | null,
+  ): Promise<void> {
+    await this.repo.update(
+      { id },
+      {
+        csvS3Path,
+        zipS3Path,
+      },
+    );
+  }
 }
