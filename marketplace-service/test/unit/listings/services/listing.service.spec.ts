@@ -31,6 +31,12 @@ describe('ListingService', () => {
     phone: null,
     city: 'Colombo',
     verificationStatus: 'VERIFIED',
+    dealerType: 'individual',
+  };
+
+  const BUSINESS_DEALER_SUMMARY: DealerSummary = {
+    ...DEALER_SUMMARY,
+    dealerType: 'business',
   };
 
   function vehicle(overrides: Partial<Vehicle> = {}): Vehicle {
@@ -76,6 +82,15 @@ describe('ListingService', () => {
       await service.createListing({ make: 'Toyota', status: 'DRAFT' } as never, DEALER);
 
       expect(listingRepository.create).toHaveBeenCalledWith(expect.anything(), 'DRAFT');
+    });
+
+    it('forbids a business dealer from creating a manual listing (they use bulk upload)', async () => {
+      dealerService.getDealerById.mockResolvedValue(BUSINESS_DEALER_SUMMARY);
+
+      await expect(
+        service.createListing({ make: 'Toyota' } as never, DEALER),
+      ).rejects.toThrow(ForbiddenException);
+      expect(listingRepository.create).not.toHaveBeenCalled();
     });
   });
 
