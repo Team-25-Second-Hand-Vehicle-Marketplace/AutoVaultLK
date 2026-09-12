@@ -12,6 +12,7 @@ import { mapWithConcurrency } from './pipeline/concurrency';
 import { initialEnvelope, type ChunkEnvelope } from './pipeline/envelope';
 import { embedStage } from './pipeline/embed/embed.stage';
 import { enrichStage } from './pipeline/enrich/enrich.stage';
+import { ProcessJobImagesService } from './pipeline/image-processing/process-job-images.service';
 import { groqNormalizeStage } from './pipeline/normalize/groq-normalize.stage';
 import { parseNormalizeStage } from './pipeline/normalize/parse-normalize.stage';
 import { splitChunksStage } from './pipeline/parse/split-chunks.stage';
@@ -68,23 +69,7 @@ export class LocalOrchestrator {
     private readonly rejectedRecords: RejectedRecordRepository,
     private readonly dictionary: DictionaryRepository,
     private readonly vehicles: MarketplaceVehiclesWriteAdapter,
-  ) {
-    // Built once, in the order pipeline/graph.ts declares. Each entry is the
-    // same object a Lambda handler will wrap, so the two executors run the
-    // identical chain and differ only in who calls the next link.
-    //
-    // LOAD is absent: it needs a retry loop and returns no rows file, so it is
-    // driven by this.load() rather than the generic chain.
-    this.chunkStages = [
-      asChunkStage(parseNormalizeStage, { rejections: this.rejectedRecords }),
-      asChunkStage(groqNormalizeStage, { rejections: this.rejectedRecords }),
-      asChunkStage(validateRowsStage, { rejections: this.rejectedRecords }),
-      asChunkStage(enrichStage, { rejections: this.rejectedRecords }),
-      asChunkStage(embedStage, { rejections: this.rejectedRecords }),
-    ];
-  }
-
-  private readonly chunkStages: ChunkStage[];
+  ) {}
 
   async run(jobId: string): Promise<void> {
     const job = await this.uploadJobs.findById(jobId);
@@ -104,12 +89,19 @@ export class LocalOrchestrator {
       // (see InMemoryDictionarySnapshot's header).
       const snapshot = await this.dictionary.loadSnapshot();
 
-      const { headers, chunkKeys, totalRecords } = await this.prepare(job.id, job, log);
+      const { headers, chunkKeys, totalRecords } = await this.prepare(
+        job.id,
+        job,
+        log,
+      );
 
       if (totalRecords === 0) {
         // A header-only file is not a failure — the dealer uploaded an empty
         // inventory. COMPLETED with zero counts is the honest outcome.
-        await this.uploadJobs.updateCounts(jobId, { validRecords: 0, invalidRecords: 0 });
+        await this.uploadJobs.updateCounts(jobId, {
+          validRecords: 0,
+          invalidRecords: 0,
+        });
         await this.uploadJobs.updateStatus(jobId, 'COMPLETED');
         return;
       }
@@ -138,6 +130,7 @@ export class LocalOrchestrator {
           }),
       );
 
+      await this.processImages(jobId, job.zipS3Path, log);
       await this.finish(jobId, totalRecords, outcomes);
     } catch (err) {
       // Only whole-file failures reach here: validateFile rejecting the file,
@@ -228,47 +221,52 @@ export class LocalOrchestrator {
     }
 
     const ctx = this.contextFor(jobId, dealerId, chunkId, snapshot);
+    const rejections: Rejection[] = [];
 
     try {
-      // Row counts come from the chunk file, which splitChunks wrote. Reading
-      // it here rather than threading the count through means a resumed run
-      // needs no state beyond the key.
-      const rawRows = JSON.parse((await this.store.get(key)).toString('utf8')) as RawRow[];
-      let envelope = initialEnvelope(jobId, dealerId, chunkId, rawRows.length);
+      const raw = JSON.parse((await this.store.get(key)).toString('utf8')) as RawRow[];
 
-      // The same chain Step Functions runs, in the same order, from the same
-      // declaration (pipeline/graph.ts). The difference is only who calls the
-      // next stage: here a loop, there a state transition.
-      for (const stage of this.chunkStages) {
-        envelope = await this.runStage(log, stage.stage, chunkId, async () => {
-          const result = await stage.run(ctx, envelope);
-          return {
-            result,
-            metrics: { in: result.counts.in, out: result.counts.out },
-            // SKIPPED is not SUCCEEDED: a Groq stage that ran without a key
-            // did nothing, and logging it as a success would claim the LLM ran.
-            status: result.outcome,
-            errorMessage: result.degraded,
-          };
-        });
-      }
+      const parsed = await this.runStage(log, 'PARSE_NORMALIZE', chunkId, async () => {
+        const result = await parseNormalizeStage.run(ctx, raw);
+        return { result, metrics: { rows: result.rows.length } };
+      });
 
-      const loaded = await this.load(ctx, log, envelope);
+      const groq = await this.runStage(log, 'GROQ_NORMALIZE', chunkId, async () => {
+        const result = await groqNormalizeStage.run(ctx, parsed.rows);
+        return { result, metrics: result.metrics, status: result.outcome };
+      });
 
-      return {
-        chunkId,
-        loaded: loaded.counts.out,
-        rejections: [],
-        failed: false,
-      };
+      const validated = await this.runStage(log, 'VALIDATE_ROWS', chunkId, async () => {
+        const result = await validateRowsStage.run(ctx, groq.rows);
+        return {
+          result,
+          metrics: { valid: result.rows.length, rejected: result.rejections.length },
+        };
+      });
+      rejections.push(...validated.rejections);
+
+      const enriched = await this.runStage(log, 'ENRICH', chunkId, async () => {
+        const result = await enrichStage.run(ctx, validated.rows);
+        return { result, metrics: { rows: result.rows.length } };
+      });
+
+      const embedded = await this.runStage(log, 'EMBED', chunkId, async () => {
+        const result = await embedStage.run(ctx, enriched.rows);
+        return { result, metrics: result.metrics, status: result.outcome };
+      });
+
+      const loaded = await this.load(ctx, log, chunkId, embedded.rows);
+      rejections.push(...loaded.rejections);
+
+      // Written once per chunk rather than per stage: rejections from
+      // validateRows and Load land in one statement, and a chunk that dies
+      // before this point leaves no partial rejection set behind.
+      await this.rejectedRecords.insertMany(jobId, rejections);
+
+      return { chunkId, loaded: loaded.loaded.length, rejections, failed: false };
     } catch (err) {
       // The isolation boundary. A chunk that throws is reported, not rethrown,
       // so the remaining chunks still run and the job can end PARTIAL.
-      //
-      // Rejections need no rescue here: each stage persisted its own before
-      // returning, which is what makes a stage's work survive a later stage's
-      // failure — and what lets a Lambda retry replace them rather than
-      // duplicate them.
       this.logger.error(`Chunk ${chunkId} of job ${jobId} failed: ${messageOf(err)}`);
 
       return { chunkId, loaded: 0, rejections: [], failed: true };
@@ -303,7 +301,10 @@ export class LocalOrchestrator {
         await this.rejectedRecords.insertMany(envelope.jobId, 'LOAD', result.rejections);
 
         await log.finish(logId, 'SUCCEEDED', {
-          metrics: { loaded: result.loaded.length, rejected: result.rejections.length },
+          metrics: {
+            loaded: result.loaded.length,
+            rejected: result.rejections.length,
+          },
         });
 
         return {
@@ -325,6 +326,41 @@ export class LocalOrchestrator {
     }
 
     throw lastError;
+  }
+
+  private async processImages(
+    jobId: string,
+    zipKey: string | null,
+    log: StageLogger,
+  ): Promise<void> {
+    const logId = await log.start('PROCESS_IMAGES', null);
+
+    if (!zipKey) {
+      await log.finish(logId, 'SKIPPED', {
+        metrics: { reason: 'no_zip' },
+      });
+      return;
+    }
+
+    try {
+      const result = await this.imageProcessing.run(this.store, {
+        jobId,
+        zipKey,
+      });
+
+      await log.finish(
+        logId,
+        result.failed > 0 || result.unmatched > 0 ? 'DEGRADED' : 'SUCCEEDED',
+        {
+          metrics: result,
+        },
+      );
+    } catch (err) {
+      await log.finish(logId, 'FAILED', { errorMessage: messageOf(err) });
+      this.logger.error(
+        `Image processing for job ${jobId} failed: ${messageOf(err)}`,
+      );
+    }
   }
 
   /** Wraps one stage in start/finish logging, propagating the failure. */
@@ -376,7 +412,12 @@ export class LocalOrchestrator {
       invalidRecords: rejected,
     });
 
-    const status = loaded === 0 ? 'FAILED' : anyFailed || rejected > 0 ? 'PARTIAL' : 'COMPLETED';
+    const status =
+      loaded === 0
+        ? 'FAILED'
+        : anyFailed || rejected > 0
+          ? 'PARTIAL'
+          : 'COMPLETED';
 
     await this.uploadJobs.updateStatus(jobId, status);
     this.logger.log(
