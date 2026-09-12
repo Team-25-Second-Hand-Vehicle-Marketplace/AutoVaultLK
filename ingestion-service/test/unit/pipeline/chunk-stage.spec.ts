@@ -1,4 +1,7 @@
-import { asChunkStage } from '../../../src/workers/etl-worker/pipeline/chunk-stage';
+import {
+  asChunkStage,
+  type StageOutcome,
+} from '../../../src/workers/etl-worker/pipeline/chunk-stage';
 import {
   initialEnvelope,
   rawChunkKey,
@@ -13,7 +16,7 @@ import type {
 type Row = { rowNumber: number; value: string };
 
 const harness = (
-  result: StageResult<Row> & { outcome?: string; error?: string },
+  result: StageResult<Row> & { outcome?: StageOutcome; error?: string },
   input: Row[] = [{ rowNumber: 1, value: 'a' }],
 ) => {
   const written = new Map<string, string>();

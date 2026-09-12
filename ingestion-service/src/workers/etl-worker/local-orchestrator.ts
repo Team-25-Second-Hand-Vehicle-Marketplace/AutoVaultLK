@@ -69,6 +69,7 @@ export class LocalOrchestrator {
     private readonly rejectedRecords: RejectedRecordRepository,
     private readonly dictionary: DictionaryRepository,
     private readonly vehicles: MarketplaceVehiclesWriteAdapter,
+    private readonly imageProcessing: ProcessJobImagesService,
   ) {}
 
   async run(jobId: string): Promise<void> {
@@ -221,55 +222,66 @@ export class LocalOrchestrator {
     }
 
     const ctx = this.contextFor(jobId, dealerId, chunkId, snapshot);
-    const rejections: Rejection[] = [];
 
     try {
-      const raw = JSON.parse((await this.store.get(key)).toString('utf8')) as RawRow[];
+      const raw = JSON.parse(
+        (await this.store.get(key)).toString('utf8'),
+      ) as RawRow[];
+      let envelope = initialEnvelope(jobId, dealerId, chunkId, raw.length);
 
-      const parsed = await this.runStage(log, 'PARSE_NORMALIZE', chunkId, async () => {
-        const result = await parseNormalizeStage.run(ctx, raw);
-        return { result, metrics: { rows: result.rows.length } };
-      });
+      for (const stage of this.chunkStages()) {
+        envelope = await this.runChunkStage(ctx, log, stage, envelope);
+      }
 
-      const groq = await this.runStage(log, 'GROQ_NORMALIZE', chunkId, async () => {
-        const result = await groqNormalizeStage.run(ctx, parsed.rows);
-        return { result, metrics: result.metrics, status: result.outcome };
-      });
+      const loaded = await this.load(ctx, log, envelope);
 
-      const validated = await this.runStage(log, 'VALIDATE_ROWS', chunkId, async () => {
-        const result = await validateRowsStage.run(ctx, groq.rows);
-        return {
-          result,
-          metrics: { valid: result.rows.length, rejected: result.rejections.length },
-        };
-      });
-      rejections.push(...validated.rejections);
-
-      const enriched = await this.runStage(log, 'ENRICH', chunkId, async () => {
-        const result = await enrichStage.run(ctx, validated.rows);
-        return { result, metrics: { rows: result.rows.length } };
-      });
-
-      const embedded = await this.runStage(log, 'EMBED', chunkId, async () => {
-        const result = await embedStage.run(ctx, enriched.rows);
-        return { result, metrics: result.metrics, status: result.outcome };
-      });
-
-      const loaded = await this.load(ctx, log, chunkId, embedded.rows);
-      rejections.push(...loaded.rejections);
-
-      // Written once per chunk rather than per stage: rejections from
-      // validateRows and Load land in one statement, and a chunk that dies
-      // before this point leaves no partial rejection set behind.
-      await this.rejectedRecords.insertMany(jobId, rejections);
-
-      return { chunkId, loaded: loaded.loaded.length, rejections, failed: false };
+      return {
+        chunkId,
+        loaded: loaded.counts.out,
+        rejections: [],
+        failed: false,
+      };
     } catch (err) {
       // The isolation boundary. A chunk that throws is reported, not rethrown,
       // so the remaining chunks still run and the job can end PARTIAL.
-      this.logger.error(`Chunk ${chunkId} of job ${jobId} failed: ${messageOf(err)}`);
+      this.logger.error(
+        `Chunk ${chunkId} of job ${jobId} failed: ${messageOf(err)}`,
+      );
 
       return { chunkId, loaded: 0, rejections: [], failed: true };
+    }
+  }
+
+  private chunkStages(): ChunkStage[] {
+    const deps = { rejections: this.rejectedRecords };
+
+    return [
+      asChunkStage(parseNormalizeStage, deps),
+      asChunkStage(groqNormalizeStage, deps),
+      asChunkStage(validateRowsStage, deps),
+      asChunkStage(enrichStage, deps),
+      asChunkStage(embedStage, deps),
+    ];
+  }
+
+  private async runChunkStage(
+    ctx: StageContext,
+    log: StageLogger,
+    stage: ChunkStage,
+    envelope: ChunkEnvelope,
+  ): Promise<ChunkEnvelope> {
+    const logId = await log.start(stage.stage, envelope.chunkId);
+
+    try {
+      const next = await stage.run(ctx, envelope);
+      await log.finish(logId, next.outcome ?? 'SUCCEEDED', {
+        metrics: next.counts,
+        errorMessage: next.degraded,
+      });
+      return next;
+    } catch (err) {
+      await log.finish(logId, 'FAILED', { errorMessage: messageOf(err) });
+      throw err;
     }
   }
 
@@ -285,7 +297,9 @@ export class LocalOrchestrator {
   ): Promise<ChunkEnvelope> {
     const stage = createLoadStage(this.vehicles);
     const rows = envelope.key
-      ? (JSON.parse((await this.store.get(envelope.key)).toString('utf8')) as EmbeddedRow[])
+      ? (JSON.parse(
+          (await this.store.get(envelope.key)).toString('utf8'),
+        ) as EmbeddedRow[])
       : [];
 
     let lastError: unknown;
@@ -298,7 +312,11 @@ export class LocalOrchestrator {
         // Load's rejections are cross-job duplicate registrations the database
         // refused. Persisted under LOAD rather than merged into an earlier
         // stage's set, so a retry replaces exactly its own.
-        await this.rejectedRecords.insertMany(envelope.jobId, 'LOAD', result.rejections);
+        await this.rejectedRecords.insertMany(
+          envelope.jobId,
+          'LOAD',
+          result.rejections,
+        );
 
         await log.finish(logId, 'SUCCEEDED', {
           metrics: {

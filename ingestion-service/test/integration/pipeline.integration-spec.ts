@@ -14,9 +14,16 @@ import { UploadJobRepository } from '../../src/modules/ingestion/repositories/up
 import { LocalOrchestrator } from '../../src/workers/etl-worker/local-orchestrator';
 import { __setEmbedder } from '../../src/workers/etl-worker/pipeline/embed/embed.stage';
 import { MarketplaceVehiclesWriteAdapter } from '../../src/workers/etl-worker/pipeline/persistence/marketplace-vehicles-write.adapter';
-import { cleanup, connect, describeWithDatabase, disconnect, findDealer } from './test-database';
+import {
+  cleanup,
+  connect,
+  describeWithDatabase,
+  disconnect,
+  findDealer,
+} from './test-database';
 
-const HEADER = 'registration_number,make,model,year,price,mileage,fuel_type,transmission,body_type';
+const HEADER =
+  'registration_number,make,model,year,price,mileage,fuel_type,transmission,body_type';
 
 /** Unique per run so a crashed test cannot collide with the next. */
 const run = String(Date.now()).slice(-6);
@@ -45,10 +52,10 @@ describeWithDatabase('LocalOrchestrator (integration)', () => {
 
     const key = `raw/${job.id}/integration.csv`;
     await store.put(key, csv);
-    await ds.query(`UPDATE ingestion.upload_jobs SET csv_s3_path = $1 WHERE id = $2`, [
-      key,
-      job.id,
-    ]);
+    await ds.query(
+      `UPDATE ingestion.upload_jobs SET csv_s3_path = $1 WHERE id = $2`,
+      [key, job.id],
+    );
 
     return job.id;
   };
@@ -64,7 +71,8 @@ describeWithDatabase('LocalOrchestrator (integration)', () => {
 
   beforeAll(async () => {
     const connected = await connect();
-    if (!connected) throw new Error('Database unreachable despite the reachability probe');
+    if (!connected)
+      throw new Error('Database unreachable despite the reachability probe');
     ds = connected;
     dealerId = await findDealer(ds);
 
@@ -94,6 +102,7 @@ describeWithDatabase('LocalOrchestrator (integration)', () => {
       new RejectedRecordRepository(ds.getRepository(RejectedRecord)),
       new DictionaryRepository(ds.getRepository(VehicleDictionaryView)),
       new MarketplaceVehiclesWriteAdapter(ds),
+      { run: async () => undefined } as never,
     );
   });
 
@@ -122,7 +131,10 @@ describeWithDatabase('LocalOrchestrator (integration)', () => {
     // from a fixture: a seed that stopped matching the generator would show up
     // as unresolved makes rather than as a passing unit test.
     const jobId = await upload(
-      [HEADER, `${plate(10)},toyata,vits,2015,Rs. 3500000,45000 km,Petrol,Auto,Saloon`].join('\n'),
+      [
+        HEADER,
+        `${plate(10)},toyata,vits,2015,Rs. 3500000,45000 km,Petrol,Auto,Saloon`,
+      ].join('\n'),
     );
 
     await orchestrator.run(jobId);
@@ -178,12 +190,18 @@ describeWithDatabase('LocalOrchestrator (integration)', () => {
 
   it('ends FAILED when nothing lands', async () => {
     const jobId = await upload(
-      [HEADER, `${plate(30)},Toyota,Vitz,2015,-1,45000,Petrol,Automatic,Hatchback`].join('\n'),
+      [
+        HEADER,
+        `${plate(30)},Toyota,Vitz,2015,-1,45000,Petrol,Automatic,Hatchback`,
+      ].join('\n'),
     );
 
     await orchestrator.run(jobId);
 
-    expect(await jobRow(jobId)).toMatchObject({ status: 'FAILED', valid_records: 0 });
+    expect(await jobRow(jobId)).toMatchObject({
+      status: 'FAILED',
+      valid_records: 0,
+    });
   });
 
   it('fails the whole job on a malformed file, with a readable reason', async () => {
@@ -201,7 +219,9 @@ describeWithDatabase('LocalOrchestrator (integration)', () => {
     )) as { row_number: number; reason: string }[];
 
     expect(rejection.row_number).toBe(0);
-    expect(rejection.reason).toMatch(/Missing required columns: year, price, mileage/);
+    expect(rejection.reason).toMatch(
+      /Missing required columns: year, price, mileage/,
+    );
   });
 
   it('completes an empty inventory rather than failing it', async () => {
@@ -311,23 +331,35 @@ describeWithDatabase('LocalOrchestrator (integration)', () => {
       await orchestrator.run(jobId);
       await orchestrator.run(jobId);
 
-      expect(await jobRow(jobId)).toMatchObject({ status: 'COMPLETED', valid_records: 1 });
+      expect(await jobRow(jobId)).toMatchObject({
+        status: 'COMPLETED',
+        valid_records: 1,
+      });
     });
   });
 
   it('rejects a duplicate registration already listed under another job', async () => {
     const duplicate = plate(80);
     const firstJob = await upload(
-      [HEADER, `${duplicate},Toyota,Vitz,2015,3500000,45000,Petrol,Automatic,Hatchback`].join('\n'),
+      [
+        HEADER,
+        `${duplicate},Toyota,Vitz,2015,3500000,45000,Petrol,Automatic,Hatchback`,
+      ].join('\n'),
     );
     await orchestrator.run(firstJob);
 
     const secondJob = await upload(
-      [HEADER, `${duplicate},Toyota,Vitz,2015,3500000,45000,Petrol,Automatic,Hatchback`].join('\n'),
+      [
+        HEADER,
+        `${duplicate},Toyota,Vitz,2015,3500000,45000,Petrol,Automatic,Hatchback`,
+      ].join('\n'),
     );
     await orchestrator.run(secondJob);
 
-    expect(await jobRow(secondJob)).toMatchObject({ status: 'FAILED', valid_records: 0 });
+    expect(await jobRow(secondJob)).toMatchObject({
+      status: 'FAILED',
+      valid_records: 0,
+    });
 
     const [rejection] = (await ds.query(
       `SELECT reason FROM ingestion.rejected_records WHERE upload_job_id = $1`,
