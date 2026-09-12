@@ -1,5 +1,6 @@
 import unzipper from 'unzipper';
 import type { ObjectStore } from '../../../../infrastructure/ports/object-store.port';
+import { coerceRegistrationNumber } from '../normalize/coerce';
 
 export type ExtractedImage = {
   fileName: string;
@@ -67,10 +68,9 @@ export async function extractImagesStage(
      *
      * The registration number is the part before the optional _number.
      */
-    const registrationNumber = baseName
-      .replace(/_\d+$/, '')
-      .trim()
-      .toUpperCase();
+    const registrationNumber = coerceRegistrationNumber(
+      baseName.replace(/_\d+$/, ''),
+    );
 
     if (!registrationNumber) {
       continue;
@@ -82,14 +82,9 @@ export async function extractImagesStage(
       continue;
     }
 
-    const imageKey =
-      `images/${input.jobId}/original/${sanitizeKeyPart(fileName)}`;
+    const imageKey = `raw/${input.jobId}/images/${sanitizeKeyPart(fileName)}`;
 
-    await store.put(
-      imageKey,
-      body,
-      contentTypeFor(extension),
-    );
+    await store.put(imageKey, body, contentTypeFor(extension));
 
     images.push({
       fileName,
@@ -114,16 +109,11 @@ function getExtension(fileName: string): string {
 function getBaseName(fileName: string): string {
   const lastSlash = fileName.lastIndexOf('/');
 
-  const name =
-    lastSlash >= 0
-      ? fileName.slice(lastSlash + 1)
-      : fileName;
+  const name = lastSlash >= 0 ? fileName.slice(lastSlash + 1) : fileName;
 
   const dot = name.lastIndexOf('.');
 
-  return dot >= 0
-    ? name.slice(0, dot)
-    : name;
+  return dot >= 0 ? name.slice(0, dot) : name;
 }
 
 function sanitizeKeyPart(value: string): string {
@@ -131,9 +121,7 @@ function sanitizeKeyPart(value: string): string {
     .replace(/\\/g, '/')
     .split('/')
     .filter(Boolean)
-    .map((part) =>
-      part.replace(/[^a-zA-Z0-9._-]/g, '_'),
-    )
+    .map((part) => part.replace(/[^a-zA-Z0-9._-]/g, '_'))
     .join('/');
 }
 
