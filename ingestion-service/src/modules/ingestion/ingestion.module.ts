@@ -9,6 +9,9 @@ import { VehicleDictionaryView } from '../../infrastructure/database/entities/ve
 import { VehicleWriteEntity } from '../../infrastructure/database/entities/vehicle.write-entity';
 import { EtlWorkerService } from '../../workers/etl-worker/etl-worker.service';
 import { LocalOrchestrator } from '../../workers/etl-worker/local-orchestrator';
+import { ProcessJobImagesService } from '../../workers/etl-worker/pipeline/image-processing/process-job-images.service';
+import { VehicleImageRepository } from '../../workers/etl-worker/pipeline/image-processing/vehicle-image.repository';
+import { MarketplaceVehicleImagesWriteAdapter } from '../../workers/etl-worker/pipeline/persistence/marketplace-vehicle-images-write.adapter';
 import { MarketplaceVehiclesWriteAdapter } from '../../workers/etl-worker/pipeline/persistence/marketplace-vehicles-write.adapter';
 import { DealerProfileRepository } from './repositories/dealer-profile.repository';
 import { DictionaryRepository } from './repositories/dictionary.repository';

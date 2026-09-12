@@ -5,6 +5,7 @@ import {
   FILE_STAGES,
   stageSlug,
 } from '../../../src/workers/etl-worker/pipeline/graph';
+import type { EtlStage } from '../../../src/infrastructure/database/entities/etl-stage-log.entity';
 
 type AslState = {
   Type: string;
@@ -45,7 +46,7 @@ const chain = (states: Record<string, AslState>, start: string): string[] => {
 };
 
 /** PascalCase state name for a stage: PARSE_NORMALIZE becomes ParseNormalize. */
-const stateName = (stage: string): string =>
+const stateName = (stage: EtlStage): string =>
   stageSlug(stage)
     .split('-')
     .map((part) => part[0].toUpperCase() + part.slice(1))

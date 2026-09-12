@@ -70,7 +70,15 @@ const harness = (o: { csv?: string; chunkSize?: number } = {}) => {
     succeededChunks: jest.fn().mockResolvedValue(new Set<number>()),
   };
 
-  const rejectedRecords = { insertMany: jest.fn().mockResolvedValue(undefined) };
+  let rejected = 0;
+  const rejectedRecords = {
+    insertMany: jest.fn(
+      async (_jobId: string, _stage: string, rows: unknown[]) => {
+        rejected += rows.length;
+      },
+    ),
+    countForJob: jest.fn(async () => rejected),
+  };
   const dictionary = { loadSnapshot: jest.fn().mockResolvedValue(DICTIONARY) };
   // countForJob reports what the database holds; the fake tallies every row
   // upsertBatch accepted, which is the same thing for a single run.
@@ -79,13 +87,19 @@ const harness = (o: { csv?: string; chunkSize?: number } = {}) => {
     upsertBatch: jest.fn(async (_j: string, _d: string, rows: unknown[]) => {
       persisted += rows.length;
       return {
-        loaded: rows.map((_, i) => ({ id: `v${i}`, registration_number: null })),
+        loaded: rows.map((_, i) => ({
+          id: `v${i}`,
+          registration_number: null,
+        })),
         rejections: [],
       };
     }),
     countForJob: jest.fn(async () => persisted),
     setPersisted: (n: number) => {
       persisted = n;
+    },
+    addPersisted: (n: number) => {
+      persisted += n;
     },
   };
   const imageProcessing = {
@@ -234,13 +248,19 @@ describe('LocalOrchestrator', () => {
       // Keyed on the row rather than call order: chunks run concurrently, so
       // "reject the next two calls" would land on two different chunks' first
       // attempts and both would then succeed on retry.
-      h.vehicles.upsertBatch.mockImplementation(async (_j, _d, rows: { rowNumber: number }[]) => {
-        if (rows[0]?.rowNumber === 1) throw new Error('write failed');
-        return {
-          loaded: rows.map((_, i) => ({ id: `v${i}`, registration_number: null })),
-          rejections: [],
-        };
-      });
+      h.vehicles.upsertBatch.mockImplementation(
+        async (_j, _d, rows: { rowNumber: number }[]) => {
+          if (rows[0]?.rowNumber === 1) throw new Error('write failed');
+          h.vehicles.addPersisted(rows.length);
+          return {
+            loaded: rows.map((_, i) => ({
+              id: `v${i}`,
+              registration_number: null,
+            })),
+            rejections: [],
+          };
+        },
+      );
 
       await h.orchestrator.run('job-1');
 
@@ -265,10 +285,15 @@ describe('LocalOrchestrator', () => {
       // Load failures are typically transient — a dropped connection or a lock
       // timeout — unlike a stage that rejected a row deterministically.
       const h = harness({ chunkSize: 2 });
-      const accepted = jest.fn(h.vehicles.upsertBatch.getMockImplementation() as never);
       h.vehicles.upsertBatch
         .mockRejectedValueOnce(new Error('deadlock'))
-        .mockResolvedValueOnce({ loaded: [{ id: 'v1', registration_number: null }], rejections: [] });
+        .mockImplementationOnce(async (_j, _d, rows: unknown[]) => {
+          h.vehicles.addPersisted(rows.length);
+          return {
+            loaded: [{ id: 'v1', registration_number: null }],
+            rejections: [],
+          };
+        });
 
       await h.orchestrator.run('job-1');
 
@@ -352,9 +377,16 @@ describe('LocalOrchestrator', () => {
       await h.orchestrator.run('job-1');
 
       expect(statuses(h)).toContain('FAILED');
-      expect(h.rejectedRecords.insertMany).toHaveBeenCalledWith('job-1', [
-        expect.objectContaining({ rowNumber: 0, reason: expect.stringMatching(/year/) }),
-      ]);
+      expect(h.rejectedRecords.insertMany).toHaveBeenCalledWith(
+        'job-1',
+        'VALIDATE_FILE',
+        [
+          expect.objectContaining({
+            rowNumber: 0,
+            reason: expect.stringMatching(/year/),
+          }),
+        ],
+      );
     });
 
     it('logs the failing stage rather than only the job', async () => {
@@ -380,7 +412,9 @@ describe('LocalOrchestrator', () => {
   });
 
   it('writes rejections once per chunk', async () => {
-    const h = harness({ csv: [HEADER, ROW(1), 'CAB-9,Toyota,Vitz,1850,3500000,45000'].join('\n') });
+    const h = harness({
+      csv: [HEADER, ROW(1), 'CAB-9,Toyota,Vitz,1850,3500000,45000'].join('\n'),
+    });
 
     await h.orchestrator.run('job-1');
 
