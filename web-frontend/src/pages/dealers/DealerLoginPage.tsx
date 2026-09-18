@@ -43,7 +43,7 @@ export function DealerLoginPage() {
 
   // An already-signed-in dealer has nothing to do here.
   useEffect(() => {
-    if (isAuthenticated && user?.role === 'DEALER') navigate('/', { replace: true })
+    if (isAuthenticated && user?.role === 'DEALER') navigate('/dealer', { replace: true })
   }, [isAuthenticated, user, navigate])
 
   const onSubmit = handleSubmit(async (values) => {
@@ -69,7 +69,7 @@ export function DealerLoginPage() {
       return
     }
 
-    navigate('/', { replace: true })
+    navigate('/dealer', { replace: true })
   })
 
   return (

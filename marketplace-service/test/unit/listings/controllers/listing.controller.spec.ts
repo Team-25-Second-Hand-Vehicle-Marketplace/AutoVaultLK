@@ -5,6 +5,7 @@ describe('ListingController', () => {
   const listingService = {
     createListing: jest.fn(),
     getAllListings: jest.fn(),
+    getMyListings: jest.fn(),
     getListingById: jest.fn(),
     updateListing: jest.fn(),
     deactivateListing: jest.fn(),
@@ -27,6 +28,13 @@ describe('ListingController', () => {
 
     expect(controller.getAllListings()).toBe('all');
     expect(listingService.getAllListings).toHaveBeenCalledWith();
+  });
+
+  it('GET mine delegates to getMyListings with the JWT actor', () => {
+    listingService.getMyListings.mockReturnValue('mine');
+
+    expect(controller.getMyListings(actor)).toBe('mine');
+    expect(listingService.getMyListings).toHaveBeenCalledWith(actor);
   });
 
   it('GET :id delegates to getListingById', () => {

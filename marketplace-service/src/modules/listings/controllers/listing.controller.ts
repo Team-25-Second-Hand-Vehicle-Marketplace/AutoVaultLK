@@ -40,6 +40,14 @@ export class ListingController {
     return this.listingService.getAllListings();
   }
 
+  // Must stay ahead of `:id` — otherwise Nest matches "mine" as an id param.
+  @Get('mine')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('DEALER')
+  getMyListings(@CurrentUser() actor: AuthenticatedUser) {
+    return this.listingService.getMyListings(actor);
+  }
+
   @Get(':id')
   getListingById(@Param('id', ParseUUIDPipe) id: string) {
     return this.listingService.getListingById(id);
