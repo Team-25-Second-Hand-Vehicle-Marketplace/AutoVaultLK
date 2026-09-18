@@ -61,6 +61,13 @@ export class ListingRepository {
     return this.vehicleRepo.findOne({ where: { id } });
   }
 
+  findByDealer(dealerId: string) {
+    return this.vehicleRepo.find({
+      where: { dealerId },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
   async update(id: string, data: Partial<CreateListingDto>) {
     const vehicle = await this.findById(id);
 

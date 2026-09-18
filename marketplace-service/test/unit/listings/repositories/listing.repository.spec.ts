@@ -98,6 +98,19 @@ describe('ListingRepository', () => {
     });
   });
 
+  describe('findByDealer', () => {
+    it('filters to the dealer, no status filter, ordered newest first', async () => {
+      vehicleRepo.find.mockResolvedValue([]);
+
+      await repository.findByDealer('dealer-1');
+
+      expect(vehicleRepo.find).toHaveBeenCalledWith({
+        where: { dealerId: 'dealer-1' },
+        order: { createdAt: 'DESC' },
+      });
+    });
+  });
+
   describe('findById', () => {
     it('looks up by id with no status filter (so DRAFT/ARCHIVED are still found by owners)', async () => {
       vehicleRepo.findOne.mockResolvedValue(vehicle());
