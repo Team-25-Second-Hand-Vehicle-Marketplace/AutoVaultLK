@@ -5,9 +5,14 @@ import {
   Param,
   ParseUUIDPipe,
   Query,
+  Post,
+  UseGuards,
 } from '@nestjs/common';
 import { FilterSearchDto } from '../dto/filter-search.dto';
-import { FilterSearchResponseDto, VehicleDetailDto } from '../dto/filter-search-response.dto';
+import {
+  FilterSearchResponseDto,
+  VehicleDetailDto,
+} from '../dto/filter-search-response.dto';
 import { FilterSearchService } from '../services/filter-search.service';
 import { NlSearchService } from '../services/nl-search.service';
 import { SearchOptionsService } from '../services/search-options.service';
@@ -18,6 +23,10 @@ import {
   MarketplaceStatsDto,
 } from '../dto/search-options-response.dto';
 import { VehicleSearchRepository } from '../repositories/vehicle-search.repository';
+import { AliasPromotionService } from '../services/alias-promotion.service';
+import { Roles } from '../../auth/decorators/roles.decorator';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../auth/guards/roles.guard';
 
 @Controller('search')
 export class SearchController {
@@ -26,10 +35,13 @@ export class SearchController {
     private readonly nlSearchService: NlSearchService,
     private readonly optionsService: SearchOptionsService,
     private readonly repository: VehicleSearchRepository,
+    private readonly aliasPromotionService: AliasPromotionService,
   ) {}
 
   @Get('filters')
-  async filterSearch(@Query() dto: FilterSearchDto): Promise<FilterSearchResponseDto> {
+  async filterSearch(
+    @Query() dto: FilterSearchDto,
+  ): Promise<FilterSearchResponseDto> {
     return this.filterSearchService.search(dto);
   }
 
@@ -39,7 +51,9 @@ export class SearchController {
   }
 
   @Get('facets')
-  async facets(@Query() dto: FilterSearchDto): Promise<FilterSearchResponseDto['facets']> {
+  async facets(
+    @Query() dto: FilterSearchDto,
+  ): Promise<FilterSearchResponseDto['facets']> {
     return this.repository.facets(dto);
   }
 
@@ -60,7 +74,26 @@ export class SearchController {
   }
 
   @Get('options')
-  async options(@Query('vehicleType') vehicleType?: string): Promise<SearchOptionsResponseDto> {
+  async options(
+    @Query('vehicleType') vehicleType?: string,
+  ): Promise<SearchOptionsResponseDto> {
     return this.optionsService.getOptions(vehicleType);
+  }
+
+  /**
+   * Admin-only, and guarded per-method rather than on the class: every other
+   * route here is the public browse surface and must stay unauthenticated.
+   *
+   * This writes to marketplace.vehicle_dictionaries, which is reference data
+   * the whole platform reads — the ingestion ETL loads a snapshot of it on
+   * every run. An unguarded endpoint would let anyone who can reach /search
+   * search a junk token five times and then make it a permanent alias,
+   * silently changing how dealer uploads normalize.
+   */
+  @Post('aliases/promote')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  async promoteAliases() {
+    return this.aliasPromotionService.promoteAliases();
   }
 }
