@@ -37,3 +37,4 @@ mywork.txt
 # LocalObjectStore driver root (ADR-007): raw dealer uploads and inter-stage
 # payloads. Never committed — recreated on demand.
 .storage/
+DEPLOYMENT-GAPS.md

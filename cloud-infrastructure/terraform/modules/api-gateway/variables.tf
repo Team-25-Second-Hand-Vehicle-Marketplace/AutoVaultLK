@@ -22,9 +22,20 @@ variable "cors_allow_origins" {
   default     = null
 }
 
-# Map route key -> Lambda invoke ARN (unused while module is scaffold-only)
+# Map route prefix -> Lambda invoke ARN, e.g.
+# { auth = auth_invoke_arn, users = auth_invoke_arn, "dealer-profiles" = auth_invoke_arn,
+#   marketplace = marketplace_invoke_arn, admin = admin_invoke_arn }
+# Multiple prefixes may point at the same Lambda (auth owns 3 prefixes).
 variable "public_lambda_integrations" {
   type        = map(string)
-  description = "HTTP API route integrations for north-south traffic (not wired until scaffold is completed)"
+  description = "North-south HTTP API route integrations, keyed by route prefix"
+  default     = {}
+}
+
+# Same shape, for the internal (east-west) API — e.g.
+# { notifications = notification_invoke_arn, internal = auth_invoke_arn }
+variable "internal_lambda_integrations" {
+  type        = map(string)
+  description = "East-west HTTP API route integrations, keyed by route prefix"
   default     = {}
 }
