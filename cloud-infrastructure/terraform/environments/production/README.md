@@ -306,6 +306,50 @@ This is how Issues 2, 3, 6, and 9 were all actually found — the error
 message returned over HTTP is generic by design (NestJS's default exception
 filter), but the Lambda's own log always has the real exception.
 
+## Step 9 — CI/CD (manual-trigger deploys from GitHub Actions)
+
+`modules/github-oidc` sets up an IAM role GitHub Actions can assume via
+OIDC — no long-lived AWS keys stored in GitHub. `.github/workflows/
+deploy-production.yml` uses it to build+push+update all 4 services and the
+frontend. **It only runs on `workflow_dispatch`** (Actions tab → "Deploy to
+production" → Run workflow) — deliberately no `push`/`pull_request`
+trigger, since this environment gets torn down between sessions and an
+auto-deploy pipeline would just fail every run while it's down.
+
+After `terraform apply` (this module applies alongside everything else, no
+separate step), get the role ARN:
+```
+terraform output github_deploy_role_arn
+```
+
+Then set these as **repository variables** (Settings → Secrets and
+variables → Actions → Variables tab — not Secrets; none of these are
+secret, OIDC is what keeps this safe) on the GitHub repo:
+
+| Variable | Value |
+|---|---|
+| `AWS_ACCOUNT_ID` | `287761904540` (or your account) |
+| `AWS_DEPLOY_ROLE_ARN` | the `github_deploy_role_arn` output |
+| `PUBLIC_API_ENDPOINT` | `terraform output public_api_endpoint` |
+| `FRONTEND_BUCKET_NAME` | `terraform output frontend_bucket_name` |
+| `FRONTEND_DISTRIBUTION_ID` | `terraform output frontend_distribution_id` |
+
+The trust policy only allows `workflow_dispatch` runs from this repo's
+`main` branch (`repo:<org>/<repo>:ref:refs/heads/main` — see
+`modules/github-oidc/main.tf` if you need to broaden that, e.g. to allow
+deploys from a branch).
+
+**If this AWS account already has a GitHub OIDC provider** from another
+project (AWS allows only one per account for
+`token.actions.githubusercontent.com`), set `create_github_oidc_provider =
+false` in `production.auto.tfvars` and Terraform will reuse the existing
+one instead of trying to create a duplicate (which errors).
+
+**After a `terraform destroy` + fresh redeploy**, the account ID, role ARN,
+and all 3 other values above change — update the repository variables again
+before the next manual trigger, or it'll deploy against stale/nonexistent
+resources.
+
 ---
 
 ## Known issues and fixes (all encountered on the first real deployment)
