@@ -25,6 +25,13 @@ function makeController() {
     facets: jest.fn().mockResolvedValue({ make: [] }),
     findById: jest.fn().mockResolvedValue(null),
   };
+  const aliasPromotionService = {
+    promoteAliases: jest.fn().mockResolvedValue({
+      candidates: 0,
+      promoted: 0,
+      skipped: 0,
+    }),
+  };
 
   // Order must match the constructor exactly. nlSearchService was inserted
   // second when GET /search/nl landed; passing three args here silently slid
@@ -36,9 +43,17 @@ function makeController() {
     nlSearchService as never,
     optionsService as never,
     repository as never,
+    aliasPromotionService as never,
   );
 
-  return { controller, filterSearchService, nlSearchService, optionsService, repository };
+  return {
+    controller,
+    filterSearchService,
+    nlSearchService,
+    optionsService,
+    repository,
+    aliasPromotionService,
+  };
 }
 
 describe('SearchController — GET /search/filters', () => {

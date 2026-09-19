@@ -6,6 +6,7 @@ import {
   ParseUUIDPipe,
   Query,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 import { FilterSearchDto } from '../dto/filter-search.dto';
 import {
@@ -23,6 +24,9 @@ import {
 } from '../dto/search-options-response.dto';
 import { VehicleSearchRepository } from '../repositories/vehicle-search.repository';
 import { AliasPromotionService } from '../services/alias-promotion.service';
+import { Roles } from '../../auth/decorators/roles.decorator';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../auth/guards/roles.guard';
 
 @Controller('search')
 export class SearchController {
@@ -76,7 +80,19 @@ export class SearchController {
     return this.optionsService.getOptions(vehicleType);
   }
 
+  /**
+   * Admin-only, and guarded per-method rather than on the class: every other
+   * route here is the public browse surface and must stay unauthenticated.
+   *
+   * This writes to marketplace.vehicle_dictionaries, which is reference data
+   * the whole platform reads — the ingestion ETL loads a snapshot of it on
+   * every run. An unguarded endpoint would let anyone who can reach /search
+   * search a junk token five times and then make it a permanent alias,
+   * silently changing how dealer uploads normalize.
+   */
   @Post('aliases/promote')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   async promoteAliases() {
     return this.aliasPromotionService.promoteAliases();
   }
