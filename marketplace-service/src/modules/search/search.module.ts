@@ -8,6 +8,8 @@ import { VehicleSearchRepository } from './repositories/vehicle-search.repositor
 import { GroqClient } from './groq/groq-client';
 import { GroqFallbackService } from './groq/groq-fallback.service';
 import { QueryEmbeddingService } from './services/query-embedding.service';
+import { AliasPromotionRepository } from './repositories/alias-promotion.repository';
+import { AliasPromotionService } from './services/alias-promotion.service';
 
 @Module({
   controllers: [SearchController],
@@ -18,6 +20,8 @@ import { QueryEmbeddingService } from './services/query-embedding.service';
     SearchOptionsService,
     VehicleDictionaryRepository,
     VehicleSearchRepository,
+    AliasPromotionRepository,
+    AliasPromotionService,
     GroqClient,
     GroqFallbackService,
   ],
