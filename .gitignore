@@ -28,6 +28,10 @@ tfplan
 # and hashes, and belongs in version control so every machine and CI run
 # resolves the same providers.
 
+# EC2 key pairs created for one-off manual bootstrap tasks (e.g. a temporary
+# SSH bastion) — a live private key, never committed.
+*.pem
+
 cdk.out/
 build/
 mywork.txt
