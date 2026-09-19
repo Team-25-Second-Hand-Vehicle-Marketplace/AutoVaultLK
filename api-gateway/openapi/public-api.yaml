@@ -315,12 +315,85 @@ paths:
       tags:
         - ingest
       summary: Bulk upload intake (business dealer, verified)
+      description: >
+        Accepts a dealer inventory CSV and an optional ZIP of vehicle photos,
+        stores both, creates an upload job and returns immediately. The ETL
+        pipeline runs asynchronously; poll GET /jobs/{jobId} for progress.
+
+
+        Two conditions gate this endpoint, not one: the caller must hold the
+        DEALER role *and* be a verified business dealer.
       operationId: ingestUpload
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - csv
+              properties:
+                csv:
+                  type: string
+                  format: binary
+                  description: >
+                    Inventory CSV, UTF-8, max 25 MB. Required columns are make,
+                    model, year, price and mileage; registration_number is
+                    optional but is what photos are matched on. Common header
+                    spellings are folded automatically.
+                zip:
+                  type: string
+                  format: binary
+                  description: >
+                    Optional archive of photos named after each vehicle's
+                    registration number, e.g. CAB-1234_1.jpg. Max 250 MB.
+            encoding:
+              csv:
+                contentType: text/csv
+              zip:
+                contentType: application/zip
       responses:
         '202':
-          description: Accepted with jobId
+          description: >
+            Upload accepted and queued. The job has not run yet — its status is
+            PENDING until the pipeline starts.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobAccepted'
+        '400':
+          description: >
+            Missing or empty CSV, a non-CSV extension, an unrecognised MIME
+            type, or a form field other than `csv` and `zip`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: No or invalid bearer token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: >
+            The caller is not a DEALER, or is a dealer who is not a verified
+            business dealer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: >
+            Body exceeds the gateway limit. nginx sets client_max_body_size on
+            this location; a file past the service's own 25 MB CSV cap returns
+            400 instead, because it reaches the handler.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /jobs/{jobId}:
     get:
       tags:
@@ -338,7 +411,31 @@ paths:
             format: uuid
       responses:
         '200':
-          description: Job status
+          description: Job status and row counts.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatus'
+        '400':
+          description: jobId is not a UUID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: No or invalid bearer token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: >
+            No such job, or the job belongs to another dealer. Deliberately not
+            403: that would confirm the id exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /admin/dashboard:
     get:
       tags:
@@ -626,12 +723,93 @@ components:
       scheme: bearer
       bearerFormat: JWT
   schemas:
+    UploadJobStatus:
+      type: string
+      description: >
+        PARTIAL is a success, not a failure: some rows were rejected with
+        reasons and the rest loaded. FAILED means nothing loaded at all.
+      enum:
+        - PENDING
+        - PROCESSING
+        - COMPLETED
+        - PARTIAL
+        - FAILED
     JobAccepted:
       type: object
+      required:
+        - jobId
+        - status
+        - fileName
       properties:
         jobId:
           type: string
           format: uuid
+        status:
+          $ref: '#/components/schemas/UploadJobStatus'
+        fileName:
+          type: string
+          example: stock.csv
+        csvS3Path:
+          type: string
+          description: Object-store key of the stored CSV.
+          example: raw/9a8b7c6d-5e4f-4a3b-9c8d-7e6f5a4b3c2d/stock.csv
+        zipS3Path:
+          type: string
+          nullable: true
+          description: Object-store key of the photo archive, null if none was sent.
+    JobStatus:
+      type: object
+      required:
+        - id
+        - status
+        - fileName
+        - totalRecords
+        - validRecords
+        - invalidRecords
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/UploadJobStatus'
+        fileName:
+          type: string
+        totalRecords:
+          type: integer
+          description: >
+            Rows in the file, written before fan-out. Legitimately 0 while the
+            job is still being split.
+          example: 40
+        validRecords:
+          type: integer
+          description: Rows loaded as listings.
+          example: 34
+        invalidRecords:
+          type: integer
+          description: Rows rejected, each with a reason recorded against the job.
+          example: 6
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    Error:
+      type: object
+      properties:
+        statusCode:
+          type: integer
+        message:
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                type: string
+          description: >
+            An array when the global ValidationPipe rejects a request, a string
+            otherwise.
+        error:
+          type: string
 x-amazon-apigateway-cors:
   allowOrigins:
     - http://localhost:5173
