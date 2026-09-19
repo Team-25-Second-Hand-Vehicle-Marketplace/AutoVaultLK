@@ -49,6 +49,20 @@ export class ListingService {
     };
   }
 
+  /**
+   * A dealer's own inventory, every status included — unlike getAllListings,
+   * which is the public LIVE-only feed. This is what a dealer dashboard reads
+   * to show DRAFT/PENDING_REVIEW/REJECTED listings that the public feed hides.
+   */
+  async getMyListings(actor: AuthenticatedUser) {
+    const listings = await this.listingRepository.findByDealer(actor.id);
+
+    return {
+      message: 'Vehicle listings retrieved successfully',
+      data: listings,
+    };
+  }
+
   async getListingById(id: string) {
     const listing = await this.listingRepository.findById(id);
 

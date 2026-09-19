@@ -14,6 +14,8 @@ import { RegisterPage } from './pages/RegisterPage'
 import { SavedPage } from './pages/SavedPage'
 import { DealerLoginPage } from './pages/dealers/DealerLoginPage'
 import { DealerRegisterPage } from './pages/dealers/DealerRegisterPage'
+import { DealerLayout } from './pages/dealers/DealerLayout'
+import { DealerDashboardPage } from './pages/dealers/DealerDashboardPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { AdminLoginPage } from './pages/admin/AdminLoginPage'
 import { AdminLayout } from './pages/admin/AdminLayout'
@@ -31,7 +33,10 @@ const BARE_ROUTES = ['/dealer/login', '/dealer/register', '/admin/login']
 
 function App() {
   const { pathname } = useLocation()
-  const bare = BARE_ROUTES.includes(pathname) || pathname.startsWith('/admin')
+  const bare =
+    BARE_ROUTES.includes(pathname) ||
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/dealer')
 
   return (
     <AuthProvider>
@@ -48,6 +53,16 @@ function App() {
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/dealer/login" element={<DealerLoginPage />} />
               <Route path="/dealer/register" element={<DealerRegisterPage />} />
+              <Route
+                path="/dealer"
+                element={
+                  <RequireRole role="DEALER" loginTo="/dealer/login">
+                    <DealerLayout />
+                  </RequireRole>
+                }
+              >
+                <Route index element={<DealerDashboardPage />} />
+              </Route>
               <Route
                 path="/saved"
                 element={

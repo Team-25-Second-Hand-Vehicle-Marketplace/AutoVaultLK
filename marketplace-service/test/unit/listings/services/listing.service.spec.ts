@@ -8,6 +8,7 @@ describe('ListingService', () => {
   const listingRepository = {
     create: jest.fn(),
     findAllLive: jest.fn(),
+    findByDealer: jest.fn(),
     findById: jest.fn(),
     update: jest.fn(),
     deactivate: jest.fn(),
@@ -147,6 +148,30 @@ describe('ListingService', () => {
 
       expect(result.data).toHaveLength(2);
       expect(result.data[0].dealer).not.toBeNull();
+    });
+  });
+
+  describe('getMyListings', () => {
+    it('returns every status for the caller\'s own listings, unlike the public LIVE-only feed', async () => {
+      listingRepository.findByDealer.mockResolvedValue([
+        vehicle({ id: 'v-1', status: 'DRAFT' }),
+        vehicle({ id: 'v-2', status: 'PENDING_REVIEW' }),
+        vehicle({ id: 'v-3', status: 'LIVE' }),
+      ]);
+
+      const result = await service.getMyListings(DEALER);
+
+      expect(listingRepository.findByDealer).toHaveBeenCalledWith(DEALER.id);
+      expect(result.data).toHaveLength(3);
+      expect(result.data.map((v) => v.status)).toEqual(['DRAFT', 'PENDING_REVIEW', 'LIVE']);
+    });
+
+    it('does not attach dealer info (the caller already knows who they are)', async () => {
+      listingRepository.findByDealer.mockResolvedValue([vehicle()]);
+
+      const result = await service.getMyListings(DEALER);
+
+      expect(result.data[0]).not.toHaveProperty('dealer');
     });
   });
 
