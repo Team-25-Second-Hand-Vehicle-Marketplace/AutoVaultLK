@@ -130,8 +130,11 @@ resource "aws_security_group" "lambda" {
   tags = merge(local.tags, { Name = "${var.project_name}-lambda-sg-${var.environment}" })
 }
 
-# RDS Proxy + the RDS instance behind it — only the Lambda SG may reach
-# Postgres.
+# RDS Proxy + the RDS instance behind it. The proxy's own ENIs sit in this
+# same SG (see modules/database), so it needs a self-referencing rule to
+# reach the instance — without it, the proxy can never open a connection to
+# its target at all, surfacing only as an opaque "target unavailable due to
+# an internal error" with no indication it's a security group problem.
 resource "aws_security_group" "database" {
   name        = "${var.project_name}-database-${var.environment}"
   description = "Postgres access from the service Lambdas only"
@@ -142,6 +145,13 @@ resource "aws_security_group" "database" {
     to_port         = 5432
     protocol        = "tcp"
     security_groups = [aws_security_group.lambda.id]
+  }
+
+  ingress {
+    from_port = 5432
+    to_port   = 5432
+    protocol  = "tcp"
+    self      = true
   }
 
   egress {
