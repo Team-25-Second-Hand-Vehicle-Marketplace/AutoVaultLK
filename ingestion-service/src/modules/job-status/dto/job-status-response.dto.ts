@@ -1,4 +1,4 @@
-import { UploadJobStatus } from '../../../infrastructure/database/entities/upload-job.entity';
+import type { UploadJobStatus } from '../../../infrastructure/database/entities/upload-job.entity';
 
 export class JobStatusResponseDto {
   id: string;

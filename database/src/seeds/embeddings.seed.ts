@@ -4,16 +4,19 @@ import { DataSource } from 'typeorm';
 
 import {
   EMBEDDING_MODEL_ID,
+  EMBEDDING_MODEL_VERSION,
   createXenovaEmbedder,
   toPgVector,
 } from '../../../marketplace-service/src/shared/normalize-embed';
 
 config({ path: '../.env' });
 
-
 const BATCH_SIZE = 25;
 
-type Row = { id: string; search_text: string | null };
+type Row = {
+  id: string;
+  search_text: string | null;
+};
 
 async function seedEmbeddings() {
   const forceAll = process.argv.includes('--all');
@@ -23,54 +26,84 @@ async function seedEmbeddings() {
     url: process.env.DATABASE_URL,
     entities: [],
     synchronize: false,
-    // Opt-in TLS so this can seed RDS (which forces SSL) as well as local
-    // Docker Postgres (which serves no certificate).
-    ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
+
+    // Opt-in TLS so this can seed RDS (which forces SSL) as well as
+    // local Docker Postgres (which serves no certificate).
+    ssl:
+      process.env.DATABASE_SSL === 'true'
+        ? { rejectUnauthorized: false }
+        : false,
   });
 
   await ds.initialize();
-
 
   const rows: Row[] = await ds.query(
     `SELECT id, search_text
        FROM marketplace.vehicles
       WHERE search_text IS NOT NULL
         AND btrim(search_text) <> ''
-        ${forceAll ? '' : 'AND embedding IS NULL'}
+        ${
+          forceAll
+            ? ''
+            : `AND (
+                 embedding IS NULL
+                 OR embedding_model IS DISTINCT FROM $1
+                 OR embedding_model_version IS DISTINCT FROM $2
+               )`
+        }
       ORDER BY created_at`,
+    forceAll
+      ? []
+      : [EMBEDDING_MODEL_ID, EMBEDDING_MODEL_VERSION],
   );
 
   if (rows.length === 0) {
     console.log(
       forceAll
         ? 'No vehicles with search_text to embed.'
-        : 'All vehicles already have embeddings. Use --all to regenerate.',
+        : `All vehicles already have embeddings for ` +
+          `${EMBEDDING_MODEL_ID}@${EMBEDDING_MODEL_VERSION}.`,
     );
+
     await ds.destroy();
     return;
   }
 
   console.log(
-    `Embedding ${rows.length} vehicle(s) with ${EMBEDDING_MODEL_ID}` +
+    `Embedding ${rows.length} vehicle(s) with ` +
+      `${EMBEDDING_MODEL_ID}@${EMBEDDING_MODEL_VERSION}` +
       `${forceAll ? ' (forced full regeneration)' : ''}…`,
   );
-  console.log('  First call loads the ~90 MB ONNX model; this may take a minute.');
+
+  console.log(
+    '  First call loads the ~90 MB ONNX model; this may take a minute.',
+  );
 
   const embedder = createXenovaEmbedder();
+
   let done = 0;
 
   for (let i = 0; i < rows.length; i += BATCH_SIZE) {
     const batch = rows.slice(i, i + BATCH_SIZE);
 
-    // Sequential rather than Promise.all: the ONNX runtime is CPU-bound and
-    // single-threaded here, so concurrent calls contend for the same core and
-    // add memory pressure without improving throughput.
+    // Sequential rather than Promise.all: the ONNX runtime is CPU-bound
+    // and single-threaded here, so concurrent calls contend for the same
+    // core and add memory pressure without improving throughput.
     for (const row of batch) {
       const vector = await embedder.embed(row.search_text as string);
 
       await ds.query(
-        `UPDATE marketplace.vehicles SET embedding = $2::vector WHERE id = $1`,
-        [row.id, toPgVector(vector)],
+        `UPDATE marketplace.vehicles
+            SET embedding = $2::vector,
+                embedding_model = $3,
+                embedding_model_version = $4
+          WHERE id = $1`,
+        [
+          row.id,
+          toPgVector(vector),
+          EMBEDDING_MODEL_ID,
+          EMBEDDING_MODEL_VERSION,
+        ],
       );
 
       done++;
@@ -83,14 +116,21 @@ async function seedEmbeddings() {
     `SELECT COUNT(*)::int AS count
        FROM marketplace.vehicles
       WHERE status = 'LIVE'
-        AND embedding IS NULL`,
+        AND (
+          embedding IS NULL
+          OR embedding_model IS DISTINCT FROM $1
+          OR embedding_model_version IS DISTINCT FROM $2
+        )`,
+    [EMBEDDING_MODEL_ID, EMBEDDING_MODEL_VERSION],
   );
 
   console.log(`  ${done} vehicle(s) embedded.`);
+
   if (remaining > 0) {
-    // Not an error: these are the blank-search_text rows skipped above. Worth
-    // surfacing because they can never be reached by semantic ranking.
-    console.log(`  Note: ${remaining} LIVE vehicle(s) still have no embedding.`);
+    console.log(
+      `  Note: ${remaining} LIVE vehicle(s) still need embeddings for ` +
+        `${EMBEDDING_MODEL_ID}@${EMBEDDING_MODEL_VERSION}.`,
+    );
   }
 
   await ds.destroy();
