@@ -36,6 +36,11 @@ export default defineConfig({
         target: "http://localhost:3001",
         changeOrigin: true,
       },
+      // nginx: location /dealer-profiles/ -> auth_user_service/dealer-profiles/
+      "/dealer-profiles": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+      },
       // nginx: location /admin/ -> admin_service/admin/ (prefix PRESERVED)
       //
       // The SPA also owns /admin/* routes (/admin/login, /admin/users, ...),

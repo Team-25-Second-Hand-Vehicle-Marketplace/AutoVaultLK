@@ -28,8 +28,17 @@ tfplan
 # and hashes, and belongs in version control so every machine and CI run
 # resolves the same providers.
 
+# EC2 key pairs created for one-off manual bootstrap tasks (e.g. a temporary
+# SSH bastion) — a live private key, never committed.
+*.pem
+
 cdk.out/
 build/
 mywork.txt
 # Local run logs from starting a service in the background
 *.err
+
+# LocalObjectStore driver root (ADR-007): raw dealer uploads and inter-stage
+# payloads. Never committed — recreated on demand.
+.storage/
+DEPLOYMENT-GAPS.md

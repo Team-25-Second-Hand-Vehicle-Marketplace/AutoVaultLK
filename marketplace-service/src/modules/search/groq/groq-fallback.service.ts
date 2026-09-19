@@ -10,10 +10,6 @@ export type GroqRepairResult = {
   dropped: string[];
 };
 
-/**
- * FR-21.2 / SAD 3.6.2: Groq only when the rules parser is below 0.6.
- * Any failure (no key, timeout, malformed JSON) returns the rules result.
- */
 @Injectable()
 export class GroqFallbackService {
   private readonly logger = new Logger(GroqFallbackService.name);

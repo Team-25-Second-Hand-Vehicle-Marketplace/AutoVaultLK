@@ -11,7 +11,6 @@ export type SearchRankOptions = {
   trigramWhere?: boolean;
 };
 
-/** Looser than parser make/model gating (0.45); pg_trgm's default similarity. */
 export const LAST_RESORT_WORD_SIMILARITY = 0.3;
 
 export const MAX_EMBEDDING_DISTANCE = 0.7;
@@ -34,10 +33,6 @@ export function hasResolvedFilters(filters: ExtractedFilters): boolean {
   );
 }
 
-/**
- * SAD 3.6.2 / FR-24: vector first; if MiniLM is down, pg_trgm on leftovers
- * (and a gated WHERE only when the parser extracted no filters at all).
- */
 export function chooseSearchRank(input: {
   filters: ExtractedFilters;
   semanticText: string;
@@ -80,10 +75,6 @@ export function chooseSearchRank(input: {
   return { usedSemanticRanking: false, usedTrigramFallback: false };
 }
 
-/**
- * Last-resort retrieval gate. Mutates `params` in place (callers pass a copy).
- * Ranking-only trigram/embedding (filters already resolved) must not call this.
- */
 export function appendTrigramWhere(
   where: string,
   params: unknown[],
