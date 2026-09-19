@@ -16,6 +16,8 @@ import { DealerLoginPage } from './pages/dealers/DealerLoginPage'
 import { DealerRegisterPage } from './pages/dealers/DealerRegisterPage'
 import { DealerLayout } from './pages/dealers/DealerLayout'
 import { DealerDashboardPage } from './pages/dealers/DealerDashboardPage'
+import { BulkUploadPage } from './pages/dealers/BulkUploadPage'
+import { UploadStatusPage } from './pages/dealers/UploadStatusPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { AdminLoginPage } from './pages/admin/AdminLoginPage'
 import { AdminLayout } from './pages/admin/AdminLayout'
@@ -62,6 +64,8 @@ function App() {
                 }
               >
                 <Route index element={<DealerDashboardPage />} />
+                <Route path="upload" element={<BulkUploadPage />} />
+                <Route path="uploads/:jobId" element={<UploadStatusPage />} />
               </Route>
               <Route
                 path="/saved"
