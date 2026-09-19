@@ -21,6 +21,7 @@
     "test:ci": "jest --ci --runInBand --passWithNoTests"
   },
   "dependencies": {
+    "@codegenie/serverless-express": "^4.17.1",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.0.1",
