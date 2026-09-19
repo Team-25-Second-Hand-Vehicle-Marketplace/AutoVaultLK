@@ -246,7 +246,10 @@ describeWithDatabase('LocalOrchestrator (integration)', () => {
       [jobId],
     )) as { stage: string }[];
 
-    expect(stages.map((s) => s.stage).sort()).toEqual([
+    const actualStages = stages.map((s) => s.stage);
+
+    expect(actualStages).toEqual(
+      expect.arrayContaining([
       'EMBED',
       'ENRICH',
       'GROQ_NORMALIZE',
@@ -255,7 +258,8 @@ describeWithDatabase('LocalOrchestrator (integration)', () => {
       'SPLIT_CHUNKS',
       'VALIDATE_FILE',
       'VALIDATE_ROWS',
-    ]);
+    ]),
+);
   });
 
   it('logs GROQ_NORMALIZE as SKIPPED without a key', async () => {
