@@ -49,8 +49,14 @@ resource "aws_apigatewayv2_api" "public" {
 }
 
 resource "aws_apigatewayv2_stage" "public" {
-  api_id      = aws_apigatewayv2_api.public.id
-  name        = var.environment
+  api_id = aws_apigatewayv2_api.public.id
+
+  # HTTP APIs prepend the stage name to the path forwarded to the Lambda
+  # integration (event.rawPath / requestContext.http.path) for any NAMED
+  # stage — e.g. a request to /health arrives at the Lambda as /production/
+  # health, which none of the app's routes match. $default is the one stage
+  # name that adds no path prefix at all.
+  name        = "$default"
   auto_deploy = true
 
   default_route_settings {
@@ -74,7 +80,7 @@ resource "aws_apigatewayv2_api" "internal" {
 
 resource "aws_apigatewayv2_stage" "internal" {
   api_id      = aws_apigatewayv2_api.internal.id
-  name        = var.environment
+  name        = "$default"
   auto_deploy = true
 }
 
