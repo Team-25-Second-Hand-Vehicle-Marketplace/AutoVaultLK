@@ -15,6 +15,7 @@ import { enrichStage } from './pipeline/enrich/enrich.stage';
 import { ProcessJobImagesService } from './pipeline/image-processing/process-job-images.service';
 import { groqNormalizeStage } from './pipeline/normalize/groq-normalize.stage';
 import { parseNormalizeStage } from './pipeline/normalize/parse-normalize.stage';
+import { runNotifyStage } from './pipeline/notify/notify.stage';
 import { splitChunksStage } from './pipeline/parse/split-chunks.stage';
 import { createLoadStage } from './pipeline/persistence/load.stage';
 import { MarketplaceVehiclesWriteAdapter } from './pipeline/persistence/marketplace-vehicles-write.adapter';
@@ -132,7 +133,7 @@ export class LocalOrchestrator {
       );
 
       await this.processImages(jobId, job.zipS3Path, log);
-      await this.finish(jobId, totalRecords, outcomes);
+      await this.finish(jobId, totalRecords, outcomes, job, log);
     } catch (err) {
       // Only whole-file failures reach here: validateFile rejecting the file,
       // or infrastructure being unavailable. Row and chunk problems are handled
@@ -415,6 +416,8 @@ export class LocalOrchestrator {
     jobId: string,
     totalRecords: number,
     outcomes: ChunkOutcome[],
+    job: { dealerId: string; fileName: string },
+    log: StageLogger,
   ): Promise<void> {
     const anyFailed = outcomes.some((o) => o.failed);
 
@@ -441,6 +444,46 @@ export class LocalOrchestrator {
     this.logger.log(
       `Job ${jobId} ${status}: ${loaded} loaded, ${rejected} rejected of ${totalRecords}`,
     );
+
+    await this.notify(jobId, log, {
+      jobId,
+      dealerId: job.dealerId,
+      fileName: job.fileName,
+      status,
+      validRecords: loaded,
+      invalidRecords: rejected,
+    });
+  }
+
+  /**
+   * Tells the dealer the upload finished, mirroring the NOTIFY Lambda.
+   *
+   * Never throws. The rows are already written by this point, so a
+   * notification-service outage must not turn a successful upload into a
+   * FAILED one — that would invite the dealer to re-upload work that landed.
+   */
+  private async notify(
+    jobId: string,
+    log: StageLogger,
+    input: Parameters<typeof runNotifyStage>[0],
+  ): Promise<void> {
+    const logId = await log.start('NOTIFY', null);
+
+    try {
+      const result = await runNotifyStage(input);
+      await log.finish(logId, result.outcome, {
+        metrics: result.metrics,
+        errorMessage: result.error,
+      });
+
+      if (result.outcome === 'DEGRADED') {
+        this.logger.warn(`Job ${jobId} finished but the dealer was not notified: ${result.error}`);
+      }
+    } catch (err) {
+      await log
+        .finish(logId, 'DEGRADED', { errorMessage: messageOf(err) })
+        .catch(() => undefined);
+    }
   }
 
   private contextFor(
