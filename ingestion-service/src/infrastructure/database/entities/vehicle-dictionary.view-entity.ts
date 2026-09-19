@@ -21,7 +21,11 @@ export type DictionaryType = 'MAKE' | 'MODEL' | 'BODY_TYPE' | 'COLOR';
  * matches against an in-memory table snapshot, which is what keeps the
  * MaxConcurrency: 10 connection-pool argument intact.
  */
-@Entity({ schema: 'marketplace', name: 'vehicle_dictionaries', synchronize: false })
+@Entity({
+  schema: 'marketplace',
+  name: 'vehicle_dictionaries',
+  synchronize: false,
+})
 export class VehicleDictionaryView {
   @PrimaryColumn('uuid')
   id: string;
@@ -40,4 +44,17 @@ export class VehicleDictionaryView {
 
   @Column({ name: 'is_active', type: 'boolean' })
   isActive: boolean;
+
+  /**
+   * Which vehicle types this row applies to (migration 21000). A MAKE spans
+   * types (Toyota builds cars, vans, SUVs and lorries) so it carries several;
+   * a MODEL is always one thing (a HiAce is a van) so it carries exactly one.
+   * An empty array means "applies to every type" — that is how the flat
+   * dictionary types (BODY_TYPE, COLOR) opt out of scoping.
+   *
+   * parseNormalize derives marketplace.vehicles.vehicle_type from this, since
+   * the dealer CSV contract does not require the column.
+   */
+  @Column({ name: 'vehicle_types', type: 'text', array: true })
+  vehicleTypes: string[];
 }

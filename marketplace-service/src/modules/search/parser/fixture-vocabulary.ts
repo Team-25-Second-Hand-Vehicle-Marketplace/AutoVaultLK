@@ -1,10 +1,5 @@
 import type { DictionaryEntry, ParserVocabulary } from './types';
 
-/**
- * In-memory slice of vehicle_dictionaries for parser unit tests.
- * Production (step 2+) will load the live snapshot; this file must not be
- * imported from runtime Nest modules.
- */
 function make(
   canonical: string,
   aliases: string[],

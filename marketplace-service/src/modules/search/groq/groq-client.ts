@@ -12,10 +12,6 @@ export class GroqUnavailableError extends Error {
   }
 }
 
-/**
- * Thin Groq Chat Completions client. SAD 3.6.2: timeout + one retry, then
- * the caller falls back to rules-only. No SDK — Groq is OpenAI-compatible.
- */
 @Injectable()
 export class GroqClient {
   private readonly logger = new Logger(GroqClient.name);

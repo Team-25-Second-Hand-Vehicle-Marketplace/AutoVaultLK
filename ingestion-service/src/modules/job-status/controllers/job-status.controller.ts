@@ -12,11 +12,13 @@ import { JobStatusResponseDto } from '../dto/job-status-response.dto';
 import { JobStatusService } from '../services/job-status.service';
 
 @UseGuards(JwtAuthGuard)
-@Controller('upload-jobs')
+// Route is `jobs`, not `upload-jobs`: api-gateway/openapi/public-api.yaml
+// publishes GET /jobs/{jobId} and api-gateway/local/nginx.conf proxies
+// `location /jobs/` WITHOUT stripping the prefix, so the path the service
+// sees is /jobs/<id>.
+@Controller('jobs')
 export class JobStatusController {
-  constructor(
-    private readonly jobStatusService: JobStatusService,
-  ) {}
+  constructor(private readonly jobStatusService: JobStatusService) {}
 
   @Get(':id')
   async getJobStatus(

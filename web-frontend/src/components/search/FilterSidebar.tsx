@@ -41,15 +41,10 @@ const OWNERS_PRESETS = [
   { label: 'Up to 3 owners', value: 3 },
 ]
 
-// Matches KNOWN_SPEC_KEYS.engine_class (marketplace-service).
-// Only meaningful for bikes — hidden unless BIKE is in play.
 const ENGINE_CLASSES = ['100cc', '125cc', '150cc', '155cc', '160cc', '200cc', '250cc+']
 
 const DRIVE_TYPES = ['FWD', 'RWD', 'AWD', '4WD']
 
-// Backend spec filters are equality-only ((specs->>'key')::int = $n), not a
-// range — so these are exact-value presets, not min/max sliders the backend
-// could not satisfy.
 const LOAD_CAPACITY_PRESETS = [
   { label: 'Any load capacity', value: undefined },
   { label: '1,000 kg', value: 1000 },
@@ -93,8 +88,6 @@ export function FilterSidebar({
     getSearchOptions(undefined, controller.signal)
       .then(setOptions)
       .catch(() => {
-        // Non-fatal: the FALLBACK_* lists above keep every filter usable.
-        // Districts are the only control that degrades, and it hides itself.
       })
     return () => controller.abort()
   }, [])
@@ -105,8 +98,6 @@ export function FilterSidebar({
     onUpdate('specs', next.length > 0 ? next : undefined)
   }
 
-  // Single-value spec fields (engine_class, seats, ...): each key holds at
-  // most one active specs[] entry, unlike body_type's multi-select.
   const getSpec = (key: string): string | undefined =>
     (filters.specs ?? []).find((s) => s.key === key)?.value
 
@@ -120,8 +111,6 @@ export function FilterSidebar({
   const showEngineClass = selectedTypes.length === 0 || selectedTypes.includes('BIKE')
   const showLoadCapacity =
     selectedTypes.length === 0 || selectedTypes.some((t) => t === 'LORRY' || t === 'TRUCK')
-  // Seats/doors/drive-type are car-shaped concepts; showing them while the
-  // buyer is browsing bikes only invites zero-result searches.
   const showPassengerSpecs =
     selectedTypes.length === 0 ||
     selectedTypes.some((t) => ['CAR', 'SUV', 'VAN', 'BUS', 'PICKUP'].includes(t))

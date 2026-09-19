@@ -11,15 +11,8 @@ type DictionaryRow = {
   parent_canonical: string | null;
 };
 
-/** Same TTL as SearchOptionsService — dictionaries change on seed, not per request. */
 const VOCAB_CACHE_TTL_MS = 5 * 60 * 1000;
 
-/**
- * Snapshot of vehicle_dictionaries for the deterministic parser.
- *
- * SAD §9: ingestion and search both cache this table in memory. The parser
- * itself stays a pure function; this repository is the only DB boundary.
- */
 @Injectable()
 export class VehicleDictionaryRepository {
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}

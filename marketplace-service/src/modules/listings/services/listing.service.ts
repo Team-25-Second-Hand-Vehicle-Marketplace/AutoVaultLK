@@ -22,13 +22,9 @@ export class ListingService {
     private readonly dealerService: DealerService,
   ) {}
 
-  /**
-   * FR-13/FR-58: the owner comes from the verified JWT, never from the request
-   * body. A body-supplied dealerId would let any authenticated dealer create
-   * listings attributed to someone else.
-   */
   async createListing(dto: CreateListingDto, actor: AuthenticatedUser) {
-    await this.dealerService.getDealerById(actor.id);
+    const dealer = await this.dealerService.getDealerById(actor.id);
+    this.assertManualUploadAllowed(dealer);
 
     const status = dto.status ?? 'LIVE';
     const listing = await this.listingRepository.create(
@@ -50,6 +46,20 @@ export class ListingService {
       data: await Promise.all(
         listings.map((listing) => this.withDealer(listing)),
       ),
+    };
+  }
+
+  /**
+   * A dealer's own inventory, every status included — unlike getAllListings,
+   * which is the public LIVE-only feed. This is what a dealer dashboard reads
+   * to show DRAFT/PENDING_REVIEW/REJECTED listings that the public feed hides.
+   */
+  async getMyListings(actor: AuthenticatedUser) {
+    const listings = await this.listingRepository.findByDealer(actor.id);
+
+    return {
+      message: 'Vehicle listings retrieved successfully',
+      data: listings,
     };
   }
 
@@ -106,6 +116,19 @@ export class ListingService {
       message: 'Vehicle listing deactivated successfully',
       data: listing,
     };
+  }
+
+  /**
+   * Manual, one-at-a-time listing creation is for individual dealers only.
+   * Business dealers list their stock through the bulk upload pipeline
+   * instead, so a stray manual listing here would bypass it.
+   */
+  private assertManualUploadAllowed(dealer: DealerSummary) {
+    if (dealer.dealerType !== 'individual') {
+      throw new ForbiddenException(
+        'Business dealers must add vehicles through bulk upload, not manual listing creation',
+      );
+    }
   }
 
   /**

@@ -4,15 +4,28 @@ import { Repository } from 'typeorm';
 
 import { Vehicle, VehicleStatus } from '../../../infrastructure/database/entities/vehicle.entity';
 import { CreateListingDto } from '../dto/create-listing.dto';
+import { ListingSearchIndexService } from '../services/listing-search-index.service';
+
+// Editing any of these fields changes what buildSearchText() produces, so
+// search_text/embedding must be recomputed — not just the plain column.
+//
+// price and mileage are here because they feed the band phrases: dropping a
+// price from 6M to 4M moves the listing from "upper mid range" to "mid range",
+// and without a recompute the vector would still say the old one.
+const SEARCHABLE_FIELDS = [
+  'make', 'model', 'manufactureYear', 'vehicleType', 'condition',
+  'fuelType', 'transmissionType', 'price', 'mileage', 'specs', 'description',
+] as const satisfies readonly (keyof CreateListingDto)[];
 
 @Injectable()
 export class ListingRepository {
   constructor(
     @InjectRepository(Vehicle)
     private readonly vehicleRepo: Repository<Vehicle>,
+    private readonly searchIndexService: ListingSearchIndexService,
   ) {}
 
-  create(dto: CreateListingDto, status: VehicleStatus) {
+  async create(dto: CreateListingDto, status: VehicleStatus) {
     const vehicle = this.vehicleRepo.create({
       dealerId: dto.dealerId,
       vehicleType: dto.vehicleType ?? 'CAR',
@@ -30,6 +43,10 @@ export class ListingRepository {
       specs: dto.specs ?? {},
     });
 
+    const { searchText, embedding } = await this.searchIndexService.build(vehicle);
+    vehicle.searchText = searchText;
+    vehicle.embedding = embedding;
+
     return this.vehicleRepo.save(vehicle);
   }
 
@@ -44,12 +61,23 @@ export class ListingRepository {
     return this.vehicleRepo.findOne({ where: { id } });
   }
 
+  findByDealer(dealerId: string) {
+    return this.vehicleRepo.find({
+      where: { dealerId },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
   async update(id: string, data: Partial<CreateListingDto>) {
     const vehicle = await this.findById(id);
 
     if (!vehicle) {
       return null;
     }
+
+    const searchableFieldChanged = SEARCHABLE_FIELDS.some(
+      (field) => data[field] !== undefined,
+    );
 
     if (data.dealerId !== undefined) vehicle.dealerId = data.dealerId;
     if (data.vehicleType !== undefined) vehicle.vehicleType = data.vehicleType;
@@ -64,6 +92,12 @@ export class ListingRepository {
     if (data.transmissionType !== undefined) vehicle.transmissionType = data.transmissionType;
     if (data.description !== undefined) vehicle.description = data.description ?? null;
     if (data.specs !== undefined) vehicle.specs = data.specs;
+
+    if (searchableFieldChanged) {
+      const { searchText, embedding } = await this.searchIndexService.build(vehicle);
+      vehicle.searchText = searchText;
+      vehicle.embedding = embedding;
+    }
 
     return this.vehicleRepo.save(vehicle);
   }

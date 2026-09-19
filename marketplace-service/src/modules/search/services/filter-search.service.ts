@@ -8,13 +8,7 @@ import type { SearchRankOptions } from '../filters/search-rank';
 import { VehicleSearchRepository } from '../repositories/vehicle-search.repository';
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '../constants/vehicle-attributes.constants';
 
-/**
- * Zero-result relaxation order — design doc §8: drop the least-committal
- * constraint first. specs are the most speculative (a buyer's "nice to
- * have"), so they go first; numeric ranges widen next; price is NEVER
- * dropped, only flagged, because a buyer's budget is a hard constraint they
- * stated explicitly.
- */
+
 type RelaxationStep = { drop: string; label: string };
 
 @Injectable()
@@ -26,11 +20,7 @@ export class FilterSearchService {
     @InjectDataSource() private readonly dataSource: DataSource,
   ) {}
 
-  /**
-   * Optional analytics overlay used by the NL path so search_queries.raw_text
-   * / confidence / unresolved_tokens are populated without a second INSERT.
-   * The filter path omits this and keeps the existing empty-raw_text row.
-   */
+
   async search(
     dto: FilterSearchDto,
     log?: {
@@ -49,13 +39,10 @@ export class FilterSearchService {
     let built = buildFilterQuery(normalizedDto);
     let total = await this.repository.count(built, normalizedDto.verifiedDealersOnly, rank);
     let relaxation: RelaxationDto | undefined;
-    // The filter set the results actually reflect — the original DTO, or the
-    // relaxed one when the ladder fired. Facets must be counted against this,
-    // not the original, or they would describe a result set nobody is seeing.
+
     let effectiveDto: FilterSearchDto = normalizedDto;
 
-    // Relaxation never drops a last-resort trigram WHERE. Showing every LIVE
-    // listing after a miss would be the "trigram bypass" the index comment forbids.
+
     if (total === 0) {
       const result = await this.relax(normalizedDto);
       if (result) {
@@ -87,28 +74,6 @@ export class FilterSearchService {
     };
   }
 
-  /**
-   * §8: relax the weakest filter, or return nearest matches with a notice.
-   *
-   * Each step is applied CUMULATIVELY on top of the previous ones (loosening
-   * one constraint at a time until something matches), and every step that
-   * has been applied by the time results appear is reported — not just the
-   * last one. The previous version accumulated the same way but named only
-   * the final step in its message, so a search that had quietly dropped
-   * specs AND widened mileage AND widened years told the buyer it had only
-   * "relaxed the year range".
-   *
-   * A step that would change nothing (widening a range the buyer never set,
-   * dropping specs they never chose) is skipped rather than counted as a
-   * relaxation — otherwise `droppedFilters` lists filters that were never
-   * applied, and the ladder burns a COUNT query re-running an identical
-   * search. This is also what killed the old step 4: step 1 had already set
-   * `specs: undefined`, so filtering seats out of `undefined` was a no-op
-   * that could never fire.
-   *
-   * Price is never dropped — a stated budget is a hard constraint. It is
-   * flagged via priceCeilingExceeded instead.
-   */
   private async relax(dto: FilterSearchDto): Promise<{
     built: ReturnType<typeof buildFilterQuery>;
     total: number;
@@ -120,26 +85,20 @@ export class FilterSearchService {
       applies: (d: FilterSearchDto) => boolean;
       step: RelaxationStep;
     }> = [
-      // Most speculative first: a spec filter is a "nice to have", a keyword
-      // may simply be misspelled, and only then do stated numeric ranges get
-      // widened.
+
       {
         applies: (d) => (d.specs?.length ?? 0) > 0,
         apply: (d) => ({ ...d, specs: undefined }),
         step: { drop: 'specs', label: 'vehicle spec filters' },
       },
       {
-        // A typo'd or over-specific keyword produces zero rows no amount of
-        // range-widening can rescue, so it is dropped before numeric ranges.
+
         applies: (d) => (d.q?.trim().length ?? 0) > 0,
         apply: (d) => ({ ...d, q: undefined }),
         step: { drop: 'q', label: 'keyword search' },
       },
       {
-        // hasRegistrationYear hides every listing where the dealer omitted a
-        // registration date (~36% of seeded inventory). Relaxing it before
-        // touching the buyer's stated year range recovers real vehicles that
-        // do match the requested years via manufacture_year.
+
         applies: (d) => d.hasRegistrationYear === true,
         apply: (d) => ({ ...d, hasRegistrationYear: undefined }),
         step: { drop: 'hasRegistrationYear', label: 'the confirmed-registration-year requirement' },
@@ -209,8 +168,7 @@ export class FilterSearchService {
       usedLlm?: boolean;
     },
   ): Promise<void> {
-    // Fire-and-forget by design (caller wraps in .catch) — analytics must
-    // never fail a search. usedLlm stays false until the Groq step is wired.
+
     await this.dataSource.query(
       `INSERT INTO marketplace.search_queries
          (raw_text, extracted_filters, used_llm, unresolved_tokens, result_count, search_time_ms, confidence)

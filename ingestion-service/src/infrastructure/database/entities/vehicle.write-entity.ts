@@ -123,6 +123,8 @@ export class VehicleWriteEntity {
   // Written as '[0.1,0.2,...]' by embedFn; pgvector casts it on write.
   @Column({ type: 'text', nullable: true })
   embedding: string | null;
+  embeddingModel: string | null;
+  embeddingModelVersion: string | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

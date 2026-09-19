@@ -19,3 +19,12 @@ export const PHONE_REGEX = /^\+?[1-9]\d{8,14}$/;
 
 export const PHONE_MESSAGE =
   'Phone number must be 9–15 digits, optionally prefixed with +';
+
+/**
+ * Sri Lankan NIC: old format (9 digits + V/X, e.g. 912345678V) or new
+ * format (12 digits, e.g. 199123456789).
+ */
+export const NIC_REGEX = /^(?:\d{9}[vVxX]|\d{12})$/;
+
+export const NIC_MESSAGE =
+  'NIC must be 9 digits followed by V/X, or 12 digits';

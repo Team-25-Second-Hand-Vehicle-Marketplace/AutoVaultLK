@@ -31,6 +31,10 @@ GRANT SELECT ON auth.dealer_profiles  TO marketplace_service_role;
 -- ingestion.upload_jobs.dealer_id -> auth.users.id
 GRANT USAGE  ON SCHEMA auth TO ingestion_service_role;
 GRANT SELECT ON auth.users  TO ingestion_service_role;
+-- POST /ingest/upload is restricted to VERIFIED business dealers, and
+-- that status lives in auth.dealer_profiles.verification_status. Read-only,
+-- mirroring the identical grant marketplace_service_role holds above.
+GRANT SELECT ON auth.dealer_profiles TO ingestion_service_role;
 
 GRANT USAGE  ON SCHEMA auth TO notification_service_role;
 GRANT SELECT ON auth.users  TO notification_service_role;

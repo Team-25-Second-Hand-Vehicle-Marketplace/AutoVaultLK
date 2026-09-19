@@ -19,6 +19,7 @@ describe('DealerService', () => {
     phone: '+94771234567',
     city: 'Colombo',
     verificationStatus: 'VERIFIED',
+    dealerType: 'individual',
   };
 
   describe('getProfile', () => {

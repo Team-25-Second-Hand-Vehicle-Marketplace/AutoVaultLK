@@ -74,7 +74,7 @@ describe('Auth DTO validation', () => {
       dealerType: DealerType.INDIVIDUAL,
       businessAddress: '123 Main Street',
       city: 'Colombo',
-      verificationDocuments: { nic: 's3://doc' },
+      verificationDocuments: { nic: '912345678V' },
       companyName: 'Solo Motors',
     });
     expect(individualErrors).toHaveLength(0);
@@ -86,11 +86,84 @@ describe('Auth DTO validation', () => {
       dealerType: DealerType.BUSINESS,
       businessAddress: '123 Main Street',
       city: 'Colombo',
-      verificationDocuments: { cert: 's3://doc' },
+      verificationDocuments: { businessRegistrationCertificate: 's3://doc' },
       companyName: 'Biz Motors',
     });
     expect(
       businessErrors.some((e) => e.property === 'businessRegistrationNumber'),
+    ).toBe(true);
+  });
+
+  it('accepts both NIC formats for an individual dealer', async () => {
+    const oldFormat = await validateDto(RegisterDealerDto, {
+      email: 'dealer@test.com',
+      password: 'Str0ngPass',
+      name: 'Dealer Name',
+      dealerType: DealerType.INDIVIDUAL,
+      businessAddress: '123 Main Street',
+      city: 'Colombo',
+      verificationDocuments: { nic: '912345678v' },
+      companyName: 'Solo Motors',
+    });
+    expect(oldFormat).toHaveLength(0);
+
+    const newFormat = await validateDto(RegisterDealerDto, {
+      email: 'dealer@test.com',
+      password: 'Str0ngPass',
+      name: 'Dealer Name',
+      dealerType: DealerType.INDIVIDUAL,
+      businessAddress: '123 Main Street',
+      city: 'Colombo',
+      verificationDocuments: { nic: '199912345678' },
+      companyName: 'Solo Motors',
+    });
+    expect(newFormat).toHaveLength(0);
+  });
+
+  it('rejects an individual dealer with a malformed or missing NIC', async () => {
+    const malformed = await validateDto(RegisterDealerDto, {
+      email: 'dealer@test.com',
+      password: 'Str0ngPass',
+      name: 'Dealer Name',
+      dealerType: DealerType.INDIVIDUAL,
+      businessAddress: '123 Main Street',
+      city: 'Colombo',
+      verificationDocuments: { nic: 'not-a-nic' },
+      companyName: 'Solo Motors',
+    });
+    expect(
+      malformed.some((e) => e.property === 'verificationDocuments'),
+    ).toBe(true);
+
+    const missing = await validateDto(RegisterDealerDto, {
+      email: 'dealer@test.com',
+      password: 'Str0ngPass',
+      name: 'Dealer Name',
+      dealerType: DealerType.INDIVIDUAL,
+      businessAddress: '123 Main Street',
+      city: 'Colombo',
+      verificationDocuments: { businessRegistrationCertificate: 's3://doc' },
+      companyName: 'Solo Motors',
+    });
+    expect(
+      missing.some((e) => e.property === 'verificationDocuments'),
+    ).toBe(true);
+  });
+
+  it('rejects a business dealer missing the business registration document', async () => {
+    const errors = await validateDto(RegisterDealerDto, {
+      email: 'dealer@test.com',
+      password: 'Str0ngPass',
+      name: 'Dealer Name',
+      dealerType: DealerType.BUSINESS,
+      businessRegistrationNumber: 'BRN-001',
+      businessAddress: '123 Main Street',
+      city: 'Colombo',
+      verificationDocuments: { nic: '912345678V' },
+      companyName: 'Biz Motors',
+    });
+    expect(
+      errors.some((e) => e.property === 'verificationDocuments'),
     ).toBe(true);
   });
 

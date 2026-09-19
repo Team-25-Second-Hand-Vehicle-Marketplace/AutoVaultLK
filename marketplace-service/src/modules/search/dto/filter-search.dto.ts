@@ -40,33 +40,13 @@ function toArray(): (params: { value: unknown }) => string[] | undefined {
   };
 }
 
-/**
- * One key/value pair inside specs, e.g. { key: "seats", value: "5" }.
- * Runtime shape only — validated against KNOWN_SPEC_KEYS in the query
- * builder, not here. See the `specs` field below for why this is no longer
- * a class-validated nested DTO.
- */
+
 export interface SpecFilterDto {
   key: string;
   value: string;
 }
 
-/**
- * Parses `?specs=body_type:SUV,engine_class:150cc` into SpecFilterDto[].
- *
- * Originally this was `specs[0][key]=x&specs[0][value]=y` validated via
- * @ValidateNested + @Type(() => SpecFilterDto) — a combination that is a
- * known-fragile interaction with ValidationPipe's whitelist:true:
- * whitelist stripping runs against the outer DTO's recognized properties
- * before/independently of the nested class-transformer instantiation
- * completing, so `specs[0].key`/`specs[0].value` got rejected as "should
- * not exist" even though the envelope (`specs` itself) was declared and
- * qs correctly parsed the bracket syntax into the right nested object.
- *
- * A flat "key:value,key:value" string sidesteps the whole class validator
- * nested-array code path — one scalar field, one Transform, no interaction
- * with whitelist's per-level property recognition.
- */
+
 function parseSpecs(): (params: { value: unknown }) => SpecFilterDto[] | undefined {
   return ({ value }) => {
     if (value === undefined || value === null || value === '') return undefined;
@@ -164,8 +144,6 @@ export class FilterSearchDto {
   @Min(0)
   maxPrice?: number;
 
-  // Applies to COALESCE(registration_year, manufacture_year) — Decision 3.
-  // Never registration_year alone; see filter-query.builder.ts.
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -203,9 +181,6 @@ export class FilterSearchDto {
   @IsBoolean()
   isNegotiable?: boolean;
 
-  // Opt-in strictness: only rows with a real registration_year (not a
-  // manufacture_year fallback). Off by default — the whole point of
-  // Decision 3 is that omitting this filter must not hide anything.
   @IsOptional()
   @Type(() => Boolean)
   @IsBoolean()
@@ -217,10 +192,7 @@ export class FilterSearchDto {
   @IsBoolean()
   verifiedDealersOnly?: boolean;
 
-  // ---- Specs (JSONB) ----
 
-  // Accepts ?specs=body_type:SUV,seats:5 — see parseSpecs() above for why
-  // this is a flat Transform rather than @ValidateNested + @Type.
   @IsOptional()
   @Transform(parseSpecs())
   specs?: SpecFilterDto[];

@@ -40,10 +40,6 @@ type ParsedNumber = {
   unit?: string;
 };
 
-/**
- * Stage 2 — numeric patterns (SAD 6.7 / SRS Appendix B: "8.5m", "95k", years).
- * Mutates tokens (consumed flags) and filters in place.
- */
 export function extractNumeric(tokens: ParserToken[], filters: ExtractedFilters): void {
   for (let i = 0; i < tokens.length; i++) {
     if (tokens[i].consumed) continue;

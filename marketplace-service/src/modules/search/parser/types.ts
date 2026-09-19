@@ -6,18 +6,16 @@ import type {
   VehicleTypeValue,
 } from '../constants/vehicle-attributes.constants';
 
-/** SAD 3.6.2 / FR-21.2: Groq is only considered below this coverage ratio. */
 export const CONFIDENCE_THRESHOLD = 0.6;
 
-/** pg_trgm default is 0.3; makes/models need a tighter gate to avoid junk hits. */
 export const TRIGRAM_THRESHOLD = 0.45;
 
 export type ParserToken = {
   text: string;
-  /** Lowercased, punctuation-stripped form used for dictionary lookup. */
+
   norm: string;
   stopword: boolean;
-  /** Neighbour is numeric. Stage 4 rejects these as makes/models (SAD 6.7). */
+
   digitAdjacent: boolean;
   consumed: boolean;
 };
@@ -51,11 +49,6 @@ export type ExtractedFilters = {
   specs?: SpecFilterDto[];
 };
 
-/**
- * Output of the deterministic parser (SAD 4.1.4 / FR-21).
- * Next steps consume `filters` as a FilterSearchDto and `semanticText` as
- * the MiniLM input. Groq only sees `unresolvedTokens` when needsGroqFallback.
- */
 export type ParsedQuery = {
   filters: ExtractedFilters;
   semanticText: string;

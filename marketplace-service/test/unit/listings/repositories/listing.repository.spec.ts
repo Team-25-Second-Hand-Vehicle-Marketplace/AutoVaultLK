@@ -1,5 +1,6 @@
 import { ListingRepository } from '../../../../src/modules/listings/repositories/listing.repository';
 import type { Vehicle } from '../../../../src/infrastructure/database/entities/vehicle.entity';
+import { ManualListingStatusDto } from '../../../../src/modules/listings/dto/create-listing.dto';
 
 describe('ListingRepository', () => {
   const vehicleRepo = {
@@ -8,9 +9,15 @@ describe('ListingRepository', () => {
     find: jest.fn(),
     findOne: jest.fn(),
   };
-  const repository = new ListingRepository(vehicleRepo as never);
+  const searchIndexService = {
+    build: jest.fn(),
+  };
+  const repository = new ListingRepository(vehicleRepo as never, searchIndexService as never);
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    searchIndexService.build.mockResolvedValue({ searchText: null, embedding: null });
+  });
 
   function vehicle(overrides: Partial<Vehicle> = {}): Vehicle {
     return {
@@ -58,6 +65,24 @@ describe('ListingRepository', () => {
 
       expect(vehicleRepo.save).toHaveBeenCalledWith(created);
     });
+
+    it('computes searchText/embedding via ListingSearchIndexService and saves them (FR-13.1)', async () => {
+      const created = vehicle();
+      vehicleRepo.create.mockReturnValue(created);
+      vehicleRepo.save.mockImplementation((v) => Promise.resolve(v));
+      searchIndexService.build.mockResolvedValue({
+        searchText: 'Toyota Aqua',
+        embedding: '[0.1,0.2]',
+      });
+
+      const result = await repository.create(
+        { dealerId: 'dealer-1', make: 'Toyota', model: 'Aqua' } as never,
+        'LIVE',
+      );
+
+      expect(searchIndexService.build).toHaveBeenCalledWith(created);
+      expect(result).toMatchObject({ searchText: 'Toyota Aqua', embedding: '[0.1,0.2]' });
+    });
   });
 
   describe('findAllLive', () => {
@@ -68,6 +93,19 @@ describe('ListingRepository', () => {
 
       expect(vehicleRepo.find).toHaveBeenCalledWith({
         where: { status: 'LIVE' },
+        order: { createdAt: 'DESC' },
+      });
+    });
+  });
+
+  describe('findByDealer', () => {
+    it('filters to the dealer, no status filter, ordered newest first', async () => {
+      vehicleRepo.find.mockResolvedValue([]);
+
+      await repository.findByDealer('dealer-1');
+
+      expect(vehicleRepo.find).toHaveBeenCalledWith({
+        where: { dealerId: 'dealer-1' },
         order: { createdAt: 'DESC' },
       });
     });
@@ -110,6 +148,57 @@ describe('ListingRepository', () => {
 
       // description was not in the patch (undefined), so it must be untouched
       expect(result).toMatchObject({ description: 'Great car' });
+    });
+
+    it('recomputes searchText/embedding when a searchable field changes (FR-13.1/FR-13.2)', async () => {
+      const existing = vehicle({ make: 'Toyota', model: 'Aqua' });
+      vehicleRepo.findOne.mockResolvedValue(existing);
+      vehicleRepo.save.mockImplementation((v) => Promise.resolve(v));
+      searchIndexService.build.mockResolvedValue({
+        searchText: 'Honda Aqua',
+        embedding: '[0.9,0.1]',
+      });
+
+      const result = await repository.update('v-1', { make: 'Honda' });
+
+      expect(searchIndexService.build).toHaveBeenCalledWith(
+        expect.objectContaining({ make: 'Honda' }),
+      );
+      expect(result).toMatchObject({ searchText: 'Honda Aqua', embedding: '[0.9,0.1]' });
+    });
+
+    it('does not touch searchText/embedding when only non-searchable fields change', async () => {
+      const existing = vehicle({ searchText: 'Toyota Aqua', embedding: '[1]' });
+      vehicleRepo.findOne.mockResolvedValue(existing);
+      vehicleRepo.save.mockImplementation((v) => Promise.resolve(v));
+
+      const result = await repository.update('v-1', { status: ManualListingStatusDto.LIVE });
+
+      expect(searchIndexService.build).not.toHaveBeenCalled();
+      expect(result).toMatchObject({ searchText: 'Toyota Aqua', embedding: '[1]' });
+    });
+
+    it('recomputes searchText/embedding when the price changes', async () => {
+      // price feeds a band phrase in buildSearchText: dropping 6M to 4M moves
+      // the listing from "upper mid range" to "mid range". Without a recompute
+      // the vector would still claim the old band.
+      const existing = vehicle({ price: 6_000_000, searchText: 'Toyota Aqua', embedding: '[1]' });
+      vehicleRepo.findOne.mockResolvedValue(existing);
+      vehicleRepo.save.mockImplementation((v) => Promise.resolve(v));
+
+      await repository.update('v-1', { price: 4_000_000 });
+
+      expect(searchIndexService.build).toHaveBeenCalled();
+    });
+
+    it('recomputes searchText/embedding when the mileage changes', async () => {
+      const existing = vehicle({ mileage: 15_000, searchText: 'Toyota Aqua', embedding: '[1]' });
+      vehicleRepo.findOne.mockResolvedValue(existing);
+      vehicleRepo.save.mockImplementation((v) => Promise.resolve(v));
+
+      await repository.update('v-1', { mileage: 90_000 });
+
+      expect(searchIndexService.build).toHaveBeenCalled();
     });
   });
 
