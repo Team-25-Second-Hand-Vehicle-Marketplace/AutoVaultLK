@@ -76,8 +76,11 @@ resource "aws_iam_role" "proxy" {
 
 data "aws_iam_policy_document" "proxy_secret_access" {
   statement {
-    actions   = ["secretsmanager:GetSecretValue"]
-    resources = [aws_db_instance.this.master_user_secret[0].secret_arn]
+    actions = ["secretsmanager:GetSecretValue"]
+    resources = concat(
+      [aws_db_instance.this.master_user_secret[0].secret_arn],
+      values(var.db_service_role_secret_arns),
+    )
   }
 }
 
@@ -99,6 +102,19 @@ resource "aws_db_proxy" "this" {
     auth_scheme = "SECRETS"
     iam_auth    = "DISABLED"
     secret_arn  = aws_db_instance.this.master_user_secret[0].secret_arn
+  }
+
+  # One auth block per service role — the proxy has no other way to know
+  # these roles exist. Each secret must hold {username, password} JSON (see
+  # modules/secrets' db_password secret version); a bare password string
+  # isn't enough for the proxy to identify which role it's authenticating.
+  dynamic "auth" {
+    for_each = var.db_service_role_secret_arns
+    content {
+      auth_scheme = "SECRETS"
+      iam_auth    = "DISABLED"
+      secret_arn  = auth.value
+    }
   }
 
   tags = local.tags

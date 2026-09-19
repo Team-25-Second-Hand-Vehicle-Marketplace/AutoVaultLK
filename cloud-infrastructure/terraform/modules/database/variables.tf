@@ -15,6 +15,12 @@ variable "private_subnet_ids" {
   description = "From modules.networking.private_subnet_ids"
 }
 
+variable "db_service_role_secret_arns" {
+  type        = map(string)
+  description = "Map of service name -> Secrets Manager ARN holding {username, password} for that role — one RDS Proxy auth block gets created per entry, in addition to the master user's. From modules.secrets.db_service_role_arns"
+  default     = {}
+}
+
 variable "security_group_id" {
   type        = string
   description = "From modules.networking.database_security_group_id"
@@ -22,8 +28,8 @@ variable "security_group_id" {
 
 variable "engine_version" {
   type        = string
-  description = "Postgres version — pgvector and pg_trgm both need 15.2+ / 16.1+ / 17.x on RDS"
-  default     = "17.4"
+  description = "Postgres version — pgvector and pg_trgm both need 15.2+ / 16.1+ / 17.x on RDS. Checked available via `aws rds describe-db-engine-versions --engine postgres` for the target region — 17.4 (SADV1's era) isn't offered in ap-southeast-2, 17.11 is the latest 17.x there as of this deploy."
+  default     = "17.11"
 }
 
 variable "instance_class" {

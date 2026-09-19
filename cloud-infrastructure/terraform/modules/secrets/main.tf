@@ -91,9 +91,18 @@ resource "aws_secretsmanager_secret" "db_password" {
 }
 
 resource "aws_secretsmanager_secret_version" "db_password" {
-  for_each      = toset(var.db_service_roles)
-  secret_id     = aws_secretsmanager_secret.db_password[each.key].id
-  secret_string = random_password.db[each.key].result
+  for_each  = toset(var.db_service_roles)
+  secret_id = aws_secretsmanager_secret.db_password[each.key].id
+
+  # RDS Proxy's SECRETS auth scheme reads the role to authenticate as FROM
+  # this JSON shape ({username, password}) — a bare password string (what
+  # this held before) isn't enough for the proxy to know which role it's
+  # even trying to log in as. The Lambda env vars are unaffected: they read
+  # random_password.db[...].result directly, not this secret's content.
+  secret_string = jsonencode({
+    username = "${each.key}_service_role"
+    password = random_password.db[each.key].result
+  })
 }
 
 output "jwt_access_secret_arn" {

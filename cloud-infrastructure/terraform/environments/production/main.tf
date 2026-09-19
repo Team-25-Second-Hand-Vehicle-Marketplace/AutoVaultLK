@@ -12,12 +12,13 @@ terraform {
     }
   }
 
-  # No backend block: this uses local state by default. Local state holds
-  # the generated JWT/internal-key/DB-password values in plaintext (Terraform
-  # "sensitive" only redacts CLI output, not the state file) — before running
-  # this for real, configure a remote backend with encryption at rest (S3 +
-  # DynamoDB lock, or Terraform Cloud) rather than committing terraform.tfstate
-  # or leaving it on a laptop.
+  backend "s3" {
+    bucket       = "vehicle-marketplace-tfstate-287761904540"
+    key          = "production/terraform.tfstate"
+    region       = "ap-southeast-2"
+    encrypt      = true
+    use_lockfile = true # native S3 conditional-write locking (TF 1.10+) — no DynamoDB table needed
+  }
 }
 
 provider "aws" {
@@ -57,10 +58,11 @@ module "ses" {
 module "database" {
   source = "../../modules/database"
 
-  project_name       = var.project_name
-  environment        = var.environment
-  private_subnet_ids = module.networking.private_subnet_ids
-  security_group_id  = module.networking.database_security_group_id
+  project_name                = var.project_name
+  environment                 = var.environment
+  private_subnet_ids          = module.networking.private_subnet_ids
+  security_group_id           = module.networking.database_security_group_id
+  db_service_role_secret_arns = module.secrets.db_service_role_arns
 }
 
 module "iam" {
@@ -114,7 +116,10 @@ locals {
     CORS_ORIGINS           = "https://${module.frontend.distribution_domain_name}"
     API_GATEWAY_URL        = module.api_gateway.public_api_endpoint
     FRONTEND_URL           = "https://${module.frontend.distribution_domain_name}"
-    AWS_REGION             = var.aws_region
+    # AWS_REGION is a reserved Lambda env var — AWS sets it automatically,
+    # attempting to set it yourself 400s CreateFunction. Every service's
+    # code can still read process.env.AWS_REGION; it's just not something
+    # Terraform is allowed to pass in.
   }
 }
 
@@ -209,6 +214,14 @@ module "api_gateway" {
   environment  = var.environment
   aws_region   = var.aws_region
 
+  # Without this, API Gateway falls back to api-gateway/config/cors.json's
+  # allowOrigins — the local dev origin (http://localhost:5173), not this
+  # deployment's actual CloudFront domain. API Gateway handles CORS
+  # preflight itself for HTTP APIs and only adds Access-Control-Allow-Origin
+  # for origins it was explicitly told about; the app's own enableCors()
+  # never gets a say in it.
+  cors_allow_origins = ["https://${module.frontend.distribution_domain_name}"]
+
   public_lambda_integrations = {
     auth              = module.auth_lambda.invoke_arn
     users             = module.auth_lambda.invoke_arn
@@ -265,6 +278,16 @@ resource "aws_lambda_permission" "notification_internal" {
 
 output "public_api_endpoint" {
   value = module.api_gateway.public_api_endpoint
+}
+
+output "private_subnet_ids" {
+  description = "For launching a temporary SSM-managed bootstrap instance to reach RDS (see README's one-time DB setup)"
+  value       = module.networking.private_subnet_ids
+}
+
+output "lambda_security_group_id" {
+  description = "Attach this to a bootstrap instance so the database SG's ingress rule (which only allows this SG) lets it through"
+  value       = module.networking.lambda_security_group_id
 }
 
 output "internal_api_endpoint" {
