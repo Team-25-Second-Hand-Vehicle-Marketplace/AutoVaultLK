@@ -3,7 +3,10 @@ import { useAuth } from '../../auth/useAuth'
 import { BrandMark } from '../../components/layout/BrandMark'
 import { Button } from '../../components/ui/Button'
 
-const NAV = [{ to: '/dealer', end: true, label: 'Dashboard' }] as const
+const NAV = [
+  { to: '/dealer', end: true, label: 'Dashboard' },
+  { to: '/dealer/upload', end: false, label: 'Bulk upload' },
+] as const
 
 export function DealerLayout() {
   const { user, logout } = useAuth()
