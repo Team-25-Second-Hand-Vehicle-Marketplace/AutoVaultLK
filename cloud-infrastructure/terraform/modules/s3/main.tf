@@ -126,9 +126,17 @@ output "bucket_name" {
   value = aws_s3_bucket.frontend.bucket
 }
 
+output "bucket_arn" {
+  value = aws_s3_bucket.frontend.arn
+}
+
 output "distribution_id" {
   description = "For CI's CloudFront invalidation step after a deploy"
   value       = aws_cloudfront_distribution.frontend.id
+}
+
+output "distribution_arn" {
+  value = aws_cloudfront_distribution.frontend.arn
 }
 
 output "distribution_domain_name" {
