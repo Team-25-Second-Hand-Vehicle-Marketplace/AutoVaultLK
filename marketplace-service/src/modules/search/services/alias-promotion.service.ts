@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 
+import { AMBIGUITY_MARGIN } from '../parser/types';
 import { trigramSimilarity } from '../parser/trigram';
 import {
   AliasCandidate,
@@ -8,8 +9,20 @@ import {
 } from '../repositories/alias-promotion.repository';
 
 const MIN_OCCURRENCES = 5;
+
+/**
+ * Deliberately stricter than the parser's TRIGRAM_THRESHOLD (0.45).
+ *
+ * That threshold decides whether to *read* one query a particular way, and a
+ * wrong guess costs one buyer one bad result set. This decides whether to
+ * *write* an alias into the shared dictionary, where it changes every future
+ * search and every dealer upload the ingestion ETL normalizes. A permanent
+ * write earns a higher bar than a transient read.
+ */
 const MIN_SIMILARITY = 0.6;
-const MIN_SCORE_GAP = 0.05;
+
+/** The runner-up gap, shared with the parser and with ingestion's snapshot. */
+const MIN_SCORE_GAP = AMBIGUITY_MARGIN;
 
 @Injectable()
 export class AliasPromotionService {

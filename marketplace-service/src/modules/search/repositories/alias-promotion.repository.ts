@@ -55,6 +55,16 @@ export class AliasPromotionRepository {
   /**
    * Get active dictionary values that can be used
    * as possible canonical values for an alias.
+   *
+   * Restricted to the parentless types. MODEL rows hang off a make
+   * (`parent_id`), and search resolves them scoped to it — ingestion's
+   * `resolveModel(raw, makeId)` does the same. A bare search token carries no
+   * make context, so promoting "corrola" would attach it to whichever model
+   * scored highest across every make in the table. Under the wrong parent that
+   * alias can never resolve; under a plausible-looking wrong one it resolves to
+   * a vehicle that does not exist.
+   *
+   * Makes and body types have no parent, so an alias on them is unambiguous.
    */
   async findDictionaryEntries(): Promise<DictionaryEntry[]> {
     const rows: Array<{
@@ -71,6 +81,8 @@ export class AliasPromotionRepository {
         aliases
       FROM marketplace.vehicle_dictionaries
       WHERE is_active = true
+        AND parent_id IS NULL
+        AND dictionary_type IN ('MAKE', 'BODY_TYPE', 'COLOR')
       ORDER BY dictionary_type, canonical_value
       `,
     );
