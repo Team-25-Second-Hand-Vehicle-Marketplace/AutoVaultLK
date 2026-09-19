@@ -36,6 +36,18 @@ const BASE_ENV = [
 const PIPELINE_ENV = ['INGESTION_CHUNK_SIZE', 'INGESTION_MAX_CONCURRENCY'];
 
 /**
+ * Only the notify function talks to another service. INTERNAL_SERVICE_KEY is
+ * the shared secret notification-service's InternalServiceGuard checks; with
+ * it absent the stage logs SKIPPED rather than failing, which is the correct
+ * local and CI behaviour.
+ */
+const NOTIFICATION_ENV = [
+  'NOTIFICATION_INTERNAL_URL',
+  'INTERNAL_SERVICE_KEY',
+  'NOTIFICATION_TIMEOUT_MS',
+];
+
+/**
  * Timeouts sit above statement_timeout (55s in lambda/bootstrap.ts) so a hung
  * query dies before the function does, leaving a clean connection rather than
  * an orphaned one holding an RDS Proxy slot.
@@ -134,6 +146,19 @@ export const FUNCTION_CONFIGS: Record<string, FunctionConfig> = {
     memoryMb: 512,
     timeoutSeconds: 60,
     env: BASE_ENV,
+  },
+
+  notify: {
+    slug: 'notify',
+    packaging: 'zip',
+    memoryMb: 256,
+    // One HTTP POST, capped by NOTIFICATION_TIMEOUT_MS, plus one job lookup —
+    // and it is that lookup that sets the floor. bootstrap.ts sets
+    // statement_timeout to 55s so a hung query dies before the function does;
+    // a shorter timeout here would invert that and orphan the connection,
+    // holding an RDS Proxy slot for nothing.
+    timeoutSeconds: 60,
+    env: [...BASE_ENV, ...NOTIFICATION_ENV],
   },
 
   'mark-job-failed': {
