@@ -521,6 +521,9 @@ const UNAVAILABLE_DICTIONARY: DictionarySnapshot = {
   resolve: () => {
     throw new Error('Dictionary is not available to whole-file stages');
   },
+  vocabulary: () => {
+    throw new Error('Dictionary is not available to whole-file stages');
+  },
 };
 
 function messageOf(err: unknown): string {
