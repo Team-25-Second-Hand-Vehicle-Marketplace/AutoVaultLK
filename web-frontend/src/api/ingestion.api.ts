@@ -14,8 +14,9 @@ export type UploadProgress = (percent: number) => void
 
 /**
  * Field names are `csv` and `zip` to match the FileFieldsInterceptor on
- * ingestion-service's IngestionController. Anything else is dropped silently
- * by multer and surfaces as "csv file is required".
+ * ingestion-service's IngestionController. Multer rejects any other field
+ * outright — a wrong name returns 400 "Unexpected field", not the friendlier
+ * "csv file is required".
  */
 export async function uploadInventory(
   csv: File,
