@@ -16,6 +16,7 @@ import { DealerLoginPage } from './pages/dealers/DealerLoginPage'
 import { DealerRegisterPage } from './pages/dealers/DealerRegisterPage'
 import { DealerLayout } from './pages/dealers/DealerLayout'
 import { DealerDashboardPage } from './pages/dealers/DealerDashboardPage'
+import { DealerListingsPage } from './pages/dealers/DealerListingsPage'
 import { BulkUploadPage } from './pages/dealers/BulkUploadPage'
 import { UploadStatusPage } from './pages/dealers/UploadStatusPage'
 import { NotFoundPage } from './pages/NotFoundPage'
@@ -64,6 +65,7 @@ function App() {
                 }
               >
                 <Route index element={<DealerDashboardPage />} />
+                <Route path="listings" element={<DealerListingsPage />} />
                 <Route path="upload" element={<BulkUploadPage />} />
                 <Route path="uploads/:jobId" element={<UploadStatusPage />} />
               </Route>

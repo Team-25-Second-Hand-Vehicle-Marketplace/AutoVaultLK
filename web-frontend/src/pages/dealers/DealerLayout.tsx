@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button'
 
 const NAV = [
   { to: '/dealer', end: true, label: 'Dashboard' },
+  { to: '/dealer/listings', end: false, label: 'My listings' },
   { to: '/dealer/upload', end: false, label: 'Bulk upload' },
 ] as const
 

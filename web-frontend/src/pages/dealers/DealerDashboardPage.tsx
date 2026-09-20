@@ -80,8 +80,8 @@ export function DealerDashboardPage() {
 
       <p className="dealer-note">
         {dealer.dealerType === 'individual'
-          ? 'As an individual dealer, you can list vehicles one at a time. Manual listing creation is coming to this dashboard soon.'
-          : 'As a business dealer, you add vehicles through a bulk CSV/ZIP upload. Bulk upload is coming to this dashboard soon.'}
+          ? 'As an individual dealer, add vehicles one at a time from My listings.'
+          : 'As a business dealer, upload your whole inventory at once from Bulk upload, or add vehicles individually from My listings.'}
       </p>
     </div>
   )

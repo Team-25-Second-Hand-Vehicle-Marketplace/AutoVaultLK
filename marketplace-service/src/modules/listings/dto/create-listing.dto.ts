@@ -12,35 +12,48 @@ import {
   Min,
 } from 'class-validator';
 
-export enum FuelTypeDto {
-  PETROL = 'PETROL',
-  DIESEL = 'DIESEL',
-  HYBRID = 'HYBRID',
-  ELECTRIC = 'ELECTRIC',
-  CNG = 'CNG',
+import {
+  CONDITIONS,
+  FUEL_TYPES,
+  TRANSMISSION_TYPES,
+  VEHICLE_TYPES,
+} from '../../search/constants/vehicle-attributes.constants';
+
+/**
+ * The accepted vocabularies, derived from the canonical lists rather than
+ * restated.
+ *
+ * They used to be hand-written enums here, and VehicleTypeDto fell five values
+ * behind: migration 20000 extended vehicle_type to eleven values and updated
+ * the entity, the ingestion write-entity and the search constants, but not this
+ * file. The result was a DTO that rejected THREE_WHEELER, LORRY, PICKUP,
+ * TRACTOR and HEAVY_MACHINERY — types the database accepts, the search facets
+ * offer, and the ETL writes every day — so a dealer could bulk-upload a lorry
+ * but not create one by hand.
+ *
+ * Deriving them means the next extension cannot repeat that: there is one list,
+ * in `search/constants/vehicle-attributes.constants.ts`, and this follows it.
+ *
+ * `@IsEnum` takes any object whose values are the permitted set, so a frozen
+ * map built from the array validates exactly as a hand-written enum did.
+ */
+function enumFrom<T extends string>(values: readonly T[]): Record<T, T> {
+  return Object.freeze(
+    Object.fromEntries(values.map((value) => [value, value])),
+  ) as Record<T, T>;
 }
 
-export enum TransmissionTypeDto {
-  MANUAL = 'MANUAL',
-  AUTOMATIC = 'AUTOMATIC',
-  CVT = 'CVT',
-  SEMI_AUTOMATIC = 'SEMI_AUTOMATIC',
-}
+export const VehicleTypeDto = enumFrom(VEHICLE_TYPES);
+export type VehicleTypeDto = (typeof VEHICLE_TYPES)[number];
 
-export enum VehicleTypeDto {
-  CAR = 'CAR',
-  BIKE = 'BIKE',
-  VAN = 'VAN',
-  TRUCK = 'TRUCK',
-  SUV = 'SUV',
-  BUS = 'BUS',
-}
+export const FuelTypeDto = enumFrom(FUEL_TYPES);
+export type FuelTypeDto = (typeof FUEL_TYPES)[number];
 
-export enum ConditionDto {
-  NEW = 'NEW',
-  USED = 'USED',
-  RECONDITIONED = 'RECONDITIONED',
-}
+export const TransmissionTypeDto = enumFrom(TRANSMISSION_TYPES);
+export type TransmissionTypeDto = (typeof TRANSMISSION_TYPES)[number];
+
+export const ConditionDto = enumFrom(CONDITIONS);
+export type ConditionDto = (typeof CONDITIONS)[number];
 
 /** Manual dealer create: DRAFT or LIVE. ETL/bulk uses PENDING_REVIEW via service default. */
 export enum ManualListingStatusDto {
