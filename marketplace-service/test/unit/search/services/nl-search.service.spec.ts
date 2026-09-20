@@ -88,7 +88,16 @@ describe('NlSearchService', () => {
       getParserVocabulary: jest.fn(async () => FIXTURE_VOCABULARY),
     };
     const filterSearch = {
-      search: jest.fn(async () => emptyResults),
+      // Parameters are declared even though the body ignores them: jest infers
+      // the call tuple from the implementation, so a zero-arg fn types
+      // `mock.calls[0]` as `[]` and every destructure of it fails to compile.
+      // Taken from the real method so the assertions below get real types
+      // rather than `unknown`.
+      search: jest.fn(
+        async (
+          ..._args: Parameters<FilterSearchService['search']>
+        ): Promise<FilterSearchResponseDto> => emptyResults,
+      ),
     };
     const repairFn = jest.fn(
       opts?.repair ??
@@ -119,6 +128,9 @@ describe('NlSearchService', () => {
 
     expect(filterSearch.search).toHaveBeenCalledTimes(1);
     const [dto, log, rank] = filterSearch.search.mock.calls[0];
+    // log and rank are optional on the real signature; asserting on them below
+    // is the claim that this call passed them.
+    if (!log) throw new Error('expected a log argument');
     expect(dto.make).toEqual(['Toyota']);
     expect(dto.model).toEqual(['Corolla']);
     expect(dto.maxPrice).toBe(8_500_000);
@@ -169,6 +181,7 @@ describe('NlSearchService', () => {
     expect(result.parse.usedSemanticRanking).toBe(true);
     expect(result.parse.usedTrigramFallback).toBe(false);
     const [dto, , rank] = filterSearch.search.mock.calls[0];
+    if (!rank) throw new Error('expected rank options');
     expect(dto.q).toBeUndefined();
     expect(rank.queryEmbedding).toHaveLength(EMBEDDING_DIMENSIONS);
     expect(rank.trigramQuery).toBeUndefined();
@@ -182,6 +195,7 @@ describe('NlSearchService', () => {
     expect(result.parse.usedSemanticRanking).toBe(false);
     expect(result.parse.usedTrigramFallback).toBe(true);
     const [dto, , rank] = filterSearch.search.mock.calls[0];
+    if (!rank) throw new Error('expected rank options');
     expect(dto.make).toEqual(['Toyota']);
     expect(dto.q).toBeUndefined();
     expect(rank.trigramQuery).toContain('leather');
@@ -195,6 +209,7 @@ describe('NlSearchService', () => {
 
     expect(result.parse.usedTrigramFallback).toBe(true);
     const [dto, , rank] = filterSearch.search.mock.calls[0];
+    if (!rank) throw new Error('expected rank options');
     expect(dto.q).toBeUndefined();
     expect(rank.trigramWhere).toBe(true);
     expect(rank.trigramQuery).toContain('leather');
@@ -214,9 +229,10 @@ describe('NlSearchService', () => {
     expect(result.parse.needsGroqFallback).toBe(true);
     expect(result.parse.usedGroqFallback).toBe(true);
     const [dto, log] = filterSearch.search.mock.calls[0];
+    if (!log) throw new Error('expected a log argument');
     expect(dto.make).toEqual(['Honda']);
     expect(log.usedLlm).toBe(true);
-    expect(log.unresolvedTokens.length).toBeGreaterThan(0);
+    expect(log.unresolvedTokens?.length).toBeGreaterThan(0);
   });
 
   it('still searches when Groq reports an outage', async () => {
@@ -228,6 +244,7 @@ describe('NlSearchService', () => {
     expect(result.parse.usedGroqFallback).toBe(false);
     expect(result.parse.semanticText.length).toBeGreaterThan(0);
     const [, log] = filterSearch.search.mock.calls[0];
+    if (!log) throw new Error('expected a log argument');
     expect(log.usedLlm).toBe(false);
   });
 });
