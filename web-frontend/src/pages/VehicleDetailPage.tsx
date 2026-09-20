@@ -4,6 +4,7 @@ import axios from 'axios'
 import { getVehicleById } from '../api/search.api'
 import { toErrorMessage } from '../api/client'
 import type { VehicleDetail } from '../api/search.types'
+import { RecommendationsSection } from '../components/search/RecommendationsSection'
 import { SaveButton } from '../components/search/SaveButton'
 import { YearDisplay } from '../components/search/YearDisplay'
 import { formatMileage, formatPrice, humanizeEnum } from '../components/search/vehicle-format'
@@ -267,6 +268,10 @@ export function VehicleDetailPage() {
           </div>
         </aside>
       </div>
+
+      {/* Below the grid so it spans the full width rather than sitting beside
+          the dealer panel. Renders nothing when there is nothing similar. */}
+      <RecommendationsSection vehicleId={vehicle.id} />
     </div>
   )
 }

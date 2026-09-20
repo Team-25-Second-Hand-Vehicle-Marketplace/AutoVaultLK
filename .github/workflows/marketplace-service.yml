@@ -31,6 +31,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # tsconfig.build.json excludes `test` and **/*spec.ts, so `npm run build`
+      # never compiles the suites — 36 type errors had accumulated there
+      # unnoticed. This runs before the tests because tsc takes seconds and the
+      # unit run takes minutes.
+      - name: Typecheck
+        run: npm run typecheck
+
       - name: Run tests
         run: npm run test:ci
 

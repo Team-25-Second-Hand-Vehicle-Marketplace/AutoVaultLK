@@ -10,7 +10,10 @@ function createContext(user: AuthenticatedUser | undefined): ExecutionContext {
     switchToHttp: () => ({
       getRequest: () => ({ user }),
     }),
-  } as ExecutionContext;
+    // `as never as` rather than a direct cast: the literal is a partial
+    // ExecutionContext, which TypeScript refuses to narrow to the full
+    // interface. Matches the house idiom used across the other suites.
+  } as never as ExecutionContext;
 }
 
 describe('RolesGuard', () => {
