@@ -20,7 +20,25 @@ function ImagePlaceholder({ vehicleType }: { vehicleType: string }) {
   )
 }
 
-export function VehicleCard({ result }: { result: VehicleSearchResult }) {
+/**
+ * What the card actually needs. Wider than `VehicleSearchResult` on purpose:
+ * the favourites endpoint joins the raw `Vehicle` row, which carries no
+ * computed `imageUrl`, `thumbnailUrl` or `dealerVerified`. Each is read as a
+ * truthiness check below, so absent behaves exactly like false — the image
+ * falls back to `demoImageFor` and the verification badge is simply omitted.
+ */
+export type VehicleCardResult = Omit<
+  VehicleSearchResult,
+  'effectiveYear' | 'imageUrl' | 'thumbnailUrl' | 'dealerVerified'
+> &
+  Partial<
+    Pick<
+      VehicleSearchResult,
+      'effectiveYear' | 'imageUrl' | 'thumbnailUrl' | 'dealerVerified'
+    >
+  >
+
+export function VehicleCard({ result }: { result: VehicleCardResult }) {
 
   const image =
     result.thumbnailUrl ??
