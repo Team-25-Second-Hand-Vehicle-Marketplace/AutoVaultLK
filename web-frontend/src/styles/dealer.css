@@ -578,3 +578,147 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
+
+/* ── Manual listings (FR-58) ────────────────────────────────────────────── */
+
+/* .form-field styles only `input`; selects and textareas in the listing form
+   need the same treatment or they render unstyled beside it. */
+.listing-form .form-field select,
+.listing-form .form-field textarea {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-h);
+  font: inherit;
+  font-size: 14px;
+}
+
+.listing-form .form-field textarea {
+  resize: vertical;
+}
+
+.listing-form .form-field select:focus,
+.listing-form .form-field textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+  border-color: transparent;
+}
+
+.listing-form .form-field select[aria-invalid='true'],
+.listing-form .form-field textarea[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.listing-form {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+}
+
+.listing-form__grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+}
+
+/* ── Listings table ─────────────────────────────────────────────────────── */
+
+.listing-table-wrap {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow-x: auto;
+}
+
+.listing-table {
+  border-collapse: collapse;
+  font-size: 14px;
+  width: 100%;
+}
+
+.listing-table th,
+.listing-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 12px 14px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.listing-table thead th {
+  background: var(--bg-alt);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.listing-table tbody th {
+  color: var(--text-h);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.listing-table tbody tr:last-child td,
+.listing-table tbody tr:last-child th {
+  border-bottom: none;
+}
+
+.listing-table__actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+/* ── Status badges ──────────────────────────────────────────────────────── */
+
+.listing-status {
+  border-radius: 999px;
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  padding: 3px 10px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.listing-status--live {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.listing-status--pending_review,
+.listing-status--draft {
+  background: var(--warning-bg);
+  color: var(--warning-text);
+}
+
+.listing-status--rejected {
+  background: rgba(217, 45, 32, 0.1);
+  color: var(--danger);
+}
+
+.listing-status--sold,
+.listing-status--archived {
+  background: var(--bg-alt);
+  color: var(--text-muted);
+}
+
+/* Labels a screen reader needs but sighted users read from context — here, the
+   actions column header above two clearly-labelled buttons. */
+.visually-hidden {
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
