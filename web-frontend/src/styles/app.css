@@ -1292,3 +1292,38 @@ h3 {
     padding: 24px 20px;
   }
 }
+
+/* ── Similar vehicles (FR-25) ───────────────────────────────────────────── */
+
+/* Sits below the detail grid, so it spans the full width rather than the
+   left column. `.detail-section` already supplies the spacing and heading. */
+.recommendations {
+  border-top: 1px solid var(--border);
+  padding-top: 24px;
+}
+
+/* A horizontal strip rather than `.vehicle-grid`: these are a suggestion
+   alongside the listing the buyer chose, not a result set to scan. Scrolling
+   keeps the page's own content above the fold. */
+.recommendations__strip {
+  display: grid;
+  gap: 16px;
+  grid-auto-columns: minmax(260px, 1fr);
+  grid-auto-flow: column;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scroll-snap-type: x proximity;
+}
+
+.recommendations__strip > * {
+  scroll-snap-align: start;
+}
+
+/* Narrow screens have no room to scroll sideways comfortably; wrap instead. */
+@media (max-width: 640px) {
+  .recommendations__strip {
+    grid-auto-flow: row;
+    grid-template-columns: 1fr;
+    overflow-x: visible;
+  }
+}
