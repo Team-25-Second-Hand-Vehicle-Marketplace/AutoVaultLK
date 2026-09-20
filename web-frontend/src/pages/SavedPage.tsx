@@ -1,65 +1,37 @@
-import { useEffect, useState } from 'react'
+import { useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import axios from 'axios'
-import { getVehicleById } from '../api/search.api'
+import { getMyFavourites } from '../api/favourites.api'
+import type { Favourite } from '../api/favourites.types'
 import { toErrorMessage } from '../api/client'
-import type { VehicleDetail } from '../api/search.types'
+import { useAsyncData } from '../hooks/useAsyncData'
 import { useSavedVehicles } from '../hooks/useSavedVehicles'
 import { VehicleCard } from '../components/search/VehicleCard'
 import { VehicleCardSkeleton } from '../components/search/VehicleCardSkeleton'
 
+const favouritesError = (err: unknown) =>
+  toErrorMessage(err, 'Could not load your saved listings.')
+
 export function SavedPage() {
+  // `savedIds` is not rendered — it is the refetch key. Un-hearting a card from
+  // this page changes it, which re-runs the fetch below so the row disappears
+  // without a manual reload.
   const { savedIds } = useSavedVehicles()
+  const key = savedIds.join(',')
 
-  const [state, setState] = useState<{
-    vehicles: VehicleDetail[]
-    loading: boolean
-    error: string | null
-  }>({ vehicles: [], loading: true, error: null })
-  const { vehicles, loading, error } = state
+  const fetchFavourites = useCallback(
+    (signal: AbortSignal) => {
+      void key
+      return getMyFavourites(signal)
+    },
+    [key],
+  )
 
-  useEffect(() => {
-    const controller = new AbortController()
+  const { data, loading, error } = useAsyncData<Favourite[]>(
+    fetchFavourites,
+    favouritesError,
+  )
 
-    if (savedIds.length === 0) {
-      // Deferred to a microtask so this is not a synchronous setState in the
-      // effect body; there is nothing to fetch, so nothing to wait for.
-      queueMicrotask(() => {
-        if (!controller.signal.aborted) {
-          setState({ vehicles: [], loading: false, error: null })
-        }
-      })
-      return () => controller.abort()
-    }
-
-    Promise.all(
-      savedIds.map((id) =>
-        getVehicleById(id, controller.signal).catch((err) => {
-          if (axios.isCancel(err)) throw err
-          return null // sold, withdrawn, or otherwise gone
-        }),
-      ),
-    )
-      .then((results) => {
-        if (!controller.signal.aborted) {
-          setState({
-            vehicles: results.filter((v): v is VehicleDetail => v !== null),
-            loading: false,
-            error: null,
-          })
-        }
-      })
-      .catch((err) => {
-        if (axios.isCancel(err) || controller.signal.aborted) return
-        setState({
-          vehicles: [],
-          loading: false,
-          error: toErrorMessage(err, 'Could not load your saved listings.'),
-        })
-      })
-
-    return () => controller.abort()
-  }, [savedIds])
+  const favourites = data ?? []
 
   return (
     <div className="saved-page">
@@ -79,7 +51,7 @@ export function SavedPage() {
         </div>
       )}
 
-      {!loading && !error && vehicles.length === 0 && (
+      {!loading && !error && favourites.length === 0 && (
         <div className="empty-state">
           <p>You haven't saved any vehicles yet.</p>
           <p className="empty-state__detail">
@@ -91,10 +63,12 @@ export function SavedPage() {
         </div>
       )}
 
-      {!loading && vehicles.length > 0 && (
+      {!loading && !error && favourites.length > 0 && (
         <div className="vehicle-grid">
-          {vehicles.map((vehicle) => (
-            <VehicleCard key={vehicle.id} result={vehicle} />
+          {favourites.map((favourite) => (
+            // The vehicle arrives joined on the favourite row, so this is one
+            // request rather than one per saved id as it used to be.
+            <VehicleCard key={favourite.id} result={favourite.vehicle} />
           ))}
         </div>
       )}
