@@ -15,6 +15,8 @@ const ROW = {
   location_city: 'Nugegoda',
   location_district: 'Colombo',
   condition: 'USED',
+  is_negotiable: true,
+  specs: { body_type: 'HATCHBACK' },
   image_path: '/img/1.jpg',
   thumbnail_path: '/img/1-thumb.jpg',
   dealer_verified: true,
@@ -86,6 +88,8 @@ describe('RecommendationsRepository', () => {
         locationCity: 'Nugegoda',
         locationDistrict: 'Colombo',
         condition: 'USED',
+        isNegotiable: true,
+        specs: { body_type: 'HATCHBACK' },
         imageUrl: '/img/1.jpg',
         thumbnailUrl: '/img/1-thumb.jpg',
         dealerVerified: true,
@@ -103,6 +107,37 @@ describe('RecommendationsRepository', () => {
 
       expect(typeof result.price).toBe('number');
       expect(typeof result.similarityScore).toBe('number');
+    });
+
+    it('selects the two columns the shared vehicle card renders', async () => {
+      // is_negotiable and specs are read by VehicleCard. Without them the
+      // frontend would need an adapter inventing defaults, which would show a
+      // wrong negotiable badge and no spec chips on recommended vehicles.
+      dataSource.query.mockResolvedValue([]);
+
+      await repository.findSimilarVehicles('v-1', 6);
+
+      const sql = String(dataSource.query.mock.calls[0][0]);
+      expect(sql).toContain('v.is_negotiable');
+      expect(sql).toContain('v.specs');
+    });
+
+    it('treats a null is_negotiable as false', async () => {
+      dataSource.query.mockResolvedValue([{ ...ROW, is_negotiable: null }]);
+
+      const [result] = await repository.findSimilarVehicles('v-1', 6);
+
+      expect(result.isNegotiable).toBe(false);
+    });
+
+    it('defaults null specs to an empty object', async () => {
+      // The card indexes into specs unconditionally, so a null would throw
+      // rather than render nothing.
+      dataSource.query.mockResolvedValue([{ ...ROW, specs: null }]);
+
+      const [result] = await repository.findSimilarVehicles('v-1', 6);
+
+      expect(result.specs).toEqual({});
     });
 
     it('treats a null dealer_verified as false', async () => {

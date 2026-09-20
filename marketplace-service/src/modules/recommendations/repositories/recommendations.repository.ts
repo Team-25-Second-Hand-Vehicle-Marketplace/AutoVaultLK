@@ -16,6 +16,8 @@ export interface RecommendedVehicle {
   locationCity: string | null;
   locationDistrict: string | null;
   condition: string | null;
+  isNegotiable: boolean;
+  specs: Record<string, unknown>;
   imageUrl: string | null;
   thumbnailUrl: string | null;
   dealerVerified: boolean;
@@ -83,6 +85,8 @@ export class RecommendationsRepository {
       location_city: string | null;
       location_district: string | null;
       condition: string | null;
+      is_negotiable: boolean | null;
+      specs: Record<string, unknown> | null;
       image_path: string | null;
       thumbnail_path: string | null;
       dealer_verified: boolean | null;
@@ -119,6 +123,11 @@ export class RecommendationsRepository {
         v.location_city,
         v.location_district,
         v.condition,
+
+        /* Both are rendered by the shared vehicle card, so selecting them here
+           is what lets a recommendation reuse it without an adapter. */
+        v.is_negotiable,
+        v.specs,
 
         COALESCE(
           vi.processed_path,
@@ -306,6 +315,10 @@ export class RecommendationsRepository {
       locationCity: row.location_city,
       locationDistrict: row.location_district,
       condition: row.condition,
+      isNegotiable: row.is_negotiable === true,
+      // NOT NULL with a '{}' default, but a LEFT JOIN or a future view could
+      // still hand back null; the card indexes into it unconditionally.
+      specs: row.specs ?? {},
       imageUrl: row.image_path,
       thumbnailUrl: row.thumbnail_path,
       dealerVerified: row.dealer_verified === true,

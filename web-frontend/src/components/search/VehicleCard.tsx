@@ -27,16 +27,15 @@ function ImagePlaceholder({ vehicleType }: { vehicleType: string }) {
  * truthiness check below, so absent behaves exactly like false — the image
  * falls back to `demoImageFor` and the verification badge is simply omitted.
  */
-export type VehicleCardResult = Omit<
-  VehicleSearchResult,
-  'effectiveYear' | 'imageUrl' | 'thumbnailUrl' | 'dealerVerified'
-> &
-  Partial<
-    Pick<
-      VehicleSearchResult,
-      'effectiveYear' | 'imageUrl' | 'thumbnailUrl' | 'dealerVerified'
-    >
-  >
+type OptionalOnCard =
+  | 'effectiveYear'
+  | 'imageUrl'
+  | 'thumbnailUrl'
+  | 'dealerVerified'
+  | 'createdAt'
+
+export type VehicleCardResult = Omit<VehicleSearchResult, OptionalOnCard> &
+  Partial<Pick<VehicleSearchResult, OptionalOnCard>>
 
 export function VehicleCard({ result }: { result: VehicleCardResult }) {
 
