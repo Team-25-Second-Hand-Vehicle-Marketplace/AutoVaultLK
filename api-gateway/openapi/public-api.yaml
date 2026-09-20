@@ -436,6 +436,67 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /jobs/{jobId}/rejections:
+    get:
+      tags:
+        - jobs
+      summary: Row-level rejection report for an upload job
+      description: >
+        FR-57. The rows the pipeline refused, with the reason and the dealer's
+        own submitted values, behind the aggregate counts on GET /jobs/{jobId}.
+        A clean upload returns an empty page, not a 404.
+      operationId: getJobRejections
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        '200':
+          description: One page of rejected rows, ordered by row number.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RejectionsPage'
+        '400':
+          description: jobId is not a UUID, or page/limit are out of range.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: No or invalid bearer token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: >
+            No such job, or the job belongs to another dealer. Deliberately not
+            403: that would confirm the id exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /admin/dashboard:
     get:
       tags:
@@ -794,6 +855,80 @@ components:
         updatedAt:
           type: string
           format: date-time
+    EtlStage:
+      type: string
+      enum:
+        - VALIDATE_FILE
+        - SPLIT_CHUNKS
+        - PARSE_NORMALIZE
+        - GROQ_NORMALIZE
+        - VALIDATE_ROWS
+        - ENRICH
+        - EMBED
+        - LOAD
+        - PROCESS_IMAGES
+        - AGGREGATE
+        - NOTIFY
+      description: The pipeline stage that refused the row.
+    RejectedRecord:
+      type: object
+      required:
+        - rowNumber
+        - stage
+        - reason
+        - rawData
+        - rawDataTruncated
+      properties:
+        rowNumber:
+          type: integer
+          description: >
+            1-based row in the submitted file. 0 means the whole file was
+            rejected, not a particular row.
+          example: 17
+        stage:
+          $ref: '#/components/schemas/EtlStage'
+        reason:
+          type: string
+          maxLength: 500
+          example: manufacture_year 1972 is outside the accepted range
+        rawData:
+          type: object
+          additionalProperties: true
+          description: >
+            The dealer's own submitted row, echoed back so the reason points at
+            a correctable value. Capped at 24 columns.
+        rawDataTruncated:
+          type: boolean
+          description: True when rawData was trimmed to the column cap.
+        createdAt:
+          type: string
+          format: date-time
+    RejectionsPage:
+      type: object
+      required:
+        - items
+        - total
+        - page
+        - limit
+        - totalPages
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/RejectedRecord'
+        total:
+          type: integer
+          description: Rejected rows for the job, across all pages.
+          example: 6
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 50
+        totalPages:
+          type: integer
+          example: 1
     Error:
       type: object
       properties:

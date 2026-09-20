@@ -27,6 +27,41 @@ export type JobStatus = {
   updatedAt: string
 }
 
+/** Mirrors ingestion-service's EtlStage union. */
+export type EtlStage =
+  | 'VALIDATE_FILE'
+  | 'SPLIT_CHUNKS'
+  | 'PARSE_NORMALIZE'
+  | 'GROQ_NORMALIZE'
+  | 'VALIDATE_ROWS'
+  | 'ENRICH'
+  | 'EMBED'
+  | 'LOAD'
+  | 'PROCESS_IMAGES'
+  | 'AGGREGATE'
+  | 'NOTIFY'
+
+/** One refused row — mirrors RejectedRecordDto. */
+export type RejectedRecord = {
+  /** 0 means the whole file was rejected, not a particular row. */
+  rowNumber: number
+  stage: EtlStage
+  reason: string
+  rawData: Record<string, unknown>
+  /** True when rawData was trimmed to the server's column cap. */
+  rawDataTruncated: boolean
+  createdAt: string
+}
+
+/** GET /jobs/{id}/rejections — mirrors RejectionsResponseDto. */
+export type RejectionsPage = {
+  items: RejectedRecord[]
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+}
+
 /**
  * A job stops changing once it reaches one of these, so the status page stops
  * polling. PARTIAL is terminal *and* a success: some rows were rejected with
