@@ -1,5 +1,5 @@
 import { apiClient } from './client'
-import type { JobStatus, UploadAccepted } from './ingestion.types'
+import type { JobStatus, RejectionsPage, UploadAccepted } from './ingestion.types'
 import { TEMPLATE_HEADER } from './ingestion.template'
 
 /**
@@ -45,6 +45,24 @@ export async function uploadInventory(
 
 export async function getJobStatus(jobId: string, signal?: AbortSignal): Promise<JobStatus> {
   const { data } = await apiClient.get<JobStatus>(`/jobs/${jobId}`, { signal })
+  return data
+}
+
+/**
+ * FR-57: the row-level report behind the counts on getJobStatus.
+ *
+ * Only worth calling once a job is terminal — before that the pipeline is
+ * still writing rejections and the page would be a moving target.
+ */
+export async function getJobRejections(
+  jobId: string,
+  page = 1,
+  signal?: AbortSignal,
+): Promise<RejectionsPage> {
+  const { data } = await apiClient.get<RejectionsPage>(`/jobs/${jobId}/rejections`, {
+    params: { page },
+    signal,
+  })
   return data
 }
 

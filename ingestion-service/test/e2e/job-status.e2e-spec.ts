@@ -25,7 +25,7 @@ const DEALER: AuthenticatedUser = {
   id: DEALER_ID,
   email: 'dealer@example.com',
   role: 'DEALER',
-} as AuthenticatedUser;
+};
 
 const JOB = {
   id: JOB_ID,
@@ -38,49 +38,56 @@ const JOB = {
   updatedAt: new Date('2026-09-01T10:02:00.000Z'),
 };
 
-describe('GET /jobs/:id (e2e)', () => {
-  let app: INestApplication;
-  let repository: { findById: jest.Mock };
-  let authenticated = true;
+// Shared by both suites below: one app, one stubbed repository. The status
+// endpoint and its rejection report are the same controller and the same
+// guard, so standing them up twice would only duplicate the wiring.
+let app: INestApplication;
+let repository: { findById: jest.Mock; findRejectedRecords: jest.Mock };
+let authenticated = true;
 
-  beforeAll(async () => {
-    repository = { findById: jest.fn() };
+beforeAll(async () => {
+  repository = { findById: jest.fn(), findRejectedRecords: jest.fn() };
 
-    const moduleRef: TestingModule = await Test.createTestingModule({
-      controllers: [JobStatusController],
-      providers: [
-        JobStatusService,
-        { provide: JobStatusRepository, useValue: repository },
-      ],
+  const moduleRef: TestingModule = await Test.createTestingModule({
+    controllers: [JobStatusController],
+    providers: [
+      JobStatusService,
+      { provide: JobStatusRepository, useValue: repository },
+    ],
+  })
+    .overrideGuard(JwtAuthGuard)
+    .useValue({
+      canActivate: (ctx: {
+        switchToHttp: () => { getRequest: () => { user?: AuthenticatedUser } };
+      }) => {
+        if (!authenticated) return false;
+        ctx.switchToHttp().getRequest().user = DEALER;
+        return true;
+      },
     })
-      .overrideGuard(JwtAuthGuard)
-      .useValue({
-        canActivate: (ctx: {
-          switchToHttp: () => { getRequest: () => { user?: AuthenticatedUser } };
-        }) => {
-          if (!authenticated) return false;
-          ctx.switchToHttp().getRequest().user = DEALER;
-          return true;
-        },
-      })
-      .compile();
+    .compile();
 
-    app = moduleRef.createNestApplication();
-    app.useGlobalPipes(
-      new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }),
-    );
-    await app.init();
-  });
+  app = moduleRef.createNestApplication();
+  app.useGlobalPipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    }),
+  );
+  await app.init();
+});
 
-  afterAll(async () => {
-    await app.close();
-  });
+afterAll(async () => {
+  await app.close();
+});
 
-  beforeEach(() => {
-    authenticated = true;
-    jest.clearAllMocks();
-  });
+beforeEach(() => {
+  authenticated = true;
+  jest.clearAllMocks();
+});
 
+describe('GET /jobs/:id (e2e)', () => {
   it('returns the job with the counts the status page renders', async () => {
     repository.findById.mockResolvedValue(JOB);
 
@@ -108,7 +115,7 @@ describe('GET /jobs/:id (e2e)', () => {
     expect(repository.findById).toHaveBeenCalledWith(JOB_ID, DEALER_ID);
   });
 
-  it('404s another dealer\'s job rather than 403', async () => {
+  it("404s another dealer's job rather than 403", async () => {
     // 403 would confirm the job exists. 404 leaks nothing: an id that is not
     // yours is indistinguishable from an id that does not exist.
     repository.findById.mockResolvedValue(null);
@@ -136,6 +143,135 @@ describe('GET /jobs/:id (e2e)', () => {
     authenticated = false;
 
     await request(app.getHttpServer()).get(`/jobs/${JOB_ID}`).expect(403);
+
+    expect(repository.findById).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * FR-57: the row-level report behind the aggregate counts. Same routing and
+ * scoping rules as the status endpoint above — a job that is not yours is a
+ * 404, and the dealer id comes from the token.
+ */
+describe('GET /jobs/:id/rejections (e2e)', () => {
+  const REJECTION = {
+    rowNumber: 17,
+    stage: 'VALIDATE_ROWS',
+    reason: 'manufacture_year 1972 is outside the accepted range',
+    rawData: { registration: 'CAB-1234', manufacture_year: '1972' },
+    createdAt: new Date('2026-09-01T10:03:00.000Z'),
+  };
+
+  beforeEach(() => {
+    authenticated = true;
+    jest.clearAllMocks();
+    repository.findById.mockResolvedValue(JOB);
+    repository.findRejectedRecords.mockResolvedValue({ rows: [], total: 0 });
+  });
+
+  it('returns the rejected rows with reasons and the submitted values', async () => {
+    repository.findRejectedRecords.mockResolvedValue({
+      rows: [REJECTION],
+      total: 1,
+    });
+
+    const response = await request(app.getHttpServer())
+      .get(`/jobs/${JOB_ID}/rejections`)
+      .expect(200);
+
+    expect(response.body).toMatchObject({
+      total: 1,
+      page: 1,
+      limit: 50,
+      totalPages: 1,
+      items: [
+        {
+          rowNumber: 17,
+          stage: 'VALIDATE_ROWS',
+          reason: 'manufacture_year 1972 is outside the accepted range',
+          rawData: { registration: 'CAB-1234', manufacture_year: '1972' },
+          rawDataTruncated: false,
+        },
+      ],
+    });
+  });
+
+  it('scopes the rejection lookup to the caller', async () => {
+    await request(app.getHttpServer())
+      .get(`/jobs/${JOB_ID}/rejections`)
+      .expect(200);
+
+    expect(repository.findRejectedRecords).toHaveBeenCalledWith(
+      JOB_ID,
+      DEALER_ID,
+      1,
+      50,
+    );
+  });
+
+  it("404s another dealer's rejections without querying them", async () => {
+    // The ownership check and the row query are both dealer-scoped; this pins
+    // that a non-owner never reaches the second one.
+    repository.findById.mockResolvedValue(null);
+
+    await request(app.getHttpServer())
+      .get(`/jobs/${JOB_ID}/rejections`)
+      .expect(404);
+
+    expect(repository.findRejectedRecords).not.toHaveBeenCalled();
+  });
+
+  it('returns an empty page for a clean upload rather than 404', async () => {
+    const response = await request(app.getHttpServer())
+      .get(`/jobs/${JOB_ID}/rejections`)
+      .expect(200);
+
+    expect(response.body).toMatchObject({ items: [], total: 0, totalPages: 0 });
+  });
+
+  it('accepts page and limit', async () => {
+    await request(app.getHttpServer())
+      .get(`/jobs/${JOB_ID}/rejections?page=2&limit=20`)
+      .expect(200);
+
+    expect(repository.findRejectedRecords).toHaveBeenCalledWith(
+      JOB_ID,
+      DEALER_ID,
+      2,
+      20,
+    );
+  });
+
+  it('400s a limit above the page-size cap', async () => {
+    // Without the cap a file that rejected every row would return the whole
+    // batch in one response.
+    await request(app.getHttpServer())
+      .get(`/jobs/${JOB_ID}/rejections?limit=5000`)
+      .expect(400);
+
+    expect(repository.findRejectedRecords).not.toHaveBeenCalled();
+  });
+
+  it('400s a non-numeric page', async () => {
+    await request(app.getHttpServer())
+      .get(`/jobs/${JOB_ID}/rejections?page=first`)
+      .expect(400);
+  });
+
+  it('400s a malformed job id before reaching the repository', async () => {
+    await request(app.getHttpServer())
+      .get('/jobs/not-a-uuid/rejections')
+      .expect(400);
+
+    expect(repository.findById).not.toHaveBeenCalled();
+  });
+
+  it('refuses an unauthenticated caller', async () => {
+    authenticated = false;
+
+    await request(app.getHttpServer())
+      .get(`/jobs/${JOB_ID}/rejections`)
+      .expect(403);
 
     expect(repository.findById).not.toHaveBeenCalled();
   });

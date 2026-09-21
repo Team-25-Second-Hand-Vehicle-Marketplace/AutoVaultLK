@@ -9,6 +9,7 @@ import { NotificationsController } from './controllers/notifications.controller'
 import { NotificationsRepository } from './repositories/notifications.repository';
 import { EmailTemplateService } from './services/email-template.service';
 import { NotificationEventHandler } from './services/notification-event.handler';
+import { NotificationRetrySweeper } from './services/notification-retry.sweeper';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Notification, AuthUserView])],
@@ -18,6 +19,7 @@ import { NotificationEventHandler } from './services/notification-event.handler'
     EmailTemplateService,
     SesAdapter,
     NotificationEventHandler,
+    NotificationRetrySweeper,
     SqsPublisher,
     InternalServiceGuard,
   ],

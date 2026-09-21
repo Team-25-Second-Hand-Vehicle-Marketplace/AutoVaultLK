@@ -722,3 +722,92 @@
   white-space: nowrap;
   width: 1px;
 }
+
+/* ── Skipped-row report (FR-57) ─────────────────────────────────────────── */
+
+/* A wide raw-data column would otherwise force the whole page to scroll
+   sideways on a phone. */
+.rejections-table__wrap {
+  overflow-x: auto;
+  margin: 0.75rem 0;
+}
+
+.rejections-table {
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  min-width: 100%;
+  width: 100%;
+}
+
+.rejections-table th,
+.rejections-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.rejections-table thead th {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.rejections-table tbody th {
+  color: var(--text-h);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.rejections-table tbody tr:last-child th,
+.rejections-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.rejections-table__stage {
+  background: var(--warning-bg);
+  border-radius: var(--radius-sm);
+  color: var(--warning-text);
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+  padding: 0.12rem 0.45rem;
+}
+
+.rejections-table__reason {
+  color: var(--text);
+  display: block;
+}
+
+.rejections-raw {
+  display: grid;
+  gap: 0.2rem;
+  margin: 0;
+}
+
+.rejections-raw__pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.rejections-raw__pair dt {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.rejections-raw__pair dt::after {
+  content: ':';
+}
+
+.rejections-raw__pair dd {
+  color: var(--text-h);
+  font-size: 0.82rem;
+  margin: 0;
+  /* Registration numbers and years read better aligned. */
+  font-variant-numeric: tabular-nums;
+}
