@@ -10,6 +10,7 @@ import { VehicleDictionaryRepository } from '../../src/modules/search/repositori
 import { JwtAuthGuard } from '../../src/modules/auth/guards/jwt-auth.guard';
 import { JwtStrategy } from '../../src/modules/auth/strategies/jwt.strategy';
 import { AuthUserView } from '../../src/infrastructure/database/entities/auth-user.view-entity';
+import { VehicleImage } from '../../src/infrastructure/database/entities/vehicle-image.entity';
 import type { AuthenticatedUser, UserRole } from '../../src/modules/auth/types/authenticated-user.type';
 
 @Global()
@@ -81,6 +82,8 @@ describe('POST /search/aliases/promote (e2e)', () => {
           return true;
         },
       })
+      .overrideProvider(getRepositoryToken(VehicleImage))
+      .useValue({})
       .compile();
 
     app = moduleRef.createNestApplication();
