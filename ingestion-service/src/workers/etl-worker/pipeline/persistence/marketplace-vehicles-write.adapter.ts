@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
-import type { EmbeddedRow, Rejection } from '../types';
+import type { EmbeddedRow, NormalizationPayload, Rejection } from '../types';
 import { rejection } from '../types';
 
 /**
@@ -135,7 +135,11 @@ export class MarketplaceVehiclesWriteAdapter {
   }
 
   /** Column order must match INSERT_SQL and placeholders(). */
-  private parametersFor(jobId: string, dealerId: string, row: EmbeddedRow): unknown[] {
+  private parametersFor(
+    jobId: string,
+    dealerId: string,
+    row: EmbeddedRow,
+  ): unknown[] {
     const f = row.normalized;
 
     return [
@@ -165,8 +169,27 @@ export class MarketplaceVehiclesWriteAdapter {
       JSON.stringify(f.specs ?? {}),
       row.searchText,
       row.embedding,
+      buildNormalizationPayload(row),
     ];
   }
+}
+
+/**
+ * FR-42.1: the JSONB blob the dealer review UI reads to show which fields were
+ * inferred and why. null — not `{}` — when the row carries no provenance at
+ * all, so a manually-created listing and a bulk-uploaded one with nothing to
+ * report both read the same "no normalization data" absence the migration's
+ * nullable column already expresses for pre-migration rows.
+ */
+function buildNormalizationPayload(row: EmbeddedRow): string | null {
+  const fields = row.provenance;
+  if (!fields || Object.keys(fields).length === 0) return null;
+
+  const payload: NormalizationPayload = {
+    fields,
+    rowConfidence: row.confidence,
+  };
+  return JSON.stringify(payload);
 }
 
 export type LoadedVehicle = {
@@ -194,7 +217,7 @@ const INSERT_SQL = `
     manufacture_year, registration_year, price, is_negotiable, mileage,
     fuel_type, transmission_type, engine_capacity_cc, color, owners_count,
     location_city, location_district, registration_number, chassis_number,
-    description, specs, search_text, embedding, status
+    description, specs, search_text, embedding, normalization, status
   )`;
 
 /**
@@ -231,24 +254,32 @@ const ON_CONFLICT_SQL = `
     specs = EXCLUDED.specs,
     search_text = EXCLUDED.search_text,
     embedding = EXCLUDED.embedding,
+    normalization = EXCLUDED.normalization,
     updated_at = now()`;
 
 /** Keys the image-branch join (§B3), which matches files by registration number. */
 const RETURNING_SQL = `RETURNING id, registration_number`;
 
-const COLUMN_COUNT = 24;
+const COLUMN_COUNT = 25;
 
 /**
- * $1..$24 for one row, offset into the batch. The embedding is text on the way
+ * $1..$25 for one row, offset into the batch. The embedding is text on the way
  * in and cast here — pgvector accepts '[0.1,0.2,...]'::vector, and passing it
- * as a bare parameter would be rejected as an unknown type.
+ * as a bare parameter would be rejected as an unknown type. normalization is
+ * jsonb for the same reason specs is: a bare parameter is untyped text to
+ * Postgres until cast.
  */
 function placeholders(offset: number): string {
-  const slots = Array.from({ length: COLUMN_COUNT }, (_, i) => `$${offset + i + 1}`);
+  const slots = Array.from(
+    { length: COLUMN_COUNT },
+    (_, i) => `$${offset + i + 1}`,
+  );
 
-  // specs is jsonb, embedding is vector; the rest infer from the column type.
+  // specs and normalization are jsonb, embedding is vector; the rest infer
+  // from the column type.
   slots[21] = `${slots[21]}::jsonb`;
   slots[23] = `${slots[23]}::vector`;
+  slots[24] = `${slots[24]}::jsonb`;
 
   return `(${slots.join(', ')}, 'PENDING_REVIEW')`;
 }

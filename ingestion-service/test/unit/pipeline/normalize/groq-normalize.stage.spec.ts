@@ -24,7 +24,11 @@ const dictionaryRow = (
 });
 
 const DICTIONARY = new InMemoryDictionarySnapshot([
-  dictionaryRow({ id: 'mk-toyota', canonicalValue: 'Toyota', vehicleTypes: ['CAR', 'SUV'] }),
+  dictionaryRow({
+    id: 'mk-toyota',
+    canonicalValue: 'Toyota',
+    vehicleTypes: ['CAR', 'SUV'],
+  }),
   dictionaryRow({
     id: 'md-corolla',
     canonicalValue: 'Corolla',
@@ -39,7 +43,11 @@ const DICTIONARY = new InMemoryDictionarySnapshot([
     parentId: 'mk-toyota',
     vehicleTypes: ['PICKUP'],
   }),
-  dictionaryRow({ id: 'mk-honda', canonicalValue: 'Honda', vehicleTypes: ['CAR'] }),
+  dictionaryRow({
+    id: 'mk-honda',
+    canonicalValue: 'Honda',
+    vehicleTypes: ['CAR'],
+  }),
   dictionaryRow({
     id: 'md-civic',
     canonicalValue: 'Civic',
@@ -70,7 +78,8 @@ const groqResponds = (content: unknown): void => {
       choices: [
         {
           message: {
-            content: typeof content === 'string' ? content : JSON.stringify(content),
+            content:
+              typeof content === 'string' ? content : JSON.stringify(content),
           },
         },
       ],
@@ -122,7 +131,11 @@ describe('groqNormalizeStage', () => {
     it('reports how many rows would have been sent', async () => {
       // Visible in the stage log's metrics, so the value of enabling Groq is
       // measurable before anyone pays for it.
-      const result = await groqNormalizeStage.run(ctx(), [row(0), row(0.2), row(1)]);
+      const result = await groqNormalizeStage.run(ctx(), [
+        row(0),
+        row(0.2),
+        row(1),
+      ]);
 
       expect(result.metrics).toEqual({ candidates: 2, repaired: 0 });
     });
@@ -130,7 +143,9 @@ describe('groqNormalizeStage', () => {
     it('treats a whitespace-only key as unconfigured', async () => {
       process.env.GROQ_API_KEY = '   ';
 
-      expect((await groqNormalizeStage.run(ctx(), [row(0)])).outcome).toBe('SKIPPED');
+      expect((await groqNormalizeStage.run(ctx(), [row(0)])).outcome).toBe(
+        'SKIPPED',
+      );
     });
   });
 
@@ -154,7 +169,10 @@ describe('groqNormalizeStage', () => {
 
       const result = await groqNormalizeStage.run(ctx(), [row(0, 1)]);
 
-      expect(result.rows[0].normalized).toMatchObject({ make: 'Toyota', model: 'Corolla' });
+      expect(result.rows[0].normalized).toMatchObject({
+        make: 'Toyota',
+        model: 'Corolla',
+      });
       expect(result.outcome).toBe('SUCCEEDED');
       expect(result.metrics.repaired).toBe(1);
     });
@@ -178,6 +196,101 @@ describe('groqNormalizeStage', () => {
       expect(result.rows[0].normalized.vehicleType).toBe('PICKUP');
     });
 
+    describe('provenance (FR-42.1)', () => {
+      it('marks the repaired make and model as groq-sourced', async () => {
+        groqResponds({
+          rows: [
+            {
+              id: 1,
+              make: 'Toyota',
+              model: 'Corolla',
+              reasoning: 'Fixed the typo.',
+            },
+          ],
+        });
+
+        const result = await groqNormalizeStage.run(ctx(), [row(0, 1)]);
+
+        expect(result.rows[0].provenance?.make).toEqual({
+          source: 'groq',
+          confidence: CONFIDENCE_ALIAS,
+          reasoning: 'Fixed the typo.',
+        });
+        expect(result.rows[0].provenance?.model).toEqual({
+          source: 'groq',
+          confidence: CONFIDENCE_ALIAS,
+          reasoning: 'Fixed the typo.',
+        });
+      });
+
+      it('omits reasoning when Groq did not supply one', async () => {
+        groqResponds({ rows: [{ id: 1, make: 'Toyota', model: 'Corolla' }] });
+
+        const result = await groqNormalizeStage.run(ctx(), [row(0, 1)]);
+
+        expect(result.rows[0].provenance?.make).toEqual({
+          source: 'groq',
+          confidence: CONFIDENCE_ALIAS,
+        });
+        expect(result.rows[0].provenance?.make).not.toHaveProperty('reasoning');
+      });
+
+      // A model paired with the wrong manufacturer is dropped (see the
+      // whitelist tests below), so the field the repair never actually wrote
+      // must not claim Groq's involvement.
+      it('does not mark model as groq-sourced when only the make repaired', async () => {
+        groqResponds({ rows: [{ id: 1, make: 'Toyota', model: 'Civic' }] });
+
+        const result = await groqNormalizeStage.run(ctx(), [row(0, 1)]);
+
+        expect(result.rows[0].normalized.model).toBeUndefined();
+        expect(result.rows[0].provenance?.model).toBeUndefined();
+      });
+
+      it('preserves provenance parseNormalize already set for untouched fields', async () => {
+        groqResponds({ rows: [{ id: 1, make: 'Toyota', model: 'Corolla' }] });
+
+        const withPriceProvenance: NormalizedRow = {
+          ...row(0, 1),
+          provenance: { price: { source: 'rule', confidence: 1 } },
+        };
+
+        const result = await groqNormalizeStage.run(ctx(), [
+          withPriceProvenance,
+        ]);
+
+        expect(result.rows[0].provenance?.price).toEqual({
+          source: 'rule',
+          confidence: 1,
+        });
+        expect(result.rows[0].provenance?.make?.source).toBe('groq');
+      });
+
+      it('clamps reasoning to the storage width', async () => {
+        const long = 'x'.repeat(600);
+        groqResponds({
+          rows: [{ id: 1, make: 'Toyota', model: 'Corolla', reasoning: long }],
+        });
+
+        const result = await groqNormalizeStage.run(ctx(), [row(0, 1)]);
+
+        expect(result.rows[0].provenance?.make?.reasoning).toHaveLength(500);
+      });
+
+      it('leaves provenance untouched for a row Groq was not asked about', async () => {
+        groqResponds({ rows: [{ id: 1, make: 'Toyota', model: 'Corolla' }] });
+
+        // Row 2 is not a candidate (confidence 1) and gets no repair entry.
+        const untouched: NormalizedRow = { ...row(1, 2) };
+        const result = await groqNormalizeStage.run(ctx(), [
+          row(0, 1),
+          untouched,
+        ]);
+
+        expect(result.rows[1].provenance).toBeUndefined();
+      });
+    });
+
     it('sends only the candidates, in one call', async () => {
       groqResponds({ rows: [] });
 
@@ -187,7 +300,9 @@ describe('groqNormalizeStage', () => {
       const body = JSON.parse(
         (global.fetch as jest.Mock).mock.calls[0][1].body as string,
       ) as { messages: { content: string }[] };
-      const payload = JSON.parse(body.messages[1].content) as { rows: { id: number }[] };
+      const payload = JSON.parse(body.messages[1].content) as {
+        rows: { id: number }[];
+      };
 
       expect(payload.rows.map((r) => r.id)).toEqual([1, 3]);
     });
@@ -204,7 +319,9 @@ describe('groqNormalizeStage', () => {
         allowed: { makes: string[]; models: Record<string, string[]> };
       };
 
-      expect(payload.allowed.makes).toEqual(expect.arrayContaining(['Toyota', 'Honda']));
+      expect(payload.allowed.makes).toEqual(
+        expect.arrayContaining(['Toyota', 'Honda']),
+      );
       expect(payload.allowed.models.Toyota).toEqual(
         expect.arrayContaining(['Corolla', 'Hilux']),
       );
@@ -214,7 +331,9 @@ describe('groqNormalizeStage', () => {
       it('drops a make that is not in the dictionary', async () => {
         // A prompt is a request, not a constraint. "Lamborghini" would be a
         // make no facet, filter or lookup could ever match.
-        groqResponds({ rows: [{ id: 1, make: 'Lamborghini', model: 'Aventador' }] });
+        groqResponds({
+          rows: [{ id: 1, make: 'Lamborghini', model: 'Aventador' }],
+        });
 
         const result = await groqNormalizeStage.run(ctx(), [row(0, 1)]);
 
@@ -281,7 +400,9 @@ describe('groqNormalizeStage', () => {
       it('keeps deterministic values when the call fails', async () => {
         // Low confidence is not invalidity — validateRows may well accept
         // these. A Groq outage must cost enrichment, not stock.
-        global.fetch = jest.fn().mockRejectedValue(new Error('network down')) as never;
+        global.fetch = jest
+          .fn()
+          .mockRejectedValue(new Error('network down')) as never;
 
         const rows = [row(0, 1)];
         const result = await groqNormalizeStage.run(ctx(), rows);
@@ -293,7 +414,9 @@ describe('groqNormalizeStage', () => {
 
       it('degrades on a non-retryable HTTP error without retrying', async () => {
         // A 400 means the request is wrong; retrying spends the timeout twice.
-        const fetchSpy = jest.fn().mockResolvedValue({ ok: false, status: 400 });
+        const fetchSpy = jest
+          .fn()
+          .mockResolvedValue({ ok: false, status: 400 });
         global.fetch = fetchSpy as never;
 
         const result = await groqNormalizeStage.run(ctx(), [row(0, 1)]);
@@ -312,7 +435,8 @@ describe('groqNormalizeStage', () => {
               choices: [
                 {
                   message: {
-                    content: '{"rows":[{"id":1,"make":"Toyota","model":"Corolla"}]}',
+                    content:
+                      '{"rows":[{"id":1,"make":"Toyota","model":"Corolla"}]}',
                   },
                 },
               ],
@@ -329,12 +453,16 @@ describe('groqNormalizeStage', () => {
       it('degrades on a response that is not JSON', async () => {
         groqResponds('I could not determine the vehicles.');
 
-        expect((await groqNormalizeStage.run(ctx(), [row(0, 1)])).outcome).toBe('DEGRADED');
+        expect((await groqNormalizeStage.run(ctx(), [row(0, 1)])).outcome).toBe(
+          'DEGRADED',
+        );
       });
 
       it('tolerates a fenced JSON response', async () => {
         // Models wrap JSON in markdown fences despite response_format.
-        groqResponds('```json\n{"rows":[{"id":1,"make":"Toyota","model":"Corolla"}]}\n```');
+        groqResponds(
+          '```json\n{"rows":[{"id":1,"make":"Toyota","model":"Corolla"}]}\n```',
+        );
 
         const result = await groqNormalizeStage.run(ctx(), [row(0, 1)]);
 
@@ -349,7 +477,10 @@ describe('groqNormalizeStage', () => {
           ],
         });
 
-        const result = await groqNormalizeStage.run(ctx(), [row(0, 1), row(0, 2)]);
+        const result = await groqNormalizeStage.run(ctx(), [
+          row(0, 1),
+          row(0, 2),
+        ]);
 
         expect(result.outcome).toBe('SUCCEEDED');
         expect(result.metrics.repaired).toBe(1);

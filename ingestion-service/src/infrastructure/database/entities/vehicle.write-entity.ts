@@ -27,9 +27,17 @@ import {
 // Nothing but grep enforces this — ingestion does not import
 // marketplace's entities.
 export type VehicleType =
-  | 'CAR' | 'BIKE' | 'VAN' | 'TRUCK' | 'SUV' | 'BUS'
-  | 'THREE_WHEELER' | 'LORRY' | 'PICKUP' | 'TRACTOR' | 'HEAVY_MACHINERY';
-
+  | 'CAR'
+  | 'BIKE'
+  | 'VAN'
+  | 'TRUCK'
+  | 'SUV'
+  | 'BUS'
+  | 'THREE_WHEELER'
+  | 'LORRY'
+  | 'PICKUP'
+  | 'TRACTOR'
+  | 'HEAVY_MACHINERY';
 
 @Entity({ schema: 'marketplace', name: 'vehicles', synchronize: false })
 export class VehicleWriteEntity {
@@ -43,7 +51,7 @@ export class VehicleWriteEntity {
   uploadJobId: string | null;
 
   @Column({ name: 'vehicle_type', type: 'varchar', length: 20 })
-    vehicleType: VehicleType;
+  vehicleType: VehicleType;
 
   @Column({ type: 'varchar', length: 100 })
   make: string;
@@ -80,7 +88,12 @@ export class VehicleWriteEntity {
   @Column({ name: 'fuel_type', type: 'varchar', length: 20, nullable: true })
   fuelType: string | null;
 
-  @Column({ name: 'transmission_type', type: 'varchar', length: 20, nullable: true })
+  @Column({
+    name: 'transmission_type',
+    type: 'varchar',
+    length: 20,
+    nullable: true,
+  })
   transmissionType: string | null;
 
   @Column({ name: 'engine_capacity_cc', type: 'integer', nullable: true })
@@ -92,18 +105,38 @@ export class VehicleWriteEntity {
   @Column({ name: 'owners_count', type: 'smallint', nullable: true })
   ownersCount: number | null;
 
-  @Column({ name: 'location_city', type: 'varchar', length: 100, nullable: true })
+  @Column({
+    name: 'location_city',
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+  })
   locationCity: string | null;
 
-  @Column({ name: 'location_district', type: 'varchar', length: 100, nullable: true })
+  @Column({
+    name: 'location_district',
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+  })
   locationDistrict: string | null;
 
   // Keys the image-branch join. Blank is legitimate (unregistered
   // imports); duplicates among non-null values are rejected pre-fan-out.
-  @Column({ name: 'registration_number', type: 'varchar', length: 50, nullable: true })
+  @Column({
+    name: 'registration_number',
+    type: 'varchar',
+    length: 50,
+    nullable: true,
+  })
   registrationNumber: string | null;
 
-  @Column({ name: 'chassis_number', type: 'varchar', length: 100, nullable: true })
+  @Column({
+    name: 'chassis_number',
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+  })
   chassisNumber: string | null;
 
   @Column({ type: 'text', nullable: true })
@@ -116,6 +149,16 @@ export class VehicleWriteEntity {
   // attribute live here, not as columns.
   @Column({ type: 'jsonb', default: () => `'{}'::jsonb` })
   specs: Record<string, unknown>;
+
+  /**
+   * FR-42.1 (migration 29000). Written directly via raw SQL by
+   * MarketplaceVehiclesWriteAdapter, not through this entity's repository —
+   * see buildNormalizationPayload there. Declared here only so this file
+   * keeps documenting every column of the table it mirrors, per the sync
+   * checklist in plan-b-reads-cross-schemas.md §9A.
+   */
+  @Column({ type: 'jsonb', nullable: true })
+  normalization: Record<string, unknown> | null;
 
   @Column({ name: 'search_text', type: 'text', nullable: true })
   searchText: string | null;

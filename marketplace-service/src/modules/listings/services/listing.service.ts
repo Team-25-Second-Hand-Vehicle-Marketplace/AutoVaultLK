@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   ForbiddenException,
   Injectable,
   Logger,
@@ -8,6 +9,7 @@ import {
 import { DealerSummary } from '../../dealers/repositories/dealer.repository';
 import { DealerService } from '../../dealers/services/dealer.service';
 import { CreateListingDto } from '../dto/create-listing.dto';
+import type { ListingSortOption } from '../dto/my-listings-query.dto';
 import { UpdateListingDto } from '../dto/update-listing.dto';
 import { ListingRepository } from '../repositories/listing.repository';
 import { Vehicle } from '../../../infrastructure/database/entities/vehicle.entity';
@@ -53,9 +55,12 @@ export class ListingService {
    * A dealer's own inventory, every status included — unlike getAllListings,
    * which is the public LIVE-only feed. This is what a dealer dashboard reads
    * to show DRAFT/PENDING_REVIEW/REJECTED listings that the public feed hides.
+   *
+   * `sort: 'confidence_asc'` (FR-42.1) surfaces the PENDING_REVIEW rows most
+   * likely to need a correction first.
    */
-  async getMyListings(actor: AuthenticatedUser) {
-    const listings = await this.listingRepository.findByDealer(actor.id);
+  async getMyListings(actor: AuthenticatedUser, sort?: ListingSortOption) {
+    const listings = await this.listingRepository.findByDealer(actor.id, sort);
 
     return {
       message: 'Vehicle listings retrieved successfully',
@@ -76,7 +81,11 @@ export class ListingService {
     };
   }
 
-  async updateListing(id: string, dto: UpdateListingDto, actor: AuthenticatedUser) {
+  async updateListing(
+    id: string,
+    dto: UpdateListingDto,
+    actor: AuthenticatedUser,
+  ) {
     const listing = await this.listingRepository.findById(id);
 
     if (!listing) {
@@ -114,6 +123,52 @@ export class ListingService {
 
     return {
       message: 'Vehicle listing deactivated successfully',
+      data: listing,
+    };
+  }
+
+  /**
+   * FR-42/FR-42.1: the dealer's explicit approval that moves a PENDING_REVIEW
+   * listing to LIVE. Until this existed, FR-42's "no ETL-loaded listing shall
+   * become publicly visible until the owning Dealer explicitly approves it"
+   * had a status describing the wait but no action ending it — a bulk upload
+   * landed every row in PENDING_REVIEW and nothing in the API could move one
+   * forward.
+   *
+   * A listing that is not PENDING_REVIEW is a 409, not a 404: the id is real
+   * and the dealer may well own it, but "approve" is not a meaningful action
+   * on an already-LIVE listing or a manually-created DRAFT, and the UI needs
+   * to tell that apart from "this listing does not exist" to show the right
+   * message.
+   */
+  async approveListing(id: string, actor: AuthenticatedUser) {
+    const existing = await this.listingRepository.findById(id);
+
+    if (!existing) {
+      throw new NotFoundException(`Vehicle listing with ID ${id} not found`);
+    }
+
+    this.assertOwnership(existing, actor);
+
+    if (existing.status !== 'PENDING_REVIEW') {
+      throw new ConflictException(
+        `Vehicle listing ${id} is ${existing.status}, not PENDING_REVIEW — nothing to approve`,
+      );
+    }
+
+    const listing = await this.listingRepository.approve(id);
+
+    if (!listing) {
+      // The status check above already confirmed PENDING_REVIEW; only a race
+      // with another approval/deactivation between that read and this write
+      // reaches here.
+      throw new ConflictException(
+        `Vehicle listing ${id} is no longer PENDING_REVIEW`,
+      );
+    }
+
+    return {
+      message: 'Vehicle listing approved and published',
       data: listing,
     };
   }

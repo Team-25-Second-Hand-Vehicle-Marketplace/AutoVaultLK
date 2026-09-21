@@ -10,7 +10,10 @@ import { AuthUserView } from '../../src/infrastructure/database/entities/auth-us
 import { DealerProfileView } from '../../src/infrastructure/database/entities/dealer-profile.view-entity';
 import { JwtAuthGuard } from '../../src/modules/auth/guards/jwt-auth.guard';
 import { JwtStrategy } from '../../src/modules/auth/strategies/jwt.strategy';
-import type { AuthenticatedUser, UserRole } from '../../src/modules/auth/types/authenticated-user.type';
+import type {
+  AuthenticatedUser,
+  UserRole,
+} from '../../src/modules/auth/types/authenticated-user.type';
 
 /**
  * The listings controller mixes public browse routes with DEALER/ADMIN-guarded
@@ -50,6 +53,7 @@ describe('listings (e2e)', () => {
     getListingById: jest.Mock;
     updateListing: jest.Mock;
     deactivateListing: jest.Mock;
+    approveListing: jest.Mock;
   };
 
   let authenticated = true;
@@ -63,6 +67,7 @@ describe('listings (e2e)', () => {
       getListingById: jest.fn().mockResolvedValue({ id: VEHICLE_ID }),
       updateListing: jest.fn().mockResolvedValue({ id: VEHICLE_ID }),
       deactivateListing: jest.fn().mockResolvedValue({ id: VEHICLE_ID }),
+      approveListing: jest.fn().mockResolvedValue({ id: VEHICLE_ID }),
     };
 
     const moduleRef: TestingModule = await Test.createTestingModule({
@@ -84,7 +89,9 @@ describe('listings (e2e)', () => {
       .overrideGuard(JwtAuthGuard)
       .useValue({
         canActivate: (ctx: {
-          switchToHttp: () => { getRequest: () => { user?: AuthenticatedUser } };
+          switchToHttp: () => {
+            getRequest: () => { user?: AuthenticatedUser };
+          };
         }) => {
           if (!authenticated) return false;
           ctx.switchToHttp().getRequest().user = currentUser;
@@ -95,7 +102,11 @@ describe('listings (e2e)', () => {
 
     app = moduleRef.createNestApplication();
     app.useGlobalPipes(
-      new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }),
+      new ValidationPipe({
+        transform: true,
+        whitelist: true,
+        forbidNonWhitelisted: true,
+      }),
     );
     await app.init();
   });
@@ -114,6 +125,7 @@ describe('listings (e2e)', () => {
     listingService.createListing.mockResolvedValue({ id: VEHICLE_ID });
     listingService.updateListing.mockResolvedValue({ id: VEHICLE_ID });
     listingService.deactivateListing.mockResolvedValue({ id: VEHICLE_ID });
+    listingService.approveListing.mockResolvedValue({ id: VEHICLE_ID });
   });
 
   describe('route ordering', () => {
@@ -139,13 +151,17 @@ describe('listings (e2e)', () => {
     it('GET /listings/:id needs no token', async () => {
       authenticated = false;
 
-      await request(app.getHttpServer()).get(`/listings/${VEHICLE_ID}`).expect(200);
+      await request(app.getHttpServer())
+        .get(`/listings/${VEHICLE_ID}`)
+        .expect(200);
     });
 
     it('400s a non-UUID id before reaching the service', async () => {
       // ParseUUIDPipe. Without it the id reaches Postgres and raises 22P02,
       // surfacing as a 500.
-      await request(app.getHttpServer()).get('/listings/not-a-uuid').expect(400);
+      await request(app.getHttpServer())
+        .get('/listings/not-a-uuid')
+        .expect(400);
 
       expect(listingService.getListingById).not.toHaveBeenCalled();
     });
@@ -164,13 +180,19 @@ describe('listings (e2e)', () => {
     it('allows an ADMIN', async () => {
       currentUser = user('ADMIN');
 
-      await request(app.getHttpServer()).post('/listings').send(VALID_LISTING).expect(201);
+      await request(app.getHttpServer())
+        .post('/listings')
+        .send(VALID_LISTING)
+        .expect(201);
     });
 
     it('refuses a BUYER', async () => {
       currentUser = user('BUYER');
 
-      await request(app.getHttpServer()).post('/listings').send(VALID_LISTING).expect(403);
+      await request(app.getHttpServer())
+        .post('/listings')
+        .send(VALID_LISTING)
+        .expect(403);
 
       expect(listingService.createListing).not.toHaveBeenCalled();
     });
@@ -179,7 +201,10 @@ describe('listings (e2e)', () => {
       // 403, not 401: a canActivate returning false yields 403.
       authenticated = false;
 
-      await request(app.getHttpServer()).post('/listings').send(VALID_LISTING).expect(403);
+      await request(app.getHttpServer())
+        .post('/listings')
+        .send(VALID_LISTING)
+        .expect(403);
     });
 
     it('400s an unknown field', async () => {
@@ -218,6 +243,34 @@ describe('listings (e2e)', () => {
       currentUser = user('ADMIN');
 
       await request(app.getHttpServer()).get('/listings/mine').expect(403);
+    });
+
+    it('passes no sort by default', async () => {
+      await request(app.getHttpServer()).get('/listings/mine').expect(200);
+
+      expect(listingService.getMyListings).toHaveBeenCalledWith(
+        expect.anything(),
+        undefined,
+      );
+    });
+
+    it('passes sort=confidence_asc through (FR-42.1)', async () => {
+      await request(app.getHttpServer())
+        .get('/listings/mine?sort=confidence_asc')
+        .expect(200);
+
+      expect(listingService.getMyListings).toHaveBeenCalledWith(
+        expect.anything(),
+        'confidence_asc',
+      );
+    });
+
+    it('400s an unknown sort value', async () => {
+      await request(app.getHttpServer())
+        .get('/listings/mine?sort=price_asc')
+        .expect(400);
+
+      expect(listingService.getMyListings).not.toHaveBeenCalled();
     });
   });
 
@@ -258,6 +311,52 @@ describe('listings (e2e)', () => {
         .expect(403);
 
       expect(listingService.deactivateListing).not.toHaveBeenCalled();
+    });
+
+    it('allows a DEALER to approve (FR-42)', async () => {
+      await request(app.getHttpServer())
+        .patch(`/listings/${VEHICLE_ID}/approve`)
+        .expect(200);
+
+      expect(listingService.approveListing).toHaveBeenCalled();
+    });
+
+    it('allows an ADMIN to approve', async () => {
+      currentUser = user('ADMIN');
+
+      await request(app.getHttpServer())
+        .patch(`/listings/${VEHICLE_ID}/approve`)
+        .expect(200);
+
+      expect(listingService.approveListing).toHaveBeenCalled();
+    });
+
+    it('refuses a BUYER approving', async () => {
+      currentUser = user('BUYER');
+
+      await request(app.getHttpServer())
+        .patch(`/listings/${VEHICLE_ID}/approve`)
+        .expect(403);
+
+      expect(listingService.approveListing).not.toHaveBeenCalled();
+    });
+
+    it('refuses an unauthenticated caller approving', async () => {
+      authenticated = false;
+
+      await request(app.getHttpServer())
+        .patch(`/listings/${VEHICLE_ID}/approve`)
+        .expect(403);
+
+      expect(listingService.approveListing).not.toHaveBeenCalled();
+    });
+
+    it('400s a non-UUID id on approve before reaching the service', async () => {
+      await request(app.getHttpServer())
+        .patch('/listings/not-a-uuid/approve')
+        .expect(400);
+
+      expect(listingService.approveListing).not.toHaveBeenCalled();
     });
   });
 });

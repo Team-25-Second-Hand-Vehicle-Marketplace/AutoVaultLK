@@ -2,6 +2,7 @@ import { apiClient } from './client'
 import type {
   CreateListingInput,
   DealerListing,
+  ListingSortOption,
   ListingsEnvelope,
   UpdateListingInput,
 } from './listings.types'
@@ -12,9 +13,21 @@ interface ListingEnvelope {
   data: DealerListing
 }
 
-/** GET /marketplace/listings/mine — every status, scoped to the JWT dealer. */
-export async function getMyListings(signal?: AbortSignal): Promise<DealerListing[]> {
-  const { data } = await apiClient.get<ListingsEnvelope>('/marketplace/listings/mine', { signal })
+/**
+ * GET /marketplace/listings/mine — every status, scoped to the JWT dealer.
+ *
+ * `sort: 'confidence_asc'` (FR-42.1) puts the PENDING_REVIEW rows most likely
+ * to need a correction first, ahead of the ones the pipeline resolved
+ * confidently.
+ */
+export async function getMyListings(
+  sort?: ListingSortOption,
+  signal?: AbortSignal,
+): Promise<DealerListing[]> {
+  const { data } = await apiClient.get<ListingsEnvelope>('/marketplace/listings/mine', {
+    params: sort ? { sort } : undefined,
+    signal,
+  })
   return data.data
 }
 
@@ -62,6 +75,24 @@ export async function deactivateListing(
 ): Promise<DealerListing> {
   const { data } = await apiClient.patch<ListingEnvelope>(
     `/marketplace/listings/${id}/deactivate`,
+    undefined,
+    { signal },
+  )
+  return data.data
+}
+
+/**
+ * PATCH /marketplace/listings/:id/approve — FR-42: moves a PENDING_REVIEW
+ * listing to LIVE. The backend 409s if the listing is not PENDING_REVIEW,
+ * distinct from the 404 an unknown/foreign id gets — see the api-error
+ * detail surfaced by toErrorMessage.
+ */
+export async function approveListing(
+  id: string,
+  signal?: AbortSignal,
+): Promise<DealerListing> {
+  const { data } = await apiClient.patch<ListingEnvelope>(
+    `/marketplace/listings/${id}/approve`,
     undefined,
     { signal },
   )
