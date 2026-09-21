@@ -65,6 +65,21 @@ export interface ListingsEnvelope {
 }
 
 /**
+ * A row from POST /marketplace/listings/:id/images — mirrors marketplace-
+ * service's VehicleImage entity. `s3Path` is the raw storage key, not a
+ * URL; the form has no use for it beyond confirming the upload landed; the
+ * search/detail pages are what turn a vehicle's images back into fetchable
+ * URLs via ImageUrlResolverService, not this response.
+ */
+export interface UploadedVehicleImage {
+  id: string
+  vehicleId: string
+  s3Path: string
+  isPrimary: boolean
+  displayOrder: number
+}
+
+/**
  * The vehicle types the manual listing form offers — all eleven the database
  * accepts, matching `VehicleTypeValue`.
  *
