@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -7,8 +8,11 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFiles,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
 
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { Roles } from '../../auth/decorators/roles.decorator';
@@ -89,5 +93,30 @@ export class ListingController {
     @CurrentUser() actor: AuthenticatedUser,
   ) {
     return this.listingService.approveListing(id, actor);
+  }
+
+  /**
+   * FR-58: attaches photos to a listing the dealer (or admin) already owns.
+   * Replaces the whole image set — see ListingService.uploadImages for why.
+   *
+   * Multer's memory storage, not disk: ImageUploadService decides where the
+   * bytes ultimately land (S3 in s3 mode, ingestion's shared storage
+   * directory in local mode), and a temp file on this Lambda/container's own
+   * disk would be one more thing to clean up for no benefit — a handful of
+   * photos per listing comfortably fits in memory.
+   */
+  @Post(':id/images')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('DEALER', 'ADMIN')
+  @UseInterceptors(FilesInterceptor('images', 10))
+  uploadImages(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+    @UploadedFiles() files: Express.Multer.File[] | undefined,
+  ) {
+    if (!files || files.length === 0) {
+      throw new BadRequestException('At least one image file is required');
+    }
+    return this.listingService.uploadImages(id, actor, files);
   }
 }

@@ -166,6 +166,63 @@ paths:
           description: No such listing.
         '409':
           description: The listing exists but is not PENDING_REVIEW — nothing to approve.
+  /marketplace/listings/{id}/images:
+    post:
+      tags:
+        - marketplace
+      summary: Attach photos to a listing the caller owns (dealer)
+      description: >
+        FR-58. Replaces the listing's whole image set — a re-upload means
+        "this is the current set of photos", not "add more to what's there".
+        The first file becomes the primary photo (the one search/detail
+        responses use for imageUrl/thumbnailUrl).
+
+
+        Only available when the deployment's IMAGE_SERVE_MODE is s3 or
+        local; in demo mode this 400s, since an upload that mode could never
+        serve back would be worse than refusing it outright.
+      operationId: uploadListingImages
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - images
+              properties:
+                images:
+                  type: array
+                  maxItems: 10
+                  items:
+                    type: string
+                    format: binary
+                  description: >
+                    1-10 JPEG, PNG or WebP files, max 8 MB each. Order sets
+                    display_order; the first file is stored as the primary
+                    photo.
+      responses:
+        '201':
+          description: Stored. Returns the vehicle_images rows created.
+        '400':
+          description: >
+            No file attached, an unsupported file type, a file over 8 MB, more
+            than 10 files, or the deployment is running in demo mode.
+        '401':
+          description: No or invalid bearer token.
+        '403':
+          description: Not a DEALER/ADMIN, or a DEALER who does not own this listing.
+        '404':
+          description: No such listing.
   /marketplace/dealers/{id}/profile:
     get:
       tags:

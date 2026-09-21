@@ -6,6 +6,7 @@ import request from 'supertest';
 import { ListingModule } from '../../src/modules/listings/listing.module';
 import { ListingService } from '../../src/modules/listings/services/listing.service';
 import { Vehicle } from '../../src/infrastructure/database/entities/vehicle.entity';
+import { VehicleImage } from '../../src/infrastructure/database/entities/vehicle-image.entity';
 import { AuthUserView } from '../../src/infrastructure/database/entities/auth-user.view-entity';
 import { DealerProfileView } from '../../src/infrastructure/database/entities/dealer-profile.view-entity';
 import { JwtAuthGuard } from '../../src/modules/auth/guards/jwt-auth.guard';
@@ -54,6 +55,7 @@ describe('listings (e2e)', () => {
     updateListing: jest.Mock;
     deactivateListing: jest.Mock;
     approveListing: jest.Mock;
+    uploadImages: jest.Mock;
   };
 
   let authenticated = true;
@@ -68,6 +70,7 @@ describe('listings (e2e)', () => {
       updateListing: jest.fn().mockResolvedValue({ id: VEHICLE_ID }),
       deactivateListing: jest.fn().mockResolvedValue({ id: VEHICLE_ID }),
       approveListing: jest.fn().mockResolvedValue({ id: VEHICLE_ID }),
+      uploadImages: jest.fn().mockResolvedValue({ data: [] }),
     };
 
     const moduleRef: TestingModule = await Test.createTestingModule({
@@ -76,9 +79,11 @@ describe('listings (e2e)', () => {
       .overrideProvider(ListingService)
       .useValue(listingService)
       // Entity tokens supplied directly rather than standing up a DataSource:
-      // ListingModule pulls DealerModule and JwtAuthModule, each registering
-      // their own entities.
+      // ListingModule pulls DealerModule, ImagesModule and JwtAuthModule,
+      // each registering their own entities.
       .overrideProvider(getRepositoryToken(Vehicle))
+      .useValue({})
+      .overrideProvider(getRepositoryToken(VehicleImage))
       .useValue({})
       .overrideProvider(getRepositoryToken(AuthUserView))
       .useValue({ findOne: jest.fn() })
@@ -126,6 +131,7 @@ describe('listings (e2e)', () => {
     listingService.updateListing.mockResolvedValue({ id: VEHICLE_ID });
     listingService.deactivateListing.mockResolvedValue({ id: VEHICLE_ID });
     listingService.approveListing.mockResolvedValue({ id: VEHICLE_ID });
+    listingService.uploadImages.mockResolvedValue({ data: [] });
   });
 
   describe('route ordering', () => {
@@ -357,6 +363,99 @@ describe('listings (e2e)', () => {
         .expect(400);
 
       expect(listingService.approveListing).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('POST :id/images (FR-58)', () => {
+    const attachOneImage = (req: request.Test) =>
+      req.attach('images', Buffer.from('jpeg-bytes'), 'front.jpg');
+
+    it('allows a DEALER to upload images', async () => {
+      await attachOneImage(
+        request(app.getHttpServer()).post(`/listings/${VEHICLE_ID}/images`),
+      ).expect(201);
+
+      expect(listingService.uploadImages).toHaveBeenCalled();
+    });
+
+    it('allows an ADMIN to upload images', async () => {
+      currentUser = user('ADMIN');
+
+      await attachOneImage(
+        request(app.getHttpServer()).post(`/listings/${VEHICLE_ID}/images`),
+      ).expect(201);
+
+      expect(listingService.uploadImages).toHaveBeenCalled();
+    });
+
+    it('refuses a BUYER', async () => {
+      currentUser = user('BUYER');
+
+      await attachOneImage(
+        request(app.getHttpServer()).post(`/listings/${VEHICLE_ID}/images`),
+      ).expect(403);
+
+      expect(listingService.uploadImages).not.toHaveBeenCalled();
+    });
+
+    it('refuses an unauthenticated caller', async () => {
+      authenticated = false;
+
+      await attachOneImage(
+        request(app.getHttpServer()).post(`/listings/${VEHICLE_ID}/images`),
+      ).expect(403);
+
+      expect(listingService.uploadImages).not.toHaveBeenCalled();
+    });
+
+    it('400s a non-UUID id before reaching the service', async () => {
+      await attachOneImage(
+        request(app.getHttpServer()).post('/listings/not-a-uuid/images'),
+      ).expect(400);
+
+      expect(listingService.uploadImages).not.toHaveBeenCalled();
+    });
+
+    // The controller's own guard, ahead of ListingService.uploadImages —
+    // proves a request with no file attached never reaches the (mocked)
+    // service at all.
+    it('400s when no file is attached', async () => {
+      await request(app.getHttpServer())
+        .post(`/listings/${VEHICLE_ID}/images`)
+        .expect(400);
+
+      expect(listingService.uploadImages).not.toHaveBeenCalled();
+    });
+
+    it('passes the actor from the token, not the body', async () => {
+      await attachOneImage(
+        request(app.getHttpServer()).post(`/listings/${VEHICLE_ID}/images`),
+      ).expect(201);
+
+      expect(listingService.uploadImages).toHaveBeenCalledWith(
+        VEHICLE_ID,
+        expect.objectContaining({ id: 'actor-1', role: 'DEALER' }),
+        expect.anything(),
+      );
+    });
+
+    it('accepts multiple files in one request', async () => {
+      const req = request(app.getHttpServer()).post(
+        `/listings/${VEHICLE_ID}/images`,
+      );
+      await req
+        .attach('images', Buffer.from('a'), 'a.jpg')
+        .attach('images', Buffer.from('b'), 'b.jpg')
+        .expect(201);
+
+      expect(listingService.uploadImages).toHaveBeenCalledWith(
+        VEHICLE_ID,
+        expect.anything(),
+        expect.arrayContaining([
+          expect.objectContaining({ originalname: 'a.jpg' }),
+          expect.objectContaining({ originalname: 'b.jpg' }),
+        ]),
+      );
     });
   });
 });

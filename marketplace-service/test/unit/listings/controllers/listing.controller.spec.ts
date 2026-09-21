@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { ListingController } from '../../../../src/modules/listings/controllers/listing.controller';
 import type { AuthenticatedUser } from '../../../../src/modules/auth/types/authenticated-user.type';
 
@@ -10,6 +11,7 @@ describe('ListingController', () => {
     updateListing: jest.fn(),
     deactivateListing: jest.fn(),
     approveListing: jest.fn(),
+    uploadImages: jest.fn(),
   };
   const controller = new ListingController(listingService as never);
   const actor: AuthenticatedUser = {
@@ -87,5 +89,41 @@ describe('ListingController', () => {
 
     expect(controller.approveListing('v-1', actor)).toBe('approved');
     expect(listingService.approveListing).toHaveBeenCalledWith('v-1', actor);
+  });
+
+  describe('POST :id/images (FR-58)', () => {
+    const files = [
+      {
+        originalname: 'a.jpg',
+        mimetype: 'image/jpeg',
+        size: 1,
+        buffer: Buffer.from('x'),
+      },
+    ] as Express.Multer.File[];
+
+    it('passes id, actor and files to uploadImages', () => {
+      listingService.uploadImages.mockReturnValue('uploaded');
+
+      expect(controller.uploadImages('v-1', actor, files)).toBe('uploaded');
+      expect(listingService.uploadImages).toHaveBeenCalledWith(
+        'v-1',
+        actor,
+        files,
+      );
+    });
+
+    it('400s before reaching the service when no files are attached', () => {
+      expect(() => controller.uploadImages('v-1', actor, undefined)).toThrow(
+        BadRequestException,
+      );
+      expect(listingService.uploadImages).not.toHaveBeenCalled();
+    });
+
+    it('400s an empty files array the same as undefined', () => {
+      expect(() => controller.uploadImages('v-1', actor, [])).toThrow(
+        BadRequestException,
+      );
+      expect(listingService.uploadImages).not.toHaveBeenCalled();
+    });
   });
 });

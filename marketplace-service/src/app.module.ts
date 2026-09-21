@@ -7,6 +7,7 @@ import { databaseConfig } from './config/database.config';
 import { HealthModule } from './health/health.module';
 
 import { DealerModule } from './modules/dealers/dealer.module';
+import { ImagesModule } from './modules/images/images.module';
 import { ListingModule } from './modules/listings/listing.module';
 import { SearchModule } from './modules/search/search.module';
 import { FavouritesModule } from './modules/favourites/favourite.module';
@@ -25,6 +26,7 @@ import { RecommendationsModule } from './modules/recommendations/recommendations
 
     DealerModule,
 
+    ImagesModule,
     ListingModule,
 
     SearchModule,
