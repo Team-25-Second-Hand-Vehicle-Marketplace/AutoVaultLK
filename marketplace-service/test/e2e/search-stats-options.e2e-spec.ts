@@ -1,11 +1,12 @@
 import { Global, INestApplication, Module, ValidationPipe } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { getDataSourceToken } from '@nestjs/typeorm';
+import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { SearchModule } from '../../src/modules/search/search.module';
 import { VehicleSearchRepository } from '../../src/modules/search/repositories/vehicle-search.repository';
 import { VehicleDictionaryRepository } from '../../src/modules/search/repositories/vehicle-dictionary.repository';
+import { VehicleImage } from '../../src/infrastructure/database/entities/vehicle-image.entity';
 
 const dataSourceQuery = jest.fn();
 
@@ -31,6 +32,8 @@ describe('GET /search/stats and GET /search/options (e2e)', () => {
       .useValue({ count: jest.fn(), search: jest.fn(), facets: jest.fn(), findById: jest.fn() })
       .overrideProvider(VehicleDictionaryRepository)
       .useValue({ getParserVocabulary: jest.fn().mockResolvedValue({ makes: [], models: [], bodyTypes: [] }) })
+      .overrideProvider(getRepositoryToken(VehicleImage))
+      .useValue({})
       .compile();
 
     app = moduleRef.createNestApplication();
