@@ -6,6 +6,7 @@ import {
   deactivateListing,
   getMyListings,
   updateListing,
+  uploadListingImages,
 } from '../../api/listings.api'
 import type {
   CreateListingInput,
@@ -73,9 +74,25 @@ export function DealerListingsPage() {
 
   const backToList = () => setMode({ kind: 'list' })
 
-  const onCreate = async (input: CreateListingInput) => {
+  const onCreate = async (input: CreateListingInput, images: File[]) => {
     try {
-      await createListing(input)
+      const listing = await createListing(input)
+      // A photo upload failing here is a different, lesser problem than the
+      // listing itself failing to create: the listing exists either way, so
+      // this gets its own try/catch and its own message rather than
+      // aborting the whole flow or reporting the wrong failure.
+      if (images.length > 0) {
+        try {
+          await uploadListingImages(listing.id, images)
+        } catch (error) {
+          toast.error(
+            toErrorMessage(error, 'Listing created, but the photos could not be uploaded.'),
+          )
+          backToList()
+          listings.reload()
+          return
+        }
+      }
       toast.success('Listing created and sent for review')
       backToList()
       listings.reload()
@@ -84,11 +101,30 @@ export function DealerListingsPage() {
     }
   }
 
-  const onUpdate = async (id: string, input: CreateListingInput) => {
+  const onUpdate = async (id: string, input: CreateListingInput, images: File[]) => {
     try {
       // PATCH takes a partial; sending the whole form is simplest and the
       // backend ignores nothing it was given.
       await updateListing(id, input)
+
+      // Empty images means "leave the existing photos alone" — the form
+      // only asks for new files when the dealer actually wants to replace
+      // them (see the "Replace photos" label in edit mode), and calling the
+      // upload endpoint here regardless would delete every existing photo
+      // the moment a dealer edited only the price.
+      if (images.length > 0) {
+        try {
+          await uploadListingImages(id, images)
+        } catch (error) {
+          toast.error(
+            toErrorMessage(error, 'Listing updated, but the photos could not be uploaded.'),
+          )
+          backToList()
+          listings.reload()
+          return
+        }
+      }
+
       toast.success('Listing updated')
       backToList()
       listings.reload()
@@ -156,7 +192,7 @@ export function DealerListingsPage() {
 
         <ListingForm
           listing={mode.listing}
-          onSubmit={(input) => onUpdate(mode.listing.id, input)}
+          onSubmit={(input, images) => onUpdate(mode.listing.id, input, images)}
           onCancel={backToList}
           submitLabel="Save changes"
         />
