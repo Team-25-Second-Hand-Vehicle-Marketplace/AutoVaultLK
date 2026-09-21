@@ -23,9 +23,22 @@ const ROW = {
   similarity_score: '0.87',
 };
 
+/**
+ * Passes every path through unchanged — image *resolution* (s3/local/demo
+ * mode) is ImageUrlResolverService's own concern with its own spec; this
+ * file only needs imageUrl/thumbnailUrl to keep meaning what ROW says.
+ */
+const identityImageResolver = {
+  resolve: jest.fn((key: string | null) => Promise.resolve(key)),
+  resolveAll: jest.fn((keys: readonly string[]) => Promise.resolve([...keys])),
+};
+
 describe('RecommendationsRepository', () => {
   const dataSource = { query: jest.fn() };
-  const repository = new RecommendationsRepository(dataSource as never);
+  const repository = new RecommendationsRepository(
+    dataSource as never,
+    identityImageResolver as never,
+  );
 
   beforeEach(() => jest.clearAllMocks());
 
@@ -153,7 +166,9 @@ describe('RecommendationsRepository', () => {
     it('returns an empty list when nothing is similar', async () => {
       dataSource.query.mockResolvedValue([]);
 
-      await expect(repository.findSimilarVehicles('v-1', 6)).resolves.toEqual([]);
+      await expect(repository.findSimilarVehicles('v-1', 6)).resolves.toEqual(
+        [],
+      );
     });
   });
 });
