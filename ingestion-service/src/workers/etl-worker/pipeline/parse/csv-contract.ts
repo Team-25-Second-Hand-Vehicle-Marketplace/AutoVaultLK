@@ -32,6 +32,13 @@ export const REQUIRED_COLUMNS = ['make', 'model', 'year', 'price', 'mileage'] as
  */
 export const KNOWN_COLUMNS = [
   ...REQUIRED_COLUMNS,
+  // Not in REQUIRED_COLUMNS: an absent/unrecognised value leaves
+  // Vehicle.vehicleType at its schema default ('CAR') via deriveVehicleType's
+  // dictionary fallback (parse-normalize.stage.ts) rather than failing the
+  // row — the SRS/SAD Appendix A table lists this as a required relational
+  // column, but making it a hard CSV requirement would reject every dealer
+  // file that predates this column for no benefit over the existing default.
+  'vehicle_type',
   'registration_number',
   'fuel_type',
   'transmission',
@@ -72,6 +79,9 @@ export type KnownColumn = (typeof KNOWN_COLUMNS)[number];
  * dealer a support ticket.
  */
 const HEADER_ALIASES: Record<string, KnownColumn> = {
+  type: 'vehicle_type',
+  category: 'vehicle_type',
+  vehicle_category: 'vehicle_type',
   manufacturer: 'make',
   brand: 'make',
   variant: 'model',
@@ -127,15 +137,14 @@ export function normalizeHeader(header: string): string {
   return HEADER_ALIASES[key] ?? key;
 }
 
-/** The header row of the downloadable dealer template (§B5). */
-export const TEMPLATE_HEADER: readonly string[] = [
-  'registration_number',
-  'make',
-  'model',
-  'year',
-  'price',
-  'mileage',
-  'fuel_type',
-  'transmission',
-  'body_type',
-];
+/**
+ * The header row of the downloadable dealer template (§B5).
+ *
+ * Every KNOWN_COLUMNS entry, in the same order — the template is a complete
+ * reference of what the pipeline accepts, not just the minimum to pass
+ * validateFile. Only REQUIRED_COLUMNS + registration_number are mandatory;
+ * everything else may be left blank, but showing dealers the full set means
+ * they don't have to guess whether e.g. "sunroof" is something this pipeline
+ * understands.
+ */
+export const TEMPLATE_HEADER: readonly string[] = [...KNOWN_COLUMNS];
