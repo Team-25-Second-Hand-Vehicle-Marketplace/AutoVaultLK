@@ -28,6 +28,10 @@ locals {
 resource "aws_s3_bucket" "frontend" {
   bucket = "${var.project_name}-frontend-${var.environment}"
   tags   = local.tags
+
+  # Without this, `terraform destroy` refuses with BucketNotEmpty once the
+  # frontend has actually been deployed (s3 sync puts real objects in here).
+  force_destroy = true
 }
 
 resource "aws_s3_bucket_public_access_block" "frontend" {
