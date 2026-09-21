@@ -132,6 +132,18 @@ export function AdminUsersPage() {
                     <span className="admin-muted">
                       {row.dealer.city} · {row.dealer.verificationStatus}
                     </span>
+                    {row.dealer.verificationDocumentUrl && (
+                      <>
+                        {' · '}
+                        <a
+                          href={row.dealer.verificationDocumentUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          View document
+                        </a>
+                      </>
+                    )}
                   </>
                 ) : (
                   <span className="admin-muted">—</span>
