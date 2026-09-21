@@ -69,8 +69,22 @@ describe('extractNumeric', () => {
     expect(filters.maxPrice).toBe(5_000_000);
   });
 
-  it('treats an explicit "km" unit as mileage, scaled by 1000', () => {
-    expect(extract('over 50km')).toEqual({ minMileage: 50_000 });
+  it('treats an explicit "km" unit as mileage, already in kilometres (not scaled)', () => {
+    // "50km" means 50 kilometres, full stop — unlike bare "k" (shorthand for
+    // "thousand"), the "km" suffix already states the unit, so it must not
+    // be multiplied again. Previously this doubled the value (50km -> 50,000
+    // "km", i.e. 50,000 km instead of 50), which made any mileage filter
+    // written with an explicit km/kms suffix ("under 10000km") functionally
+    // a no-op since it inflated the ceiling to the millions.
+    expect(extract('over 50km')).toEqual({ minMileage: 50 });
+  });
+
+  it('treats "10000km" as a 10,000 km ceiling, not 10 million', () => {
+    expect(extract('less than 10000km')).toEqual({ maxMileage: 10_000 });
+  });
+
+  it('treats "kms" the same as "km" (not scaled)', () => {
+    expect(extract('under 45000kms')).toEqual({ maxMileage: 45_000 });
   });
 
   it('ignores an already-consumed token', () => {
