@@ -276,6 +276,38 @@ resource "aws_lambda_permission" "notification_internal" {
   source_arn    = "${module.api_gateway.internal_api_execution_arn}/*/*"
 }
 
+module "github_oidc" {
+  source = "../../modules/github-oidc"
+
+  project_name         = var.project_name
+  environment          = var.environment
+  github_org           = var.github_org
+  github_repo          = var.github_repo
+  create_oidc_provider = var.create_github_oidc_provider
+
+  ecr_repository_arns = [
+    module.auth_lambda.ecr_repository_arn,
+    module.marketplace_lambda.ecr_repository_arn,
+    module.admin_lambda.ecr_repository_arn,
+    module.notification_lambda.ecr_repository_arn,
+  ]
+
+  lambda_function_arns = [
+    module.auth_lambda.function_arn,
+    module.marketplace_lambda.function_arn,
+    module.admin_lambda.function_arn,
+    module.notification_lambda.function_arn,
+  ]
+
+  frontend_bucket_arn       = module.frontend.bucket_arn
+  frontend_distribution_arn = module.frontend.distribution_arn
+}
+
+output "github_deploy_role_arn" {
+  description = "Put this in the deploy workflow's role-to-assume, and it's the only value that needs to change if this gets redeployed to a different AWS account"
+  value       = module.github_oidc.role_arn
+}
+
 output "public_api_endpoint" {
   value = module.api_gateway.public_api_endpoint
 }
