@@ -1,8 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { toErrorMessage } from '../../api/client'
-import { getJobStatus } from '../../api/ingestion.api'
-import { isTerminal, type JobStatus, type UploadJobStatus } from '../../api/ingestion.types'
+import { getJobRejections, getJobStatus } from '../../api/ingestion.api'
+import {
+  isTerminal,
+  type JobStatus,
+  type RejectedRecord,
+  type UploadJobStatus,
+} from '../../api/ingestion.types'
+import { RejectionsReport } from '../../components/dealers/RejectionsReport'
 import { ErrorBanner } from '../../components/ui/ErrorBanner'
 
 const POLL_START_MS = 2000
@@ -52,6 +58,11 @@ export function UploadStatusPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
+  const [rejections, setRejections] = useState<RejectedRecord[]>([])
+  const [rejectionsTotal, setRejectionsTotal] = useState(0)
+  const [rejectionsError, setRejectionsError] = useState<string | null>(null)
+  const [rejectionsLoading, setRejectionsLoading] = useState(false)
+
   // Held in refs so the polling effect does not restart on every tick.
   const delay = useRef(POLL_START_MS)
   const timer = useRef<number | undefined>(undefined)
@@ -97,6 +108,42 @@ export function UploadStatusPage() {
       if (timer.current) window.clearTimeout(timer.current)
     }
   }, [jobId])
+
+  // Rejections are fetched once, after the job settles. Fetching them while
+  // the pipeline is still running would show a partial list that grows under
+  // the dealer as stages report in; `settled` is the same terminal check the
+  // poll loop stops on, so this fires exactly once per job.
+  useEffect(() => {
+    if (!jobId || !job || !isTerminal(job.status) || job.invalidRecords === 0) return
+
+    const controller = new AbortController()
+    let cancelled = false
+
+    const load = async () => {
+      setRejectionsLoading(true)
+      try {
+        const page = await getJobRejections(jobId, 1, controller.signal)
+        if (cancelled) return
+        setRejections(page.items)
+        setRejectionsTotal(page.total)
+        setRejectionsError(null)
+      } catch (err) {
+        if (cancelled || controller.signal.aborted) return
+        // The counts above still stand on their own, so a failed report is a
+        // degraded page, not a broken one.
+        setRejectionsError(toErrorMessage(err, 'Could not load the skipped rows.'))
+      } finally {
+        if (!cancelled) setRejectionsLoading(false)
+      }
+    }
+
+    void load()
+
+    return () => {
+      cancelled = true
+      controller.abort()
+    }
+  }, [jobId, job])
 
   if (!jobId) {
     return (
@@ -181,16 +228,14 @@ export function UploadStatusPage() {
         </div>
       )}
 
-      {job.status === 'PARTIAL' && (
-        <section className="upload-card">
-          <h2>What to do next</h2>
-          <p className="dealer-muted">
-            {job.invalidRecords} row{job.invalidRecords === 1 ? '' : 's'} could not be
-            loaded — usually a missing make or model, a year outside 1980–
-            {new Date().getFullYear() + 1}, or a price of zero. Correct those rows in your
-            file and upload just them; the rows that already loaded are unaffected.
-          </p>
-        </section>
+      {settled && job.invalidRecords > 0 && (
+        <RejectionsReport
+          rows={rejections}
+          total={rejectionsTotal}
+          skippedCount={job.invalidRecords}
+          loading={rejectionsLoading}
+          error={rejectionsError}
+        />
       )}
 
       {job.validRecords > 0 && (
