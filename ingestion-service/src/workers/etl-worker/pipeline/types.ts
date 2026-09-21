@@ -104,11 +104,68 @@ export type RawRow = {
   raw: Record<string, string>;
 };
 
-/** After parseNormalize, and optionally groqNormalize. Not yet validated. */
+// ---------------------------------------------------------------------------
+// Normalization provenance (FR-42.1)
+// ---------------------------------------------------------------------------
+
+/**
+ * Where one field's value came from, and how sure the pipeline is of it.
+ *
+ * `rule` covers everything parseNormalize resolves deterministically without
+ * a dictionary lookup — a parsed number, a matched enum keyword. `dictionary`
+ * is a make/model (or any DictionaryHit-backed field) resolved against
+ * ctx.dictionary, whether the hit was exact, alias or fuzzy; the distinction
+ * between those already lives in `confidence`, so the source label does not
+ * need to repeat it. `raw` is a field carried through unparsed (free text like
+ * description, or a value coerced but not looked up against any vocabulary).
+ * `groq` is a value the Groq fallback supplied — currently make/model only,
+ * see groq-normalize.stage.ts.
+ *
+ * `reasoning` is populated only for `groq` entries whose value Groq actually
+ * changed, and only when Groq returns one — the deterministic paths have
+ * nothing to explain beyond the source itself, and asking Groq to justify
+ * every row (not just the ones it resolves) would widen the request FR-33.7
+ * says to keep minimal.
+ */
+export type FieldSource = 'rule' | 'dictionary' | 'raw' | 'groq';
+
+export type FieldProvenance = {
+  source: FieldSource;
+  confidence: number;
+  /** varchar(500) in marketplace.vehicles — see MAX_REASONING_LENGTH below. */
+  reasoning?: string;
+};
+
+/**
+ * Per-field provenance for one row, keyed by VehicleFields property name.
+ *
+ * Only fields the dealer actually supplied something for are present — the
+ * same rule parseNormalize's own `record()` already follows for row-level
+ * confidence (a blank optional column is not evidence of anything, so it does
+ * not get an entry either).
+ */
+export type NormalizationProvenance = Partial<
+  Record<keyof VehicleFields, FieldProvenance>
+>;
+
+/**
+ * After parseNormalize, and optionally groqNormalize. Not yet validated.
+ *
+ * `provenance` is optional on the type rather than required: every row the
+ * running pipeline produces carries one (parseNormalizeStage always sets it),
+ * but making it mandatory would force every NormalizedRow literal across the
+ * test suite — which builds rows by hand to exercise validateRows, enrich,
+ * embed and load in isolation from parseNormalize — to fabricate provenance
+ * data those tests have no reason to care about. Call sites that need it
+ * (the review UI's mapping, groqNormalize's merge) default a missing value to
+ * `{}` rather than assuming it is present.
+ */
 export type NormalizedRow = RawRow & {
   normalized: Partial<VehicleFields>;
   /** Lowest field-level confidence in the row; below threshold routes to Groq. */
   confidence: number;
+  /** Per-field provenance backing FR-42.1's review UI. */
+  provenance?: NormalizationProvenance;
 };
 
 /** Survived validateRows: every required field present and in range. */
@@ -140,7 +197,13 @@ export type EmbeddedRow = EnrichedRow & {
  */
 export type VehicleFields = Pick<
   VehicleWriteEntity,
-  'vehicleType' | 'make' | 'model' | 'condition' | 'manufactureYear' | 'price' | 'mileage'
+  | 'vehicleType'
+  | 'make'
+  | 'model'
+  | 'condition'
+  | 'manufactureYear'
+  | 'price'
+  | 'mileage'
 > &
   Partial<
     Pick<
@@ -182,6 +245,34 @@ export type StageResult<TRow> = {
 export const MAX_REJECTION_REASON_LENGTH = 500;
 
 /**
+ * marketplace.vehicles.normalization is JSONB with no column-width cap of its
+ * own, but a `reasoning` string is stored inside it and read by a review UI
+ * that renders it inline — unbounded LLM output there is a display problem
+ * today and a storage-bloat one if a future run ever asks for more than one
+ * sentence. Clamped the same way rejected-records' `reason` is, for the same
+ * reason: an oversized value should degrade gracefully, not throw or balloon.
+ */
+export const MAX_REASONING_LENGTH = 500;
+
+/** Clamps Groq's stated reasoning to a length the review UI can render inline. */
+export function clampReasoning(reasoning: string): string {
+  return reasoning.length > MAX_REASONING_LENGTH
+    ? `${reasoning.slice(0, MAX_REASONING_LENGTH - 1)}…`
+    : reasoning;
+}
+
+/**
+ * The shape written to marketplace.vehicles.normalization (FR-42.1). Built by
+ * the Load stage from a row's `provenance` map and `confidence`, immediately
+ * before the write — see buildNormalizationPayload in
+ * marketplace-vehicles-write.adapter.ts.
+ */
+export type NormalizationPayload = {
+  fields: NormalizationProvenance;
+  rowConfidence: number;
+};
+
+/**
  * Builds a Rejection with the reason clamped to the column width. Always use
  * this rather than a literal: an over-long reason throws at INSERT time and
  * takes the whole chunk's rejections down with it, so a bad error message would
@@ -207,7 +298,11 @@ export function rejection(row: RawRow, reason: string): Rejection {
  * free of TypeORM; the orchestrator wraps each stage in start/finish.
  */
 export interface StageLogger {
-  start(stage: EtlStage, chunkId: number | null, retryCount?: number): Promise<string>;
+  start(
+    stage: EtlStage,
+    chunkId: number | null,
+    retryCount?: number,
+  ): Promise<string>;
   finish(
     logId: string,
     status: Exclude<EtlStageStatus, 'STARTED'>,

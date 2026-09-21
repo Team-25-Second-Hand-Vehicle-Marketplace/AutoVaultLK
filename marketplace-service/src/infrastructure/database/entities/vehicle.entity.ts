@@ -9,18 +9,41 @@ import {
 import { VehicleImage } from './vehicle-image.entity';
 
 export type VehicleType =
-  | 'CAR' | 'BIKE' | 'VAN' | 'TRUCK' | 'SUV' | 'BUS'
-  | 'THREE_WHEELER' | 'LORRY' | 'PICKUP' | 'TRACTOR' | 'HEAVY_MACHINERY';
+  | 'CAR'
+  | 'BIKE'
+  | 'VAN'
+  | 'TRUCK'
+  | 'SUV'
+  | 'BUS'
+  | 'THREE_WHEELER'
+  | 'LORRY'
+  | 'PICKUP'
+  | 'TRACTOR'
+  | 'HEAVY_MACHINERY';
 export type Condition = 'NEW' | 'USED' | 'RECONDITIONED';
 export type FuelType = 'PETROL' | 'DIESEL' | 'HYBRID' | 'ELECTRIC' | 'CNG';
-export type TransmissionType = 'MANUAL' | 'AUTOMATIC' | 'CVT' | 'SEMI_AUTOMATIC';
+export type TransmissionType =
+  'MANUAL' | 'AUTOMATIC' | 'CVT' | 'SEMI_AUTOMATIC';
 export type VehicleStatus =
-  | 'DRAFT'
-  | 'PENDING_REVIEW'
-  | 'LIVE'
-  | 'SOLD'
-  | 'ARCHIVED'
-  | 'REJECTED';
+  'DRAFT' | 'PENDING_REVIEW' | 'LIVE' | 'SOLD' | 'ARCHIVED' | 'REJECTED';
+
+/**
+ * FR-42.1. Mirrors ingestion-service's NormalizationPayload — see the
+ * `normalization` column below for why this is a JSONB blob rather than
+ * relational columns.
+ */
+export type FieldNormalizationSource = 'rule' | 'dictionary' | 'raw' | 'groq';
+
+export type FieldNormalization = {
+  source: FieldNormalizationSource;
+  confidence: number;
+  reasoning?: string;
+};
+
+export type VehicleNormalization = {
+  fields: Partial<Record<string, FieldNormalization>>;
+  rowConfidence: number;
+};
 
 @Entity({ schema: 'marketplace', name: 'vehicles' })
 export class Vehicle {
@@ -73,7 +96,12 @@ export class Vehicle {
   @Column({ name: 'fuel_type', type: 'varchar', length: 20, nullable: true })
   fuelType: FuelType | null;
 
-  @Column({ name: 'transmission_type', type: 'varchar', length: 20, nullable: true })
+  @Column({
+    name: 'transmission_type',
+    type: 'varchar',
+    length: 20,
+    nullable: true,
+  })
   transmissionType: TransmissionType | null;
 
   @Column({ name: 'engine_capacity_cc', type: 'integer', nullable: true })
@@ -85,16 +113,36 @@ export class Vehicle {
   @Column({ name: 'owners_count', type: 'smallint', nullable: true })
   ownersCount: number | null;
 
-  @Column({ name: 'location_city', type: 'varchar', length: 100, nullable: true })
+  @Column({
+    name: 'location_city',
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+  })
   locationCity: string | null;
 
-  @Column({ name: 'location_district', type: 'varchar', length: 100, nullable: true })
+  @Column({
+    name: 'location_district',
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+  })
   locationDistrict: string | null;
 
-  @Column({ name: 'registration_number', type: 'varchar', length: 50, nullable: true })
+  @Column({
+    name: 'registration_number',
+    type: 'varchar',
+    length: 50,
+    nullable: true,
+  })
   registrationNumber: string | null;
 
-  @Column({ name: 'chassis_number', type: 'varchar', length: 100, nullable: true })
+  @Column({
+    name: 'chassis_number',
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+  })
   chassisNumber: string | null;
 
   @Column({ type: 'text', nullable: true })
@@ -103,15 +151,26 @@ export class Vehicle {
   @Column({ type: 'varchar', length: 20, default: 'PENDING_REVIEW' })
   status: VehicleStatus;
 
-
   @Column({ type: 'jsonb', default: () => `'{}'::jsonb` })
   specs: Record<string, unknown>;
 
+  /**
+   * FR-42.1: which fields on a PENDING_REVIEW listing the ETL pipeline
+   * inferred (dictionary/rule/groq) versus took verbatim, and Groq's stated
+   * reasoning where it repaired a value. Written once by the Load stage
+   * (ingestion-service) and never by anything in this service — null for
+   * every manually-created listing and for the rows that predate migration
+   * 29000. Shape: NormalizationPayload in
+   * ingestion-service/.../pipeline/types.ts, kept in sync by hand the same
+   * way vehicle.write-entity.ts's other columns are (plan-b-reads-cross-
+   * schemas.md §9A).
+   */
+  @Column({ type: 'jsonb', nullable: true })
+  normalization: VehicleNormalization | null;
 
   @Column({ name: 'search_text', type: 'text', nullable: true })
   searchText: string | null;
 
-  
   @Column({ type: 'text', nullable: true, select: false })
   embedding: string | null;
 

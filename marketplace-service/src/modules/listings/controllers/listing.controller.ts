@@ -6,6 +6,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 
@@ -16,14 +17,12 @@ import { RolesGuard } from '../../auth/guards/roles.guard';
 import type { AuthenticatedUser } from '../../auth/types/authenticated-user.type';
 import { ListingService } from '../services/listing.service';
 import { CreateListingDto } from '../dto/create-listing.dto';
+import { MyListingsQueryDto } from '../dto/my-listings-query.dto';
 import { UpdateListingDto } from '../dto/update-listing.dto';
-
 
 @Controller('listings')
 export class ListingController {
-  constructor(
-    private readonly listingService: ListingService,
-  ) {}
+  constructor(private readonly listingService: ListingService) {}
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -44,8 +43,11 @@ export class ListingController {
   @Get('mine')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('DEALER')
-  getMyListings(@CurrentUser() actor: AuthenticatedUser) {
-    return this.listingService.getMyListings(actor);
+  getMyListings(
+    @CurrentUser() actor: AuthenticatedUser,
+    @Query() query: MyListingsQueryDto,
+  ) {
+    return this.listingService.getMyListings(actor, query.sort);
   }
 
   @Get(':id')
@@ -72,5 +74,20 @@ export class ListingController {
     @CurrentUser() actor: AuthenticatedUser,
   ) {
     return this.listingService.deactivateListing(id, actor);
+  }
+
+  /**
+   * FR-42: the dealer's explicit approval that publishes a PENDING_REVIEW
+   * listing. See ListingService.approveListing for why a wrong-status
+   * listing is a 409 rather than the ownership-check's 404.
+   */
+  @Patch(':id/approve')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('DEALER', 'ADMIN')
+  approveListing(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.listingService.approveListing(id, actor);
   }
 }

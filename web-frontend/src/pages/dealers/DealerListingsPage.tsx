@@ -1,6 +1,7 @@
-import { useCallback, useState } from 'react'
+import { Fragment, useCallback, useState } from 'react'
 import { toast } from 'sonner'
 import {
+  approveListing,
   createListing,
   deactivateListing,
   getMyListings,
@@ -14,16 +15,23 @@ import type {
 import { toErrorMessage } from '../../api/client'
 import { useAsyncData } from '../../hooks/useAsyncData'
 import { ListingForm } from '../../components/dealers/ListingForm'
+import {
+  NormalizationDetails,
+  NormalizationSummary,
+} from '../../components/dealers/NormalizationBadge'
 import { Button } from '../../components/ui/Button'
 import { ErrorBanner } from '../../components/ui/ErrorBanner'
 import { formatMileage, formatPrice } from '../../components/search/vehicle-format'
 
 /**
- * Manual listing management (FR-58).
+ * Manual listing management (FR-58), plus the bulk-upload review queue
+ * (FR-42/FR-42.1).
  *
- * The three routes behind this have existed and been guarded since the listings
- * module landed; until now nothing in the UI called them, so a dealer could
- * only add stock through bulk upload.
+ * The three CRUD routes behind this have existed and been guarded since the
+ * listings module landed; until now nothing in the UI called them, so a
+ * dealer could only add stock through bulk upload. Approval had a status
+ * (PENDING_REVIEW) describing the wait but no action ending it — a bulk
+ * upload landed every row here and nothing let a dealer move one forward.
  */
 
 const listingsError = (err: unknown) => toErrorMessage(err, 'Could not load your listings.')
@@ -43,12 +51,25 @@ type Mode =
   | { kind: 'edit'; listing: DealerListing }
 
 export function DealerListingsPage() {
-  const fetchListings = useCallback((signal: AbortSignal) => getMyListings(signal), [])
-  const listings = useAsyncData<DealerListing[]>(fetchListings, listingsError)
-
   const [mode, setMode] = useState<Mode>({ kind: 'list' })
   const [archiving, setArchiving] = useState<string | null>(null)
+  const [approving, setApproving] = useState<string | null>(null)
   const confirm = useConfirm()
+
+  // FR-42.1's default: a dealer opening this page with rows awaiting review
+  // sees the ones most likely to need a correction first, not buried under
+  // whatever bulk upload happened to load last. Toggleable, because a dealer
+  // checking on a specific recent listing wants newest-first instead.
+  const [reviewOrder, setReviewOrder] = useState(true)
+
+  const fetchListings = useCallback(
+    (signal: AbortSignal) => getMyListings(reviewOrder ? 'confidence_asc' : undefined, signal),
+    [reviewOrder],
+  )
+  const listings = useAsyncData<DealerListing[]>(fetchListings, listingsError)
+
+  const pendingReviewCount =
+    listings.data?.filter((l) => l.status === 'PENDING_REVIEW').length ?? 0
 
   const backToList = () => setMode({ kind: 'list' })
 
@@ -90,6 +111,23 @@ export function DealerListingsPage() {
       toast.error(toErrorMessage(error, 'Could not archive the listing.'))
     } finally {
       setArchiving(null)
+    }
+  }
+
+  const onApprove = async (listing: DealerListing) => {
+    setApproving(listing.id)
+    try {
+      await approveListing(listing.id)
+      toast.success(`${listing.make} ${listing.model} is now live`)
+      listings.reload()
+    } catch (error) {
+      // The backend 409s a listing that changed status between page load and
+      // this click (someone else on the account approved it, say); the
+      // message it sends explains that directly, so the fallback here only
+      // covers a genuinely unexpected failure.
+      toast.error(toErrorMessage(error, 'Could not approve the listing.'))
+    } finally {
+      setApproving(null)
     }
   }
 
@@ -137,6 +175,23 @@ export function DealerListingsPage() {
         <Button onClick={() => setMode({ kind: 'create' })}>New listing</Button>
       </div>
 
+      {pendingReviewCount > 0 && (
+        <div className="review-banner" role="status">
+          <p>
+            {pendingReviewCount} listing{pendingReviewCount === 1 ? '' : 's'} awaiting your
+            review. Check the fields marked below, then approve to publish.
+          </p>
+          <label className="review-banner__toggle">
+            <input
+              type="checkbox"
+              checked={reviewOrder}
+              onChange={(e) => setReviewOrder(e.target.checked)}
+            />
+            Show lowest-confidence rows first
+          </label>
+        </div>
+      )}
+
       {listings.loading && (
         <p className="dealer-muted" role="status">
           Loading your listings…
@@ -171,37 +226,57 @@ export function DealerListingsPage() {
             </thead>
             <tbody>
               {listings.data?.map((listing) => (
-                <tr key={listing.id}>
-                  <th scope="row">
-                    {listing.make} {listing.model}
-                  </th>
-                  <td>{listing.manufactureYear}</td>
-                  <td>{formatPrice(listing.price)}</td>
-                  <td>{formatMileage(listing.mileage)}</td>
-                  <td>
-                    <StatusBadge status={listing.status} />
-                  </td>
-                  <td className="listing-table__actions">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setMode({ kind: 'edit', listing })}
-                    >
-                      Edit
-                    </Button>
-                    {/* Already archived: nothing left to deactivate. */}
-                    {listing.status !== 'ARCHIVED' && (
+                <Fragment key={listing.id}>
+                  <tr>
+                    <th scope="row">
+                      {listing.make} {listing.model}
+                      <NormalizationSummary normalization={listing.normalization} />
+                    </th>
+                    <td>{listing.manufactureYear}</td>
+                    <td>{formatPrice(listing.price)}</td>
+                    <td>{formatMileage(listing.mileage)}</td>
+                    <td>
+                      <StatusBadge status={listing.status} />
+                    </td>
+                    <td className="listing-table__actions">
+                      {listing.status === 'PENDING_REVIEW' && (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          disabled={approving === listing.id}
+                          onClick={() => void onApprove(listing)}
+                        >
+                          {approving === listing.id ? 'Approving…' : 'Approve'}
+                        </Button>
+                      )}
                       <Button
-                        variant="danger"
+                        variant="ghost"
                         size="sm"
-                        disabled={archiving === listing.id}
-                        onClick={() => void onDeactivate(listing)}
+                        onClick={() => setMode({ kind: 'edit', listing })}
                       >
-                        {archiving === listing.id ? 'Archiving…' : 'Archive'}
+                        Edit
                       </Button>
-                    )}
-                  </td>
-                </tr>
+                      {/* Already archived: nothing left to deactivate. */}
+                      {listing.status !== 'ARCHIVED' && (
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          disabled={archiving === listing.id}
+                          onClick={() => void onDeactivate(listing)}
+                        >
+                          {archiving === listing.id ? 'Archiving…' : 'Archive'}
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
+                  {listing.normalization && (
+                    <tr className="listing-table__details-row">
+                      <td colSpan={6}>
+                        <NormalizationDetails normalization={listing.normalization} />
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               ))}
             </tbody>
           </table>

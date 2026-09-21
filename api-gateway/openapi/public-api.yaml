@@ -136,6 +136,36 @@ paths:
       responses:
         '200':
           description: Updated
+  /marketplace/listings/{id}/approve:
+    patch:
+      tags:
+        - marketplace
+      summary: Approve a PENDING_REVIEW listing, publishing it (dealer)
+      description: >
+        FR-42/FR-42.1. Moves the listing from PENDING_REVIEW to LIVE. This is
+        the explicit approval FR-42 requires before any ETL-loaded listing
+        becomes publicly visible.
+      operationId: approveListing
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Approved and published.
+        '401':
+          description: No or invalid bearer token.
+        '403':
+          description: Not a DEALER/ADMIN, or a DEALER who does not own this listing.
+        '404':
+          description: No such listing.
+        '409':
+          description: The listing exists but is not PENDING_REVIEW — nothing to approve.
   /marketplace/dealers/{id}/profile:
     get:
       tags:
