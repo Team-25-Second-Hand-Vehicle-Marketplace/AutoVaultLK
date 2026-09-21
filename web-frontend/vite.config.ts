@@ -41,6 +41,21 @@ export default defineConfig({
         target: "http://localhost:3001",
         changeOrigin: true,
       },
+      // nginx: location /documents/ -> auth_user_service/documents/
+      "/documents": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+      },
+      // nginx: location /ingest/ -> ingestion_service/ingest/
+      "/ingest": {
+        target: "http://localhost:3003",
+        changeOrigin: true,
+      },
+      // nginx: location /jobs/ -> ingestion_service/jobs/
+      "/jobs": {
+        target: "http://localhost:3003",
+        changeOrigin: true,
+      },
       // nginx: location /admin/ -> admin_service/admin/ (prefix PRESERVED)
       //
       // The SPA also owns /admin/* routes (/admin/login, /admin/users, ...),
