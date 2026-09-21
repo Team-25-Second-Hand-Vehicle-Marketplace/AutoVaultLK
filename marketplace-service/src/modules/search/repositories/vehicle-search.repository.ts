@@ -1,8 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
-import { BuiltFilterQuery, buildFilterQuery } from '../filters/filter-query.builder';
-import { appendTrigramWhere, type SearchRankOptions } from '../filters/search-rank';
+import { ImageUrlResolverService } from '../../images/services/image-url-resolver.service';
+import {
+  BuiltFilterQuery,
+  buildFilterQuery,
+} from '../filters/filter-query.builder';
+import {
+  appendTrigramWhere,
+  type SearchRankOptions,
+} from '../filters/search-rank';
 import { buildOrderBy } from '../filters/sort-clause';
 import { FilterSearchDto } from '../dto/filter-search.dto';
 import {
@@ -76,7 +83,10 @@ interface VehicleDetailRow extends VehicleRow {
 
 @Injectable()
 export class VehicleSearchRepository {
-  constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
+  constructor(
+    @InjectDataSource() private readonly dataSource: DataSource,
+    private readonly imageUrlResolver: ImageUrlResolverService,
+  ) {}
 
   private buildFromAndWhere(
     built: BuiltFilterQuery,
@@ -131,7 +141,10 @@ export class VehicleSearchRepository {
       queryParams,
     );
 
-    return rows.map((row) => this.mapRow(row));
+    // Presigning is a local SigV4 computation in s3 mode (no AWS round trip
+    // — see ImageUrlResolverService), so resolving a whole page of results
+    // in parallel here costs CPU, not N sequential network calls.
+    return Promise.all(rows.map((row) => this.mapRow(row)));
   }
 
   async count(
@@ -139,7 +152,10 @@ export class VehicleSearchRepository {
     verifiedDealersOnly?: boolean,
     rank?: SearchRankOptions,
   ): Promise<number> {
-    const { from, where, params } = this.buildFromAndWhere(built, verifiedDealersOnly);
+    const { from, where, params } = this.buildFromAndWhere(
+      built,
+      verifiedDealersOnly,
+    );
     const queryParams = [...params];
     const gatedWhere = appendTrigramWhere(where, queryParams, rank);
     const [{ count }] = await this.dataSource.query(
@@ -149,7 +165,9 @@ export class VehicleSearchRepository {
     return parseInt(count, 10);
   }
 
-  async facets(dto: FilterSearchDto): Promise<Record<string, FacetBucketDto[]>> {
+  async facets(
+    dto: FilterSearchDto,
+  ): Promise<Record<string, FacetBucketDto[]>> {
     const dimensions: Array<{
       key: keyof FilterSearchDto;
       column: string;
@@ -171,14 +189,15 @@ export class VehicleSearchRepository {
           dto.verifiedDealersOnly,
         );
 
-        const rows: Array<{ value: string; count: string }> = await this.dataSource.query(
-          `SELECT ${column} AS value, COUNT(*) AS count
+        const rows: Array<{ value: string; count: string }> =
+          await this.dataSource.query(
+            `SELECT ${column} AS value, COUNT(*) AS count
            FROM ${from}
            WHERE ${where} AND ${column} IS NOT NULL
            GROUP BY ${column}
            ORDER BY count DESC, value ASC`,
-          params,
-        );
+            params,
+          );
 
         return [
           key as string,
@@ -189,7 +208,6 @@ export class VehicleSearchRepository {
 
     return Object.fromEntries(entries);
   }
-
 
   async findById(id: string): Promise<VehicleDetailDto | null> {
     const rows: VehicleDetailRow[] = await this.dataSource.query(
@@ -213,13 +231,18 @@ export class VehicleSearchRepository {
     if (rows.length === 0) return null;
     const row = rows[0];
 
+    const [mapped, images] = await Promise.all([
+      this.mapRow(row),
+      this.imageUrlResolver.resolveAll(row.image_paths ?? []),
+    ]);
+
     return {
-      ...this.mapRow(row),
+      ...mapped,
       description: row.description,
       color: row.color,
       ownersCount: row.owners_count,
       engineCapacityCc: row.engine_capacity_cc,
-      images: row.image_paths ?? [],
+      images,
       dealer: {
         id: row.dealer_id,
         companyName: row.dealer_company_name,
@@ -230,7 +253,12 @@ export class VehicleSearchRepository {
     };
   }
 
-  private mapRow(row: VehicleRow): VehicleSearchResultDto {
+  private async mapRow(row: VehicleRow): Promise<VehicleSearchResultDto> {
+    const [imageUrl, thumbnailUrl] = await Promise.all([
+      this.imageUrlResolver.resolve(row.image_path),
+      this.imageUrlResolver.resolve(row.thumbnail_path),
+    ]);
+
     return {
       id: row.id,
       vehicleType: row.vehicle_type as VehicleSearchResultDto['vehicleType'],
@@ -249,8 +277,8 @@ export class VehicleSearchRepository {
       locationDistrict: row.location_district,
       specs: row.specs,
       dealerVerified: row.dealer_verified === true,
-      imageUrl: row.image_path,
-      thumbnailUrl: row.thumbnail_path,
+      imageUrl,
+      thumbnailUrl,
       createdAt: row.created_at,
     };
   }

@@ -1,4 +1,6 @@
+import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
+import { ImageUrlResolverService } from '../../src/modules/images/services/image-url-resolver.service';
 import { VehicleSearchRepository } from '../../src/modules/search/repositories/vehicle-search.repository';
 import { buildFilterQuery } from '../../src/modules/search/filters/filter-query.builder';
 import type { FilterSearchDto } from '../../src/modules/search/dto/filter-search.dto';
@@ -41,7 +43,16 @@ describeWithDatabase('VehicleSearchRepository (integration)', () => {
 
     // The repository takes an injected DataSource, so it can be constructed
     // directly — no Nest container needed for a query-only class.
-    repository = new VehicleSearchRepository(ds);
+    //
+    // ImageUrlResolverService runs for real, in demo mode (no
+    // IMAGE_SERVE_MODE set in the integration test environment): every
+    // resolved imageUrl/thumbnailUrl below is genuinely null, which is the
+    // correct, testable behaviour for a database that — per the seeded
+    // fixtures — carries no vehicle_images rows at all.
+    repository = new VehicleSearchRepository(
+      ds,
+      new ImageUrlResolverService(new ConfigService({})),
+    );
 
     const { count } = await queryRow<{ count: string }>(
       ds,
