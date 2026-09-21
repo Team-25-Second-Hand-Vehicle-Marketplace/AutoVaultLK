@@ -84,7 +84,13 @@ export class EmailVerificationService {
         { id: user.id },
         {
           emailVerifiedAt: verifiedAt,
-          isActive: user.role === 'BUYER',
+          // A buyer activates on email verification alone. A dealer's
+          // activation is a separate, later gate — admin approval (see
+          // DealerProfilesService.approveDealer) — so verifying email must
+          // never touch isActive for a dealer: setting it to false here
+          // would silently deactivate a dealer who was already approved
+          // before they got around to verifying their email.
+          ...(user.role === 'BUYER' ? { isActive: true } : {}),
         },
       );
       await manager.update(
