@@ -8,6 +8,8 @@ import {
 
 import { DealerSummary } from '../../dealers/repositories/dealer.repository';
 import { DealerService } from '../../dealers/services/dealer.service';
+import type { UploadedImageFile } from '../../images/services/image-upload.service';
+import { ImageUploadService } from '../../images/services/image-upload.service';
 import { CreateListingDto } from '../dto/create-listing.dto';
 import type { ListingSortOption } from '../dto/my-listings-query.dto';
 import { UpdateListingDto } from '../dto/update-listing.dto';
@@ -22,6 +24,7 @@ export class ListingService {
   constructor(
     private readonly listingRepository: ListingRepository,
     private readonly dealerService: DealerService,
+    private readonly imageUploadService: ImageUploadService,
   ) {}
 
   async createListing(dto: CreateListingDto, actor: AuthenticatedUser) {
@@ -170,6 +173,38 @@ export class ListingService {
     return {
       message: 'Vehicle listing approved and published',
       data: listing,
+    };
+  }
+
+  /**
+   * FR-58: attaches photos to a listing the dealer owns. The manual listing
+   * form never had an image field before this — a dealer creating one
+   * vehicle at a time had no way to attach a photo at all, unlike bulk
+   * upload's ZIP-of-images path.
+   *
+   * Replaces the vehicle's whole image set rather than appending: a dealer
+   * re-submitting photos for a listing means "here is the current set", and
+   * appending would leave stale images from an earlier attempt with no way
+   * for the form to show which one is which.
+   */
+  async uploadImages(
+    id: string,
+    actor: AuthenticatedUser,
+    files: UploadedImageFile[],
+  ) {
+    const listing = await this.listingRepository.findById(id);
+
+    if (!listing) {
+      throw new NotFoundException(`Vehicle listing with ID ${id} not found`);
+    }
+
+    this.assertOwnership(listing, actor);
+
+    const images = await this.imageUploadService.replaceImages(id, files);
+
+    return {
+      message: 'Images uploaded successfully',
+      data: images,
     };
   }
 

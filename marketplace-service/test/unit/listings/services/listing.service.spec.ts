@@ -21,9 +21,13 @@ describe('ListingService', () => {
   const dealerService = {
     getDealerById: jest.fn(),
   };
+  const imageUploadService = {
+    replaceImages: jest.fn(),
+  };
   const service = new ListingService(
     listingRepository as never,
     dealerService as never,
+    imageUploadService as never,
   );
 
   beforeEach(() => jest.clearAllMocks());
@@ -423,6 +427,78 @@ describe('ListingService', () => {
       await expect(service.approveListing('v-1', DEALER)).rejects.toThrow(
         ConflictException,
       );
+    });
+  });
+
+  describe('uploadImages (FR-58)', () => {
+    const FILES = [
+      {
+        originalname: 'a.jpg',
+        mimetype: 'image/jpeg',
+        size: 1024,
+        buffer: Buffer.from('x'),
+      },
+    ];
+
+    it('404s when the listing does not exist', async () => {
+      listingRepository.findById.mockResolvedValue(null);
+
+      await expect(
+        service.uploadImages('missing', DEALER, FILES),
+      ).rejects.toThrow(NotFoundException);
+      expect(imageUploadService.replaceImages).not.toHaveBeenCalled();
+    });
+
+    it('forbids a non-owning dealer from uploading', async () => {
+      listingRepository.findById.mockResolvedValue(
+        vehicle({ dealerId: DEALER.id }),
+      );
+
+      await expect(
+        service.uploadImages('v-1', OTHER_DEALER, FILES),
+      ).rejects.toThrow(ForbiddenException);
+      expect(imageUploadService.replaceImages).not.toHaveBeenCalled();
+    });
+
+    it('allows the owning dealer to upload images to their own listing', async () => {
+      listingRepository.findById.mockResolvedValue(
+        vehicle({ dealerId: DEALER.id }),
+      );
+      imageUploadService.replaceImages.mockResolvedValue([{ id: 'img-1' }]);
+
+      const result = await service.uploadImages('v-1', DEALER, FILES);
+
+      expect(imageUploadService.replaceImages).toHaveBeenCalledWith(
+        'v-1',
+        FILES,
+      );
+      expect(result.data).toEqual([{ id: 'img-1' }]);
+    });
+
+    it('allows ADMIN to upload images to any listing', async () => {
+      listingRepository.findById.mockResolvedValue(
+        vehicle({ dealerId: DEALER.id }),
+      );
+      imageUploadService.replaceImages.mockResolvedValue([]);
+
+      await expect(
+        service.uploadImages('v-1', ADMIN, FILES),
+      ).resolves.toBeDefined();
+    });
+
+    // Ownership must be checked before the (possibly expensive, possibly
+    // billed) upload work starts — a non-owner's request should never reach
+    // S3 or the local filesystem.
+    it('checks ownership before calling the upload service', async () => {
+      listingRepository.findById.mockResolvedValue(
+        vehicle({ dealerId: DEALER.id }),
+      );
+
+      await expect(
+        service.uploadImages('v-1', OTHER_DEALER, FILES),
+      ).rejects.toThrow();
+
+      expect(imageUploadService.replaceImages).not.toHaveBeenCalled();
     });
   });
 });

@@ -8,10 +8,16 @@ import { ListingSearchIndexService } from './services/listing-search-index.servi
 import { ListingRepository } from './repositories/listing.repository';
 
 import { DealerModule } from '../dealers/dealer.module';
+import { ImagesModule } from '../images/images.module';
 import { JwtAuthModule } from '../auth/jwt-auth.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Vehicle]), DealerModule, JwtAuthModule],
+  imports: [
+    TypeOrmModule.forFeature([Vehicle]),
+    DealerModule,
+    ImagesModule,
+    JwtAuthModule,
+  ],
   controllers: [ListingController],
   providers: [ListingService, ListingRepository, ListingSearchIndexService],
   exports: [ListingService],
