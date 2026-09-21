@@ -28,6 +28,10 @@ locals {
 resource "aws_s3_bucket" "frontend" {
   bucket = "${var.project_name}-frontend-${var.environment}"
   tags   = local.tags
+
+  # Without this, `terraform destroy` refuses with BucketNotEmpty once the
+  # frontend has actually been deployed (s3 sync puts real objects in here).
+  force_destroy = true
 }
 
 resource "aws_s3_bucket_public_access_block" "frontend" {
@@ -126,9 +130,17 @@ output "bucket_name" {
   value = aws_s3_bucket.frontend.bucket
 }
 
+output "bucket_arn" {
+  value = aws_s3_bucket.frontend.arn
+}
+
 output "distribution_id" {
   description = "For CI's CloudFront invalidation step after a deploy"
   value       = aws_cloudfront_distribution.frontend.id
+}
+
+output "distribution_arn" {
+  value = aws_cloudfront_distribution.frontend.arn
 }
 
 output "distribution_domain_name" {
