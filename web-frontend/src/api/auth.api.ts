@@ -35,6 +35,25 @@ export async function registerDealer(payload: RegisterDealerRequest): Promise<Re
   return data
 }
 
+/**
+ * POST /documents/verification — uploads a business registration certificate
+ * before the dealer account exists, returning a stored key. That key is what
+ * gets sent as verificationDocuments.businessRegistrationCertificate on the
+ * actual registerDealer call.
+ */
+export async function uploadVerificationDocument(
+  file: File,
+  signal?: AbortSignal,
+): Promise<{ key: string }> {
+  const form = new FormData()
+  form.append('document', file)
+
+  const { data } = await apiClient.post<{ key: string }>('/documents/verification', form, {
+    signal,
+  })
+  return data
+}
+
 export async function refreshSession(refreshToken: string): Promise<AuthTokenResponse> {
   const { data } = await axios.post<AuthTokenResponse>(
     `${import.meta.env.VITE_API_BASE_URL ?? ''}/auth/refresh`,
