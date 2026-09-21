@@ -14,6 +14,7 @@ import { AdminReadsRepository } from './repositories/admin-reads.repository';
 import { AuditLogsRepository } from './repositories/audit-logs.repository';
 import { AdminMutationsService } from './services/admin-mutations.service';
 import { AdminReadsService } from './services/admin-reads.service';
+import { DocumentUrlResolverService } from './services/document-url-resolver.service';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { AdminReadsService } from './services/admin-reads.service';
     AdminMutationsService,
     AuthInternalClient,
     NotificationInternalClient,
+    DocumentUrlResolverService,
   ],
 })
 export class AdminModule {}
