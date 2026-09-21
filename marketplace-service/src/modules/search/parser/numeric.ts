@@ -139,7 +139,10 @@ export function parseMagnitude(norm: string): { n: number; unit?: string } | und
 
 function scale(n: number, unit: string | undefined): number {
   if (unit === 'million' || unit === 'mil' || unit === 'm') return Math.round(n * 1_000_000);
-  if (unit === 'k' || unit === 'km' || unit === 'kms') return Math.round(n * 1000);
+  // "km"/"kms" as a numeric suffix means the number is already in kilometres
+  // (e.g. "10000km" = 10,000 km) — only bare "k" (e.g. "95k") is shorthand
+  // for thousands and needs scaling up.
+  if (unit === 'k') return Math.round(n * 1000);
   return Math.round(n);
 }
 
