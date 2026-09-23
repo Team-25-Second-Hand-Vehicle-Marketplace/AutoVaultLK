@@ -42,7 +42,7 @@ export const handler = async (input: ValidateFileInput): Promise<ValidateFileOut
   try {
     const result = await validateFileStage.run(
       stageContext(ctx, { jobId: job.id, dealerId: job.dealerId, chunkId: null }),
-      { key: job.csvS3Path, fileName: job.fileName },
+      { key: job.csvS3Path, fileName: job.fileName, zipKey: job.zipS3Path ?? undefined },
     );
 
     await log.finish(logId, 'SUCCEEDED', { metrics: { columns: result.headers.length } });
