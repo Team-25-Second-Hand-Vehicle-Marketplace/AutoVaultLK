@@ -29,12 +29,50 @@ const BODY_TYPES = [
   'MOTORBIKE',
 ] as const;
 
-/** Int spec keys and their bounds, from the same constants file. */
-const INT_SPECS: Record<string, { column: string; min: number; max: number }> = {
+/**
+ * Category-specific attribute schemas (SRS Appendix B.2), gated by
+ * vehicle_type. A column here is only ever read into `specs` for a row whose
+ * vehicle_type matches its category — a TRUCK's `axle_count` column on a CAR
+ * row is ignored, not stored, the same way an out-of-range int spec is
+ * dropped rather than stored under a misleading key.
+ *
+ * The universal equipment keys (sunroof, full_option, alloy_wheels,
+ * reverse_camera, leather_seats, power_steering, air_conditioning — see
+ * BOOL_SPECS below) are the deliberate exception: a van or truck can have a
+ * sunroof too, so those apply to every vehicle_type rather than being gated
+ * here.
+ */
+const CAR_SUV_TYPES = new Set(['CAR', 'SUV']);
+const BIKE_TYPES = new Set(['BIKE']);
+const VAN_BUS_TYPES = new Set(['VAN', 'BUS']);
+const TRUCK_TYPES = new Set(['TRUCK', 'LORRY', 'PICKUP']);
+
+const STROKE_TYPES = ['2_STROKE', '4_STROKE'] as const;
+const COOLING_SYSTEMS = ['AIR', 'LIQUID'] as const;
+const START_TYPES = ['ELECTRIC', 'KICK'] as const;
+
+const ROOF_TYPES = ['HIGH_ROOF', 'STANDARD'] as const;
+const WHEELBASES = ['SHORT', 'MEDIUM', 'LONG'] as const;
+const DOOR_CONFIGURATIONS = ['SLIDING', 'HINGED', 'SLIDING_AND_HINGED'] as const;
+
+const CARGO_BED_TYPES = ['FLATBED', 'BOX', 'TIPPER', 'REFRIGERATED', 'OTHER'] as const;
+
+/** CAR/SUV int specs. Doors/seats/airbags describe a car or SUV's cabin, not a bike, van or truck's. */
+const CAR_SUV_INT_SPECS: Record<string, { column: string; min: number; max: number }> = {
   seats: { column: 'seats', min: 2, max: 60 },
   doors: { column: 'doors', min: 2, max: 6 },
   airbags: { column: 'airbags', min: 0, max: 12 },
+};
+
+const VAN_BUS_INT_SPECS: Record<string, { column: string; min: number; max: number }> = {
+  seating_capacity: { column: 'seating_capacity', min: 2, max: 60 },
+};
+
+/** Trucks/lorries/pickups: cargo capacity, from the pre-existing load_capacity_kg key. */
+const TRUCK_INT_SPECS: Record<string, { column: string; min: number; max: number }> = {
   load_capacity_kg: { column: 'load_capacity_kg', min: 500, max: 20_000 },
+  payload_capacity_kg: { column: 'payload_capacity_kg', min: 100, max: 50_000 },
+  axle_count: { column: 'axle_count', min: 2, max: 6 },
 };
 
 const DRIVE_TYPES = ['FWD', 'RWD', 'AWD', '4WD'] as const;
@@ -74,6 +112,12 @@ const BOOL_SPECS: Record<string, string> = {
   air_con: 'air_conditioning',
 };
 
+/** BIKE-only boolean spec. Gated the same way the category int/enum tables are. */
+const BIKE_BOOL_SPECS: Record<string, string> = {
+  abs_equipped: 'abs_equipped',
+  abs: 'abs_equipped',
+};
+
 /**
  * Columns the pipeline consumes as vehicle fields rather than specs. Listed so
  * carryUnmappedColumns can tell "already used" from "extra".
@@ -100,8 +144,18 @@ const CONSUMED_COLUMNS = new Set([
   'description',
   'is_negotiable',
   'drive_type',
-  ...Object.keys(INT_SPECS),
+  'stroke_type',
+  'cooling_system',
+  'start_type',
+  'roof_type',
+  'wheelbase',
+  'door_configuration',
+  'cargo_bed_type',
+  ...Object.keys(CAR_SUV_INT_SPECS),
+  ...Object.keys(VAN_BUS_INT_SPECS),
+  ...Object.keys(TRUCK_INT_SPECS),
   ...Object.keys(BOOL_SPECS),
+  ...Object.keys(BIKE_BOOL_SPECS),
 ]);
 
 /**
@@ -198,24 +252,47 @@ function enrichRow(ctx: StageContext, row: ValidatedRow): EnrichedRow {
 
 function buildSpecs(ctx: StageContext, row: ValidatedRow): Record<string, unknown> {
   const specs: Record<string, unknown> = { ...(row.normalized.specs ?? {}) };
+  const vehicleType = row.normalized.vehicleType;
 
   const bodyType = resolveBodyType(ctx, row.raw['body_type']);
   if (bodyType) specs.body_type = bodyType;
 
-  for (const [column, spec] of Object.entries(INT_SPECS)) {
-    const value = coerceInteger(row.raw[column]);
-    // Out-of-range is dropped rather than clamped: 200 seats is a typo, and
-    // clamping it to 60 would invent a plausible-looking fact.
-    if (value !== null && value >= spec.min && value <= spec.max) {
-      specs[spec.column] = value;
+  // Category-gated int specs: a column only ever lands in `specs` when the
+  // row's vehicle_type matches the category it describes.
+  if (vehicleType && CAR_SUV_TYPES.has(vehicleType)) {
+    applyIntSpecs(specs, row, CAR_SUV_INT_SPECS);
+
+    const driveType = coerceText(row.raw['drive_type'])?.toUpperCase().replace(/[\s-]/g, '');
+    if (driveType && (DRIVE_TYPES as readonly string[]).includes(driveType)) {
+      specs.drive_type = driveType;
     }
   }
 
-  const driveType = coerceText(row.raw['drive_type'])?.toUpperCase().replace(/[\s-]/g, '');
-  if (driveType && (DRIVE_TYPES as readonly string[]).includes(driveType)) {
-    specs.drive_type = driveType;
+  if (vehicleType && BIKE_TYPES.has(vehicleType)) {
+    applyEnumSpec(specs, row, 'stroke_type', STROKE_TYPES);
+    applyEnumSpec(specs, row, 'cooling_system', COOLING_SYSTEMS);
+    applyEnumSpec(specs, row, 'start_type', START_TYPES);
+
+    for (const [column, key] of Object.entries(BIKE_BOOL_SPECS)) {
+      const value = coerceBooleanSpec(row.raw[column]);
+      if (value !== null && !(key in specs)) specs[key] = value;
+    }
   }
 
+  if (vehicleType && VAN_BUS_TYPES.has(vehicleType)) {
+    applyIntSpecs(specs, row, VAN_BUS_INT_SPECS);
+    applyEnumSpec(specs, row, 'roof_type', ROOF_TYPES);
+    applyEnumSpec(specs, row, 'wheelbase', WHEELBASES);
+    applyEnumSpec(specs, row, 'door_configuration', DOOR_CONFIGURATIONS);
+  }
+
+  if (vehicleType && TRUCK_TYPES.has(vehicleType)) {
+    applyIntSpecs(specs, row, TRUCK_INT_SPECS);
+    applyEnumSpec(specs, row, 'cargo_bed_type', CARGO_BED_TYPES);
+  }
+
+  // Universal equipment: applies regardless of vehicle_type, since a van or
+  // truck can have a sunroof or full option just as a car can.
   for (const [column, key] of Object.entries(BOOL_SPECS)) {
     const value = coerceBooleanSpec(row.raw[column]);
     // First column wins: "alloys" and "alloy_wheels" in the same file map to
@@ -226,6 +303,34 @@ function buildSpecs(ctx: StageContext, row: ValidatedRow): Record<string, unknow
   addDynamicSpecs(row, specs);
 
   return specs;
+}
+
+function applyIntSpecs(
+  specs: Record<string, unknown>,
+  row: ValidatedRow,
+  table: Record<string, { column: string; min: number; max: number }>,
+): void {
+  for (const [column, spec] of Object.entries(table)) {
+    const value = coerceInteger(row.raw[column]);
+    // Out-of-range is dropped rather than clamped: 200 seats is a typo, and
+    // clamping it to 60 would invent a plausible-looking fact.
+    if (value !== null && value >= spec.min && value <= spec.max) {
+      specs[spec.column] = value;
+    }
+  }
+}
+
+/** Reads a category-specific enum column, storing it only if it matches the allowed list exactly. */
+function applyEnumSpec(
+  specs: Record<string, unknown>,
+  row: ValidatedRow,
+  column: string,
+  allowed: readonly string[],
+): void {
+  const raw = coerceText(row.raw[column])?.toUpperCase().replace(/[\s-]/g, '_');
+  if (raw && allowed.includes(raw)) {
+    specs[column] = raw;
+  }
 }
 
 /**
