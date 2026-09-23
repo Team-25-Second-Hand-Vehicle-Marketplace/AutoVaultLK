@@ -173,14 +173,19 @@ describe('enrichStage', () => {
   });
 
   describe('unmapped dealer columns', () => {
-    it('carries them into the description rather than dropping them', async () => {
+    it('carries them into both specs (verbatim) and the description, rather than dropping them', async () => {
       // "Warranty: 2 years" is real information a buyer would search for, and
-      // dropping it silently loses the only place it existed. It cannot go in
-      // specs — that column is queried against KNOWN_SPEC_KEYS, so an unknown
-      // key is unqueryable weight that still looks like data.
+      // dropping it silently loses the only place it existed. It is written to
+      // specs verbatim so the dealer's own data survives structurally (FR-15 /
+      // Appendix B.2), and to description so it still reaches the embedding —
+      // no search facet queries an unknown specs key, but that is a filtering
+      // limitation, not a reason to lose the data.
       const result = await enrich(row({}, { warranty: '2 years', service_records: 'full' }));
 
-      expect(result.normalized.specs).toBeUndefined();
+      expect(result.normalized.specs).toEqual({
+        warranty: '2 years',
+        service_records: 'full',
+      });
       expect(result.normalized.description).toBe('Warranty: 2 years. Service records: full.');
     });
 
@@ -212,7 +217,7 @@ describe('enrichStage', () => {
       expect((await enrich(row({}, { warranty: '   ' }))).normalized.description).toBeUndefined();
     });
 
-    it('caps how much it appends', async () => {
+    it('caps how much it appends to the description', async () => {
       // A dealer export with forty internal columns would otherwise bury what
       // they actually wrote and dominate the embedding's input.
       const raw: Record<string, string> = {};
@@ -223,14 +228,31 @@ describe('enrichStage', () => {
       expect(description.split('. ')).toHaveLength(8);
     });
 
-    it('truncates an over-long value', async () => {
+    it('caps how many unmapped columns land in specs', async () => {
+      // Separate cap from the description's: a dealer export with dozens of
+      // DMS columns should not turn specs into an unbounded bag either.
+      const raw: Record<string, string> = {};
+      for (let i = 0; i < 30; i++) raw[`extra_${i}`] = `value ${i}`;
+
+      const specs = (await enrich(row({}, raw))).normalized.specs ?? {};
+
+      expect(Object.keys(specs)).toHaveLength(20);
+    });
+
+    it('truncates an over-long value in the description', async () => {
       const result = await enrich(row({}, { notes_internal: 'x'.repeat(200) }));
 
       expect((result.normalized.description ?? '').length).toBeLessThan(100);
     });
+
+    it('truncates an over-long value in specs', async () => {
+      const result = await enrich(row({}, { notes_internal: 'x'.repeat(300) }));
+
+      expect((result.normalized.specs?.notes_internal as string).length).toBeLessThanOrEqual(200);
+    });
   });
 
-  it('leaves specs absent rather than writing an empty object', async () => {
+  it('leaves specs absent when nothing produced one', async () => {
     expect((await enrich(row())).normalized.specs).toBeUndefined();
   });
 

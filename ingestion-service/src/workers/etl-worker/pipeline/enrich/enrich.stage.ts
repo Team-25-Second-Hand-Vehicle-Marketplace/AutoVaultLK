@@ -112,8 +112,27 @@ const CONSUMED_COLUMNS = new Set([
 const MAX_CARRIED_COLUMNS = 8;
 const MAX_CARRIED_VALUE_LENGTH = 60;
 
+/**
+ * Cap on how many unmapped columns may be written into `specs` verbatim.
+ * Distinct from MAX_CARRIED_COLUMNS (the description cap) because a column
+ * lands in *both* places: specs preserves the dealer's own field name/value
+ * pair as structured data (FR-15 / Appendix B.2), while description carries
+ * it as prose the embedding can read. A dealer export with dozens of DMS
+ * columns should not turn `specs` into an unbounded bag either.
+ */
+const MAX_DYNAMIC_SPEC_KEYS = 20;
+const MAX_DYNAMIC_SPEC_VALUE_LENGTH = 200;
+
 /** marketplace.vehicles.condition defaults to USED; stated here rather than relied on. */
 export const DEFAULT_CONDITION = 'USED';
+
+/**
+ * marketplace.vehicles.review_reason (migration 30000). A short machine code
+ * rather than a sentence, so the review UI can branch on it without parsing
+ * text — see the migration's own comment for why this is a separate column
+ * from `status`.
+ */
+export const REVIEW_REASON_NO_REGISTRATION_NUMBER = 'NO_REGISTRATION_NUMBER';
 
 /**
  * Fills in what the dealer did not supply and builds the `specs` jsonb.
@@ -127,16 +146,18 @@ export const DEFAULT_CONDITION = 'USED';
  * text embeds to a different vector. That is FR-22.1 drift arriving through
  * the side door, so body type is resolved here and not left to Load.
  *
- * Unknown spec keys are never written to `specs`. That column is queried by
- * search facets against KNOWN_SPEC_KEYS, so an arbitrary dealer column stored
- * there is unqueryable weight on every row that still looks like data to
- * anyone reading the table.
+ * Known spec keys (body_type, seats, sunroof, etc.) are validated and typed
+ * before being written, because search facets query them against
+ * KNOWN_SPEC_KEYS — a malformed or out-of-range value there would be
+ * unqueryable weight, or worse, a facet that silently returns nothing.
  *
- * They are not discarded either. A dealer writing "Warranty: 2 years" or
- * "Service records: full" is describing the vehicle, and that is worth keeping
- * — so unmapped columns are appended to `description`, which is human-readable
- * on the listing and reaches the embedding through buildSearchText. Text is
- * the right home for information we cannot filter on.
+ * Everything else the dealer's CSV carries is NOT discarded (FR-15 /
+ * Appendix B.2): a truly unmapped column is written into `specs` verbatim
+ * under its own header name, preserving the dealer's data even though no
+ * facet can filter on it yet, AND appended to `description` so it still
+ * reaches the embedding through buildSearchText. A dealer writing
+ * "Warranty: 2 years" is describing the vehicle either way — specs keeps the
+ * structured fact, description keeps it readable and searchable.
  */
 export const enrichStage: StageRunner<ValidatedRow[], StageResult<EnrichedRow>> = {
   stage: 'ENRICH',
@@ -156,6 +177,15 @@ function enrichRow(ctx: StageContext, row: ValidatedRow): EnrichedRow {
   // the default lives in exactly one place — here.
   if (!normalized.condition) normalized.condition = DEFAULT_CONDITION;
   if (normalized.isNegotiable === undefined) normalized.isNegotiable = false;
+
+  // FR-35.2: a blank registration_number is not a defect (unregistered
+  // imports are legitimate stock) but it means the images branch has no key
+  // to match photos against, so the row needs a dealer's eyes before it can
+  // go LIVE even after the rest of the listing looks fine.
+  if (!normalized.registrationNumber) {
+    normalized.needsManualReview = true;
+    normalized.reviewReason = REVIEW_REASON_NO_REGISTRATION_NUMBER;
+  }
 
   const specs = buildSpecs(ctx, row);
   if (Object.keys(specs).length > 0) normalized.specs = specs;
@@ -193,7 +223,41 @@ function buildSpecs(ctx: StageContext, row: ValidatedRow): Record<string, unknow
     if (value !== null && !(key in specs)) specs[key] = value;
   }
 
+  addDynamicSpecs(row, specs);
+
   return specs;
+}
+
+/**
+ * Writes truly unmapped columns into `specs` verbatim, under their own
+ * (already snake_case, per csv-contract's normalizeHeader) header name.
+ *
+ * Deliberately separate from the known-key blocks above: those validate type
+ * and range because a search facet queries them, while this preserves
+ * whatever the dealer's own DMS export happened to carry — a raw string, not
+ * a typed/bounded value; no facet queries these keys, so there is nothing to
+ * protect them from except unbounded size (MAX_DYNAMIC_SPEC_KEYS/VALUE).
+ *
+ * A column already written by the known-key blocks (specs.body_type,
+ * specs.sunroof, ...) is skipped here via CONSUMED_COLUMNS, which lists
+ * every column those blocks read from — so a value never gets written twice
+ * under two different keys for the same column.
+ */
+function addDynamicSpecs(row: ValidatedRow, specs: Record<string, unknown>): void {
+  let added = 0;
+
+  for (const [column, raw] of Object.entries(row.raw)) {
+    if (added >= MAX_DYNAMIC_SPEC_KEYS) break;
+    if (CONSUMED_COLUMNS.has(column)) continue;
+
+    const value = coerceText(raw);
+    if (!value) continue;
+
+    specs[column] = value.length > MAX_DYNAMIC_SPEC_VALUE_LENGTH
+      ? `${value.slice(0, MAX_DYNAMIC_SPEC_VALUE_LENGTH - 1)}…`
+      : value;
+    added += 1;
+  }
 }
 
 /**
