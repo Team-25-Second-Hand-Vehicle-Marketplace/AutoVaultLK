@@ -396,6 +396,134 @@ describe('groqNormalizeStage', () => {
       });
     });
 
+    describe('whole-row repair (fuel/transmission/condition/color/engine_capacity_cc/owners_count/location_district)', () => {
+      it('repairs a misspelled transmission the exact-match table cannot resolve', async () => {
+        // "manul" is not in enum-vocabulary.ts's TRANSMISSION table (no fuzzy
+        // fallback there by design), so this is exactly the case Groq exists
+        // to repair once given the whole row.
+        groqResponds({ rows: [{ id: 1, transmission: 'MANUAL' }] });
+
+        const result = await groqNormalizeStage.run(ctx(), [row(0, 1)]);
+
+        expect(result.rows[0].normalized.transmissionType).toBe('MANUAL');
+        expect(result.rows[0].provenance?.transmissionType).toMatchObject({
+          source: 'groq',
+        });
+      });
+
+      it('repairs fuel_type, condition, color, engine_capacity_cc, owners_count and location_district together', async () => {
+        groqResponds({
+          rows: [
+            {
+              id: 1,
+              fuel_type: 'HYBRID',
+              condition: 'USED',
+              color: 'White',
+              engine_capacity_cc: 1500,
+              owners_count: 1,
+              location_district: 'Colombo',
+              reasoning: 'Filled from description.',
+            },
+          ],
+        });
+
+        const result = await groqNormalizeStage.run(ctx(), [row(0, 1)]);
+
+        expect(result.rows[0].normalized).toMatchObject({
+          fuelType: 'HYBRID',
+          condition: 'USED',
+          color: 'White',
+          engineCapacityCc: 1500,
+          ownersCount: 1,
+          locationDistrict: 'Colombo',
+        });
+        expect(result.metrics.repaired).toBe(1);
+      });
+
+      it('drops an enum value outside the allowed vocabulary rather than storing it', async () => {
+        groqResponds({ rows: [{ id: 1, fuel_type: 'KEROSENE' }] });
+
+        const result = await groqNormalizeStage.run(ctx(), [row(0, 1)]);
+
+        expect(result.rows[0].normalized.fuelType).toBeUndefined();
+      });
+
+      it('never overwrites a field parseNormalize already resolved', async () => {
+        // Groq is asked to repair the whole row for context, but a cell rules
+        // already got right must not be replaced by an independent (and
+        // possibly different) opinion from the model.
+        groqResponds({ rows: [{ id: 1, fuel_type: 'DIESEL' }] });
+
+        const alreadyResolved: NormalizedRow = {
+          ...row(0, 1),
+          normalized: { fuelType: 'PETROL' } as never,
+        };
+
+        const result = await groqNormalizeStage.run(ctx(), [alreadyResolved]);
+
+        expect(result.rows[0].normalized.fuelType).toBe('PETROL');
+      });
+
+      it('drops a non-positive or non-integer engine_capacity_cc/owners_count', async () => {
+        groqResponds({
+          rows: [{ id: 1, engine_capacity_cc: -1500, owners_count: 0 }],
+        });
+
+        const result = await groqNormalizeStage.run(ctx(), [row(0, 1)]);
+
+        expect(result.rows[0].normalized.engineCapacityCc).toBeUndefined();
+        expect(result.rows[0].normalized.ownersCount).toBeUndefined();
+      });
+
+      it('sends the description and the other raw fields in the prompt payload', async () => {
+        groqResponds({ rows: [] });
+
+        const withDescription: NormalizedRow = {
+          ...row(0, 1),
+          raw: {
+            make: 'toyta',
+            model: 'corola',
+            description: '1.5L turbo petrol hybrid, full option',
+          },
+        };
+        await groqNormalizeStage.run(ctx(), [withDescription]);
+
+        const body = JSON.parse(
+          (global.fetch as jest.Mock).mock.calls[0][1].body as string,
+        ) as { messages: { content: string }[] };
+        const payload = JSON.parse(body.messages[1].content) as {
+          rows: { description: string }[];
+        };
+
+        expect(payload.rows[0].description).toBe(
+          '1.5L turbo petrol hybrid, full option',
+        );
+      });
+
+      it('states the allowed fuel/transmission/condition vocabulary in the prompt', async () => {
+        groqResponds({ rows: [] });
+
+        await groqNormalizeStage.run(ctx(), [row(0, 1)]);
+
+        const body = JSON.parse(
+          (global.fetch as jest.Mock).mock.calls[0][1].body as string,
+        ) as { messages: { content: string }[] };
+        const payload = JSON.parse(body.messages[1].content) as {
+          allowed: { fuel_type: string[]; transmission: string[]; condition: string[] };
+        };
+
+        expect(payload.allowed.fuel_type).toEqual(
+          expect.arrayContaining(['PETROL', 'DIESEL', 'HYBRID']),
+        );
+        expect(payload.allowed.transmission).toEqual(
+          expect.arrayContaining(['MANUAL', 'AUTOMATIC']),
+        );
+        expect(payload.allowed.condition).toEqual(
+          expect.arrayContaining(['NEW', 'USED', 'RECONDITIONED']),
+        );
+      });
+    });
+
     describe('degradation', () => {
       it('keeps deterministic values when the call fails', async () => {
         // Low confidence is not invalidity — validateRows may well accept
