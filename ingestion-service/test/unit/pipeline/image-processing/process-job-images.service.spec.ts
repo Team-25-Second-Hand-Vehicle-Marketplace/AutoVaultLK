@@ -60,6 +60,10 @@ const harness = () => {
   );
   const service = new ProcessJobImagesService(repo as never);
   service.setImageProcessorForTest(processor as never);
+  // Images now retry the registration lookup for MATCH_RETRY_BUDGET_MS
+  // (parallel-with-Map race tolerance) — shrunk here so "unmatched" tests
+  // don't pay that wait.
+  service.setMatchRetryTimingForTest(10, 5);
 
   return {
     inserted,
@@ -135,6 +139,30 @@ describe('ProcessJobImagesService', () => {
     expect(result.unmatched).toBe(1);
     expect(h.processor).not.toHaveBeenCalled();
     expect(h.repo.insertImage).not.toHaveBeenCalled();
+  });
+
+  it('retries the lookup and matches once the vehicle row appears (parallel-with-Map race)', async () => {
+    // Images run concurrently with the chunk Map now, so a vehicle's row may
+    // land a moment after its image is ready to match, not before.
+    mockZip([entry('ABC1234.jpg')]);
+    const h = harness();
+    h.service.setMatchRetryTimingForTest(200, 5);
+    h.repo.findVehicleByRegistration
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValue({
+        id: 'vehicle-1',
+        registrationNumber: 'ABC-1234',
+        uploadJobId: 'job-1',
+      });
+
+    const result = await h.service.run(h.store as never, {
+      jobId: 'job-1',
+      zipKey: 'raw/job-1/images.zip',
+    });
+
+    expect(h.repo.findVehicleByRegistration.mock.calls.length).toBeGreaterThanOrEqual(3);
+    expect(result.processed).toBe(1);
   });
 
   it('does not match a vehicle from another upload job', async () => {

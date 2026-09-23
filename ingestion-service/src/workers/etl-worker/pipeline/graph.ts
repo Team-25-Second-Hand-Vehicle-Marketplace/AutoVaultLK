@@ -42,9 +42,20 @@ export const CHUNK_STAGES: readonly EtlStage[] = [
 export const FINALIZE_STAGES: readonly EtlStage[] = ['AGGREGATE', 'NOTIFY'];
 
 /**
- * Stages the image branch runs. Separate from the row pipeline: images are
- * matched to loaded vehicles by registration number, so this cannot start
- * until LOAD has returned ids (§B3).
+ * Stages the image branch runs, as a Parallel state's second branch
+ * alongside the chunk Map — not sequentially after it. Photos come from the
+ * ZIP and depend on nothing in the text pipeline, so running the two
+ * concurrently cuts wall-clock time on a large upload instead of paying for
+ * image processing on top of the Map's duration.
+ *
+ * The cost of running concurrently: a vehicle row this branch needs to match
+ * a photo against may not exist yet, since LOAD for that row's chunk may
+ * still be running. ProcessJobImagesService's registration-number lookup
+ * retries with a bounded budget for exactly this reason (see its own header
+ * comment) rather than requiring the row to already exist — a design choice
+ * over the alternative of a staging table plus a post-Map reconciliation
+ * join, made because it needs no schema change and self-corrects once the
+ * row lands.
  */
 export const IMAGE_STAGES: readonly EtlStage[] = ['PROCESS_IMAGES'];
 
