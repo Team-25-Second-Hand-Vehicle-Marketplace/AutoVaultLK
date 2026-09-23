@@ -33,11 +33,29 @@ export function isGroqConfigured(): boolean {
   return (process.env.GROQ_API_KEY ?? '').trim().length > 0;
 }
 
+/** Total attempts, including the first (non-retry) one. */
+const MAX_ATTEMPTS = 3;
+
 /**
- * One completion, with a single retry on the failures worth retrying.
+ * Base delay for exponential backoff. Doubles per retry (300ms, 600ms, ...),
+ * so with MAX_ATTEMPTS = 3 the worst case is one request plus two waits
+ * (~300ms + ~600ms before jitter) — still well inside one chunk's processing
+ * budget, since a batch of dealer rows is already asynchronous and a slower
+ * fallback costs latency, not the request.
+ */
+const BASE_DELAY_MS = 300;
+
+/** Upper bound on any single backoff wait, regardless of attempt count. */
+const MAX_DELAY_MS = 5000;
+
+/**
+ * One completion, retried with exponential backoff on the failures worth
+ * retrying.
  *
- * 429 and 5xx are transient; a 400 means the request itself is wrong and
- * retrying it just spends the timeout twice.
+ * 429 and 5xx are transient — a sustained rate limit during a large batch
+ * needs more than one fixed-delay retry to clear, which is why this backs
+ * off rather than waiting the same interval every time. A 400 means the
+ * request itself is wrong and retrying it just spends the timeout again.
  */
 export async function complete(systemPrompt: string, userPayload: string): Promise<string> {
   if (!isGroqConfigured()) {
@@ -46,17 +64,28 @@ export async function complete(systemPrompt: string, userPayload: string): Promi
 
   let lastError: Error | undefined;
 
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     try {
       return await once(systemPrompt, userPayload);
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
-      if (!isRetryable(err) || attempt === 1) throw lastError;
-      await sleep(300);
+      if (!isRetryable(err) || attempt === MAX_ATTEMPTS - 1) throw lastError;
+      await sleep(backoffDelay(attempt));
     }
   }
 
   throw lastError ?? new GroqUnavailableError('Groq call failed');
+}
+
+/**
+ * Exponential backoff with full jitter (AWS's recommended formula): a random
+ * delay between 0 and the exponential cap, rather than the cap itself, so
+ * many rows failing in the same chunk do not all retry in lockstep and
+ * re-trigger the same rate limit together.
+ */
+function backoffDelay(attempt: number): number {
+  const cap = Math.min(MAX_DELAY_MS, BASE_DELAY_MS * 2 ** attempt);
+  return Math.random() * cap;
 }
 
 async function once(systemPrompt: string, userPayload: string): Promise<string> {
