@@ -57,6 +57,15 @@ type ChunkOutcome = {
  * rather than FAILED, and it is why every chunk runs inside its own error
  * boundary. A dealer whose 400th row breaks the embedder should still get 399
  * vehicles, not a rejected upload.
+ *
+ * **Images run as a parallel branch alongside the chunk Map**, not
+ * sequentially after it (see `run()`'s `Promise.all`) — photos come from the
+ * ZIP and depend on nothing in the text pipeline, so processing them
+ * concurrently cuts wall-clock time on a large upload. This is not yet
+ * mirrored in the ASL state machine (`infrastructure/step-functions/
+ * etl-state-machine.asl.json` has no PROCESS_IMAGES state at all today, a
+ * separate, pre-existing gap in the not-yet-deployed Lambda path); adding it
+ * as a true Parallel state there is part of that path's own remaining work.
  */
 @Injectable()
 export class LocalOrchestrator {
@@ -117,22 +126,32 @@ export class LocalOrchestrator {
         );
       }
 
-      const outcomes = await mapWithConcurrency(
-        chunkKeys,
-        pipelineConfig(this.config).maxConcurrency,
-        (key, index) =>
-          this.runChunk({
-            jobId,
-            dealerId: job.dealerId,
-            chunkId: index,
-            key,
-            snapshot,
-            log,
-            skip: alreadyLoaded.has(index),
-          }),
-      );
+      // Images run as a parallel branch alongside the chunk Map, not after
+      // it: photos come from the ZIP and depend on nothing in the text
+      // pipeline, so processing them concurrently cuts wall-clock time on a
+      // large upload instead of paying for image processing on top of the
+      // Map's duration. The cost of running concurrently is that a vehicle
+      // row may not exist yet when its image is ready to match — Load for
+      // that chunk may still be running — which is why the lookup inside
+      // processImages retries with a budget rather than looking up once.
+      const [outcomes] = await Promise.all([
+        mapWithConcurrency(
+          chunkKeys,
+          pipelineConfig(this.config).maxConcurrency,
+          (key, index) =>
+            this.runChunk({
+              jobId,
+              dealerId: job.dealerId,
+              chunkId: index,
+              key,
+              snapshot,
+              log,
+              skip: alreadyLoaded.has(index),
+            }),
+        ),
+        this.processImages(jobId, job.zipS3Path, log),
+      ]);
 
-      await this.processImages(jobId, job.zipS3Path, log);
       await this.finish(jobId, totalRecords, outcomes, job, log);
     } catch (err) {
       // Only whole-file failures reach here: validateFile rejecting the file,

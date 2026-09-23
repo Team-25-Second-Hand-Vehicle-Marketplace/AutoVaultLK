@@ -6,6 +6,8 @@ import { EtlStageLog } from '../infrastructure/database/entities/etl-stage-log.e
 import { RejectedRecord } from '../infrastructure/database/entities/rejected-record.entity';
 import { UploadJob } from '../infrastructure/database/entities/upload-job.entity';
 import { VehicleDictionaryView } from '../infrastructure/database/entities/vehicle-dictionary.view-entity';
+import { VehicleImageWriteEntity } from '../infrastructure/database/entities/vehicle-image.write-entity';
+import { VehicleWriteEntity } from '../infrastructure/database/entities/vehicle.write-entity';
 import type { ObjectStore } from '../infrastructure/ports/object-store.port';
 import { S3ObjectStore } from '../infrastructure/storage/s3-object-store';
 import { LocalObjectStore } from '../infrastructure/storage/local-object-store';
@@ -13,6 +15,8 @@ import { DictionaryRepository } from '../modules/ingestion/repositories/dictiona
 import { EtlStageLogRepository } from '../modules/ingestion/repositories/etl-stage-log.repository';
 import { RejectedRecordRepository } from '../modules/ingestion/repositories/rejected-record.repository';
 import { UploadJobRepository } from '../modules/ingestion/repositories/upload-job.repository';
+import { ProcessJobImagesService } from '../workers/etl-worker/pipeline/image-processing/process-job-images.service';
+import { VehicleImageRepository } from '../workers/etl-worker/pipeline/image-processing/vehicle-image.repository';
 import { MarketplaceVehiclesWriteAdapter } from '../workers/etl-worker/pipeline/persistence/marketplace-vehicles-write.adapter';
 import type { DictionarySnapshot, StageContext } from '../workers/etl-worker/pipeline/types';
 
@@ -40,6 +44,7 @@ export type LambdaContext = {
   stageLogs: EtlStageLogRepository;
   rejections: RejectedRecordRepository;
   vehicles: MarketplaceVehiclesWriteAdapter;
+  imageProcessing: ProcessJobImagesService;
 };
 
 /**
@@ -67,6 +72,11 @@ export async function getContext(): Promise<LambdaContext> {
 
   const dictionaries = new DictionaryRepository(dataSource.getRepository(VehicleDictionaryView));
 
+  const vehicleImages = new VehicleImageRepository(
+    dataSource.getRepository(VehicleWriteEntity),
+    dataSource.getRepository(VehicleImageWriteEntity),
+  );
+
   cached = {
     dataSource,
     store,
@@ -78,6 +88,7 @@ export async function getContext(): Promise<LambdaContext> {
     stageLogs: new EtlStageLogRepository(dataSource.getRepository(EtlStageLog)),
     rejections: new RejectedRecordRepository(dataSource.getRepository(RejectedRecord)),
     vehicles: new MarketplaceVehiclesWriteAdapter(dataSource),
+    imageProcessing: new ProcessJobImagesService(vehicleImages),
   };
 
   return cached;
