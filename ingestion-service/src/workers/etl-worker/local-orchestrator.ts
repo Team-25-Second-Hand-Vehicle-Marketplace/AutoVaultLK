@@ -158,7 +158,7 @@ export class LocalOrchestrator {
   /** validateFile then splitChunks — the whole-file stages. */
   private async prepare(
     jobId: string,
-    job: { csvS3Path: string; fileName: string },
+    job: { csvS3Path: string; fileName: string; zipS3Path: string | null },
     log: StageLogger,
   ): Promise<{ headers: string[]; chunkKeys: string[]; totalRecords: number }> {
     const ctx = this.contextFor(jobId, '', null, undefined);
@@ -169,6 +169,7 @@ export class LocalOrchestrator {
       validated = await validateFileStage.run(ctx, {
         key: job.csvS3Path,
         fileName: job.fileName,
+        zipKey: job.zipS3Path ?? undefined,
       });
       await log.finish(validateId, 'SUCCEEDED', {
         metrics: { columns: validated.headers.length },
