@@ -33,29 +33,32 @@ export function isGroqConfigured(): boolean {
   return (process.env.GROQ_API_KEY ?? '').trim().length > 0;
 }
 
-/** Total attempts, including the first (non-retry) one. */
-const MAX_ATTEMPTS = 3;
-
 /**
- * Base delay for exponential backoff. Doubles per retry (300ms, 600ms, ...),
- * so with MAX_ATTEMPTS = 3 the worst case is one request plus two waits
- * (~300ms + ~600ms before jitter) — still well inside one chunk's processing
- * budget, since a batch of dealer rows is already asynchronous and a slower
- * fallback costs latency, not the request.
- */
-const BASE_DELAY_MS = 300;
-
-/** Upper bound on any single backoff wait, regardless of attempt count. */
-const MAX_DELAY_MS = 5000;
-
-/**
- * One completion, retried with exponential backoff on the failures worth
- * retrying.
+ * Two distinct retry policies, matching the platform's Step Functions ASL
+ * retry declaration for this state (a 429 and a timeout are different
+ * failure shapes and warrant different patience):
  *
- * 429 and 5xx are transient — a sustained rate limit during a large batch
- * needs more than one fixed-delay retry to clear, which is why this backs
- * off rather than waiting the same interval every time. A 400 means the
- * request itself is wrong and retrying it just spends the timeout again.
+ * - **Rate limit (429):** transient and often clears within seconds under
+ *   sustained load, so this is the one worth waiting out — 5 attempts,
+ *   exponential backoff starting at 2s (2s, 4s, 8s, 16s).
+ * - **Timeout / connection failure:** either a slow response or Groq being
+ *   down outright; a long backoff schedule spends the chunk's budget without
+ *   evidence it will resolve, so this gets a short, fixed-interval retry
+ *   before falling through to rules-only.
+ *
+ * 5xx is treated as a rate-limit-shaped failure (also transient, also worth
+ * the longer schedule) rather than its own third policy.
+ */
+const RATE_LIMIT_MAX_ATTEMPTS = 5;
+const RATE_LIMIT_BASE_DELAY_MS = 2000;
+
+const TIMEOUT_MAX_ATTEMPTS = 2;
+const TIMEOUT_DELAY_MS = 5000;
+
+/**
+ * One completion, retried under whichever policy matches the failure. A 400
+ * means the request itself is wrong and retrying it just spends the timeout
+ * again, so it is not retried at all.
  */
 export async function complete(systemPrompt: string, userPayload: string): Promise<string> {
   if (!isGroqConfigured()) {
@@ -63,29 +66,44 @@ export async function complete(systemPrompt: string, userPayload: string): Promi
   }
 
   let lastError: Error | undefined;
+  let rateLimitAttempts = 0;
+  let timeoutAttempts = 0;
 
-  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+  for (;;) {
     try {
       return await once(systemPrompt, userPayload);
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
-      if (!isRetryable(err) || attempt === MAX_ATTEMPTS - 1) throw lastError;
-      await sleep(backoffDelay(attempt));
+
+      if (isRateLimited(err)) {
+        rateLimitAttempts++;
+        if (rateLimitAttempts >= RATE_LIMIT_MAX_ATTEMPTS) throw lastError;
+        await sleep(rateLimitBackoff(rateLimitAttempts));
+        continue;
+      }
+
+      if (isTimeout(err)) {
+        timeoutAttempts++;
+        if (timeoutAttempts >= TIMEOUT_MAX_ATTEMPTS) throw lastError;
+        await sleep(TIMEOUT_DELAY_MS);
+        continue;
+      }
+
+      throw lastError;
     }
   }
-
-  throw lastError ?? new GroqUnavailableError('Groq call failed');
 }
 
 /**
  * Exponential backoff with full jitter (AWS's recommended formula): a random
  * delay between 0 and the exponential cap, rather than the cap itself, so
  * many rows failing in the same chunk do not all retry in lockstep and
- * re-trigger the same rate limit together.
+ * re-trigger the same rate limit together. attempt is 1-based (the count of
+ * failures so far), so the first retry waits up to ~2s, the second up to
+ * ~4s, and so on.
  */
-function backoffDelay(attempt: number): number {
-  const cap = Math.min(MAX_DELAY_MS, BASE_DELAY_MS * 2 ** attempt);
-  return Math.random() * cap;
+function rateLimitBackoff(attempt: number): number {
+  return Math.random() * RATE_LIMIT_BASE_DELAY_MS * 2 ** (attempt - 1);
 }
 
 async function once(systemPrompt: string, userPayload: string): Promise<string> {
@@ -146,10 +164,14 @@ export function parseGroqJson(content: string): unknown {
   return JSON.parse(raw.slice(start, end + 1)) as unknown;
 }
 
-function isRetryable(err: unknown): boolean {
+/** 429, plus 5xx — both are transient server-side conditions worth the longer backoff. */
+function isRateLimited(err: unknown): boolean {
   const status = (err as { status?: number } | null)?.status;
-  if (status === 429 || (status !== undefined && status >= 500)) return true;
+  return status === 429 || (status !== undefined && status >= 500);
+}
 
+/** The request-side abort/timeout path — a fixed, short retry, not backoff. */
+function isTimeout(err: unknown): boolean {
   return err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError');
 }
 
