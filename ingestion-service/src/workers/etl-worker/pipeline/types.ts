@@ -221,6 +221,8 @@ export type VehicleFields = Pick<
       | 'chassisNumber'
       | 'description'
       | 'specs'
+      | 'needsManualReview'
+      | 'reviewReason'
     >
   >;
 
