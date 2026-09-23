@@ -44,6 +44,17 @@ describe('CSV template', () => {
       'leather_seats',
       'power_steering',
       'air_conditioning',
+      'stroke_type',
+      'cooling_system',
+      'start_type',
+      'abs_equipped',
+      'seating_capacity',
+      'roof_type',
+      'wheelbase',
+      'door_configuration',
+      'payload_capacity_kg',
+      'axle_count',
+      'cargo_bed_type',
     ])
   })
 

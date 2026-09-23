@@ -41,6 +41,17 @@ export const TEMPLATE_HEADER = [
   'leather_seats',
   'power_steering',
   'air_conditioning',
+  'stroke_type',
+  'cooling_system',
+  'start_type',
+  'abs_equipped',
+  'seating_capacity',
+  'roof_type',
+  'wheelbase',
+  'door_configuration',
+  'payload_capacity_kg',
+  'axle_count',
+  'cargo_bed_type',
 ] as const
 
 /** Everything else is optional; these are what validateFile insists on. */
@@ -104,4 +115,15 @@ export const COLUMN_HELP: Record<string, string> = {
   leather_seats: 'true/false.',
   power_steering: 'true/false.',
   air_conditioning: 'true/false.',
+  stroke_type: '2-Stroke or 4-Stroke (bikes only).',
+  cooling_system: 'Air or Liquid (bikes only).',
+  start_type: 'Electric or Kick (bikes only).',
+  abs_equipped: 'true/false (bikes only).',
+  seating_capacity: 'Number of seats (vans/buses).',
+  roof_type: 'High Roof or Standard (vans/buses).',
+  wheelbase: 'Short, Medium or Long (vans/buses).',
+  door_configuration: 'Sliding, Hinged, or both (vans/buses).',
+  payload_capacity_kg: 'Cargo capacity in kg (trucks/lorries).',
+  axle_count: 'Number of axles (trucks/lorries).',
+  cargo_bed_type: 'Flatbed, Box, Tipper, Refrigerated or Other (trucks/lorries).',
 }

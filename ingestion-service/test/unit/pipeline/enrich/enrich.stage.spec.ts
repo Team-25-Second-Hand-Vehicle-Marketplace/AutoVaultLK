@@ -127,6 +127,99 @@ describe('enrichStage', () => {
     });
   });
 
+  describe('category-gated specs (SRS Appendix B.2)', () => {
+    it('ignores CAR/SUV-only columns on a non-CAR/SUV vehicle_type', async () => {
+      // A TRUCK row with a seats/doors/drive_type column should not get a CAR
+      // cabin spec — the column describes the wrong category of vehicle.
+      const result = await enrich(
+        row({ vehicleType: 'TRUCK' }, { seats: '5', doors: '4', drive_type: '4wd' }),
+      );
+
+      expect(result.normalized.specs).toBeUndefined();
+    });
+
+    it('reads BIKE-only specs only when vehicle_type is BIKE', async () => {
+      const bike = await enrich(
+        row(
+          { vehicleType: 'BIKE' },
+          { stroke_type: '4-stroke', cooling_system: 'liquid', start_type: 'electric', abs: 'yes' },
+        ),
+      );
+
+      expect(bike.normalized.specs).toEqual({
+        stroke_type: '4_STROKE',
+        cooling_system: 'LIQUID',
+        start_type: 'ELECTRIC',
+        abs_equipped: true,
+      });
+
+      // Same columns on a CAR row are ignored — a car has no stroke_type.
+      const car = await enrich(
+        row({ vehicleType: 'CAR' }, { stroke_type: '4-stroke', cooling_system: 'liquid' }),
+      );
+      expect(car.normalized.specs).toBeUndefined();
+    });
+
+    it('reads VAN/BUS-only specs only when vehicle_type is VAN or BUS', async () => {
+      const van = await enrich(
+        row(
+          { vehicleType: 'VAN' },
+          { seating_capacity: '12', roof_type: 'high roof', wheelbase: 'long', door_configuration: 'sliding' },
+        ),
+      );
+
+      expect(van.normalized.specs).toEqual({
+        seating_capacity: 12,
+        roof_type: 'HIGH_ROOF',
+        wheelbase: 'LONG',
+        door_configuration: 'SLIDING',
+      });
+
+      const bus = await enrich(row({ vehicleType: 'BUS' }, { seating_capacity: '40' }));
+      expect(bus.normalized.specs).toEqual({ seating_capacity: 40 });
+    });
+
+    it('reads TRUCK-only specs only when vehicle_type is a truck category', async () => {
+      const truck = await enrich(
+        row(
+          { vehicleType: 'TRUCK' },
+          {
+            load_capacity_kg: '5000',
+            payload_capacity_kg: '4500',
+            axle_count: '3',
+            cargo_bed_type: 'flatbed',
+          },
+        ),
+      );
+
+      expect(truck.normalized.specs).toEqual({
+        load_capacity_kg: 5000,
+        payload_capacity_kg: 4500,
+        axle_count: 3,
+        cargo_bed_type: 'FLATBED',
+      });
+
+      // LORRY and PICKUP share the truck category.
+      const lorry = await enrich(row({ vehicleType: 'LORRY' }, { axle_count: '2' }));
+      expect(lorry.normalized.specs).toEqual({ axle_count: 2 });
+    });
+
+    it('applies universal equipment specs regardless of vehicle_type', async () => {
+      // A van or truck can have a sunroof too — these are not category-gated.
+      const result = await enrich(
+        row({ vehicleType: 'TRUCK' }, { sunroof: 'yes', full_option: 'yes' }),
+      );
+
+      expect(result.normalized.specs).toEqual({ sunroof: true, full_option: true });
+    });
+
+    it('drops a category enum value outside its allowed list', async () => {
+      const result = await enrich(row({ vehicleType: 'BIKE' }, { stroke_type: 'rotary' }));
+
+      expect(result.normalized.specs).toBeUndefined();
+    });
+  });
+
   it('reads sunroof as a boolean', async () => {
     expect((await enrich(row({}, { sunroof: 'yes' }))).normalized.specs).toEqual({
       sunroof: true,

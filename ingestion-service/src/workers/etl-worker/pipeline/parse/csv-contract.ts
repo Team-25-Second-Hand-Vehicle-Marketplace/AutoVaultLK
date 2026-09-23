@@ -86,6 +86,21 @@ export const KNOWN_COLUMNS = [
   'leather_seats',
   'power_steering',
   'air_conditioning',
+  // Category-gated columns (SRS Appendix B.2) — read into specs only when
+  // the row's vehicle_type matches the category each one describes (BIKE,
+  // VAN/BUS, TRUCK/LORRY/PICKUP). See enrich.stage.ts's CAR_SUV/BIKE/
+  // VAN_BUS/TRUCK tables.
+  'stroke_type',
+  'cooling_system',
+  'start_type',
+  'abs_equipped',
+  'seating_capacity',
+  'roof_type',
+  'wheelbase',
+  'door_configuration',
+  'payload_capacity_kg',
+  'axle_count',
+  'cargo_bed_type',
 ] as const;
 
 export type KnownColumn = (typeof KNOWN_COLUMNS)[number];
