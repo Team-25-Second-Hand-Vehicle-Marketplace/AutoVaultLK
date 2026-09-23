@@ -19,8 +19,26 @@
  * `registration_number` is deliberately NOT required: unregistered imports are
  * legitimate stock and arrive with the column blank. It is still declared in
  * KNOWN_COLUMNS because the image matcher (§B3) keys on it.
+ *
+ * `fuel_type`, `transmission`, `color`, `engine_capacity_cc`, `owners_count`
+ * and `location_district` were widened from optional to required per the
+ * updated SRS Appendix A: a listing missing any of these was judged too thin
+ * for a buyer to evaluate, so a dealer file predating this column set is
+ * rejected at the file gate rather than silently loading incomplete rows.
  */
-export const REQUIRED_COLUMNS = ['make', 'model', 'year', 'price', 'mileage'] as const;
+export const REQUIRED_COLUMNS = [
+  'make',
+  'model',
+  'year',
+  'price',
+  'mileage',
+  'fuel_type',
+  'transmission',
+  'color',
+  'engine_capacity_cc',
+  'owners_count',
+  'location_district',
+] as const;
 
 /**
  * Every column the pipeline reads as a field or a spec.

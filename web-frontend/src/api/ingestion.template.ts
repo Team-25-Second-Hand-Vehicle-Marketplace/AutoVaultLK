@@ -43,8 +43,20 @@ export const TEMPLATE_HEADER = [
   'air_conditioning',
 ] as const
 
-/** Everything else is optional; these five are what validateFile insists on. */
-export const REQUIRED_COLUMNS = ['make', 'model', 'year', 'price', 'mileage'] as const
+/** Everything else is optional; these are what validateFile insists on. */
+export const REQUIRED_COLUMNS = [
+  'make',
+  'model',
+  'year',
+  'price',
+  'mileage',
+  'fuel_type',
+  'transmission',
+  'color',
+  'engine_capacity_cc',
+  'owners_count',
+  'location_district',
+] as const
 
 export function isRequired(column: string): boolean {
   return (REQUIRED_COLUMNS as readonly string[]).includes(column)
