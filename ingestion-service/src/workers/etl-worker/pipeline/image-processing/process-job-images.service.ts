@@ -20,6 +20,23 @@ export type ProcessJobImagesInput = {
   zipKey: string | null;
 };
 
+/**
+ * How long to keep retrying a registration-number lookup before treating an
+ * image as genuinely unmatched.
+ *
+ * Images now run concurrently with the chunk Map (§ ProcessImages parallel
+ * branch), not after it, to cut wall-clock time on a large upload instead of
+ * paying for image processing on top of the Map's duration. The cost is that
+ * a vehicle row may not exist yet when its image is ready to match — Load
+ * for that row's chunk may still be running, or queued behind another chunk
+ * under MaxConcurrency. Retrying here lets the match self-correct once the
+ * row lands, without needing a staging table or a post-Map reconciliation
+ * step; only a row that was genuinely rejected (never loaded at all) ends up
+ * truly unmatched once the budget is spent.
+ */
+const MATCH_RETRY_BUDGET_MS = 30_000;
+const MATCH_RETRY_INTERVAL_MS = 500;
+
 export type ProcessJobImagesResult = {
   extracted: number;
   processed: number;
@@ -33,11 +50,19 @@ export type ProcessJobImagesResult = {
 export class ProcessJobImagesService {
   private readonly logger = new Logger(ProcessJobImagesService.name);
   private processor: ImageProcessor = processVehicleImage;
+  private matchRetryBudgetMs = MATCH_RETRY_BUDGET_MS;
+  private matchRetryIntervalMs = MATCH_RETRY_INTERVAL_MS;
 
   constructor(private readonly vehicleImages: VehicleImageRepository) {}
 
   setImageProcessorForTest(processor: ImageProcessor): void {
     this.processor = processor;
+  }
+
+  /** Shrinks the match-retry wait so tests exercising "unmatched" do not pay MATCH_RETRY_BUDGET_MS. */
+  setMatchRetryTimingForTest(budgetMs: number, intervalMs: number): void {
+    this.matchRetryBudgetMs = budgetMs;
+    this.matchRetryIntervalMs = intervalMs;
   }
 
   async run(
@@ -79,14 +104,11 @@ export class ProcessJobImagesService {
     jobId: string,
     image: ExtractedImage,
   ): Promise<'processed' | 'unmatched' | 'duplicates' | 'failed'> {
-    const vehicle = await this.vehicleImages.findVehicleByRegistration(
-      image.registrationNumber,
-      jobId,
-    );
+    const vehicle = await this.findVehicleWithRetry(jobId, image.registrationNumber);
 
     if (!vehicle) {
       this.logger.warn(
-        `Skipping image ${image.fileName}: no vehicle for registration ${image.registrationNumber} in job ${jobId}`,
+        `Skipping image ${image.fileName}: no vehicle for registration ${image.registrationNumber} in job ${jobId} after ${this.matchRetryBudgetMs}ms`,
       );
       return 'unmatched';
     }
@@ -133,6 +155,36 @@ export class ProcessJobImagesService {
 
     return 'processed';
   }
+
+  /**
+   * Polls for the vehicle row rather than looking up once, because images now
+   * run concurrently with the chunk Map that inserts it (see
+   * MATCH_RETRY_BUDGET_MS above) — the row may simply not exist yet, not be
+   * permanently absent. Stops early the moment it appears, so a fast Load
+   * costs nothing extra; only a row that never lands (rejected, or the job
+   * genuinely has no such registration) pays the full budget.
+   */
+  private async findVehicleWithRetry(
+    jobId: string,
+    registrationNumber: string,
+  ): ReturnType<VehicleImageRepository['findVehicleByRegistration']> {
+    const deadline = Date.now() + this.matchRetryBudgetMs;
+
+    for (;;) {
+      const vehicle = await this.vehicleImages.findVehicleByRegistration(
+        registrationNumber,
+        jobId,
+      );
+      if (vehicle) return vehicle;
+      if (Date.now() >= deadline) return null;
+
+      await sleep(this.matchRetryIntervalMs);
+    }
+  }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function messageOf(err: unknown): string {

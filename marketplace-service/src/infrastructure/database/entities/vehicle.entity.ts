@@ -151,6 +151,16 @@ export class Vehicle {
   @Column({ type: 'varchar', length: 20, default: 'PENDING_REVIEW' })
   status: VehicleStatus;
 
+  // FR-35.2 (migration 30000). Set by ingestion-service's Enrich stage when
+  // registration_number is blank — the row loads fine but has no automated
+  // image match, so the dealer review queue must call it out distinctly
+  // from an ordinary PENDING_REVIEW row.
+  @Column({ name: 'needs_manual_review', type: 'boolean', default: false })
+  needsManualReview: boolean;
+
+  @Column({ name: 'review_reason', type: 'varchar', length: 50, nullable: true })
+  reviewReason: string | null;
+
   @Column({ type: 'jsonb', default: () => `'{}'::jsonb` })
   specs: Record<string, unknown>;
 

@@ -1,4 +1,5 @@
 import type {
+  FieldProvenance,
   NormalizationProvenance,
   NormalizedRow,
   StageContext,
@@ -7,6 +8,11 @@ import type {
   VehicleFields,
 } from '../types';
 import { CONFIDENCE_ALIAS } from './dictionary-snapshot';
+import {
+  coerceCondition,
+  coerceFuelType,
+  coerceTransmission,
+} from './enum-vocabulary';
 import { complete, isGroqConfigured, parseGroqJson } from './groq-client';
 import {
   SYSTEM_PROMPT,
@@ -122,22 +128,26 @@ async function requestRepairs(
 /**
  * Merges accepted repairs back by row number.
  *
- * **Every returned value is resolved through the dictionary before it is
- * written.** The prompt supplies the allowed vocabulary, but a prompt is a
- * request, not a constraint — models return values outside a stated list, and
- * an invented pair would be one no search facet, filter or lookup could ever
- * match. Resolving rather than string-comparing also means the row ends up
- * with the same canonical spelling the deterministic path would produce.
+ * **Every returned value is validated before it is written** — make/model
+ * through the dictionary, the enum fields through enum-vocabulary.ts's exact
+ * lookup, engine_capacity_cc/owners_count as positive integers. The prompt
+ * states the allowed vocabulary, but a prompt is a request, not a constraint:
+ * a model returning a value outside the stated list is dropped, not stored,
+ * for the same reason an invented make/model pair is dropped — a facet or
+ * filter that can never match it is worse than an honest absence.
  *
- * A repaired row is scored CONFIDENCE_ALIAS: better than the fuzzy match that
- * failed, below an exact hit, because the LLM agreed with a value we already
- * held rather than reading the vehicle's papers.
+ * **A field already resolved by parseNormalize is never overwritten.** Groq
+ * is asked to repair the row as a whole so it has enough context to read
+ * fuel_type out of a description when the fuel_type column is blank, but a
+ * cell the rules-only pass already resolved correctly (e.g. transmission
+ * "Automatic") must not be replaced by a model's independent (and possibly
+ * different) opinion of the same cell.
  *
- * FR-42.1: `make` and `model` get a `source: 'groq'` provenance entry, with
- * `reasoning` attached when Groq supplied one. Only the fields Groq actually
- * repaired are marked — a repair whose make resolved but whose model did not
- * leaves `model`'s existing (dictionary-sourced, unresolved) provenance in
- * place rather than claiming Groq touched a field it did not change.
+ * A repaired field is scored CONFIDENCE_ALIAS: better than the fuzzy match
+ * that failed, below an exact hit, because the LLM agreed with (or inferred)
+ * a value rather than reading the vehicle's papers. FR-42.1: every repaired
+ * field gets a `source: 'groq'` provenance entry, with `reasoning` attached
+ * when Groq supplied one — only fields Groq actually changed are marked.
  */
 function applyRepairs(
   ctx: StageContext,
@@ -151,48 +161,134 @@ function applyRepairs(
 
   const merged = rows.map((row) => {
     const repair = byRow.get(row.rowNumber);
-    if (!repair?.make) return row;
+    if (!repair) return row;
 
-    const makeHit = ctx.dictionary.resolveMake(repair.make);
-    if (!makeHit) return row;
+    let normalized = { ...row.normalized };
+    let provenance: NormalizationProvenance = { ...row.provenance };
+    let touched = false;
 
-    const normalized = { ...row.normalized, make: makeHit.canonical };
-    const provenance: NormalizationProvenance = {
-      ...row.provenance,
-      make: {
-        source: 'groq',
-        confidence: CONFIDENCE_ALIAS,
-        ...(repair.reasoning ? { reasoning: repair.reasoning } : {}),
-      },
+    const markTouched = () => {
+      touched = true;
     };
 
-    // The model is only taken when it resolves *under the repaired make*, so a
-    // model the LLM paired with the wrong manufacturer is dropped rather than
-    // written against it.
-    const modelHit = repair.model
-      ? ctx.dictionary.resolveModel(repair.model, makeHit.id)
-      : null;
+    if (repair.make) {
+      const makeHit = ctx.dictionary.resolveMake(repair.make);
+      if (makeHit) {
+        normalized.make = makeHit.canonical;
+        provenance.make = groqProvenance(repair.reasoning);
+        markTouched();
 
-    if (modelHit) {
-      normalized.model = modelHit.canonical;
-      // vehicle_type follows the model, exactly as parseNormalize derives it —
-      // otherwise a repaired Hilux would stay typed from the make's array.
-      const derived = modelHit.vehicleTypes[0];
-      if (derived)
-        normalized.vehicleType = derived as VehicleFields['vehicleType'];
+        // The model is only taken when it resolves *under the repaired make*,
+        // so a model the LLM paired with the wrong manufacturer is dropped
+        // rather than written against it.
+        const modelHit = repair.model
+          ? ctx.dictionary.resolveModel(repair.model, makeHit.id)
+          : null;
 
-      provenance.model = {
-        source: 'groq',
-        confidence: CONFIDENCE_ALIAS,
-        ...(repair.reasoning ? { reasoning: repair.reasoning } : {}),
-      };
+        if (modelHit) {
+          normalized.model = modelHit.canonical;
+          // vehicle_type follows the model, exactly as parseNormalize derives
+          // it — otherwise a repaired Hilux would stay typed from the make's
+          // array.
+          const derived = modelHit.vehicleTypes[0];
+          if (derived) {
+            normalized.vehicleType = derived as VehicleFields['vehicleType'];
+          }
+          provenance.model = groqProvenance(repair.reasoning);
+        }
+      }
     }
+
+    touched = applyEnumRepair(
+      normalized,
+      provenance,
+      'fuelType',
+      !row.normalized.fuelType ? repair.fuelType : null,
+      coerceFuelType,
+      repair.reasoning,
+    ) || touched;
+
+    touched = applyEnumRepair(
+      normalized,
+      provenance,
+      'transmissionType',
+      !row.normalized.transmissionType ? repair.transmission : null,
+      coerceTransmission,
+      repair.reasoning,
+    ) || touched;
+
+    touched = applyEnumRepair(
+      normalized,
+      provenance,
+      'condition',
+      !row.normalized.condition ? repair.condition : null,
+      coerceCondition,
+      repair.reasoning,
+    ) || touched;
+
+    if (!row.normalized.color && repair.color) {
+      normalized.color = repair.color.slice(0, 50);
+      provenance.color = groqProvenance(repair.reasoning);
+      markTouched();
+    }
+
+    if (row.normalized.engineCapacityCc === undefined && repair.engineCapacityCc) {
+      normalized.engineCapacityCc = repair.engineCapacityCc;
+      provenance.engineCapacityCc = groqProvenance(repair.reasoning);
+      markTouched();
+    }
+
+    if (row.normalized.ownersCount === undefined && repair.ownersCount) {
+      normalized.ownersCount = repair.ownersCount;
+      provenance.ownersCount = groqProvenance(repair.reasoning);
+      markTouched();
+    }
+
+    if (!row.normalized.locationDistrict && repair.locationDistrict) {
+      normalized.locationDistrict = repair.locationDistrict.slice(0, 100);
+      provenance.locationDistrict = groqProvenance(repair.reasoning);
+      markTouched();
+    }
+
+    if (!touched) return row;
 
     count++;
     return { ...row, normalized, confidence: CONFIDENCE_ALIAS, provenance };
   });
 
   return { rows: merged, count };
+}
+
+function groqProvenance(reasoning: string | undefined): FieldProvenance {
+  return {
+    source: 'groq',
+    confidence: CONFIDENCE_ALIAS,
+    ...(reasoning ? { reasoning } : {}),
+  };
+}
+
+/**
+ * Validates a Groq-proposed enum value through the same lookup
+ * parseNormalize uses, and writes it only if it resolves. Returns whether it
+ * wrote anything, so callers can fold several of these into one `touched`
+ * flag without repeating the pattern per field.
+ */
+function applyEnumRepair<K extends keyof VehicleFields, T extends string>(
+  normalized: Partial<VehicleFields>,
+  provenance: NormalizationProvenance,
+  field: K,
+  rawValue: string | null,
+  coerce: (raw: string | undefined) => T | null,
+  reasoning: string | undefined,
+): boolean {
+  if (!rawValue) return false;
+
+  const resolved = coerce(rawValue);
+  if (!resolved) return false;
+
+  (normalized as Record<string, unknown>)[field] = resolved;
+  (provenance as Record<string, FieldProvenance>)[field] = groqProvenance(reasoning);
+  return true;
 }
 
 /**

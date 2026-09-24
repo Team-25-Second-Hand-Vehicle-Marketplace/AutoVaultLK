@@ -12,7 +12,54 @@ describe('CSV template', () => {
     // Pinned. A template that drifts from the parser hands dealers a file that
     // fails validation, which is worse than offering no template at all.
     expect([...TEMPLATE_HEADER]).toEqual([
+      'vehicle_type',
+      'make',
+      'model',
+      'year',
+      'price',
+      'mileage',
       'registration_number',
+      'fuel_type',
+      'transmission',
+      'body_type',
+      'condition',
+      'engine_capacity_cc',
+      'color',
+      'owners_count',
+      'location_city',
+      'location_district',
+      'chassis_number',
+      'description',
+      'is_negotiable',
+      'registration_year',
+      'seats',
+      'doors',
+      'airbags',
+      'load_capacity_kg',
+      'drive_type',
+      'sunroof',
+      'full_option',
+      'alloy_wheels',
+      'reverse_camera',
+      'leather_seats',
+      'power_steering',
+      'air_conditioning',
+      'stroke_type',
+      'cooling_system',
+      'start_type',
+      'abs_equipped',
+      'seating_capacity',
+      'roof_type',
+      'wheelbase',
+      'door_configuration',
+      'payload_capacity_kg',
+      'axle_count',
+      'cargo_bed_type',
+    ])
+  })
+
+  it('marks exactly the columns validateFile insists on', () => {
+    expect([...REQUIRED_COLUMNS]).toEqual([
       'make',
       'model',
       'year',
@@ -20,13 +67,13 @@ describe('CSV template', () => {
       'mileage',
       'fuel_type',
       'transmission',
-      'body_type',
+      'color',
+      'engine_capacity_cc',
+      'owners_count',
+      'location_district',
     ])
-  })
-
-  it('marks exactly the five columns validateFile insists on', () => {
-    expect([...REQUIRED_COLUMNS]).toEqual(['make', 'model', 'year', 'price', 'mileage'])
     expect(isRequired('make')).toBe(true)
+    expect(isRequired('fuel_type')).toBe(true)
     // Blank is legitimate — unregistered imports have no plate.
     expect(isRequired('registration_number')).toBe(false)
   })

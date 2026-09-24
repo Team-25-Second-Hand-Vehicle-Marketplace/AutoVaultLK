@@ -170,6 +170,8 @@ export class MarketplaceVehiclesWriteAdapter {
       row.searchText,
       row.embedding,
       buildNormalizationPayload(row),
+      f.needsManualReview ?? false,
+      f.reviewReason ?? null,
     ];
   }
 }
@@ -217,7 +219,8 @@ const INSERT_SQL = `
     manufacture_year, registration_year, price, is_negotiable, mileage,
     fuel_type, transmission_type, engine_capacity_cc, color, owners_count,
     location_city, location_district, registration_number, chassis_number,
-    description, specs, search_text, embedding, normalization, status
+    description, specs, search_text, embedding, normalization,
+    needs_manual_review, review_reason, status
   )`;
 
 /**
@@ -255,15 +258,17 @@ const ON_CONFLICT_SQL = `
     search_text = EXCLUDED.search_text,
     embedding = EXCLUDED.embedding,
     normalization = EXCLUDED.normalization,
+    needs_manual_review = EXCLUDED.needs_manual_review,
+    review_reason = EXCLUDED.review_reason,
     updated_at = now()`;
 
 /** Keys the image-branch join (§B3), which matches files by registration number. */
 const RETURNING_SQL = `RETURNING id, registration_number`;
 
-const COLUMN_COUNT = 25;
+const COLUMN_COUNT = 27;
 
 /**
- * $1..$25 for one row, offset into the batch. The embedding is text on the way
+ * $1..$27 for one row, offset into the batch. The embedding is text on the way
  * in and cast here — pgvector accepts '[0.1,0.2,...]'::vector, and passing it
  * as a bare parameter would be rejected as an unknown type. normalization is
  * jsonb for the same reason specs is: a bare parameter is untyped text to
