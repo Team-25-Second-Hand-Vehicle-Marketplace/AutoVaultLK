@@ -8,6 +8,7 @@
  *
  *   npx ts-node src/tools/run-pipeline.ts test/fixtures/e2e-mixed.csv
  *   npx ts-node src/tools/run-pipeline.ts <file.csv> --zip <photos.zip>
+ *   npx ts-node src/tools/run-pipeline.ts <file.csv> --dealer you@example.com
  *   npx ts-node src/tools/run-pipeline.ts <file.csv> --job <existingJobId>
  *
  * Run with ts-node, not tsx: tsx (esbuild) strips types per-file without a
@@ -44,6 +45,9 @@ async function main(): Promise<void> {
   const zipFlag = rest.indexOf('--zip');
   const zipPath = zipFlag === -1 ? undefined : rest[zipFlag + 1];
 
+  const dealerFlag = rest.indexOf('--dealer');
+  const dealerEmail = dealerFlag === -1 ? undefined : rest[dealerFlag + 1];
+
   // Full application context: the same providers, config and connection pool
   // the service uses in production. A hand-wired subset would prove less.
   const app = await NestFactory.createApplicationContext(AppModule, {
@@ -57,7 +61,8 @@ async function main(): Promise<void> {
 
   try {
     const jobId =
-      existingJobId ?? (await createJob(store, uploadJobs, dataSource, filePath, zipPath));
+      existingJobId ??
+      (await createJob(store, uploadJobs, dataSource, filePath, zipPath, dealerEmail));
 
     console.log(`\n─── running pipeline for job ${jobId} ───\n`);
     const startedAt = Date.now();
@@ -76,15 +81,26 @@ async function createJob(
   dataSource: DataSource,
   filePath: string,
   zipPath?: string,
+  dealerEmail?: string,
 ): Promise<string> {
-  // Any dealer will do — the pipeline reads dealer_id from the job, never from
-  // the file, so which one is arbitrary for this check.
+  // Without --dealer, any dealer will do for a pipeline-correctness check —
+  // the pipeline reads dealer_id from the job, never from the file. But to
+  // see the result in the portal, it has to land under an account you can
+  // log into, so --dealer picks a specific one by email instead of whichever
+  // row Postgres happens to return first.
   const [dealer] = (await dataSource.query(
-    `SELECT id, email FROM auth.users WHERE role = 'DEALER' LIMIT 1`,
+    dealerEmail
+      ? `SELECT id, email FROM auth.users WHERE role = 'DEALER' AND email = $1 LIMIT 1`
+      : `SELECT id, email FROM auth.users WHERE role = 'DEALER' LIMIT 1`,
+    dealerEmail ? [dealerEmail] : [],
   )) as { id: string; email: string }[];
 
   if (!dealer) {
-    throw new Error('No DEALER user found. Run the auth seed first.');
+    throw new Error(
+      dealerEmail
+        ? `No DEALER user found with email ${dealerEmail}.`
+        : 'No DEALER user found. Run the auth seed first.',
+    );
   }
 
   const fileName = basename(filePath);
