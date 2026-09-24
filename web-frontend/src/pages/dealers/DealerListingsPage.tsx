@@ -16,6 +16,7 @@ import type {
 import { toErrorMessage } from '../../api/client'
 import { useAsyncData } from '../../hooks/useAsyncData'
 import { ListingForm } from '../../components/dealers/ListingForm'
+import { ListingDetails } from '../../components/dealers/ListingDetails'
 import {
   NormalizationDetails,
   NormalizationSummary,
@@ -273,6 +274,11 @@ export function DealerListingsPage() {
                     <td>{formatMileage(listing.mileage)}</td>
                     <td>
                       <StatusBadge status={listing.status} />
+                      {listing.needsManualReview && (
+                        <span className="listing-status listing-status--review">
+                          Needs photo
+                        </span>
+                      )}
                     </td>
                     <td className="listing-table__actions">
                       {listing.status === 'PENDING_REVIEW' && (
@@ -305,10 +311,14 @@ export function DealerListingsPage() {
                       )}
                     </td>
                   </tr>
-                  {listing.normalization && (
+                  {(listing.normalization ||
+                    listing.needsManualReview ||
+                    Object.keys(listing.specs ?? {}).length > 0 ||
+                    listing.images.length > 0) && (
                     <tr className="listing-table__details-row">
                       <td colSpan={6}>
                         <NormalizationDetails normalization={listing.normalization} />
+                        <ListingDetails listing={listing} />
                       </td>
                     </tr>
                   )}
