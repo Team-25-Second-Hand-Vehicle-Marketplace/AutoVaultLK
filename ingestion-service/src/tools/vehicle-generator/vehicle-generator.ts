@@ -15,6 +15,14 @@ type Vehicle = {
   fuel_type: string;
   transmission: string;
   body_type: string;
+  // Widened from optional to required in csv-contract.ts (SRS Appendix A) —
+  // a fixture missing any of these fails validateFile's file-gate check
+  // rather than reaching the row-level dirty/invalid cases these fixtures
+  // exist to exercise.
+  color: string;
+  engine_capacity_cc: number | string;
+  owners_count: number | string;
+  location_district: string;
 };
 
 type GenerationMode = 'clean' | 'dirty' | 'invalid' | 'mixed';
@@ -54,6 +62,10 @@ const BODY_TYPES = [
   'Coupe',
 ];
 
+const COLORS = ['White', 'Silver', 'Black', 'Pearl White', 'Grey', 'Blue', 'Red'];
+
+const DISTRICTS = ['Colombo', 'Gampaha', 'Kandy', 'Galle', 'Kurunegala'];
+
 function randomItem<T>(items: T[]): T {
   return items[Math.floor(Math.random() * items.length)];
 }
@@ -82,6 +94,10 @@ function generateCleanVehicle(index: number): Vehicle {
     fuel_type: randomItem(FUEL_TYPES),
     transmission: randomItem(TRANSMISSIONS),
     body_type: randomItem(BODY_TYPES),
+    color: randomItem(COLORS),
+    engine_capacity_cc: randomNumber(1000, 3000),
+    owners_count: randomNumber(1, 4),
+    location_district: randomItem(DISTRICTS),
   };
 }
 
@@ -327,6 +343,10 @@ function convertToCsv(vehicles: Vehicle[]): string {
     'fuel_type',
     'transmission',
     'body_type',
+    'color',
+    'engine_capacity_cc',
+    'owners_count',
+    'location_district',
   ];
 
   const rows = vehicles.map((vehicle) =>

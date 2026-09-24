@@ -28,12 +28,40 @@ const CONTRACT = resolve(
   '../../../../ingestion-service/src/workers/etl-worker/pipeline/parse/csv-contract.ts',
 )
 
-/** Reads an `export const NAME = [...]` string array out of the source. */
-function readStringArray(source: string, name: string): string[] {
+/**
+ * Reads an `export const NAME = [...]` string array out of the source,
+ * resolving `...OTHER_NAME` spreads recursively (TEMPLATE_HEADER is
+ * `[...KNOWN_COLUMNS]`, and KNOWN_COLUMNS itself opens with
+ * `...REQUIRED_COLUMNS`) so the guard sees the same flattened list the
+ * running code actually produces, not just the literal entries typed
+ * directly into that one array.
+ */
+function readStringArray(source: string, name: string, seen = new Set<string>()): string[] {
+  if (seen.has(name)) throw new Error(`Circular spread while resolving ${name}`)
+  seen.add(name)
+
   const match = new RegExp(`export const ${name}[^=]*=\\s*\\[([^\\]]*)\\]`, 's').exec(source)
   if (!match) throw new Error(`${name} not found in csv-contract.ts`)
 
-  return [...match[1].matchAll(/'([^']+)'/g)].map((m) => m[1])
+  // Strip // line comments before tokenizing — a comment explaining a spec
+  // column ("marketplace-service's KNOWN_SPEC_KEYS") reads as a quoted
+  // string to a naive scan otherwise, since it contains an apostrophe.
+  const body = match[1].replace(/\/\/[^\n]*/g, '')
+  const values: string[] = []
+
+  // Walk the bracket body left to right so a spread's entries land in the
+  // same position they would at runtime, not appended at the end.
+  const tokenPattern = /'([^']+)'|\.\.\.([A-Z_][A-Z0-9_]*)/g
+  let token: RegExpExecArray | null
+  while ((token = tokenPattern.exec(body))) {
+    if (token[1] !== undefined) {
+      values.push(token[1])
+    } else {
+      values.push(...readStringArray(source, token[2], seen))
+    }
+  }
+
+  return values
 }
 
 const present = existsSync(CONTRACT)

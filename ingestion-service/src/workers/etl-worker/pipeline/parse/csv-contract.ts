@@ -58,15 +58,14 @@ export const KNOWN_COLUMNS = [
   // file that predates this column for no benefit over the existing default.
   'vehicle_type',
   'registration_number',
-  'fuel_type',
-  'transmission',
+  // fuel_type, transmission, color, engine_capacity_cc, owners_count and
+  // location_district already arrive via the REQUIRED_COLUMNS spread above —
+  // repeating them here would duplicate the column in every downloadable
+  // template and in TEMPLATE_HEADER, which is exactly the header a dealer's
+  // upload gets checked against.
   'body_type',
   'condition',
-  'engine_capacity_cc',
-  'color',
-  'owners_count',
   'location_city',
-  'location_district',
   'chassis_number',
   'description',
   'is_negotiable',
