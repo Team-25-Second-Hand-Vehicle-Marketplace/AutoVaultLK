@@ -30,6 +30,8 @@ export interface AdminUserRow {
     verificationStatus: DealerVerificationStatus
     businessRegistrationNumber: string
     verificationDocuments: Record<string, unknown>
+    /** Presigned URL to view the uploaded business registration certificate, or null if unavailable (e.g. NIC-only individual dealers, or local/demo storage mode). */
+    verificationDocumentUrl: string | null
     verifiedBy: string | null
     verifiedAt: string | null
   } | null
@@ -44,6 +46,7 @@ export interface AdminDealerDetail {
   businessAddress: string
   city: string
   verificationDocuments: Record<string, unknown>
+  verificationDocumentUrl: string | null
   verificationStatus: DealerVerificationStatus
   verifiedBy: string | null
   verifiedAt: string | null
