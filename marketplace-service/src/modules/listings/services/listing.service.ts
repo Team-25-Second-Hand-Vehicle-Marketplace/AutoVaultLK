@@ -10,6 +10,7 @@ import { DealerSummary } from '../../dealers/repositories/dealer.repository';
 import { DealerService } from '../../dealers/services/dealer.service';
 import type { UploadedImageFile } from '../../images/services/image-upload.service';
 import { ImageUploadService } from '../../images/services/image-upload.service';
+import { ImageUrlResolverService } from '../../images/services/image-url-resolver.service';
 import { CreateListingDto } from '../dto/create-listing.dto';
 import type { ListingSortOption } from '../dto/my-listings-query.dto';
 import { UpdateListingDto } from '../dto/update-listing.dto';
@@ -25,6 +26,7 @@ export class ListingService {
     private readonly listingRepository: ListingRepository,
     private readonly dealerService: DealerService,
     private readonly imageUploadService: ImageUploadService,
+    private readonly imageUrlResolver: ImageUrlResolverService,
   ) {}
 
   async createListing(dto: CreateListingDto, actor: AuthenticatedUser) {
@@ -67,7 +69,7 @@ export class ListingService {
 
     return {
       message: 'Vehicle listings retrieved successfully',
-      data: listings,
+      data: await Promise.all(listings.map((listing) => this.withImageUrls(listing))),
     };
   }
 
@@ -233,6 +235,29 @@ export class ListingService {
       // cannot be used to probe which listing ids exist.
       throw new ForbiddenException('You do not have access to this listing');
     }
+  }
+
+  /**
+   * Turns each image's stored key into a URL the dealer's own browser can
+   * fetch, the same way vehicle-search.repository.ts does for public search
+   * results (NFR-19 — images are never publicly writable, so the raw key is
+   * not itself fetchable). "My listings" had never resolved this before: the
+   * raw entity's images carried s3Path straight through, which an <img src>
+   * cannot use.
+   */
+  private async withImageUrls(listing: Vehicle) {
+    const images = listing.images ?? [];
+    const resolved = await Promise.all(
+      images.map(async (image) => ({
+        ...image,
+        url: await this.imageUrlResolver.resolve(image.processedPath ?? image.s3Path),
+        thumbnailUrl: await this.imageUrlResolver.resolve(
+          image.thumbnailPath ?? image.processedPath ?? image.s3Path,
+        ),
+      })),
+    );
+
+    return { ...listing, images: resolved };
   }
 
   private async withDealer(listing: Vehicle) {

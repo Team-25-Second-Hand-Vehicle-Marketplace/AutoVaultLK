@@ -563,6 +563,15 @@
   color: var(--text-muted);
 }
 
+/* FR-35.2: a bulk row with no registration number, so no image could be
+   matched automatically — distinct from the status badge, which only says
+   where the listing is in the publish flow. */
+.listing-status--review {
+  background: rgba(217, 45, 32, 0.1);
+  color: var(--danger);
+  margin-left: 6px;
+}
+
 /* Labels a screen reader needs but sighted users read from context — here, the
    actions column header above two clearly-labelled buttons. */
 .visually-hidden {
@@ -791,4 +800,111 @@
   color: var(--text);
   font-size: 0.82rem;
   margin: 0.2rem 0 0;
+}
+
+/* ── Listing details: specs + photos (Enrich/FR-35.2) ───────────────────── */
+
+.listing-details {
+  margin-top: 0.5rem;
+}
+
+.listing-details__toggle {
+  align-items: center;
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.85rem;
+  font-weight: 600;
+  gap: 0.4rem;
+  padding: 0;
+}
+
+.listing-details__toggle:hover {
+  text-decoration: underline;
+}
+
+.listing-details__flag {
+  background: rgba(217, 45, 32, 0.1);
+  border-radius: 999px;
+  color: var(--danger);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  text-transform: none;
+}
+
+.listing-details__panel {
+  margin-top: 0.6rem;
+}
+
+.listing-details__review-note {
+  background: rgba(217, 45, 32, 0.08);
+  border-radius: 8px;
+  color: var(--danger);
+  font-size: 0.85rem;
+  margin: 0 0 0.6rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.listing-details__specs {
+  display: grid;
+  gap: 0.3rem 1.2rem;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  margin: 0 0 0.6rem;
+}
+
+.listing-details__spec {
+  font-size: 0.82rem;
+}
+
+.listing-details__spec dt {
+  color: var(--text-muted);
+}
+
+.listing-details__spec dd {
+  color: var(--text);
+  font-weight: 600;
+  margin: 0;
+}
+
+.listing-details__images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.listing-details__image {
+  margin: 0;
+  position: relative;
+}
+
+.listing-details__image img,
+.listing-details__image-placeholder {
+  background: var(--bg-alt);
+  border-radius: 6px;
+  display: block;
+  height: 72px;
+  object-fit: cover;
+  width: 96px;
+}
+
+.listing-details__image-badge {
+  background: var(--accent);
+  border-radius: 4px;
+  color: var(--bg);
+  font-size: 0.62rem;
+  font-weight: 700;
+  left: 4px;
+  padding: 1px 5px;
+  position: absolute;
+  text-transform: uppercase;
+  top: 4px;
+}
+
+.listing-details__no-images {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  margin: 0;
 }
