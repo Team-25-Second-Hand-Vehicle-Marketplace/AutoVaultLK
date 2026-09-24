@@ -73,18 +73,32 @@ export async function getJobRejections(
  * validate, so the header must not drift from ingestion-service's
  * csv-contract.ts — see the note in ingestion.template.ts.
  */
-export function buildTemplateCsv(): string {
-  const example = [
-    'CAB-1234',
-    'Toyota',
-    'Vitz',
-    '2015',
-    '3500000',
-    '45000',
-    'Petrol',
-    'Automatic',
-    'Hatchback',
-  ]
+/**
+ * Keyed by column name rather than a positional array — TEMPLATE_HEADER's
+ * order is a plain copy of csv-contract.ts's KNOWN_COLUMNS and can shift if
+ * that list is reordered; a keyed example survives that, a positional one
+ * would silently put values under the wrong header.
+ */
+const EXAMPLE_ROW: Record<string, string> = {
+  vehicle_type: 'Car',
+  registration_number: 'CAB-1234',
+  make: 'Toyota',
+  model: 'Vitz',
+  year: '2015',
+  price: '3500000',
+  mileage: '45000',
+  fuel_type: 'Petrol',
+  transmission: 'Automatic',
+  body_type: 'Hatchback',
+  condition: 'Used',
+  engine_capacity_cc: '1500',
+  color: 'White',
+  owners_count: '1',
+  location_city: 'Colombo',
+  location_district: 'Colombo',
+}
 
+export function buildTemplateCsv(): string {
+  const example = TEMPLATE_HEADER.map((column) => EXAMPLE_ROW[column] ?? '')
   return `${TEMPLATE_HEADER.join(',')}\n${example.join(',')}\n`
 }

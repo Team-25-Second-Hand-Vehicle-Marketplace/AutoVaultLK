@@ -9,15 +9,38 @@
  * validation, which is worse than offering no template at all.
  */
 export const TEMPLATE_HEADER = [
-  'registration_number',
+  'vehicle_type',
   'make',
   'model',
   'year',
   'price',
   'mileage',
+  'registration_number',
   'fuel_type',
   'transmission',
   'body_type',
+  'condition',
+  'engine_capacity_cc',
+  'color',
+  'owners_count',
+  'location_city',
+  'location_district',
+  'chassis_number',
+  'description',
+  'is_negotiable',
+  'registration_year',
+  'seats',
+  'doors',
+  'airbags',
+  'load_capacity_kg',
+  'drive_type',
+  'sunroof',
+  'full_option',
+  'alloy_wheels',
+  'reverse_camera',
+  'leather_seats',
+  'power_steering',
+  'air_conditioning',
 ] as const
 
 /** Everything else is optional; these five are what validateFile insists on. */
@@ -35,6 +58,8 @@ export function isRequired(column: string): boolean {
  * describe intent rather than a strict format.
  */
 export const COLUMN_HELP: Record<string, string> = {
+  vehicle_type:
+    'Car, Bike, Van, Truck, SUV, Bus, Three Wheeler, Lorry, Pickup, Tractor or Heavy Machinery. Defaults to Car if left blank or unrecognised.',
   registration_number:
     'Plate, e.g. CAB-1234. Leave blank for unregistered imports — but images are matched on it.',
   make: 'Manufacturer, e.g. Toyota. Misspellings are corrected where possible.',
@@ -45,4 +70,26 @@ export const COLUMN_HELP: Record<string, string> = {
   fuel_type: 'Petrol, Diesel, Hybrid, Electric or CNG.',
   transmission: 'Manual, Automatic, CVT or Semi-automatic.',
   body_type: 'Sedan, Hatchback, SUV, Wagon, Coupe, Convertible, Pickup, Minivan…',
+  condition: 'e.g. "Used", "Brand New", "Reconditioned". Free text.',
+  engine_capacity_cc: 'Engine size in cc, e.g. 1500.',
+  color: 'Exterior color, e.g. White.',
+  owners_count: 'Number of previous owners.',
+  location_city: 'City the vehicle is listed from, e.g. Colombo.',
+  location_district: 'District, e.g. Colombo.',
+  chassis_number: 'Chassis/VIN number.',
+  description: 'Free-text notes. Anything in a column we don’t recognise is appended here too.',
+  is_negotiable: 'true/false — whether the price is negotiable.',
+  registration_year: 'Year the vehicle was first registered, if different from the manufacture year.',
+  seats: 'Number of seats, e.g. 5.',
+  doors: 'Number of doors, e.g. 4.',
+  airbags: 'Number of airbags.',
+  load_capacity_kg: 'Cargo capacity in kg (lorries/trucks).',
+  drive_type: 'FWD, RWD, AWD or 4WD.',
+  sunroof: 'true/false.',
+  full_option: 'true/false — fully equipped.',
+  alloy_wheels: 'true/false.',
+  reverse_camera: 'true/false.',
+  leather_seats: 'true/false.',
+  power_steering: 'true/false.',
+  air_conditioning: 'true/false.',
 }
