@@ -842,6 +842,38 @@ h3 {
   border-color: #dc2626;
 }
 
+.phone-field {
+  display: flex;
+  gap: 8px;
+}
+
+.phone-field__code {
+  flex: 0 0 auto;
+  width: 7.5rem;
+  padding: 10px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-h);
+  font: inherit;
+  font-size: 14px;
+}
+
+.phone-field input {
+  flex: 1 1 auto;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-h);
+  font: inherit;
+  font-size: 14px;
+}
+
+.phone-field input[aria-invalid="true"] {
+  border-color: #dc2626;
+}
+
 .form-error {
   color: #dc2626;
   font-size: 12px;
