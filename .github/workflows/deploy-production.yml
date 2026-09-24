@@ -110,6 +110,57 @@ jobs:
             --function-name vehicle-marketplace-notification-production \
             --image-uri ${{ env.ECR_REGISTRY }}/vehicle-marketplace/notification-production:${{ github.sha }}
 
+  deploy-ingest-api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - uses: aws-actions/amazon-ecr-login@v2
+      - name: Build and push image
+        working-directory: ingestion-service
+        run: |
+          docker build --no-cache --provenance=false \
+            -t ${{ env.ECR_REGISTRY }}/vehicle-marketplace/ingest-api-production:${{ github.sha }} \
+            -t ${{ env.ECR_REGISTRY }}/vehicle-marketplace/ingest-api-production:latest .
+          docker push ${{ env.ECR_REGISTRY }}/vehicle-marketplace/ingest-api-production:${{ github.sha }}
+          docker push ${{ env.ECR_REGISTRY }}/vehicle-marketplace/ingest-api-production:latest
+      - name: Update Lambda
+        run: |
+          aws lambda update-function-code \
+            --function-name vehicle-marketplace-ingest-api-production \
+            --image-uri ${{ env.ECR_REGISTRY }}/vehicle-marketplace/ingest-api-production:${{ github.sha }}
+
+  deploy-etl-worker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - uses: aws-actions/amazon-ecr-login@v2
+      # Same source tree as deploy-ingest-api, different Dockerfile (-f): the
+      # image needs a different CMD (dist/lambda/etl-worker.handler), so it
+      # gets its own repo rather than an image_config.command override on a
+      # shared one — see the ingestion-service note in production/main.tf.
+      - name: Build and push image
+        working-directory: ingestion-service
+        run: |
+          docker build --no-cache --provenance=false \
+            -f docker/etl-worker.Dockerfile \
+            -t ${{ env.ECR_REGISTRY }}/vehicle-marketplace/etl-worker-production:${{ github.sha }} \
+            -t ${{ env.ECR_REGISTRY }}/vehicle-marketplace/etl-worker-production:latest .
+          docker push ${{ env.ECR_REGISTRY }}/vehicle-marketplace/etl-worker-production:${{ github.sha }}
+          docker push ${{ env.ECR_REGISTRY }}/vehicle-marketplace/etl-worker-production:latest
+      - name: Update Lambda
+        run: |
+          aws lambda update-function-code \
+            --function-name vehicle-marketplace-etl-worker-production \
+            --image-uri ${{ env.ECR_REGISTRY }}/vehicle-marketplace/etl-worker-production:${{ github.sha }}
+
   deploy-frontend:
     runs-on: ubuntu-latest
     steps:
