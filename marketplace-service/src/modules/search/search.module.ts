@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ImagesModule } from '../images/images.module';
 import { SearchController } from './controllers/search.controller';
 import { FilterSearchService } from './services/filter-search.service';
 import { NlSearchService } from './services/nl-search.service';
@@ -12,6 +13,7 @@ import { AliasPromotionRepository } from './repositories/alias-promotion.reposit
 import { AliasPromotionService } from './services/alias-promotion.service';
 
 @Module({
+  imports: [ImagesModule],
   controllers: [SearchController],
   providers: [
     FilterSearchService,

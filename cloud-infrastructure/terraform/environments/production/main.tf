@@ -98,6 +98,26 @@ module "frontend" {
   environment  = var.environment
 }
 
+module "images" {
+  source = "../../modules/s3-images"
+
+  project_name = var.project_name
+  environment  = var.environment
+
+  # marketplace mints presigned GET URLs (see IMAGE_SERVE_MODE=s3 in
+  # marketplace-service) — reader access. It also now owns the manual
+  # listing image upload endpoint (POST /listings/:id/images), so it needs
+  # PutObject too — writer access. ingestion-service is not deployed in
+  # this pass (see the note at the top of this file), so its own name is
+  # not in either list yet; add module.iam.role_names["ingestion"] to
+  # writer_role_names the day that changes. Nothing else in this module
+  # needs to.
+  reader_role_names = [module.iam.role_names["marketplace"]]
+  writer_role_names = [module.iam.role_names["marketplace"]]
+
+  cors_allowed_origins = ["https://${module.frontend.distribution_domain_name}"]
+}
+
 locals {
   db_url = {
     for svc in ["auth", "marketplace", "admin", "notification"] :
@@ -164,6 +184,11 @@ module "marketplace_lambda" {
     GROQ_TIMEOUT_MS          = "4000"
     EMBEDDING_DISABLED       = "false"
     AUTH_INTERNAL_URL        = "${module.api_gateway.internal_api_endpoint}/internal"
+    # NFR-19: presigned GET URLs, never a public bucket. IMAGE_SERVE_MODE=s3
+    # is production's default; dev/local environments run demo or local
+    # instead (see .env.example and image-serve.config.ts).
+    IMAGE_SERVE_MODE         = "s3"
+    MARKETPLACE_IMAGES_BUCKET = module.images.bucket_name
   })
 }
 
@@ -332,6 +357,10 @@ output "frontend_url" {
 
 output "frontend_bucket_name" {
   value = module.frontend.bucket_name
+}
+
+output "images_bucket_name" {
+  value = module.images.bucket_name
 }
 
 output "frontend_distribution_id" {

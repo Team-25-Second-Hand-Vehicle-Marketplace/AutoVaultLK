@@ -6,7 +6,9 @@ import type {
   StageContext,
 } from '../../../../src/workers/etl-worker/pipeline/types';
 
-const row = (o: Partial<DictionaryRow> & { id: string; canonicalValue: string }): DictionaryRow => ({
+const row = (
+  o: Partial<DictionaryRow> & { id: string; canonicalValue: string },
+): DictionaryRow => ({
   parentId: null,
   dictionaryType: 'MAKE',
   aliases: [],
@@ -46,13 +48,20 @@ const DICTIONARY = new InMemoryDictionarySnapshot([
     vehicleTypes: ['CAR'],
   }),
   // Single-type make: unambiguous, so an unresolved model can still inherit.
-  row({ id: 'mk-jcb', canonicalValue: 'JCB', vehicleTypes: ['HEAVY_MACHINERY'] }),
+  row({
+    id: 'mk-jcb',
+    canonicalValue: 'JCB',
+    vehicleTypes: ['HEAVY_MACHINERY'],
+  }),
 ]);
 
 /** Only `dictionary` is reached; a stage touching more would be a contract breach. */
 const ctx = { dictionary: DICTIONARY } as never as StageContext;
 
-const raw = (cells: Record<string, string>, rowNumber = 1): RawRow => ({ rowNumber, raw: cells });
+const raw = (cells: Record<string, string>, rowNumber = 1): RawRow => ({
+  rowNumber,
+  raw: cells,
+});
 
 const normalize = async (cells: Record<string, string>) => {
   const result = await parseNormalizeStage.run(ctx, [raw(cells)]);
@@ -97,7 +106,11 @@ describe('parseNormalizeStage', () => {
   });
 
   it('prefers an explicit vehicle_type over the dictionary', async () => {
-    const result = await normalize({ ...VALID, model: 'Hilux', vehicle_type: 'lorry' });
+    const result = await normalize({
+      ...VALID,
+      model: 'Hilux',
+      vehicle_type: 'lorry',
+    });
 
     expect(result.normalized.vehicleType).toBe('LORRY');
   });
@@ -111,7 +124,11 @@ describe('parseNormalizeStage', () => {
   });
 
   it('inherits the type from a single-type make when the model is unknown', async () => {
-    const result = await normalize({ ...VALID, make: 'JCB', model: 'Unknownmodel' });
+    const result = await normalize({
+      ...VALID,
+      make: 'JCB',
+      model: 'Unknownmodel',
+    });
 
     expect(result.normalized.vehicleType).toBe('HEAVY_MACHINERY');
   });
@@ -119,7 +136,11 @@ describe('parseNormalizeStage', () => {
   it('scopes the model to its make', async () => {
     // A Civic under Toyota is not Honda's Civic — the dealer typed something
     // wrong, and resolving it anyway would write a vehicle that does not exist.
-    const result = await normalize({ ...VALID, make: 'Toyota', model: 'Civic' });
+    const result = await normalize({
+      ...VALID,
+      make: 'Toyota',
+      model: 'Civic',
+    });
 
     expect(result.normalized.model).toBeUndefined();
     expect(result.confidence).toBe(0);
@@ -160,7 +181,13 @@ describe('parseNormalizeStage', () => {
     // validateRows is the single gate, so every rejection reason lives in one
     // place — and Groq still gets a chance at rows this stage could not read.
     const result = await parseNormalizeStage.run(ctx, [
-      raw({ make: 'Lamborghini', model: 'Aventador', year: 'x', price: 'x', mileage: 'x' }),
+      raw({
+        make: 'Lamborghini',
+        model: 'Aventador',
+        year: 'x',
+        price: 'x',
+        mileage: 'x',
+      }),
     ]);
 
     expect(result.rejections).toEqual([]);
@@ -177,7 +204,10 @@ describe('parseNormalizeStage', () => {
   });
 
   it('normalizes the registration number to the indexed form', async () => {
-    const result = await normalize({ ...VALID, registration_number: 'cab 1234' });
+    const result = await normalize({
+      ...VALID,
+      registration_number: 'cab 1234',
+    });
 
     expect(result.normalized.registrationNumber).toBe('CAB-1234');
   });
@@ -204,5 +234,123 @@ describe('parseNormalizeStage', () => {
 
   it('is registered as the PARSE_NORMALIZE stage', () => {
     expect(parseNormalizeStage.stage).toBe('PARSE_NORMALIZE');
+  });
+
+  describe('provenance (FR-42.1)', () => {
+    it('sources make and model from the dictionary', async () => {
+      const result = await normalize({
+        ...VALID,
+        make: 'toyata',
+        model: 'vits',
+      });
+
+      expect(result.provenance?.make).toEqual({
+        source: 'dictionary',
+        confidence: 0.8,
+      });
+      expect(result.provenance?.model).toEqual({
+        source: 'dictionary',
+        confidence: 0.8,
+      });
+    });
+
+    it('sources a dictionary-derived vehicle_type from the dictionary', async () => {
+      const result = await normalize({ ...VALID, model: 'Hilux' });
+
+      expect(result.provenance?.vehicleType?.source).toBe('dictionary');
+      expect(typeof result.provenance?.vehicleType?.confidence).toBe('number');
+    });
+
+    it('sources a coerced numeric as a rule', async () => {
+      const result = await normalize(VALID);
+
+      expect(result.provenance?.price).toEqual({
+        source: 'rule',
+        confidence: 1,
+      });
+      expect(result.provenance?.mileage).toEqual({
+        source: 'rule',
+        confidence: 1,
+      });
+      expect(result.provenance?.manufactureYear).toEqual({
+        source: 'rule',
+        confidence: 1,
+      });
+    });
+
+    it('sources a matched enum as a rule', async () => {
+      const result = await normalize({
+        ...VALID,
+        fuel_type: 'petrol',
+        transmission: 'automatic',
+      });
+
+      expect(result.provenance?.fuelType).toEqual({
+        source: 'rule',
+        confidence: 1,
+      });
+      expect(result.provenance?.transmissionType).toEqual({
+        source: 'rule',
+        confidence: 1,
+      });
+    });
+
+    // Same rule the row-level score already follows: an absent optional field
+    // is not evidence of anything, so it gets no provenance entry either — the
+    // review UI has nothing to say about a column the dealer never touched.
+    it('records no provenance for a field the dealer left blank', async () => {
+      const result = await normalize({ ...VALID, fuel_type: '' });
+
+      expect(result.provenance?.fuelType).toBeUndefined();
+    });
+
+    // A field the dealer filled in that resolved to nothing still gets a
+    // provenance entry — CONFIDENCE_UNRESOLVED, not absence — because "the
+    // dealer wrote something and it did not resolve" is exactly what the
+    // review UI needs to flag, and is different from "the dealer wrote
+    // nothing".
+    it('records provenance at zero confidence for an unrecognised value', async () => {
+      const result = await normalize({ ...VALID, fuel_type: 'nuclear' });
+
+      expect(result.provenance?.fuelType).toEqual({
+        source: 'rule',
+        confidence: 0,
+      });
+    });
+
+    it('records unresolved make/model provenance rather than omitting it', async () => {
+      const result = await normalize({
+        ...VALID,
+        make: 'Lamborghini',
+        model: 'Aventador',
+      });
+
+      expect(result.provenance?.make).toEqual({
+        source: 'dictionary',
+        confidence: 0,
+      });
+    });
+
+    // Free-text fields were never part of the confidence score before this
+    // change and stay that way — there is nothing for a rule-based method to
+    // vouch for in an unconstrained string.
+    it('records no provenance for free-text fields', async () => {
+      const result = await normalize({
+        ...VALID,
+        color: 'red',
+        description: 'well maintained',
+      });
+
+      expect(result.provenance?.color).toBeUndefined();
+      expect(result.provenance?.description).toBeUndefined();
+    });
+
+    it('never sets a groq source at this stage', async () => {
+      const result = await normalize(VALID);
+
+      for (const entry of Object.values(result.provenance ?? {})) {
+        expect(entry?.source).not.toBe('groq');
+      }
+    });
   });
 });

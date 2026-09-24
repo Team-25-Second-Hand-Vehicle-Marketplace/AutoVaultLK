@@ -31,12 +31,16 @@ const VALID: VehicleFields = {
 /** 384 floats — the MiniLM dimension pgvector's column is declared with. */
 const VECTOR = `[${Array.from({ length: 384 }, () => 0.1).join(',')}]`;
 
-const row = (overrides: Partial<VehicleFields> = {}, rowNumber = 1): EmbeddedRow => ({
+const row = (
+  overrides: Partial<VehicleFields> = {},
+  rowNumber = 1,
+): EmbeddedRow => ({
   rowNumber,
   raw: {},
   normalized: { ...VALID, ...overrides },
   confidence: 1,
-  searchText: 'Toyota Vitz 2015 CAR PETROL AUTOMATIC Nugegoda Colombo HATCHBACK',
+  searchText:
+    'Toyota Vitz 2015 CAR PETROL AUTOMATIC Nugegoda Colombo HATCHBACK',
   embedding: VECTOR,
 });
 
@@ -57,7 +61,8 @@ describeWithDatabase('MarketplaceVehiclesWriteAdapter (integration)', () => {
 
   beforeAll(async () => {
     const connected = await connect();
-    if (!connected) throw new Error('Database unreachable despite the reachability probe');
+    if (!connected)
+      throw new Error('Database unreachable despite the reachability probe');
     ds = connected;
     adapter = new MarketplaceVehiclesWriteAdapter(ds);
     dealerId = await findDealer(ds);
@@ -97,6 +102,133 @@ describeWithDatabase('MarketplaceVehiclesWriteAdapter (integration)', () => {
         status: 'PENDING_REVIEW',
         body_type: 'HATCHBACK',
         dealer_id: dealerId,
+      });
+    });
+
+    describe('normalization payload (FR-42.1)', () => {
+      it('writes the provenance map and reads it back as JSONB', async () => {
+        const jobId = await newJob();
+        const registration = plate(101);
+
+        const withProvenance: EmbeddedRow = {
+          ...row({ registrationNumber: registration }, 1),
+          confidence: 0.8,
+          provenance: {
+            make: {
+              source: 'groq',
+              confidence: 0.8,
+              reasoning: 'Corrected misspelling.',
+            },
+            price: { source: 'rule', confidence: 1 },
+          },
+        };
+
+        const result = await adapter.upsertBatch(jobId, dealerId, [
+          withProvenance,
+        ]);
+
+        const [stored] = (await ds.query(
+          `SELECT normalization FROM marketplace.vehicles WHERE id = $1`,
+          [result.loaded[0].id],
+        )) as { normalization: unknown }[];
+
+        expect(stored.normalization).toEqual({
+          fields: {
+            make: {
+              source: 'groq',
+              confidence: 0.8,
+              reasoning: 'Corrected misspelling.',
+            },
+            price: { source: 'rule', confidence: 1 },
+          },
+          rowConfidence: 0.8,
+        });
+      });
+
+      // ON CONFLICT ... DO UPDATE SET normalization = EXCLUDED.normalization
+      // (marketplace-vehicles-write.adapter.ts): a re-upload with corrected
+      // provenance must refresh what the review UI shows, not leave the first
+      // upload's stale reasoning in place.
+      it('refreshes normalization on a re-upload of the same registration', async () => {
+        const jobId = await newJob();
+        const registration = plate(104);
+
+        const first = await adapter.upsertBatch(jobId, dealerId, [
+          {
+            ...row({ registrationNumber: registration }, 1),
+            confidence: 0.6,
+            provenance: { make: { source: 'dictionary', confidence: 0.6 } },
+          },
+        ]);
+
+        await adapter.upsertBatch(jobId, dealerId, [
+          {
+            ...row({ registrationNumber: registration }, 1),
+            confidence: 0.9,
+            provenance: {
+              make: {
+                source: 'groq',
+                confidence: 0.9,
+                reasoning: 'Re-checked.',
+              },
+            },
+          },
+        ]);
+
+        const [stored] = (await ds.query(
+          `SELECT normalization FROM marketplace.vehicles WHERE id = $1`,
+          [first.loaded[0].id],
+        )) as { normalization: unknown }[];
+
+        expect(stored.normalization).toEqual({
+          fields: {
+            make: { source: 'groq', confidence: 0.9, reasoning: 'Re-checked.' },
+          },
+          rowConfidence: 0.9,
+        });
+      });
+
+      it('writes null, not an empty object, for a row with no provenance', async () => {
+        const jobId = await newJob();
+
+        const result = await adapter.upsertBatch(jobId, dealerId, [
+          row({ registrationNumber: plate(102) }),
+        ]);
+
+        const [stored] = (await ds.query(
+          `SELECT normalization FROM marketplace.vehicles WHERE id = $1`,
+          [result.loaded[0].id],
+        )) as { normalization: unknown }[];
+
+        expect(stored.normalization).toBeNull();
+      });
+
+      // The dedicated partial index (migration 29000) targets exactly this
+      // predicate — a mistyped column name or cast would compile in the
+      // adapter's raw SQL and only fail here.
+      it('is queryable by the confidence-ascending sort the review UI uses', async () => {
+        // Not asserting this row sorts first (other PENDING_REVIEW rows exist
+        // in the seed) — only that ListingRepository.findByDealer's exact
+        // predicate and cast (migration 29000's partial index target) execute
+        // against a row this adapter actually wrote, rather than a synthetic
+        // fixture.
+        const jobId = await newJob();
+
+        const withProvenance: EmbeddedRow = {
+          ...row({ registrationNumber: plate(103) }),
+          confidence: 0.5,
+          provenance: { make: { source: 'groq', confidence: 0.5 } },
+        };
+
+        await adapter.upsertBatch(jobId, dealerId, [withProvenance]);
+
+        const matches = (await ds.query(
+          `SELECT id FROM marketplace.vehicles
+            WHERE status = 'PENDING_REVIEW' AND normalization IS NOT NULL
+            ORDER BY (normalization->>'rowConfidence')::numeric ASC`,
+        )) as { id: string }[];
+
+        expect(matches.length).toBeGreaterThan(0);
       });
     });
 
@@ -144,7 +276,9 @@ describeWithDatabase('MarketplaceVehiclesWriteAdapter (integration)', () => {
       const result = await adapter.upsertBatch(
         jobId,
         dealerId,
-        [1, 2, 3, 4, 5].map((n) => row({ registrationNumber: plate(10 + n) }, n)),
+        [1, 2, 3, 4, 5].map((n) =>
+          row({ registrationNumber: plate(10 + n) }, n),
+        ),
       );
 
       expect(result.loaded).toHaveLength(5);
@@ -210,9 +344,9 @@ describeWithDatabase('MarketplaceVehiclesWriteAdapter (integration)', () => {
         row({ registrationNumber: registration, price: 1_000_000 }),
       ]);
 
-      expect((await updatedAt(ds, first.loaded[0].id)).getTime()).toBeGreaterThan(
-        before.getTime(),
-      );
+      expect(
+        (await updatedAt(ds, first.loaded[0].id)).getTime(),
+      ).toBeGreaterThan(before.getTime());
     });
   });
 
@@ -224,7 +358,9 @@ describeWithDatabase('MarketplaceVehiclesWriteAdapter (integration)', () => {
       const firstJob = await newJob();
       const duplicate = plate(30);
 
-      await adapter.upsertBatch(firstJob, dealerId, [row({ registrationNumber: duplicate })]);
+      await adapter.upsertBatch(firstJob, dealerId, [
+        row({ registrationNumber: duplicate }),
+      ]);
 
       const secondJob = await newJob();
       const result = await adapter.upsertBatch(secondJob, dealerId, [
@@ -242,7 +378,9 @@ describeWithDatabase('MarketplaceVehiclesWriteAdapter (integration)', () => {
     it('names the registration number in the reason', async () => {
       const firstJob = await newJob();
       const duplicate = plate(40);
-      await adapter.upsertBatch(firstJob, dealerId, [row({ registrationNumber: duplicate })]);
+      await adapter.upsertBatch(firstJob, dealerId, [
+        row({ registrationNumber: duplicate }),
+      ]);
 
       const secondJob = await newJob();
       const result = await adapter.upsertBatch(secondJob, dealerId, [
@@ -259,7 +397,9 @@ describeWithDatabase('MarketplaceVehiclesWriteAdapter (integration)', () => {
       // source. If this ever succeeds, the grant has been widened and ETL can
       // destroy a dealer's manually created listings.
       await expect(
-        ds.query(`DELETE FROM marketplace.vehicles WHERE id = gen_random_uuid()`),
+        ds.query(
+          `DELETE FROM marketplace.vehicles WHERE id = gen_random_uuid()`,
+        ),
       ).rejects.toThrow(/permission denied/i);
     });
 
@@ -303,8 +443,9 @@ async function countFor(ds: DataSource, jobId: string): Promise<number> {
 }
 
 async function updatedAt(ds: DataSource, id: string): Promise<Date> {
-  const [r] = (await ds.query(`SELECT updated_at FROM marketplace.vehicles WHERE id = $1`, [
-    id,
-  ])) as { updated_at: Date }[];
+  const [r] = (await ds.query(
+    `SELECT updated_at FROM marketplace.vehicles WHERE id = $1`,
+    [id],
+  )) as { updated_at: Date }[];
   return r.updated_at;
 }

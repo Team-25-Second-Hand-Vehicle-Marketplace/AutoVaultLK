@@ -811,3 +811,132 @@
   /* Registration numbers and years read better aligned. */
   font-variant-numeric: tabular-nums;
 }
+
+/* ── Review queue (FR-42.1) ─────────────────────────────────────────────── */
+
+.review-banner {
+  align-items: center;
+  background: var(--warning-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--warning-text);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+}
+
+.review-banner p {
+  margin: 0;
+}
+
+.review-banner__toggle {
+  align-items: center;
+  display: flex;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+/* Inline, next to the make/model text in the table's leftmost column. */
+.normalization-summary {
+  display: inline-flex;
+  gap: 0.35rem;
+  margin-left: 0.5rem;
+}
+
+.normalization-pill {
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.1rem 0.5rem;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.normalization-pill--ai {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.normalization-pill--low {
+  background: var(--warning-bg);
+  color: var(--warning-text);
+}
+
+/* The expandable row beneath a listing's main row. */
+.listing-table__details-row td {
+  background: var(--bg-alt);
+  padding: 0;
+}
+
+.normalization-details {
+  padding: 0.5rem 1rem;
+}
+
+.normalization-details__toggle {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.35rem 0;
+}
+
+.normalization-details__toggle:hover {
+  text-decoration: underline;
+}
+
+.normalization-details__list {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0.5rem 0 0.25rem;
+}
+
+.normalization-field {
+  border-left: 2px solid var(--border);
+  padding-left: 0.6rem;
+}
+
+.normalization-field__name {
+  align-items: center;
+  color: var(--text-h);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  font-weight: 600;
+  gap: 0.4rem;
+}
+
+.normalization-field__source {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.05rem 0.45rem;
+  text-transform: uppercase;
+}
+
+.normalization-field__source--groq {
+  background: var(--accent-bg);
+  border-color: transparent;
+  color: var(--accent);
+}
+
+.normalization-field__flag {
+  color: var(--warning-text);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.normalization-field__reasoning {
+  color: var(--text);
+  font-size: 0.82rem;
+  margin: 0.2rem 0 0;
+}

@@ -1,9 +1,11 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { getRepositoryToken } from '@nestjs/typeorm';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { RecommendationsModule } from '../../src/modules/recommendations/recommendations.module';
 import { RecommendationsRepository } from '../../src/modules/recommendations/repositories/recommendations.repository';
+import { VehicleImage } from '../../src/infrastructure/database/entities/vehicle-image.entity';
 
 /**
  * GET /recommendations/vehicles/:vehicleId is public — no guards — so this
@@ -36,6 +38,8 @@ describe('GET /recommendations/vehicles/:vehicleId (e2e)', () => {
     })
       .overrideProvider(RecommendationsRepository)
       .useValue(repository)
+      .overrideProvider(getRepositoryToken(VehicleImage))
+      .useValue({})
       .compile();
 
     app = moduleRef.createNestApplication();

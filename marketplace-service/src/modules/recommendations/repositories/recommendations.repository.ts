@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
+import { ImageUrlResolverService } from '../../images/services/image-url-resolver.service';
 
 export interface RecommendedVehicle {
   id: string;
@@ -29,23 +30,23 @@ export class RecommendationsRepository {
   constructor(
     @InjectDataSource()
     private readonly dataSource: DataSource,
+    private readonly imageUrlResolver: ImageUrlResolverService,
   ) {}
 
   /**
    * Check whether the requested vehicle exists.
    */
   async vehicleExists(vehicleId: string): Promise<boolean> {
-    const rows: Array<{ exists: boolean }> =
-      await this.dataSource.query(
-        `
+    const rows: Array<{ exists: boolean }> = await this.dataSource.query(
+      `
         SELECT EXISTS (
           SELECT 1
           FROM marketplace.vehicles
           WHERE id = $1
         ) AS exists
         `,
-        [vehicleId],
-      );
+      [vehicleId],
+    );
 
     return rows[0]?.exists === true;
   }
@@ -301,28 +302,41 @@ export class RecommendationsRepository {
       [vehicleId, limit],
     );
 
-    return rows.map((row) => ({
-      id: row.id,
-      vehicleType: row.vehicle_type,
-      make: row.make,
-      model: row.model,
-      manufactureYear: row.manufacture_year,
-      registrationYear: row.registration_year,
-      price: Number(row.price),
-      mileage: row.mileage,
-      fuelType: row.fuel_type,
-      transmissionType: row.transmission_type,
-      locationCity: row.location_city,
-      locationDistrict: row.location_district,
-      condition: row.condition,
-      isNegotiable: row.is_negotiable === true,
-      // NOT NULL with a '{}' default, but a LEFT JOIN or a future view could
-      // still hand back null; the card indexes into it unconditionally.
-      specs: row.specs ?? {},
-      imageUrl: row.image_path,
-      thumbnailUrl: row.thumbnail_path,
-      dealerVerified: row.dealer_verified === true,
-      similarityScore: Number(row.similarity_score),
-    }));
+    // Presigning is a local SigV4 computation in s3 mode (no AWS round trip
+    // — see ImageUrlResolverService), so resolving every row's image in
+    // parallel costs CPU, not N sequential network calls.
+    return Promise.all(
+      rows.map(async (row) => {
+        const [imageUrl, thumbnailUrl] = await Promise.all([
+          this.imageUrlResolver.resolve(row.image_path),
+          this.imageUrlResolver.resolve(row.thumbnail_path),
+        ]);
+
+        return {
+          id: row.id,
+          vehicleType: row.vehicle_type,
+          make: row.make,
+          model: row.model,
+          manufactureYear: row.manufacture_year,
+          registrationYear: row.registration_year,
+          price: Number(row.price),
+          mileage: row.mileage,
+          fuelType: row.fuel_type,
+          transmissionType: row.transmission_type,
+          locationCity: row.location_city,
+          locationDistrict: row.location_district,
+          condition: row.condition,
+          isNegotiable: row.is_negotiable === true,
+          // NOT NULL with a '{}' default, but a LEFT JOIN or a future view
+          // could still hand back null; the card indexes into it
+          // unconditionally.
+          specs: row.specs ?? {},
+          imageUrl,
+          thumbnailUrl,
+          dealerVerified: row.dealer_verified === true,
+          similarityScore: Number(row.similarity_score),
+        };
+      }),
+    );
   }
 }

@@ -105,6 +105,30 @@ describe('fuzzySpanHit', () => {
     });
     expect(hit).toBeUndefined();
   });
+
+  it('never fuzzy-matches a vehicle-character word, even when it scores higher than a real typo would', () => {
+    // "sporty" vs "Sportage" scores 0.625 trigram similarity — HIGHER than
+    // several genuine typos this parser must keep correcting (e.g.
+    // "hunday"->"hyundai" at 0.400) — so no similarity threshold can admit
+    // real typos while excluding this. The word is descriptive, never a
+    // plausible answer to a make/model lookup, so it is blocked outright
+    // rather than scored; it falls through to Groq/semantic ranking instead
+    // of silently hard-locking the search to the wrong model.
+    const sportage = entry('Sportage');
+    const tokens = tokenize('sporty');
+    const hit = fuzzySpanHit(tokens, 0, 1, [sportage], { rejectDigitAdjacent: false });
+    expect(hit).toBeUndefined();
+  });
+
+  it('still matches a real typo of the same approximate shape as the blocked word', () => {
+    // Confirms the fix is a targeted denylist, not an accidental threshold
+    // change: "sportege" (a typo OF Sportage) must still resolve, proving
+    // fuzzy matching on Sportage itself is not broken by blocking "sporty".
+    const sportage = entry('Sportage');
+    const tokens = tokenize('sportege');
+    const hit = fuzzySpanHit(tokens, 0, 1, [sportage], { rejectDigitAdjacent: false });
+    expect(hit?.entry).toBe(sportage);
+  });
 });
 
 describe('spanIsOpen / spanIsPresent', () => {
@@ -200,6 +224,11 @@ describe('fuzzyClosedHit', () => {
 
   it('rejects a probe shorter than 4 characters', () => {
     const tokens = tokenize('van');
+    expect(fuzzyClosedHit(tokens, 0)).toBeUndefined();
+  });
+
+  it('never fuzzy-matches a vehicle-character word against a closed enum value', () => {
+    const tokens = tokenize('sporty');
     expect(fuzzyClosedHit(tokens, 0)).toBeUndefined();
   });
 });
