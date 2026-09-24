@@ -7,11 +7,15 @@ symptom described in "Known issues," jump straight to that fix instead of
 re-diagnosing from scratch.
 
 **Scope:** auth-user-service, marketplace-service, admin-service,
-notification-service, web-frontend. **ingestion-service is not deployed**
-(see `DEPLOYMENT-GAPS.md` at the repo root for what that would add).
+notification-service, web-frontend, plus an **MVP path for
+ingestion-service** (two Lambdas — `ingest-api` and `etl-worker` — instead
+of the full one-Lambda-per-stage Step Functions design; see the
+"ingestion-service" comment block at the top of `main.tf` for what that
+means and what it doesn't cover yet).
 
-**Status: fully deployed and verified working**, end to end, as of this
-writing. All 4 services confirmed live through the public API Gateway:
+**Status: the first 4 services + frontend are fully deployed and verified
+working**, end to end, as of this writing. All 4 confirmed live through the
+public API Gateway:
 - `GET /users/me` (auth) → `401 Unauthorized` (correct — no token sent; this
   means cold start + DB connection + routing all worked)
 - `GET /marketplace/listings` (marketplace) → real JSON data
@@ -20,10 +24,23 @@ writing. All 4 services confirmed live through the public API Gateway:
   connected, routes mapped (`POST /notifications/events` is its only real
   endpoint; there's no `GET /notifications`)
 
-Getting here took 3 more real bugs beyond the ones documented when this
-file was first written (Issues 9–11 below) — read those before assuming a
-fresh deployment will be issue-free; the fixes are in the Terraform/code
-now, but they're worth understanding if something *else* breaks.
+**ingestion-service's MVP path has not yet been run against a real AWS
+account** — it's new in this revision. Follow the same steps below (it's
+folded into the same ECR bootstrap / image build / apply flow), but verify
+it explicitly once deployed:
+```
+curl -X POST <public_api_endpoint>/ingest/upload -H "Authorization: Bearer <dealer JWT>" -F csv=@test/fixtures/e2e-mixed.csv
+curl <public_api_endpoint>/jobs/<jobId returned above> -H "Authorization: Bearer <dealer JWT>"
+```
+and watch `aws logs tail /aws/lambda/vehicle-marketplace-etl-worker-production --since 10m`
+for the pipeline actually running. If something in this path breaks, it's
+uncharted — the "Known issues" section below predates it.
+
+Getting the first 4 services here took 3 more real bugs beyond the ones
+documented when this file was first written (Issues 9–11 below) — read
+those before assuming a fresh deployment will be issue-free; the fixes are
+in the Terraform/code now, but they're worth understanding if something
+*else* breaks.
 
 ---
 
@@ -92,37 +109,44 @@ terraform init
 terraform plan
 ```
 
-## Step 3 — Bootstrap the 4 ECR repos only
+## Step 3 — Bootstrap the 6 ECR repos only
 
 Image-based Lambdas can't be created against an empty ECR repo, so create
 just the repos first:
 
 ```
-terraform apply -auto-approve -target=module.auth_lambda.aws_ecr_repository.this -target=module.marketplace_lambda.aws_ecr_repository.this -target=module.admin_lambda.aws_ecr_repository.this -target=module.notification_lambda.aws_ecr_repository.this
+terraform apply -auto-approve -target=module.auth_lambda.aws_ecr_repository.this -target=module.marketplace_lambda.aws_ecr_repository.this -target=module.admin_lambda.aws_ecr_repository.this -target=module.notification_lambda.aws_ecr_repository.this -target=module.ingest_api_lambda.aws_ecr_repository.this -target=module.etl_worker_lambda.aws_ecr_repository.this
 ```
 
-Log in to ECR (once — good for all 4 repos, same registry host):
+Log in to ECR (once — good for all 6 repos, same registry host):
 
 ```
 aws ecr get-login-password --region ap-southeast-2 | docker login --username AWS --password-stdin <account-id>.dkr.ecr.ap-southeast-2.amazonaws.com
 ```
 
-## Step 4 — Build and push all 4 images
+## Step 4 — Build and push all 6 images
 
 **Use `--no-cache --provenance=false` on every build — both flags matter,
 see Issues 2 and 3 below for why.**
 
 ```bash
-for svc in auth-user-service:auth marketplace-service:marketplace admin-service:admin notification-service:notification; do
+for svc in auth-user-service:auth marketplace-service:marketplace admin-service:admin notification-service:notification ingestion-service:ingest-api; do
   dir="${svc%%:*}"; name="${svc##*:}"
   cd "$dir"
   docker build --no-cache --provenance=false -t <account-id>.dkr.ecr.ap-southeast-2.amazonaws.com/vehicle-marketplace/$name-production:latest .
   docker push <account-id>.dkr.ecr.ap-southeast-2.amazonaws.com/vehicle-marketplace/$name-production:latest
   cd ..
 done
+
+# etl-worker is a different Dockerfile in the same ingestion-service tree
+# (different CMD — see the note in production/main.tf) — build it separately.
+cd ingestion-service
+docker build --no-cache --provenance=false -f docker/etl-worker.Dockerfile -t <account-id>.dkr.ecr.ap-southeast-2.amazonaws.com/vehicle-marketplace/etl-worker-production:latest .
+docker push <account-id>.dkr.ecr.ap-southeast-2.amazonaws.com/vehicle-marketplace/etl-worker-production:latest
+cd ..
 ```
 
-(On Windows cmd.exe, do these 4 individually rather than as a loop — see
+(On Windows cmd.exe, do these individually rather than as a loop — see
 "Windows quoting gotchas" below for cmd.exe-specific issues.)
 
 ## Step 5 — Full apply
@@ -131,10 +155,11 @@ done
 terraform apply
 ```
 
-This creates everything else: VPC, RDS + Proxy, IAM, SES, the 4 Lambdas, API
-Gateway routes, S3+CloudFront. **Expect 10–15 minutes** — RDS and the NAT
-Gateway are the slow parts. If this fails partway through with a network
-error while saving state, see Issue 5 below **before** retrying.
+This creates everything else: VPC, RDS + Proxy, IAM, SES, the 6 Lambdas, the
+ingestion SQS queue + DLQ, API Gateway routes, S3+CloudFront. **Expect
+10–15 minutes** — RDS and the NAT Gateway are the slow parts. If this fails
+partway through with a network error while saving state, see Issue 5 below
+**before** retrying.
 
 If a Lambda `CreateFunction` call 409s with `Function already exist` on a
 retry, the function actually was created in an earlier attempt but state
@@ -146,6 +171,8 @@ terraform import module.auth_lambda.aws_lambda_function.this vehicle-marketplace
 terraform import module.marketplace_lambda.aws_lambda_function.this vehicle-marketplace-marketplace-production
 terraform import module.admin_lambda.aws_lambda_function.this vehicle-marketplace-admin-production
 terraform import module.notification_lambda.aws_lambda_function.this vehicle-marketplace-notification-production
+terraform import module.ingest_api_lambda.aws_lambda_function.this vehicle-marketplace-ingest-api-production
+terraform import module.etl_worker_lambda.aws_lambda_function.this vehicle-marketplace-etl-worker-production
 ```
 
 ## Step 6 — One-time database setup
@@ -203,7 +230,7 @@ there's no reason to route one-time admin SQL through the proxy.
 confusing "server closed the connection unexpectedly" with no clear reason,
 not a helpful auth error (see Issue 7).
 
-Once connected, get the 4 generated passwords (`terraform output -json
+Once connected, get the 5 generated passwords (`terraform output -json
 db_service_role_passwords`) and run:
 
 ```sql
@@ -211,9 +238,10 @@ CREATE ROLE auth_service_role         LOGIN PASSWORD '<auth password>';
 CREATE ROLE marketplace_service_role  LOGIN PASSWORD '<marketplace password>';
 CREATE ROLE notification_service_role LOGIN PASSWORD '<notification password>';
 CREATE ROLE admin_service_role        LOGIN PASSWORD '<admin password>';
+CREATE ROLE ingestion_service_role    LOGIN PASSWORD '<ingestion password>';
 GRANT CONNECT ON DATABASE vehicle_marketplace TO
   auth_service_role, marketplace_service_role,
-  notification_service_role, admin_service_role;
+  notification_service_role, admin_service_role, ingestion_service_role;
 ```
 
 ### 6c. Run migrations and grants
@@ -246,9 +274,15 @@ Then grants — safe to run unmodified:
 docker run --rm -i --add-host=host.docker.internal:host-gateway postgres:17 psql "postgresql://<master_user>:<master_password_percent_encoded>@host.docker.internal:15432/vehicle_marketplace?sslmode=require" < src\grants.sql
 ```
 
-You'll see `role "ingestion_service_role" does not exist` errors scroll by —
-**expected**, ingestion isn't deployed, and psql doesn't stop on error when
-run this way. Every other grant still applies.
+If `ingestion_service_role` was created in step 6b above, every grant in
+`grants.sql` (including the ingestion ones — cross-schema read on
+`auth.dealer_profiles`/`auth.users`, and the one documented cross-schema
+write exception onto `marketplace.vehicles`/`marketplace.vehicle_images`,
+per ADR-002) now applies cleanly. If you skipped creating that role, you'll
+see `role "ingestion_service_role" does not exist` errors scroll by instead
+— psql doesn't stop on error when run this way, so every other grant still
+applies, but the ingestion Lambdas won't be able to connect until you go
+back and create the role.
 
 ### 6d. Clean up the bastion
 
@@ -310,8 +344,9 @@ filter), but the Lambda's own log always has the real exception.
 
 `modules/github-oidc` sets up an IAM role GitHub Actions can assume via
 OIDC — no long-lived AWS keys stored in GitHub. `.github/workflows/
-deploy-production.yml` uses it to build+push+update all 4 services and the
-frontend. **It only runs on `workflow_dispatch`** (Actions tab → "Deploy to
+deploy-production.yml` uses it to build+push+update all 6 Lambdas (auth,
+marketplace, admin, notification, ingest-api, etl-worker) and the frontend.
+**It only runs on `workflow_dispatch`** (Actions tab → "Deploy to
 production" → Run workflow) — deliberately no `push`/`pull_request`
 trigger, since this environment gets torn down between sessions and an
 auto-deploy pipeline would just fail every run while it's down.
