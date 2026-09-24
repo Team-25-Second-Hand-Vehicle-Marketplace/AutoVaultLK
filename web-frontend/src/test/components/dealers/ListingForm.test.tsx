@@ -125,6 +125,10 @@ describe('ListingForm image field', () => {
           condition: 'USED',
           description: null,
           normalization: null,
+          specs: null,
+          needsManualReview: false,
+          reviewReason: null,
+          images: [],
         }}
         onSubmit={vi.fn()}
         onCancel={vi.fn()}

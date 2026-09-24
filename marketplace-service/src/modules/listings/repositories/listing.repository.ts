@@ -92,6 +92,7 @@ export class ListingRepository {
     if (sort === 'confidence_asc') {
       return this.vehicleRepo
         .createQueryBuilder('vehicle')
+        .leftJoinAndSelect('vehicle.images', 'images')
         .where('vehicle.dealer_id = :dealerId', { dealerId })
         .orderBy(
           `(vehicle.normalization->>'rowConfidence')::numeric`,
@@ -99,12 +100,14 @@ export class ListingRepository {
           'NULLS LAST',
         )
         .addOrderBy('vehicle.created_at', 'DESC')
+        .addOrderBy('images.display_order', 'ASC')
         .getMany();
     }
 
     return this.vehicleRepo.find({
       where: { dealerId },
       order: { createdAt: 'DESC' },
+      relations: ['images'],
     });
   }
 
