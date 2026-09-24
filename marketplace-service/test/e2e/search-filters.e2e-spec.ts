@@ -1,11 +1,12 @@
 import { Global, INestApplication, Module, ValidationPipe } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { getDataSourceToken } from '@nestjs/typeorm';
+import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { SearchModule } from '../../src/modules/search/search.module';
 import { VehicleSearchRepository } from '../../src/modules/search/repositories/vehicle-search.repository';
 import { VehicleDictionaryRepository } from '../../src/modules/search/repositories/vehicle-dictionary.repository';
+import { VehicleImage } from '../../src/infrastructure/database/entities/vehicle-image.entity';
 import { VehicleSearchResultDto } from '../../src/modules/search/dto/filter-search-response.dto';
 
 // SearchModule has no DataSource provider of its own — it comes from
@@ -70,6 +71,8 @@ describe('GET /search/filters (e2e)', () => {
       .useValue(repository)
       .overrideProvider(VehicleDictionaryRepository)
       .useValue({ getVocabulary: jest.fn().mockResolvedValue({}) })
+      .overrideProvider(getRepositoryToken(VehicleImage))
+      .useValue({})
       .compile();
 
     app = moduleRef.createNestApplication();

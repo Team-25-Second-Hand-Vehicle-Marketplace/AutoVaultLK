@@ -1,3 +1,4 @@
+import { clampReasoning } from '../types';
 import type { DictionarySnapshot, NormalizedRow } from '../types';
 
 /**
@@ -26,9 +27,10 @@ Rules:
 - If the make is clear but the model is not in that make's allowed list, return the make and null for the model.
 - Never invent a make or model. Never return a value that is not in the allowed list, even if you believe it exists.
 - Ignore trim levels, grades and years in the text ("Corolla Axio G Grade 2015" is model "Axio" if Axio is allowed, otherwise "Corolla" if that is allowed).
+- When you return a non-null make or model, add a one-sentence "reasoning" explaining the match in plain English for a dealer reviewing the change — e.g. "Corrected misspelling; Corolla Axio matches the allowed Corolla model." Omit reasoning (or use null) when both fields are null.
 
 Respond with JSON only, in this exact shape:
-{"rows":[{"id":1,"make":"Toyota","model":"Corolla"},{"id":2,"make":null,"model":null}]}`;
+{"rows":[{"id":1,"make":"Toyota","model":"Corolla","reasoning":"Corrected misspelling of Toyota Corolla."},{"id":2,"make":null,"model":null}]}`;
 
 /** What the model sees for one row. Raw text only — no prices, no invented context. */
 type PromptRow = {
@@ -75,6 +77,12 @@ export type GroqRepair = {
   id: number;
   make: string | null;
   model: string | null;
+  /**
+   * The model's stated reason for the repair (FR-42.1), already clamped to
+   * MAX_REASONING_LENGTH. Undefined when Groq omitted it or repaired nothing
+   * for this row — a null make/model has nothing to explain.
+   */
+  reasoning?: string;
 };
 
 /**
@@ -93,14 +101,20 @@ export function parseRepairs(parsed: unknown): GroqRepair[] {
   for (const entry of rows) {
     if (!entry || typeof entry !== 'object') continue;
 
-    const { id, make, model } = entry as Record<string, unknown>;
+    const { id, make, model, reasoning } = entry as Record<string, unknown>;
     if (typeof id !== 'number' || !Number.isInteger(id)) continue;
 
-    repairs.push({
+    const repair: GroqRepair = {
       make: typeof make === 'string' && make.trim() ? make.trim() : null,
       model: typeof model === 'string' && model.trim() ? model.trim() : null,
       id,
-    });
+    };
+
+    if (typeof reasoning === 'string' && reasoning.trim()) {
+      repair.reasoning = clampReasoning(reasoning.trim());
+    }
+
+    repairs.push(repair);
   }
 
   return repairs;

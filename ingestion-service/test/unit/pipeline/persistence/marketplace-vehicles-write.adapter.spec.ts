@@ -18,17 +18,24 @@ const VALID: VehicleFields = {
 
 const row = (
   overrides: Partial<VehicleFields> = {},
-  o: { rowNumber?: number; embedding?: string | null } = {},
+  o: {
+    rowNumber?: number;
+    embedding?: string | null;
+    provenance?: EmbeddedRow['provenance'];
+    confidence?: number;
+  } = {},
 ): EmbeddedRow => ({
   rowNumber: o.rowNumber ?? 1,
   raw: {},
   normalized: { ...VALID, ...overrides },
-  confidence: 1,
+  confidence: o.confidence ?? 1,
   searchText: 'Toyota Vitz 2015 CAR',
   embedding: o.embedding === undefined ? '[0.1,0.2]' : o.embedding,
+  provenance: o.provenance,
 });
 
-const uniqueViolation = () => Object.assign(new Error('duplicate key'), { code: '23505' });
+const uniqueViolation = () =>
+  Object.assign(new Error('duplicate key'), { code: '23505' });
 
 type Harness = {
   adapter: MarketplaceVehiclesWriteAdapter;
@@ -36,14 +43,17 @@ type Harness = {
 };
 
 const harness = (impl?: jest.Mock): Harness => {
-  const query = impl ?? jest.fn().mockResolvedValue([{ id: 'v1', registration_number: null }]);
+  const query =
+    impl ??
+    jest.fn().mockResolvedValue([{ id: 'v1', registration_number: null }]);
   return {
     query,
     adapter: new MarketplaceVehiclesWriteAdapter({ query } as never),
   };
 };
 
-const sqlOf = (query: jest.Mock, call = 0): string => query.mock.calls[call][0] as string;
+const sqlOf = (query: jest.Mock, call = 0): string =>
+  query.mock.calls[call][0] as string;
 
 describe('MarketplaceVehiclesWriteAdapter', () => {
   describe('the ADR-002 boundary', () => {
@@ -83,7 +93,9 @@ describe('MarketplaceVehiclesWriteAdapter', () => {
 
       await adapter.upsertBatch('job-1', 'dealer-1', [row()]);
 
-      expect(sqlOf(query)).toMatch(/ON CONFLICT \(upload_job_id, registration_number\)/);
+      expect(sqlOf(query)).toMatch(
+        /ON CONFLICT \(upload_job_id, registration_number\)/,
+      );
       expect(sqlOf(query)).toMatch(
         /WHERE upload_job_id IS NOT NULL AND registration_number IS NOT NULL/,
       );
@@ -166,15 +178,106 @@ describe('MarketplaceVehiclesWriteAdapter', () => {
       await adapter.upsertBatch('job-1', 'dealer-1', [row(), row(), row()]);
 
       expect(query).toHaveBeenCalledTimes(1);
-      expect(query.mock.calls[0][1]).toHaveLength(72);
+      expect(query.mock.calls[0][1]).toHaveLength(75);
     });
 
     it('passes a null embedding through rather than skipping the row', async () => {
       const { adapter, query } = harness();
 
-      await adapter.upsertBatch('job-1', 'dealer-1', [row({}, { embedding: null })]);
+      await adapter.upsertBatch('job-1', 'dealer-1', [
+        row({}, { embedding: null }),
+      ]);
 
       expect(query.mock.calls[0][1][23]).toBeNull();
+    });
+  });
+
+  describe('normalization payload (FR-42.1)', () => {
+    it('includes normalization in the insert column list', async () => {
+      const { adapter, query } = harness();
+
+      await adapter.upsertBatch('job-1', 'dealer-1', [row()]);
+
+      expect(sqlOf(query)).toMatch(/normalization/);
+    });
+
+    it('casts normalization to jsonb', async () => {
+      const { adapter, query } = harness();
+
+      await adapter.upsertBatch('job-1', 'dealer-1', [
+        row(
+          {},
+          { provenance: { make: { source: 'dictionary', confidence: 1 } } },
+        ),
+      ]);
+
+      // Column 25 (index 24) is normalization — see placeholders().
+      expect(sqlOf(query)).toMatch(/\$25::jsonb/);
+    });
+
+    it('writes the provenance map and row confidence as one JSON object', async () => {
+      const { adapter, query } = harness();
+
+      await adapter.upsertBatch('job-1', 'dealer-1', [
+        row(
+          {},
+          {
+            confidence: 0.8,
+            provenance: {
+              make: {
+                source: 'groq',
+                confidence: 0.8,
+                reasoning: 'Corrected misspelling.',
+              },
+            },
+          },
+        ),
+      ]);
+
+      const normalizationParam = query.mock.calls[0][1][24] as string;
+      expect(JSON.parse(normalizationParam)).toEqual({
+        fields: {
+          make: {
+            source: 'groq',
+            confidence: 0.8,
+            reasoning: 'Corrected misspelling.',
+          },
+        },
+        rowConfidence: 0.8,
+      });
+    });
+
+    // A manually-typed listing and a row parseNormalize resolved with nothing
+    // to say both mean "no provenance to review" — writing `{}` here would
+    // make the review UI render an empty, confusing panel instead of nothing.
+    it('writes null when the row carries no provenance', async () => {
+      const { adapter, query } = harness();
+
+      await adapter.upsertBatch('job-1', 'dealer-1', [
+        row({}, { provenance: undefined }),
+      ]);
+
+      expect(query.mock.calls[0][1][24]).toBeNull();
+    });
+
+    it('writes null when the row carries an empty provenance map', async () => {
+      const { adapter, query } = harness();
+
+      await adapter.upsertBatch('job-1', 'dealer-1', [
+        row({}, { provenance: {} }),
+      ]);
+
+      expect(query.mock.calls[0][1][24]).toBeNull();
+    });
+
+    it('updates normalization on re-upload rather than leaving the old value', async () => {
+      // A dealer's second upload with a corrected file should also refresh
+      // what the review UI shows for a still-PENDING_REVIEW row.
+      const { adapter, query } = harness();
+
+      await adapter.upsertBatch('job-1', 'dealer-1', [row()]);
+
+      expect(sqlOf(query)).toMatch(/normalization = EXCLUDED\.normalization/);
     });
   });
 
@@ -222,12 +325,14 @@ describe('MarketplaceVehiclesWriteAdapter', () => {
     it('propagates a non-unique-violation error', async () => {
       // Infrastructure failure must reach the orchestrator and fail the chunk,
       // not be silently recorded as 250 rejected rows.
-      const query = jest.fn().mockRejectedValue(new Error('connection terminated'));
+      const query = jest
+        .fn()
+        .mockRejectedValue(new Error('connection terminated'));
       const { adapter } = harness(query);
 
-      await expect(adapter.upsertBatch('job-1', 'dealer-1', [row()])).rejects.toThrow(
-        /connection terminated/,
-      );
+      await expect(
+        adapter.upsertBatch('job-1', 'dealer-1', [row()]),
+      ).rejects.toThrow(/connection terminated/);
     });
 
     it('propagates an error raised during row isolation', async () => {
@@ -238,9 +343,9 @@ describe('MarketplaceVehiclesWriteAdapter', () => {
 
       const { adapter } = harness(query);
 
-      await expect(adapter.upsertBatch('job-1', 'dealer-1', [row()])).rejects.toThrow(
-        /connection terminated/,
-      );
+      await expect(
+        adapter.upsertBatch('job-1', 'dealer-1', [row()]),
+      ).rejects.toThrow(/connection terminated/);
     });
   });
 

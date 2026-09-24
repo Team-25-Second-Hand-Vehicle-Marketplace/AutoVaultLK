@@ -1,4 +1,6 @@
+import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
+import { ImageUrlResolverService } from '../../src/modules/images/services/image-url-resolver.service';
 import { VehicleSearchRepository } from '../../src/modules/search/repositories/vehicle-search.repository';
 import { buildFilterQuery } from '../../src/modules/search/filters/filter-query.builder';
 import type { FilterSearchDto } from '../../src/modules/search/dto/filter-search.dto';
@@ -41,7 +43,14 @@ describeWithDatabase('cross-schema dealer reads (integration)', () => {
     if (!connection)
       throw new Error('Database became unreachable after the probe');
     ds = connection;
-    repository = new VehicleSearchRepository(ds);
+    // demo mode (no IMAGE_SERVE_MODE set) — this suite is about the auth
+    // cross-schema join, not image resolution, so the resolver runs for
+    // real but every image resolves to null, same as an unconfigured
+    // deployment.
+    repository = new VehicleSearchRepository(
+      ds,
+      new ImageUrlResolverService(new ConfigService({})),
+    );
 
     const { count } = await queryRow<{ count: string }>(
       ds,

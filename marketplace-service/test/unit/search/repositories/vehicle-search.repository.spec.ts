@@ -43,9 +43,28 @@ function makeDataSource(results: unknown[][] = []) {
   return { dataSource, calls };
 }
 
+/**
+ * Passes every path through unchanged. Image *resolution* (s3/local/demo
+ * mode) is ImageUrlResolverService's own concern and has its own spec; what
+ * this file tests is SQL composition, so a stub that echoes its input keeps
+ * every existing imageUrl/thumbnailUrl assertion meaningful without this
+ * file needing to know anything about presigning.
+ */
+function identityImageResolver() {
+  return {
+    resolve: jest.fn((key: string | null) => Promise.resolve(key)),
+    resolveAll: jest.fn((keys: readonly string[]) =>
+      Promise.resolve([...keys]),
+    ),
+  };
+}
+
 function makeRepository(results: unknown[][] = []) {
   const { dataSource, calls } = makeDataSource(results);
-  const repository = new VehicleSearchRepository(dataSource as never);
+  const repository = new VehicleSearchRepository(
+    dataSource as never,
+    identityImageResolver() as never,
+  );
   return { repository, calls, dataSource };
 }
 
@@ -109,7 +128,9 @@ describe('VehicleSearchRepository — search()', () => {
 
     expect(params[params.length - 2]).toBe(20);
     expect(params[params.length - 1]).toBe(40); // (3 - 1) * 20
-    expect(flat(sql)).toContain(`LIMIT $${params.length - 1} OFFSET $${params.length}`);
+    expect(flat(sql)).toContain(
+      `LIMIT $${params.length - 1} OFFSET $${params.length}`,
+    );
   });
 
   it('defaults to page 1 and a 20-row page', async () => {
@@ -168,7 +189,9 @@ describe('VehicleSearchRepository — vector ranking (FR-23)', () => {
     expect(flat(sql)).toContain('::vector ASC NULLS LAST');
     // NULLS LAST matters while ingestion is not built: an un-embedded row
     // must sink to the bottom, not sort ahead of every real match.
-    expect(params.some((p) => typeof p === 'string' && p.startsWith('[1,0,'))).toBe(true);
+    expect(
+      params.some((p) => typeof p === 'string' && p.startsWith('[1,0,')),
+    ).toBe(true);
   });
 
   it('binds the vector as a parameter rather than inlining 384 floats', async () => {
@@ -194,7 +217,9 @@ describe('VehicleSearchRepository — vector ranking (FR-23)', () => {
 
     expect(params[params.length - 2]).toBe(10);
     expect(params[params.length - 1]).toBe(10);
-    expect(flat(sql)).toContain(`v.embedding <=> $${params.length - 2}::vector`);
+    expect(flat(sql)).toContain(
+      `v.embedding <=> $${params.length - 2}::vector`,
+    );
   });
 
   it('prefers the vector over trigram when MiniLM produced one (FR-24)', async () => {
@@ -261,7 +286,12 @@ describe('VehicleSearchRepository — sort resolution', () => {
 
   it('numbers the ts_rank parameter before limit and offset', async () => {
     const { repository, calls } = makeRepository([[ROW]]);
-    const dto: FilterSearchDto = { q: 'hybrid', sort: 'relevance', page: 2, limit: 10 };
+    const dto: FilterSearchDto = {
+      q: 'hybrid',
+      sort: 'relevance',
+      page: 2,
+      limit: 10,
+    };
 
     await repository.search(buildFilterQuery(dto), dto);
     const { params, sql } = calls[0];
@@ -271,7 +301,9 @@ describe('VehicleSearchRepository — sort resolution', () => {
     expect(params[params.length - 3]).toBe('hybrid');
     expect(params[params.length - 2]).toBe(10);
     expect(params[params.length - 1]).toBe(10);
-    expect(flat(sql)).toContain(`ts_rank(v.search_vector, plainto_tsquery('english', $${params.length - 2}))`);
+    expect(flat(sql)).toContain(
+      `ts_rank(v.search_vector, plainto_tsquery('english', $${params.length - 2}))`,
+    );
   });
 
   it.each([
@@ -293,7 +325,9 @@ describe('VehicleSearchRepository — sort resolution', () => {
     const { repository, calls } = makeRepository([[ROW]]);
     // A value that would be rejected by @IsIn upstream; asserting the
     // repository does not concatenate it even if it somehow arrived.
-    const dto = { sort: 'price_asc; DROP TABLE vehicles--' } as unknown as FilterSearchDto;
+    const dto = {
+      sort: 'price_asc; DROP TABLE vehicles--',
+    } as unknown as FilterSearchDto;
 
     await repository.search(buildFilterQuery(dto), dto);
 
@@ -309,7 +343,9 @@ describe('VehicleSearchRepository — verifiedDealersOnly', () => {
     await repository.count(buildFilterQuery(dto), true);
     const { sql, params } = calls[0];
 
-    expect(flat(sql)).toContain('JOIN auth.dealer_profiles dp ON dp.user_id = v.dealer_id');
+    expect(flat(sql)).toContain(
+      'JOIN auth.dealer_profiles dp ON dp.user_id = v.dealer_id',
+    );
     expect(flat(sql)).toContain('dp.verification_status = $2');
     expect(params[1]).toBe('VERIFIED');
   });
@@ -415,7 +451,10 @@ describe('VehicleSearchRepository — facets()', () => {
 
   it('maps rows into value/count buckets with numeric counts', async () => {
     const { repository } = makeRepository([
-      [{ value: 'CAR', count: '14' }, { value: 'SUV', count: '3' }],
+      [
+        { value: 'CAR', count: '14' },
+        { value: 'SUV', count: '3' },
+      ],
       [],
       [],
       [],
@@ -493,7 +532,9 @@ describe('VehicleSearchRepository — findById()', () => {
   });
 
   it('defaults images to an empty array when the aggregate is NULL', async () => {
-    const { repository } = makeRepository([[{ ...DETAIL_ROW, image_paths: null }]]);
+    const { repository } = makeRepository([
+      [{ ...DETAIL_ROW, image_paths: null }],
+    ]);
 
     const detail = await repository.findById(DETAIL_ROW.id);
 
@@ -515,7 +556,14 @@ describe('VehicleSearchRepository — row mapping', () => {
 
   it('exposes the COALESCEd effective year alongside both raw years', async () => {
     const { repository } = makeRepository([
-      [{ ...ROW, registration_year: null, manufacture_year: 2014, effective_year: 2014 }],
+      [
+        {
+          ...ROW,
+          registration_year: null,
+          manufacture_year: 2014,
+          effective_year: 2014,
+        },
+      ],
     ]);
 
     const [item] = await repository.search(buildFilterQuery({}), {});
@@ -526,7 +574,9 @@ describe('VehicleSearchRepository — row mapping', () => {
   });
 
   it('treats a NULL dealer_verified as not verified', async () => {
-    const { repository } = makeRepository([[{ ...ROW, dealer_verified: null }]]);
+    const { repository } = makeRepository([
+      [{ ...ROW, dealer_verified: null }],
+    ]);
 
     const [item] = await repository.search(buildFilterQuery({}), {});
 

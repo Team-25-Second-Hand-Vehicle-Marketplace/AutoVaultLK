@@ -1,6 +1,31 @@
 export type ListingStatus = 'DRAFT' | 'PENDING_REVIEW' | 'LIVE' | 'SOLD' | 'ARCHIVED' | 'REJECTED'
 
 /**
+ * FR-42.1. Where one field's value on a bulk-uploaded listing came from, and
+ * Groq's stated reason when it repaired the value. Mirrors marketplace-
+ * service's FieldNormalization (Vehicle entity) and, ultimately, ingestion-
+ * service's FieldProvenance — the pipeline's own type.
+ */
+export type FieldNormalizationSource = 'rule' | 'dictionary' | 'raw' | 'groq'
+
+export interface FieldNormalization {
+  source: FieldNormalizationSource
+  confidence: number
+  reasoning?: string
+}
+
+/**
+ * FR-42.1. Absent on a manually-created listing and on any row uploaded
+ * before migration 29000 — there is no fallback value to show for those, and
+ * the UI must treat "no normalization" as "nothing to review" rather than as
+ * missing data.
+ */
+export interface VehicleNormalization {
+  fields: Partial<Record<string, FieldNormalization>>
+  rowConfidence: number
+}
+
+/**
  * A row from GET /marketplace/listings/mine — the dealer's own inventory across
  * every status, not the public search-result shape.
  *
@@ -25,11 +50,33 @@ export interface DealerListing {
   vehicleType: string | null
   condition: string | null
   description: string | null
+
+  /** FR-42.1: null for a manually-created listing or one predating the column. */
+  normalization: VehicleNormalization | null
 }
+
+/** GET /marketplace/listings/mine?sort=... — FR-42.1's confidence-ascending sort. */
+export const LISTING_SORT_OPTIONS = ['createdAt', 'confidence_asc'] as const
+export type ListingSortOption = (typeof LISTING_SORT_OPTIONS)[number]
 
 export interface ListingsEnvelope {
   message: string
   data: DealerListing[]
+}
+
+/**
+ * A row from POST /marketplace/listings/:id/images — mirrors marketplace-
+ * service's VehicleImage entity. `s3Path` is the raw storage key, not a
+ * URL; the form has no use for it beyond confirming the upload landed; the
+ * search/detail pages are what turn a vehicle's images back into fetchable
+ * URLs via ImageUrlResolverService, not this response.
+ */
+export interface UploadedVehicleImage {
+  id: string
+  vehicleId: string
+  s3Path: string
+  isPrimary: boolean
+  displayOrder: number
 }
 
 /**

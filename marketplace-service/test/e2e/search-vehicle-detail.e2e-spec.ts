@@ -1,11 +1,12 @@
 import { Global, INestApplication, Module, ValidationPipe } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { getDataSourceToken } from '@nestjs/typeorm';
+import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { SearchModule } from '../../src/modules/search/search.module';
 import { VehicleSearchRepository } from '../../src/modules/search/repositories/vehicle-search.repository';
 import { VehicleDictionaryRepository } from '../../src/modules/search/repositories/vehicle-dictionary.repository';
+import { VehicleImage } from '../../src/infrastructure/database/entities/vehicle-image.entity';
 import { VehicleDetailDto } from '../../src/modules/search/dto/filter-search-response.dto';
 
 @Global()
@@ -73,6 +74,8 @@ describe('GET /search/vehicles/:id (e2e)', () => {
       .useValue(repository)
       .overrideProvider(VehicleDictionaryRepository)
       .useValue({ getParserVocabulary: jest.fn().mockResolvedValue({ makes: [], models: [], bodyTypes: [] }) })
+      .overrideProvider(getRepositoryToken(VehicleImage))
+      .useValue({})
       .compile();
 
     app = moduleRef.createNestApplication();

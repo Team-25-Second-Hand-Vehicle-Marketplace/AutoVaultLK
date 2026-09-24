@@ -1,6 +1,8 @@
 import type { VehicleType } from '../../../../infrastructure/database/entities/vehicle.write-entity';
 import type {
   DictionaryHit,
+  FieldProvenance,
+  NormalizationProvenance,
   NormalizedRow,
   RawRow,
   StageContext,
@@ -52,10 +54,16 @@ const CONFIDENCE_UNRESOLVED = 0;
  *    not 80% correct; it is wrong in the field that matters, and averaging would
  *    hide that behind four confident cells.
  */
-export const parseNormalizeStage: StageRunner<RawRow[], StageResult<NormalizedRow>> = {
+export const parseNormalizeStage: StageRunner<
+  RawRow[],
+  StageResult<NormalizedRow>
+> = {
   stage: 'PARSE_NORMALIZE',
 
-  async run(ctx: StageContext, rows: RawRow[]): Promise<StageResult<NormalizedRow>> {
+  async run(
+    ctx: StageContext,
+    rows: RawRow[],
+  ): Promise<StageResult<NormalizedRow>> {
     return {
       rows: rows.map((row) => normalizeRow(ctx, row)),
       rejections: [],
@@ -66,10 +74,45 @@ export const parseNormalizeStage: StageRunner<RawRow[], StageResult<NormalizedRo
 function normalizeRow(ctx: StageContext, row: RawRow): NormalizedRow {
   const cell = (name: string): string | undefined => row.raw[name];
   const scores: number[] = [];
+  const provenance: NormalizationProvenance = {};
 
-  /** Records a confidence only when the dealer supplied something to score. */
-  const score = (raw: string | undefined, confidence: number): void => {
-    if (coerceText(raw) !== null) scores.push(confidence);
+  /**
+   * Records both the row-level score and this field's own provenance entry in
+   * one call, so the two cannot drift — a field scored here but missing from
+   * `provenance` would silently vanish from the review UI's field list while
+   * still counting toward the row's confidence.
+   */
+  const record = (
+    field: keyof VehicleFields,
+    raw: string | undefined,
+    confidence: number,
+    source: FieldProvenance['source'],
+  ): void => {
+    if (coerceText(raw) === null) return;
+    scores.push(confidence);
+    provenance[field] = { source, confidence };
+  };
+
+  /**
+   * Provenance only, no effect on the row score.
+   *
+   * vehicle_type is the one field whose value can come from the dictionary
+   * even when the dealer's own cell was blank (deriveVehicleType falls back
+   * to the matched model/make). The row-level score has never counted that
+   * derivation — score() only ever fired on a non-blank `vehicle_type` cell,
+   * matching every other dictionary-backed field — and this deliberately
+   * leaves that alone rather than changing what routes a row to Groq. What it
+   * does add is the provenance entry itself: a value FR-42.1 wants the review
+   * UI able to show as dictionary-sourced even though nothing scored it.
+   */
+  const recordProvenanceOnly = (
+    field: keyof VehicleFields,
+    value: unknown,
+    confidence: number,
+    source: FieldProvenance['source'],
+  ): void => {
+    if (value === undefined || value === null) return;
+    provenance[field] = { source, confidence };
   };
 
   const normalized: Partial<VehicleFields> = {};
@@ -77,55 +120,132 @@ function normalizeRow(ctx: StageContext, row: RawRow): NormalizedRow {
   // --- make, then model scoped to it -------------------------------------
   const makeHit = ctx.dictionary.resolveMake(cell('make') ?? '');
   if (makeHit) normalized.make = makeHit.canonical;
-  score(cell('make'), makeHit?.confidence ?? CONFIDENCE_UNRESOLVED);
+  record(
+    'make',
+    cell('make'),
+    makeHit?.confidence ?? CONFIDENCE_UNRESOLVED,
+    'dictionary',
+  );
 
   // A model is only meaningful under a known make: "Civic" resolves under
   // Honda and must not resolve under Toyota. resolveModel enforces that, and
   // returns null outright when the make itself is unresolved.
-  const modelHit = ctx.dictionary.resolveModel(cell('model') ?? '', makeHit?.id ?? null);
+  const modelHit = ctx.dictionary.resolveModel(
+    cell('model') ?? '',
+    makeHit?.id ?? null,
+  );
   if (modelHit) normalized.model = modelHit.canonical;
-  score(cell('model'), modelHit?.confidence ?? CONFIDENCE_UNRESOLVED);
+  record(
+    'model',
+    cell('model'),
+    modelHit?.confidence ?? CONFIDENCE_UNRESOLVED,
+    'dictionary',
+  );
 
   // --- vehicle_type: dealer's value first, dictionary second -------------
-  const vehicleType = deriveVehicleType(cell('vehicle_type'), modelHit, makeHit);
+  // Sourced 'dictionary' even for the explicit-value branch: deriveVehicleType
+  // still validates the dealer's own text against coerceVehicleType's
+  // vocabulary, so this is never a bare pass-through of raw input.
+  //
+  // Scored (and thus routed toward Groq on a miss) only when the dealer
+  // supplied the column themselves — record() preserves that, unchanged from
+  // before provenance existed. A value silently derived from the model/make
+  // still gets a provenance entry via recordProvenanceOnly, because FR-42.1's
+  // review UI should be able to say "we inferred PICKUP from the Hilux model"
+  // even though that derivation never affected whether Groq was consulted.
+  const vehicleType = deriveVehicleType(
+    cell('vehicle_type'),
+    modelHit,
+    makeHit,
+  );
   if (vehicleType.value) normalized.vehicleType = vehicleType.value;
-  if (coerceText(cell('vehicle_type')) !== null) scores.push(vehicleType.confidence);
+  record(
+    'vehicleType',
+    cell('vehicle_type'),
+    vehicleType.confidence,
+    'dictionary',
+  );
+  recordProvenanceOnly(
+    'vehicleType',
+    vehicleType.value,
+    vehicleType.confidence,
+    'dictionary',
+  );
 
   // --- numerics ----------------------------------------------------------
   assignNumber(normalized, 'manufactureYear', coerceYear(cell('year')));
-  assignNumber(normalized, 'registrationYear', coerceYear(cell('registration_year')));
+  assignNumber(
+    normalized,
+    'registrationYear',
+    coerceYear(cell('registration_year')),
+  );
   assignNumber(normalized, 'price', coerceNumber(cell('price')));
   assignNumber(normalized, 'mileage', coerceInteger(cell('mileage')));
-  assignNumber(normalized, 'engineCapacityCc', coerceInteger(cell('engine_capacity_cc')));
+  assignNumber(
+    normalized,
+    'engineCapacityCc',
+    coerceInteger(cell('engine_capacity_cc')),
+  );
   assignNumber(normalized, 'ownersCount', coerceInteger(cell('owners_count')));
 
-  score(cell('year'), coerceYear(cell('year')) === null ? CONFIDENCE_UNRESOLVED : NEUTRAL);
-  score(cell('price'), coerceNumber(cell('price')) === null ? CONFIDENCE_UNRESOLVED : NEUTRAL);
-  score(
+  record(
+    'manufactureYear',
+    cell('year'),
+    coerceYear(cell('year')) === null ? CONFIDENCE_UNRESOLVED : NEUTRAL,
+    'rule',
+  );
+  record(
+    'price',
+    cell('price'),
+    coerceNumber(cell('price')) === null ? CONFIDENCE_UNRESOLVED : NEUTRAL,
+    'rule',
+  );
+  record(
+    'mileage',
     cell('mileage'),
     coerceInteger(cell('mileage')) === null ? CONFIDENCE_UNRESOLVED : NEUTRAL,
+    'rule',
   );
 
   // --- enums -------------------------------------------------------------
   const fuelType = coerceFuelType(cell('fuel_type'));
   if (fuelType) normalized.fuelType = fuelType;
-  score(cell('fuel_type'), fuelType ? NEUTRAL : CONFIDENCE_UNRESOLVED);
+  record(
+    'fuelType',
+    cell('fuel_type'),
+    fuelType ? NEUTRAL : CONFIDENCE_UNRESOLVED,
+    'rule',
+  );
 
   const transmission = coerceTransmission(cell('transmission'));
   if (transmission) normalized.transmissionType = transmission;
-  score(cell('transmission'), transmission ? NEUTRAL : CONFIDENCE_UNRESOLVED);
+  record(
+    'transmissionType',
+    cell('transmission'),
+    transmission ? NEUTRAL : CONFIDENCE_UNRESOLVED,
+    'rule',
+  );
 
   // Condition is left absent when unrecognised rather than defaulted here —
   // enrich (§A6) applies `USED` deliberately, and doing it in two places would
   // make the default impossible to find.
   const condition = coerceCondition(cell('condition'));
   if (condition) normalized.condition = condition;
-  score(cell('condition'), condition ? NEUTRAL : CONFIDENCE_UNRESOLVED);
+  record(
+    'condition',
+    cell('condition'),
+    condition ? NEUTRAL : CONFIDENCE_UNRESOLVED,
+    'rule',
+  );
 
   // --- free text ---------------------------------------------------------
   assignText(normalized, 'color', coerceText(cell('color')));
   assignText(normalized, 'locationCity', coerceText(cell('location_city')));
-  assignText(normalized, 'locationDistrict', coerceText(cell('location_district')));
+  assignText(
+    normalized,
+    'locationDistrict',
+    coerceText(cell('location_district')),
+  );
   assignText(normalized, 'chassisNumber', coerceText(cell('chassis_number')));
   assignText(normalized, 'description', coerceText(cell('description')));
 
@@ -138,7 +258,9 @@ function normalizeRow(ctx: StageContext, row: RawRow): NormalizedRow {
   return {
     ...row,
     normalized,
-    confidence: scores.length === 0 ? CONFIDENCE_UNRESOLVED : Math.min(...scores),
+    confidence:
+      scores.length === 0 ? CONFIDENCE_UNRESOLVED : Math.min(...scores),
+    provenance,
   };
 }
 
@@ -193,7 +315,8 @@ function assignNumber<K extends keyof VehicleFields>(
   key: K,
   value: number | null,
 ): void {
-  if (value !== null) (target as Record<string, unknown>)[key as string] = value;
+  if (value !== null)
+    (target as Record<string, unknown>)[key as string] = value;
 }
 
 function assignText<K extends keyof VehicleFields>(
@@ -201,5 +324,6 @@ function assignText<K extends keyof VehicleFields>(
   key: K,
   value: string | null,
 ): void {
-  if (value !== null) (target as Record<string, unknown>)[key as string] = value;
+  if (value !== null)
+    (target as Record<string, unknown>)[key as string] = value;
 }

@@ -102,3 +102,8 @@ output "role_arns" {
   description = "Map of service name -> execution role ARN"
   value       = { for k, v in aws_iam_role.lambda : k => v.arn }
 }
+
+output "role_names" {
+  description = "Map of service name -> execution role NAME, for attaching an aws_iam_role_policy from another module (e.g. modules/s3-images) without that module needing to parse an ARN."
+  value       = { for k, v in aws_iam_role.lambda : k => v.name }
+}

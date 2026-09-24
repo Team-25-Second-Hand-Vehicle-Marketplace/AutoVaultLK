@@ -1,4 +1,5 @@
 import type {
+  NormalizationProvenance,
   NormalizedRow,
   StageContext,
   StageResult,
@@ -52,11 +53,20 @@ export type GroqNormalizeResult = StageResult<NormalizedRow> & {
  * 3. **It never rejects a row.** Same reason as parseNormalize: validateRows
  *    is the single gate.
  */
-export const groqNormalizeStage: StageRunner<NormalizedRow[], GroqNormalizeResult> = {
+export const groqNormalizeStage: StageRunner<
+  NormalizedRow[],
+  GroqNormalizeResult
+> = {
   stage: 'GROQ_NORMALIZE',
 
-  async run(ctx: StageContext, rows: NormalizedRow[]): Promise<GroqNormalizeResult> {
-    const candidates = selectCandidates(rows, ctx.config.groqConfidenceThreshold);
+  async run(
+    ctx: StageContext,
+    rows: NormalizedRow[],
+  ): Promise<GroqNormalizeResult> {
+    const candidates = selectCandidates(
+      rows,
+      ctx.config.groqConfidenceThreshold,
+    );
 
     // No key is the normal CI and local-development state, so this is a clean
     // SKIPPED rather than a warning: the pipeline is working as designed.
@@ -99,7 +109,12 @@ async function requestRepairs(
   candidates: NormalizedRow[],
 ): Promise<GroqRepair[]> {
   const { makes, modelsByMake } = ctx.dictionary.vocabulary();
-  const payload = buildUserPayload(candidates, ctx.dictionary, makes, modelsByMake);
+  const payload = buildUserPayload(
+    candidates,
+    ctx.dictionary,
+    makes,
+    modelsByMake,
+  );
 
   return parseRepairs(parseGroqJson(await complete(SYSTEM_PROMPT, payload)));
 }
@@ -117,6 +132,12 @@ async function requestRepairs(
  * A repaired row is scored CONFIDENCE_ALIAS: better than the fuzzy match that
  * failed, below an exact hit, because the LLM agreed with a value we already
  * held rather than reading the vehicle's papers.
+ *
+ * FR-42.1: `make` and `model` get a `source: 'groq'` provenance entry, with
+ * `reasoning` attached when Groq supplied one. Only the fields Groq actually
+ * repaired are marked — a repair whose make resolved but whose model did not
+ * leaves `model`'s existing (dictionary-sourced, unresolved) provenance in
+ * place rather than claiming Groq touched a field it did not change.
  */
 function applyRepairs(
   ctx: StageContext,
@@ -136,6 +157,14 @@ function applyRepairs(
     if (!makeHit) return row;
 
     const normalized = { ...row.normalized, make: makeHit.canonical };
+    const provenance: NormalizationProvenance = {
+      ...row.provenance,
+      make: {
+        source: 'groq',
+        confidence: CONFIDENCE_ALIAS,
+        ...(repair.reasoning ? { reasoning: repair.reasoning } : {}),
+      },
+    };
 
     // The model is only taken when it resolves *under the repaired make*, so a
     // model the LLM paired with the wrong manufacturer is dropped rather than
@@ -149,11 +178,18 @@ function applyRepairs(
       // vehicle_type follows the model, exactly as parseNormalize derives it —
       // otherwise a repaired Hilux would stay typed from the make's array.
       const derived = modelHit.vehicleTypes[0];
-      if (derived) normalized.vehicleType = derived as VehicleFields['vehicleType'];
+      if (derived)
+        normalized.vehicleType = derived as VehicleFields['vehicleType'];
+
+      provenance.model = {
+        source: 'groq',
+        confidence: CONFIDENCE_ALIAS,
+        ...(repair.reasoning ? { reasoning: repair.reasoning } : {}),
+      };
     }
 
     count++;
-    return { ...row, normalized, confidence: CONFIDENCE_ALIAS };
+    return { ...row, normalized, confidence: CONFIDENCE_ALIAS, provenance };
   });
 
   return { rows: merged, count };
@@ -174,7 +210,10 @@ export function selectCandidates(
   return rows.filter((row) => row.confidence < threshold);
 }
 
-function skipped(rows: NormalizedRow[], candidates: number): GroqNormalizeResult {
+function skipped(
+  rows: NormalizedRow[],
+  candidates: number,
+): GroqNormalizeResult {
   return {
     rows,
     rejections: [],

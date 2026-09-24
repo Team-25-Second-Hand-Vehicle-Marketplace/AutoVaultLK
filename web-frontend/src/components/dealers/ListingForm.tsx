@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -122,15 +123,32 @@ function toInput(values: ListingFormValues): CreateListingInput {
   }
 }
 
+/** Mirrors marketplace-service's ImageUploadService limits exactly, so a
+ * rejection happens client-side before a slow upload even starts. */
+const MAX_IMAGE_FILES = 10
+const MAX_IMAGE_SIZE_BYTES = 8 * 1024 * 1024
+const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+
 interface ListingFormProps {
   /** Present when editing; absent when creating. */
   listing?: DealerListing
-  onSubmit: (input: CreateListingInput) => Promise<void>
+  /**
+   * `images` is empty when the dealer chose not to change photos — on edit,
+   * that means "leave the existing set alone" (the page does not call the
+   * upload endpoint at all in that case, since FR-58's replace-not-append
+   * semantics would otherwise delete every photo the moment a dealer edited
+   * the price without re-selecting files).
+   */
+  onSubmit: (input: CreateListingInput, images: File[]) => Promise<void>
   onCancel: () => void
   submitLabel: string
 }
 
 export function ListingForm({ listing, onSubmit, onCancel, submitLabel }: ListingFormProps) {
+  const [images, setImages] = useState<File[]>([])
+  const [imageError, setImageError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
   const {
     register,
     handleSubmit,
@@ -159,11 +177,42 @@ export function ListingForm({ listing, onSubmit, onCancel, submitLabel }: Listin
       : undefined,
   })
 
+  const onFilesSelected = (fileList: FileList | null) => {
+    setImageError(null)
+    const files = fileList ? Array.from(fileList) : []
+
+    if (files.length === 0) {
+      setImages([])
+      return
+    }
+    if (files.length > MAX_IMAGE_FILES) {
+      setImageError(`Choose at most ${MAX_IMAGE_FILES} photos`)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      setImages([])
+      return
+    }
+    const rejected = files.find(
+      (f) => !ACCEPTED_IMAGE_TYPES.includes(f.type) || f.size > MAX_IMAGE_SIZE_BYTES,
+    )
+    if (rejected) {
+      setImageError(
+        !ACCEPTED_IMAGE_TYPES.includes(rejected.type)
+          ? `${rejected.name} is not a JPEG, PNG or WebP file`
+          : `${rejected.name} is larger than ${MAX_IMAGE_SIZE_BYTES / 1024 / 1024} MB`,
+      )
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      setImages([])
+      return
+    }
+
+    setImages(files)
+  }
+
   return (
     <form
       className="listing-form"
       onSubmit={handleSubmit(async (values) => {
-        await onSubmit(toInput(values))
+        await onSubmit(toInput(values), images)
       })}
       noValidate
     >
@@ -252,6 +301,28 @@ export function ListingForm({ listing, onSubmit, onCancel, submitLabel }: Listin
       <label className="form-field">
         <span>Description (optional)</span>
         <textarea rows={4} placeholder="Service history, extras, condition notes…" {...register('description')} />
+      </label>
+
+      <label className="form-field">
+        <span>{listing ? 'Replace photos (optional)' : 'Photos (optional)'}</span>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={ACCEPTED_IMAGE_TYPES.join(',')}
+          multiple
+          onChange={(e) => onFilesSelected(e.target.files)}
+        />
+        <span className="upload-field__hint">
+          {listing
+            ? 'Choosing new photos replaces the ones already on this listing. Leave empty to keep them.'
+            : `Up to ${MAX_IMAGE_FILES} JPEG, PNG or WebP photos, ${MAX_IMAGE_SIZE_BYTES / 1024 / 1024} MB each. The first photo becomes the main image.`}
+        </span>
+        {images.length > 0 && (
+          <span className="upload-field__hint">
+            {images.length} photo{images.length === 1 ? '' : 's'} selected
+          </span>
+        )}
+        {imageError && <span className="form-error">{imageError}</span>}
       </label>
 
       <div className="dealer-page__actions">

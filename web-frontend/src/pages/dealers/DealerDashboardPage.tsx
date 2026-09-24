@@ -25,7 +25,7 @@ const listingsError = (err: unknown) => toErrorMessage(err, 'Could not load your
 
 export function DealerDashboardPage() {
   const fetchProfile = useCallback((signal: AbortSignal) => getMyDealerProfile(signal), [])
-  const fetchListings = useCallback((signal: AbortSignal) => getMyListings(signal), [])
+  const fetchListings = useCallback((signal: AbortSignal) => getMyListings(undefined, signal), [])
 
   const profile = useAsyncData<DealerProfile>(fetchProfile, profileError)
   const listings = useAsyncData<DealerListing[]>(fetchListings, listingsError)

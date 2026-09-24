@@ -69,6 +69,58 @@ export function exactSpanHit(
   return undefined;
 }
 
+/**
+ * Words that describe a vehicle's character rather than naming a specific
+ * brand/model, kept out of fuzzy make/model/body-type matching entirely.
+ *
+ * Trigram/edit-distance similarity cannot tell these apart from a genuine
+ * typo on its own terms: "sporty" scores CLOSER to "Sportage" (0.625) than
+ * several real typos this parser must keep correcting score against their
+ * intended model — e.g. "hunday"->"hyundai" (0.400), "mistubisi"->
+ * "mitsubishi" (0.381) — so no similarity threshold can admit the real
+ * typos while excluding this kind of coincidental match. A plain English-
+ * dictionary check does not work either: many real model names ARE common
+ * English words (Swift, Move, March, Rush, Fit, Leaf, Sunny, Ace, Noah,
+ * King, Insight, Juke, Ray), so blocking "any dictionary word" would break
+ * typo-correction for exactly the models this vocabulary needs to match.
+ *
+ * This list is therefore intentionally narrow and curated: vehicle-
+ * character adjectives that are never themselves the answer to a make/model
+ * lookup, so blocking them can only prevent false positives, never a real
+ * correction. A blocked word is not dropped — it is left unresolved and
+ * falls through to Groq / semantic (MiniLM) ranking, exactly like any other
+ * word the deterministic parser cannot place, so "sporty" still finds
+ * relevant listings via their description text instead of hard-locking to
+ * one wrong model.
+ *
+ * Extend this list only when a new false positive is found in practice —
+ * do not attempt to make it exhaustive up front.
+ */
+const VEHICLE_CHARACTER_WORDS = new Set([
+  'sporty',
+  'sport',
+  'luxury',
+  'luxurious',
+  'family',
+  'comfortable',
+  'comfy',
+  'reliable',
+  'economical',
+  'economy',
+  'cheap',
+  'affordable',
+  'budget',
+  'fast',
+  'powerful',
+  'stylish',
+  'classy',
+  'elegant',
+  'spacious',
+  'compact',
+  'practical',
+  'fuel',
+]);
+
 export function fuzzySpanHit(
   tokens: ParserToken[],
   start: number,
@@ -84,6 +136,7 @@ export function fuzzySpanHit(
     }
     const probe = compact(joinSpan(tokens, start, span));
     if (probe.length < 4) continue;
+    if (VEHICLE_CHARACTER_WORDS.has(probe)) continue;
 
     let best: DictionaryEntry | undefined;
     let bestScore = 0;
@@ -308,6 +361,7 @@ export function fuzzyClosedHit(
   if (!spanIsOpen(tokens, start, 1)) return undefined;
   const probe = compact(tokens[start].norm);
   if (probe.length < 4) return undefined;
+  if (VEHICLE_CHARACTER_WORDS.has(probe)) return undefined;
 
   let best: ClosedEnumHit | undefined;
   let bestScore = 0;
