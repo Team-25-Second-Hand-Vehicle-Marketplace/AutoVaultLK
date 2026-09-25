@@ -40,6 +40,21 @@ resource "aws_iam_openid_connect_provider" "github" {
 
 locals {
   oidc_provider_arn = var.create_oidc_provider ? aws_iam_openid_connect_provider.github[0].arn : var.existing_oidc_provider_arn
+
+  # GitHub issues one of two `sub` claim shapes depending on the repo's OIDC
+  # settings (GET /repos/{repo}/actions/oidc/customization/sub):
+  #   name-based:   repo:ORG/REPO:ref:refs/heads/main
+  #   immutable ID: repo:ORG@ORG_ID/REPO@REPO_ID:ref:refs/heads/main
+  # New repos default to the immutable form, which the name-based condition
+  # silently rejects ("Not authorized to perform sts:AssumeRoleWithWebIdentity").
+  # Both are exact matches for this one repo's main branch — accepting the
+  # second does not widen who can assume the role.
+  main_branch_subjects = concat(
+    ["repo:${var.github_org}/${var.github_repo}:ref:refs/heads/main"],
+    var.github_org_id != null && var.github_repo_id != null ? [
+      "repo:${var.github_org}@${var.github_org_id}/${var.github_repo}@${var.github_repo_id}:ref:refs/heads/main"
+    ] : [],
+  )
 }
 
 data "aws_iam_policy_document" "github_assume" {
@@ -60,7 +75,7 @@ data "aws_iam_policy_document" "github_assume" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_org}/${var.github_repo}:ref:refs/heads/main"]
+      values   = local.main_branch_subjects
     }
   }
 }

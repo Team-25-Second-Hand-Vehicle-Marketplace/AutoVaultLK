@@ -20,6 +20,20 @@ variable "github_repo" {
   description = "Repo name only, e.g. AutoVaultLK"
 }
 
+# Numeric IDs, needed when the repo issues immutable-ID subject claims (see
+# main_branch_subjects in main.tf). Get them with:
+#   gh api repos/<org>/<repo> --jq '.owner.id, .id'
+# Leave both null to trust only the name-based subject.
+variable "github_org_id" {
+  type    = string
+  default = null
+}
+
+variable "github_repo_id" {
+  type    = string
+  default = null
+}
+
 # AWS allows only one OIDC provider per unique URL per account. If this
 # account already has one for token.actions.githubusercontent.com (common if
 # any other repo/project already set up GitHub Actions OIDC here), set this

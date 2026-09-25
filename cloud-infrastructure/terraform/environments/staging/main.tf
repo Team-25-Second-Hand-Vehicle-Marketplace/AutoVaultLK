@@ -754,6 +754,8 @@ module "github_oidc" {
   environment                = var.environment
   github_org                 = var.github_org
   github_repo                = var.github_repo
+  github_org_id              = var.github_org_id
+  github_repo_id             = var.github_repo_id
   create_oidc_provider       = var.create_github_oidc_provider
   existing_oidc_provider_arn = var.create_github_oidc_provider ? null : data.aws_iam_openid_connect_provider.github[0].arn
 

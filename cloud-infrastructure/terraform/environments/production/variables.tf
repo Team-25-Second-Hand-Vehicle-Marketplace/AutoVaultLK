@@ -63,6 +63,18 @@ variable "github_repo" {
   default = "AutoVaultLK"
 }
 
+# This repo issues immutable-ID OIDC subject claims, so the deploy role's trust
+# policy needs its numeric IDs too: gh api repos/<org>/<repo> --jq '.owner.id, .id'
+variable "github_org_id" {
+  type    = string
+  default = "301171207"
+}
+
+variable "github_repo_id" {
+  type    = string
+  default = "1329507255"
+}
+
 # Set false only if this AWS account already has a GitHub OIDC provider from
 # another project — AWS allows just one per unique provider URL per account.
 variable "create_github_oidc_provider" {
