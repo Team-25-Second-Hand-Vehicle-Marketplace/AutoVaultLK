@@ -9,6 +9,7 @@ import type { UploadJob } from '../../../src/infrastructure/database/entities/up
  */
 describe('JobStatusService', () => {
   const repository = { findById: jest.fn(), findRejectedRecords: jest.fn() };
+  const stageLogRepository = { findForJob: jest.fn() };
   let service: JobStatusService;
 
   const job = (overrides: Partial<UploadJob> = {}): UploadJob =>
@@ -27,7 +28,11 @@ describe('JobStatusService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new JobStatusService(repository as never);
+    stageLogRepository.findForJob.mockResolvedValue([]);
+    service = new JobStatusService(
+      repository as never,
+      stageLogRepository as never,
+    );
   });
 
   it('returns the job for its owning dealer', async () => {
@@ -42,6 +47,33 @@ describe('JobStatusService', () => {
         invalidRecords: 3,
       }),
     );
+  });
+
+  it('includes per-stage progress from the ETL stage log', async () => {
+    repository.findById.mockResolvedValue(job());
+    stageLogRepository.findForJob.mockResolvedValue([
+      {
+        stage: 'EMBED',
+        status: 'SUCCEEDED',
+        chunkId: 2,
+        retryCount: 0,
+        startedAt: new Date('2026-09-01T10:01:00Z'),
+        completedAt: new Date('2026-09-01T10:01:30Z'),
+        errorMessage: null,
+      },
+    ]);
+
+    const result = await service.getJobStatus('job-1', 'dealer-1');
+
+    expect(stageLogRepository.findForJob).toHaveBeenCalledWith('job-1');
+    expect(result.stages).toEqual([
+      expect.objectContaining({
+        stage: 'EMBED',
+        status: 'SUCCEEDED',
+        chunkId: 2,
+        retryCount: 0,
+      }),
+    ]);
   });
 
   it('scopes the lookup by dealer, not just job id', async () => {

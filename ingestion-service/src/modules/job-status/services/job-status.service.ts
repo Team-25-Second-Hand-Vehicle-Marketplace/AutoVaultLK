@@ -1,6 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import type { EtlStageLog } from '../../../infrastructure/database/entities/etl-stage-log.entity';
 import type { RejectedRecord } from '../../../infrastructure/database/entities/rejected-record.entity';
-import { JobStatusResponseDto } from '../dto/job-status-response.dto';
+import { EtlStageLogRepository } from '../../ingestion/repositories/etl-stage-log.repository';
+import {
+  JobStatusResponseDto,
+  StageProgressDto,
+} from '../dto/job-status-response.dto';
 import {
   DEFAULT_REJECTIONS_PAGE_SIZE,
   RejectionsQueryDto,
@@ -22,7 +27,10 @@ const RAW_DATA_MAX_KEYS = 24;
 
 @Injectable()
 export class JobStatusService {
-  constructor(private readonly jobStatusRepository: JobStatusRepository) {}
+  constructor(
+    private readonly jobStatusRepository: JobStatusRepository,
+    private readonly etlStageLogRepository: EtlStageLogRepository,
+  ) {}
 
   async getJobStatus(
     id: string,
@@ -34,6 +42,8 @@ export class JobStatusService {
       throw new NotFoundException(`Upload job with id ${id} not found`);
     }
 
+    const stageLogs = await this.etlStageLogRepository.findForJob(id);
+
     return {
       id: job.id,
       status: job.status,
@@ -43,6 +53,7 @@ export class JobStatusService {
       invalidRecords: job.invalidRecords,
       createdAt: job.createdAt,
       updatedAt: job.updatedAt,
+      stages: stageLogs.map(toStageProgressDto),
     };
   }
 
@@ -84,6 +95,18 @@ export class JobStatusService {
       totalPages: Math.ceil(total / limit),
     };
   }
+}
+
+function toStageProgressDto(log: EtlStageLog): StageProgressDto {
+  return {
+    stage: log.stage,
+    status: log.status,
+    chunkId: log.chunkId,
+    retryCount: log.retryCount,
+    startedAt: log.startedAt,
+    completedAt: log.completedAt,
+    errorMessage: log.errorMessage,
+  };
 }
 
 function toDto(row: RejectedRecord): RejectedRecordDto {

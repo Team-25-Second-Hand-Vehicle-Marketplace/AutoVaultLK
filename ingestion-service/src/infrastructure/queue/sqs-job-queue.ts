@@ -7,11 +7,13 @@ import type { JobQueue, UploadJobMessage } from '../ports/job-queue.port';
  * SQS-backed JobQueue for deployment (ADR-007).
  *
  * **Publish only, deliberately.** InProcessJobQueue carries a `setHandler`
- * because locally the same process must also consume; in AWS the queue is read
- * by an EventBridge Pipe (or a Lambda) that starts a Step Functions execution,
- * and nothing in this service consumes it. A `setHandler` here would be a
- * method that silently does nothing — worse than its absence, because the
- * absence is a compile error and the no-op is a support ticket.
+ * because locally the same process must also consume; in AWS, the deployed
+ * MVP path (see production/main.tf's ingestion-service note) has
+ * etl-worker.ts consume this queue directly via a Lambda SQS event source
+ * mapping and run LocalOrchestrator.run(jobId) — not this class. A
+ * `setHandler` here would be a method that silently does nothing — worse
+ * than its absence, because the absence is a compile error and the no-op is
+ * a support ticket.
  *
  * The message stays just the job id, exactly as the port documents: the
  * pipeline re-reads the job row rather than trusting a payload, so a redelivered
