@@ -1,10 +1,12 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { ProductionExceptionFilter } from './common/filters/production-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.enableCors();
+  app.useGlobalFilters(new ProductionExceptionFilter());
 
   // Same wiring as the other services (see marketplace-service/src/main.ts).
   // transform: true is what actually coerces incoming values via @Type(), so a

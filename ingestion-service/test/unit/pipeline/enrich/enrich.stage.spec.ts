@@ -127,6 +127,99 @@ describe('enrichStage', () => {
     });
   });
 
+  describe('category-gated specs (SRS Appendix B.2)', () => {
+    it('ignores CAR/SUV-only columns on a non-CAR/SUV vehicle_type', async () => {
+      // A TRUCK row with a seats/doors/drive_type column should not get a CAR
+      // cabin spec — the column describes the wrong category of vehicle.
+      const result = await enrich(
+        row({ vehicleType: 'TRUCK' }, { seats: '5', doors: '4', drive_type: '4wd' }),
+      );
+
+      expect(result.normalized.specs).toBeUndefined();
+    });
+
+    it('reads BIKE-only specs only when vehicle_type is BIKE', async () => {
+      const bike = await enrich(
+        row(
+          { vehicleType: 'BIKE' },
+          { stroke_type: '4-stroke', cooling_system: 'liquid', start_type: 'electric', abs: 'yes' },
+        ),
+      );
+
+      expect(bike.normalized.specs).toEqual({
+        stroke_type: '4_STROKE',
+        cooling_system: 'LIQUID',
+        start_type: 'ELECTRIC',
+        abs_equipped: true,
+      });
+
+      // Same columns on a CAR row are ignored — a car has no stroke_type.
+      const car = await enrich(
+        row({ vehicleType: 'CAR' }, { stroke_type: '4-stroke', cooling_system: 'liquid' }),
+      );
+      expect(car.normalized.specs).toBeUndefined();
+    });
+
+    it('reads VAN/BUS-only specs only when vehicle_type is VAN or BUS', async () => {
+      const van = await enrich(
+        row(
+          { vehicleType: 'VAN' },
+          { seating_capacity: '12', roof_type: 'high roof', wheelbase: 'long', door_configuration: 'sliding' },
+        ),
+      );
+
+      expect(van.normalized.specs).toEqual({
+        seating_capacity: 12,
+        roof_type: 'HIGH_ROOF',
+        wheelbase: 'LONG',
+        door_configuration: 'SLIDING',
+      });
+
+      const bus = await enrich(row({ vehicleType: 'BUS' }, { seating_capacity: '40' }));
+      expect(bus.normalized.specs).toEqual({ seating_capacity: 40 });
+    });
+
+    it('reads TRUCK-only specs only when vehicle_type is a truck category', async () => {
+      const truck = await enrich(
+        row(
+          { vehicleType: 'TRUCK' },
+          {
+            load_capacity_kg: '5000',
+            payload_capacity_kg: '4500',
+            axle_count: '3',
+            cargo_bed_type: 'flatbed',
+          },
+        ),
+      );
+
+      expect(truck.normalized.specs).toEqual({
+        load_capacity_kg: 5000,
+        payload_capacity_kg: 4500,
+        axle_count: 3,
+        cargo_bed_type: 'FLATBED',
+      });
+
+      // LORRY and PICKUP share the truck category.
+      const lorry = await enrich(row({ vehicleType: 'LORRY' }, { axle_count: '2' }));
+      expect(lorry.normalized.specs).toEqual({ axle_count: 2 });
+    });
+
+    it('applies universal equipment specs regardless of vehicle_type', async () => {
+      // A van or truck can have a sunroof too — these are not category-gated.
+      const result = await enrich(
+        row({ vehicleType: 'TRUCK' }, { sunroof: 'yes', full_option: 'yes' }),
+      );
+
+      expect(result.normalized.specs).toEqual({ sunroof: true, full_option: true });
+    });
+
+    it('drops a category enum value outside its allowed list', async () => {
+      const result = await enrich(row({ vehicleType: 'BIKE' }, { stroke_type: 'rotary' }));
+
+      expect(result.normalized.specs).toBeUndefined();
+    });
+  });
+
   it('reads sunroof as a boolean', async () => {
     expect((await enrich(row({}, { sunroof: 'yes' }))).normalized.specs).toEqual({
       sunroof: true,
@@ -173,14 +266,19 @@ describe('enrichStage', () => {
   });
 
   describe('unmapped dealer columns', () => {
-    it('carries them into the description rather than dropping them', async () => {
+    it('carries them into both specs (verbatim) and the description, rather than dropping them', async () => {
       // "Warranty: 2 years" is real information a buyer would search for, and
-      // dropping it silently loses the only place it existed. It cannot go in
-      // specs — that column is queried against KNOWN_SPEC_KEYS, so an unknown
-      // key is unqueryable weight that still looks like data.
+      // dropping it silently loses the only place it existed. It is written to
+      // specs verbatim so the dealer's own data survives structurally (FR-15 /
+      // Appendix B.2), and to description so it still reaches the embedding —
+      // no search facet queries an unknown specs key, but that is a filtering
+      // limitation, not a reason to lose the data.
       const result = await enrich(row({}, { warranty: '2 years', service_records: 'full' }));
 
-      expect(result.normalized.specs).toBeUndefined();
+      expect(result.normalized.specs).toEqual({
+        warranty: '2 years',
+        service_records: 'full',
+      });
       expect(result.normalized.description).toBe('Warranty: 2 years. Service records: full.');
     });
 
@@ -212,7 +310,7 @@ describe('enrichStage', () => {
       expect((await enrich(row({}, { warranty: '   ' }))).normalized.description).toBeUndefined();
     });
 
-    it('caps how much it appends', async () => {
+    it('caps how much it appends to the description', async () => {
       // A dealer export with forty internal columns would otherwise bury what
       // they actually wrote and dominate the embedding's input.
       const raw: Record<string, string> = {};
@@ -223,14 +321,31 @@ describe('enrichStage', () => {
       expect(description.split('. ')).toHaveLength(8);
     });
 
-    it('truncates an over-long value', async () => {
+    it('caps how many unmapped columns land in specs', async () => {
+      // Separate cap from the description's: a dealer export with dozens of
+      // DMS columns should not turn specs into an unbounded bag either.
+      const raw: Record<string, string> = {};
+      for (let i = 0; i < 30; i++) raw[`extra_${i}`] = `value ${i}`;
+
+      const specs = (await enrich(row({}, raw))).normalized.specs ?? {};
+
+      expect(Object.keys(specs)).toHaveLength(20);
+    });
+
+    it('truncates an over-long value in the description', async () => {
       const result = await enrich(row({}, { notes_internal: 'x'.repeat(200) }));
 
       expect((result.normalized.description ?? '').length).toBeLessThan(100);
     });
+
+    it('truncates an over-long value in specs', async () => {
+      const result = await enrich(row({}, { notes_internal: 'x'.repeat(300) }));
+
+      expect((result.normalized.specs?.notes_internal as string).length).toBeLessThanOrEqual(200);
+    });
   });
 
-  it('leaves specs absent rather than writing an empty object', async () => {
+  it('leaves specs absent when nothing produced one', async () => {
     expect((await enrich(row())).normalized.specs).toBeUndefined();
   });
 

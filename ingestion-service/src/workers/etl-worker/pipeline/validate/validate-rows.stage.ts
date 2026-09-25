@@ -113,6 +113,21 @@ function checkRow(row: NormalizedRow): string[] {
   if (f.price === undefined) reasons.push(missing('price', row));
   if (f.mileage === undefined) reasons.push(missing('mileage', row));
 
+  // Widened from optional to required per the updated SRS Appendix A — a
+  // listing missing any of these was judged too thin for a buyer to
+  // evaluate. Checked the same way as the original five: absent means
+  // parseNormalize could not resolve or parse the cell.
+  if (!f.fuelType) reasons.push(missing('fuel_type', row));
+  if (!f.transmissionType) reasons.push(missing('transmission', row));
+  if (!f.color) reasons.push(missing('color', row));
+  if (f.engineCapacityCc === undefined || f.engineCapacityCc === null) {
+    reasons.push(missing('engine_capacity_cc', row));
+  }
+  if (f.ownersCount === undefined || f.ownersCount === null) {
+    reasons.push(missing('owners_count', row));
+  }
+  if (!f.locationDistrict) reasons.push(missing('location_district', row));
+
   // vehicleType and condition are required by the column but supplied by
   // derivation and defaulting rather than by the dealer, so an absent value
   // here is not reported as a missing cell — enrich fills them. Only a value

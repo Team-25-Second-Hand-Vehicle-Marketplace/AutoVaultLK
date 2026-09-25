@@ -24,10 +24,15 @@ describe('ListingService', () => {
   const imageUploadService = {
     replaceImages: jest.fn(),
   };
+  const imageUrlResolver = {
+    resolve: jest.fn().mockResolvedValue(null),
+    resolveAll: jest.fn().mockResolvedValue([]),
+  };
   const service = new ListingService(
     listingRepository as never,
     dealerService as never,
     imageUploadService as never,
+    imageUrlResolver as never,
   );
 
   beforeEach(() => jest.clearAllMocks());

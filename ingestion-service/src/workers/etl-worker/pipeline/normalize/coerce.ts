@@ -22,12 +22,15 @@ const UNITS = /\s*(?:kms?|kilometers?|kilometres?|cc|c\.c\.|km\/h|miles?)\s*$/gi
  * exactly what they look like; treating them as unparseable would reject rows
  * whose price is perfectly clear to any human reader.
  */
-const SHORTHAND = /^([\d.]+)\s*(k|m|lakhs?|lacs?|crores?|mn)$/i;
+const SHORTHAND = /^([\d.]+)\s*(k|m|mil|mill|million|lakhs?|lacs?|crores?|mn)$/i;
 
 const MULTIPLIERS: Record<string, number> = {
   k: 1_000,
   m: 1_000_000,
   mn: 1_000_000,
+  mil: 1_000_000,
+  mill: 1_000_000,
+  million: 1_000_000,
   lakh: 100_000,
   lakhs: 100_000,
   lac: 100_000,

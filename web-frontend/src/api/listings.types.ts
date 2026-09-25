@@ -26,6 +26,21 @@ export interface VehicleNormalization {
 }
 
 /**
+ * An image row on a dealer's own listing, with `url`/`thumbnailUrl` already
+ * resolved server-side (NFR-19 — the raw stored key is never itself
+ * fetchable). Distinct from UploadedVehicleImage, which is the shape POST
+ * /listings/:id/images returns right after an upload and carries no resolved
+ * URL yet.
+ */
+export interface DealerListingImage {
+  id: string
+  isPrimary: boolean
+  displayOrder: number
+  url: string | null
+  thumbnailUrl: string | null
+}
+
+/**
  * A row from GET /marketplace/listings/mine — the dealer's own inventory across
  * every status, not the public search-result shape.
  *
@@ -53,6 +68,21 @@ export interface DealerListing {
 
   /** FR-42.1: null for a manually-created listing or one predating the column. */
   normalization: VehicleNormalization | null
+
+  /** Type-specific attributes the enrich stage captured — body_type, seats, sunroof, etc. */
+  specs: Record<string, unknown> | null
+
+  /**
+   * FR-35.2: set when this listing's registration_number was blank at
+   * upload, so no automated image match could run — the dealer still needs
+   * to attach a photo (or clear the flag by editing it) before it should go
+   * LIVE. Absent/false on a manually-created listing, which always has a
+   * registration number or none required at all.
+   */
+  needsManualReview: boolean
+  reviewReason: string | null
+
+  images: DealerListingImage[]
 }
 
 /** GET /marketplace/listings/mine?sort=... — FR-42.1's confidence-ascending sort. */

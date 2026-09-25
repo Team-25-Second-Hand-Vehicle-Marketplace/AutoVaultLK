@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { registerDealer } from '../../api/auth.api'
+import { registerDealer, uploadVerificationDocument } from '../../api/auth.api'
 import { isTokenResponse } from '../../api/auth.types'
 import { saveSession } from '../../api/auth.storage'
 import { toErrorMessage } from '../../api/client'
@@ -11,6 +11,22 @@ import { BrandMark } from '../../components/layout/BrandMark'
 import { Button } from '../../components/ui/Button'
 import { FormField } from '../../components/ui/FormField'
 import { ErrorBanner } from '../../components/ui/ErrorBanner'
+
+/** Mirrors auth-user-service's DocumentUploadService limits exactly. */
+const ACCEPTED_DOCUMENT_TYPES = ['application/pdf', 'image/jpeg', 'image/png']
+const MAX_DOCUMENT_SIZE_BYTES = 5 * 1024 * 1024
+
+/** Sri Lankan NIC: old format (9 digits + V/X) or new format (12 digits) — matches the backend's NIC_REGEX. */
+const NIC_REGEX = /^(?:\d{9}[vVxX]|\d{12})$/
+
+/** Small fixed set of dial codes — Sri Lanka first/default since this is a Sri Lankan marketplace. */
+const COUNTRY_CODES = [
+  { code: '+94', label: '🇱🇰 +94 (Sri Lanka)' },
+  { code: '+91', label: '🇮🇳 +91 (India)' },
+  { code: '+1', label: '🇺🇸 +1 (US/Canada)' },
+  { code: '+44', label: '🇬🇧 +44 (UK)' },
+  { code: '+61', label: '🇦🇺 +61 (Australia)' },
+] as const
 
 const schema = z
   .object({
@@ -20,15 +36,21 @@ const schema = z
     businessRegistrationNumber: z.string().trim().min(1, 'Registration number is required'),
     businessAddress: z.string().trim().min(4, 'Business address is required'),
     city: z.string().trim().min(2, 'City is required'),
+    // Individual dealers only — an NIC is a known-format identifier, so it's
+    // typed as text rather than uploaded as a document scan.
+    nicNumber: z.string().trim().optional(),
 
     // Step 2 — contact
     name: z.string().trim().min(2, 'Contact name is required'),
+    countryCode: z.enum(COUNTRY_CODES.map((c) => c.code) as [string, ...string[]]),
+    // Local number only — no leading 0, no country code. The backend's
+    // PHONE_REGEX (^\+?[1-9]\d{8,14}$) is applied to countryCode + this
+    // combined, so this stays digits-only and matches what's left of a
+    // Sri Lankan number once its leading 0 is stripped.
     contactNumber: z
       .string()
       .trim()
-      .min(9, 'Enter a valid contact number')
-      // Sri Lankan numbers, with or without the +94 country code.
-      .regex(/^(\+94|0)?[0-9\s-]{9,15}$/, 'Enter a valid Sri Lankan phone number'),
+      .regex(/^[1-9]\d{7,10}$/, 'Enter a valid phone number, without the leading 0'),
 
     // Step 3 — account
     email: z.string().min(1, 'Email is required').email('Enter a valid email address'),
@@ -44,6 +66,10 @@ const schema = z
     message: 'Passwords do not match',
     path: ['confirmPassword'],
   })
+  .refine((v) => v.dealerType !== 'individual' || NIC_REGEX.test(v.nicNumber ?? ''), {
+    message: 'Enter a valid NIC (9 digits + V/X, or 12 digits)',
+    path: ['nicNumber'],
+  })
 
 type FormValues = z.infer<typeof schema>
 
@@ -51,8 +77,8 @@ const STEPS = ['Company Info', 'Contact Details', 'Account Setup', 'Review'] as 
 
 /** Which fields each step is responsible for, for per-step validation. */
 const STEP_FIELDS: Array<(keyof FormValues)[]> = [
-  ['companyName', 'dealerType', 'businessRegistrationNumber', 'businessAddress', 'city'],
-  ['name', 'contactNumber'],
+  ['companyName', 'dealerType', 'businessRegistrationNumber', 'businessAddress', 'city', 'nicNumber'],
+  ['name', 'countryCode', 'contactNumber'],
   ['email', 'password', 'confirmPassword'],
   [],
 ]
@@ -61,6 +87,12 @@ export function DealerRegisterPage() {
   const [step, setStep] = useState(0)
   const [formError, setFormError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+
+  const [documentKey, setDocumentKey] = useState<string | null>(null)
+  const [documentName, setDocumentName] = useState<string | null>(null)
+  const [documentError, setDocumentError] = useState<string | null>(null)
+  const [documentUploading, setDocumentUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const {
     register,
@@ -71,16 +103,52 @@ export function DealerRegisterPage() {
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     mode: 'onTouched',
-    defaultValues: { dealerType: 'business' },
+    defaultValues: { dealerType: 'business', countryCode: '+94' },
   })
 
   const values = watch()
+
+  const onDocumentSelected = async (fileList: FileList | null) => {
+    setDocumentError(null)
+    const file = fileList?.[0]
+    if (!file) return
+
+    if (!ACCEPTED_DOCUMENT_TYPES.includes(file.type)) {
+      setDocumentError('Choose a PDF, JPEG or PNG file')
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      return
+    }
+    if (file.size > MAX_DOCUMENT_SIZE_BYTES) {
+      setDocumentError(`File is larger than ${MAX_DOCUMENT_SIZE_BYTES / 1024 / 1024} MB`)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      return
+    }
+
+    setDocumentUploading(true)
+    try {
+      const { key } = await uploadVerificationDocument(file)
+      setDocumentKey(key)
+      setDocumentName(file.name)
+    } catch (error) {
+      setDocumentError(toErrorMessage(error, 'Could not upload the document.'))
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    } finally {
+      setDocumentUploading(false)
+    }
+  }
 
   const next = async () => {
     // Validate only this step's fields, so a later step's emptiness doesn't
     // block progress through an earlier one.
     const ok = await trigger(STEP_FIELDS[step], { shouldFocus: true })
-    if (ok) setStep((s) => Math.min(s + 1, STEPS.length - 1))
+    if (!ok) return
+
+    if (step === 0 && values.dealerType === 'business' && !documentKey) {
+      setDocumentError('Upload your business registration certificate to continue')
+      return
+    }
+
+    setStep((s) => Math.min(s + 1, STEPS.length - 1))
   }
 
   const back = () => setStep((s) => Math.max(s - 1, 0))
@@ -88,6 +156,11 @@ export function DealerRegisterPage() {
   const onSubmit = handleSubmit(async (v) => {
     setFormError(null)
     try {
+      const verificationDocuments =
+        v.dealerType === 'business'
+          ? { businessRegistrationCertificate: documentKey ?? '' }
+          : { nic: (v.nicNumber ?? '').trim() }
+
       const result = await registerDealer({
         email: v.email.trim(),
         password: v.password,
@@ -97,10 +170,8 @@ export function DealerRegisterPage() {
         businessAddress: v.businessAddress.trim(),
         city: v.city.trim(),
         companyName: v.companyName.trim(),
-        contactNumber: v.contactNumber.trim(),
-        // No document-upload endpoint exists; the dealer stays PENDING until
-        // an admin verifies them, which is the real flow either way.
-        verificationDocuments: {},
+        contactNumber: `${v.countryCode}${v.contactNumber.trim()}`,
+        verificationDocuments,
       })
 
       if (isTokenResponse(result)) {
@@ -215,6 +286,36 @@ export function DealerRegisterPage() {
               error={errors.city?.message}
               {...register('city')}
             />
+
+            {values.dealerType === 'individual' ? (
+              <FormField
+                label="NIC Number *"
+                type="text"
+                placeholder="e.g. 200012345678 or 991234567V"
+                error={errors.nicNumber?.message}
+                {...register('nicNumber')}
+              />
+            ) : (
+              <div className="form-field">
+                <span>Business Registration Certificate *</span>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept={ACCEPTED_DOCUMENT_TYPES.join(',')}
+                  onChange={(e) => onDocumentSelected(e.target.files)}
+                />
+                <span className="upload-field__hint">
+                  PDF, JPEG or PNG, up to {MAX_DOCUMENT_SIZE_BYTES / 1024 / 1024} MB.
+                </span>
+                {documentUploading && (
+                  <span className="upload-field__hint">Uploading…</span>
+                )}
+                {documentName && !documentUploading && (
+                  <span className="upload-field__hint">Uploaded: {documentName}</span>
+                )}
+                {documentError && <span className="form-error">{documentError}</span>}
+              </div>
+            )}
           </>
         )}
 
@@ -232,14 +333,32 @@ export function DealerRegisterPage() {
               {...register('name')}
             />
 
-            <FormField
-              label="Contact Number *"
-              type="tel"
-              autoComplete="tel"
-              placeholder="e.g. +94 11 234 5678"
-              error={errors.contactNumber?.message}
-              {...register('contactNumber')}
-            />
+            <div className="form-field">
+              <span>Contact Number *</span>
+              <div className="phone-field">
+                <select
+                  className="phone-field__code"
+                  aria-label="Country code"
+                  {...register('countryCode')}
+                >
+                  {COUNTRY_CODES.map(({ code, label }) => (
+                    <option key={code} value={code}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="tel"
+                  autoComplete="tel-national"
+                  placeholder="e.g. 701234567"
+                  aria-invalid={Boolean(errors.contactNumber)}
+                  {...register('contactNumber')}
+                />
+              </div>
+              {errors.contactNumber && (
+                <span className="form-error">{errors.contactNumber.message}</span>
+              )}
+            </div>
           </>
         )}
 
@@ -303,12 +422,20 @@ export function DealerRegisterPage() {
                 <dt>Contact</dt>
                 <dd>
                   {values.name || '—'}
-                  {values.contactNumber ? ` · ${values.contactNumber}` : ''}
+                  {values.contactNumber ? ` · ${values.countryCode}${values.contactNumber}` : ''}
                 </dd>
               </div>
               <div>
                 <dt>Email</dt>
                 <dd>{values.email || '—'}</dd>
+              </div>
+              <div>
+                <dt>{values.dealerType === 'business' ? 'Registration certificate' : 'NIC'}</dt>
+                <dd>
+                  {values.dealerType === 'business'
+                    ? documentName || '—'
+                    : values.nicNumber || '—'}
+                </dd>
               </div>
             </dl>
 
@@ -331,7 +458,7 @@ export function DealerRegisterPage() {
           )}
 
           {step < STEPS.length - 1 ? (
-            <Button type="button" onClick={next}>
+            <Button type="button" onClick={next} disabled={documentUploading}>
               Continue →
             </Button>
           ) : (

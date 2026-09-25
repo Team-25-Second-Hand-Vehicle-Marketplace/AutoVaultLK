@@ -6,8 +6,8 @@
 |---|---|
 | S1 envelope + `asChunkStage` | ✅ done |
 | S2 S3 + SQS drivers | ✅ done |
-| S3 Lambda handlers | ✅ done — 10 handlers in `src/lambda/` |
-| S4 ASL state machine | ✅ done — `src/infrastructure/step-functions/etl-state-machine.asl.json` |
+| S3 Lambda handlers | ✅ done — 12 handlers in `src/lambda/`, including `process-images.ts` |
+| S4 ASL state machine | ✅ done — `src/infrastructure/step-functions/etl-state-machine.asl.json`, images run as a Parallel branch alongside the chunk Map, not sequentially after it |
 | S5 drift guard | ✅ done — `test/unit/step-functions/state-machine.spec.ts` |
 | S6 pooling | ✅ code side done (`max: 1`, timeouts); **RDS Proxy is infrastructure, lands with S8** |
 | S7 packaging | ✅ done — `function-config.ts` + the `docker/` Dockerfiles |

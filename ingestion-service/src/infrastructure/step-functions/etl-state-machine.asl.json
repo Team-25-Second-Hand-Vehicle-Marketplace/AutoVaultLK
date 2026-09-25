@@ -73,186 +73,251 @@
     },
     "HasChunks": {
       "Type": "Choice",
-      "Comment": "A header-only file is an empty inventory, not a failure. Skipping the Map avoids an empty-array iteration and lets Aggregate record COMPLETED with zero counts.",
+      "Comment": "A header-only file is an empty inventory, not a failure. Skipping the Map (and the image branch, which has no vehicle rows to match against either) avoids an empty-array iteration and lets Aggregate record COMPLETED with zero counts.",
       "Choices": [
         {
           "Variable": "$.totalRecords",
           "NumericGreaterThan": 0,
-          "Next": "ProcessChunks"
+          "Next": "ProcessRows"
         }
       ],
       "Default": "Aggregate"
     },
-    "ProcessChunks": {
-      "Type": "Map",
-      "Comment": "Chunk isolation is a correctness requirement, not resilience polish: the Catch inside the iterator is what produces PARTIAL instead of FAILED. A dealer whose 400th row breaks the writer must still get 399 vehicles.",
-      "ItemsPath": "$.chunks",
-      "MaxConcurrency": 10,
-      "ResultPath": "$.chunks",
-      "ItemProcessor": {
-        "ProcessorConfig": {
-          "Mode": "INLINE"
+    "ProcessRows": {
+      "Type": "Parallel",
+      "Comment": "ProcessChunks and ProcessImages run concurrently, not sequentially: photos come from the ZIP and depend on nothing in the text pipeline, so processing them alongside the Map cuts wall-clock time on a large upload instead of paying for image processing on top of the Map's duration. A vehicle row an image needs to match against may not exist yet when ProcessImages runs \u2014 Load for that row's chunk may still be running \u2014 which is why the image branch's registration lookup retries with a bounded budget (ProcessJobImagesService) rather than requiring the row to already exist.",
+      "Branches": [
+        {
+          "StartAt": "ProcessChunks",
+          "States": {
+            "ProcessChunks": {
+              "Type": "Map",
+              "Comment": "Chunk isolation is a correctness requirement, not resilience polish: the Catch inside the iterator is what produces PARTIAL instead of FAILED. A dealer whose 400th row breaks the writer must still get 399 vehicles.",
+              "ItemsPath": "$.chunks",
+              "MaxConcurrency": 10,
+              "ResultPath": "$.chunks",
+              "ItemProcessor": {
+                "ProcessorConfig": {
+                  "Mode": "INLINE"
+                },
+                "StartAt": "ParseNormalize",
+                "States": {
+                  "ParseNormalize": {
+                    "Type": "Task",
+                    "Resource": "arn:aws:states:::lambda:invoke",
+                    "Parameters": {
+                      "FunctionName": "${ParseNormalizeFunctionArn}",
+                      "Payload.$": "$"
+                    },
+                    "OutputPath": "$.Payload",
+                    "Retry": [
+                      {
+                        "ErrorEquals": [
+                          "Lambda.ServiceException",
+                          "Lambda.AWSLambdaException",
+                          "Lambda.SdkClientException",
+                          "Lambda.TooManyRequestsException"
+                        ],
+                        "IntervalSeconds": 2,
+                        "MaxAttempts": 3,
+                        "BackoffRate": 2,
+                        "JitterStrategy": "FULL"
+                      }
+                    ],
+                    "Next": "GroqNormalize"
+                  },
+                  "GroqNormalize": {
+                    "Type": "Task",
+                    "Comment": "Logs SKIPPED and passes rows through when GROQ_API_KEY is unset. Given a longer timeout than its siblings because it makes an outbound HTTP call to a third party.",
+                    "Resource": "arn:aws:states:::lambda:invoke",
+                    "Parameters": {
+                      "FunctionName": "${GroqNormalizeFunctionArn}",
+                      "Payload.$": "$"
+                    },
+                    "OutputPath": "$.Payload",
+                    "Retry": [
+                      {
+                        "ErrorEquals": [
+                          "Lambda.ServiceException",
+                          "Lambda.AWSLambdaException",
+                          "Lambda.SdkClientException",
+                          "Lambda.TooManyRequestsException"
+                        ],
+                        "IntervalSeconds": 2,
+                        "MaxAttempts": 3,
+                        "BackoffRate": 2,
+                        "JitterStrategy": "FULL"
+                      }
+                    ],
+                    "Next": "ValidateRows"
+                  },
+                  "ValidateRows": {
+                    "Type": "Task",
+                    "Comment": "The gate. Every rejection reason in the platform originates here.",
+                    "Resource": "arn:aws:states:::lambda:invoke",
+                    "Parameters": {
+                      "FunctionName": "${ValidateRowsFunctionArn}",
+                      "Payload.$": "$"
+                    },
+                    "OutputPath": "$.Payload",
+                    "Retry": [
+                      {
+                        "ErrorEquals": [
+                          "Lambda.ServiceException",
+                          "Lambda.AWSLambdaException",
+                          "Lambda.SdkClientException",
+                          "Lambda.TooManyRequestsException"
+                        ],
+                        "IntervalSeconds": 2,
+                        "MaxAttempts": 3,
+                        "BackoffRate": 2,
+                        "JitterStrategy": "FULL"
+                      }
+                    ],
+                    "Next": "Enrich"
+                  },
+                  "Enrich": {
+                    "Type": "Task",
+                    "Comment": "Must precede Embed: buildSearchText reads specs.body_type, and a row embedded before enrichment produces different text from the manual path (FR-22.1).",
+                    "Resource": "arn:aws:states:::lambda:invoke",
+                    "Parameters": {
+                      "FunctionName": "${EnrichFunctionArn}",
+                      "Payload.$": "$"
+                    },
+                    "OutputPath": "$.Payload",
+                    "Retry": [
+                      {
+                        "ErrorEquals": [
+                          "Lambda.ServiceException",
+                          "Lambda.AWSLambdaException",
+                          "Lambda.SdkClientException",
+                          "Lambda.TooManyRequestsException"
+                        ],
+                        "IntervalSeconds": 2,
+                        "MaxAttempts": 3,
+                        "BackoffRate": 2,
+                        "JitterStrategy": "FULL"
+                      }
+                    ],
+                    "Next": "Embed"
+                  },
+                  "Embed": {
+                    "Type": "Task",
+                    "Comment": "Container-image Lambda: the MiniLM ONNX model is ~90MB and a layer caps at 250MB. Cold starts are slow, hence the extra retry attempt and longer interval.",
+                    "Resource": "arn:aws:states:::lambda:invoke",
+                    "Parameters": {
+                      "FunctionName": "${EmbedFunctionArn}",
+                      "Payload.$": "$"
+                    },
+                    "OutputPath": "$.Payload",
+                    "Retry": [
+                      {
+                        "ErrorEquals": [
+                          "Lambda.ServiceException",
+                          "Lambda.AWSLambdaException",
+                          "Lambda.SdkClientException",
+                          "Lambda.TooManyRequestsException"
+                        ],
+                        "IntervalSeconds": 5,
+                        "MaxAttempts": 3,
+                        "BackoffRate": 2,
+                        "JitterStrategy": "FULL"
+                      }
+                    ],
+                    "Next": "Load"
+                  },
+                  "Load": {
+                    "Type": "Task",
+                    "Comment": "The one cross-schema write. Retried on States.ALL rather than only on Lambda faults: its failures are typically a dropped connection or a lock timeout, which succeed on a second attempt. The in-process orchestrator hand-rolls a fixed 250ms retry; this replaces it with exponential backoff and jitter, which is the one deliberate behavioural difference between the two executors.",
+                    "Resource": "arn:aws:states:::lambda:invoke",
+                    "Parameters": {
+                      "FunctionName": "${LoadFunctionArn}",
+                      "Payload.$": "$"
+                    },
+                    "OutputPath": "$.Payload",
+                    "Retry": [
+                      {
+                        "ErrorEquals": [
+                          "States.ALL"
+                        ],
+                        "IntervalSeconds": 3,
+                        "MaxAttempts": 2,
+                        "BackoffRate": 2,
+                        "JitterStrategy": "FULL"
+                      }
+                    ],
+                    "End": true
+                  }
+                }
+              },
+              "Catch": [
+                {
+                  "Comment": "One chunk failing must not fail the job. The Map's own Catch fires only after a chunk exhausts its retries; ResultPath overwrites $.chunks with the error, which Aggregate reads as 'some chunk failed' and turns into PARTIAL. Counts come from the database, so losing the per-chunk envelopes here costs nothing.",
+                  "ErrorEquals": [
+                    "States.ALL"
+                  ],
+                  "ResultPath": "$.chunks",
+                  "Next": "ChunksDone"
+                }
+              ],
+              "Next": "ChunksDone"
+            },
+            "ChunksDone": {
+              "Type": "Pass",
+              "End": true
+            }
+          }
         },
-        "StartAt": "ParseNormalize",
-        "States": {
-          "ParseNormalize": {
-            "Type": "Task",
-            "Resource": "arn:aws:states:::lambda:invoke",
-            "Parameters": {
-              "FunctionName": "${ParseNormalizeFunctionArn}",
-              "Payload.$": "$"
+        {
+          "StartAt": "ProcessImages",
+          "States": {
+            "ProcessImages": {
+              "Type": "Task",
+              "Comment": "Runs the whole upload's photo set in one invocation, not per chunk \u2014 images are keyed by registration_number, not by which chunk their row happened to land in. Never fails the execution on a row-image mismatch or a corrupt file; only an infrastructure failure (S3, the database) propagates, exactly like every other stage.",
+              "Resource": "arn:aws:states:::lambda:invoke",
+              "Parameters": {
+                "FunctionName": "${ProcessImagesFunctionArn}",
+                "Payload.$": "$"
+              },
+              "OutputPath": "$.Payload",
+              "Retry": [
+                {
+                  "ErrorEquals": [
+                    "Lambda.ServiceException",
+                    "Lambda.AWSLambdaException",
+                    "Lambda.SdkClientException",
+                    "Lambda.TooManyRequestsException"
+                  ],
+                  "IntervalSeconds": 2,
+                  "MaxAttempts": 3,
+                  "BackoffRate": 2,
+                  "JitterStrategy": "FULL"
+                }
+              ],
+              "Catch": [
+                {
+                  "Comment": "An image-branch infrastructure failure must not fail rows that already loaded successfully in the other branch \u2014 the dealer's vehicles are the primary outcome, photos are secondary. Recorded as a DEGRADED stage log by the handler where possible; this Catch only guards the case that fails before the handler can log anything.",
+                  "ErrorEquals": [
+                    "States.ALL"
+                  ],
+                  "ResultPath": "$.imagesError",
+                  "Next": "ImagesDone"
+                }
+              ],
+              "Next": "ImagesDone"
             },
-            "OutputPath": "$.Payload",
-            "Retry": [
-              {
-                "ErrorEquals": [
-                  "Lambda.ServiceException",
-                  "Lambda.AWSLambdaException",
-                  "Lambda.SdkClientException",
-                  "Lambda.TooManyRequestsException"
-                ],
-                "IntervalSeconds": 2,
-                "MaxAttempts": 3,
-                "BackoffRate": 2,
-                "JitterStrategy": "FULL"
-              }
-            ],
-            "Next": "GroqNormalize"
-          },
-          "GroqNormalize": {
-            "Type": "Task",
-            "Comment": "Logs SKIPPED and passes rows through when GROQ_API_KEY is unset. Given a longer timeout than its siblings because it makes an outbound HTTP call to a third party.",
-            "Resource": "arn:aws:states:::lambda:invoke",
-            "Parameters": {
-              "FunctionName": "${GroqNormalizeFunctionArn}",
-              "Payload.$": "$"
-            },
-            "OutputPath": "$.Payload",
-            "Retry": [
-              {
-                "ErrorEquals": [
-                  "Lambda.ServiceException",
-                  "Lambda.AWSLambdaException",
-                  "Lambda.SdkClientException",
-                  "Lambda.TooManyRequestsException"
-                ],
-                "IntervalSeconds": 2,
-                "MaxAttempts": 3,
-                "BackoffRate": 2,
-                "JitterStrategy": "FULL"
-              }
-            ],
-            "Next": "ValidateRows"
-          },
-          "ValidateRows": {
-            "Type": "Task",
-            "Comment": "The gate. Every rejection reason in the platform originates here.",
-            "Resource": "arn:aws:states:::lambda:invoke",
-            "Parameters": {
-              "FunctionName": "${ValidateRowsFunctionArn}",
-              "Payload.$": "$"
-            },
-            "OutputPath": "$.Payload",
-            "Retry": [
-              {
-                "ErrorEquals": [
-                  "Lambda.ServiceException",
-                  "Lambda.AWSLambdaException",
-                  "Lambda.SdkClientException",
-                  "Lambda.TooManyRequestsException"
-                ],
-                "IntervalSeconds": 2,
-                "MaxAttempts": 3,
-                "BackoffRate": 2,
-                "JitterStrategy": "FULL"
-              }
-            ],
-            "Next": "Enrich"
-          },
-          "Enrich": {
-            "Type": "Task",
-            "Comment": "Must precede Embed: buildSearchText reads specs.body_type, and a row embedded before enrichment produces different text from the manual path (FR-22.1).",
-            "Resource": "arn:aws:states:::lambda:invoke",
-            "Parameters": {
-              "FunctionName": "${EnrichFunctionArn}",
-              "Payload.$": "$"
-            },
-            "OutputPath": "$.Payload",
-            "Retry": [
-              {
-                "ErrorEquals": [
-                  "Lambda.ServiceException",
-                  "Lambda.AWSLambdaException",
-                  "Lambda.SdkClientException",
-                  "Lambda.TooManyRequestsException"
-                ],
-                "IntervalSeconds": 2,
-                "MaxAttempts": 3,
-                "BackoffRate": 2,
-                "JitterStrategy": "FULL"
-              }
-            ],
-            "Next": "Embed"
-          },
-          "Embed": {
-            "Type": "Task",
-            "Comment": "Container-image Lambda: the MiniLM ONNX model is ~90MB and a layer caps at 250MB. Cold starts are slow, hence the extra retry attempt and longer interval.",
-            "Resource": "arn:aws:states:::lambda:invoke",
-            "Parameters": {
-              "FunctionName": "${EmbedFunctionArn}",
-              "Payload.$": "$"
-            },
-            "OutputPath": "$.Payload",
-            "Retry": [
-              {
-                "ErrorEquals": [
-                  "Lambda.ServiceException",
-                  "Lambda.AWSLambdaException",
-                  "Lambda.SdkClientException",
-                  "Lambda.TooManyRequestsException"
-                ],
-                "IntervalSeconds": 5,
-                "MaxAttempts": 3,
-                "BackoffRate": 2,
-                "JitterStrategy": "FULL"
-              }
-            ],
-            "Next": "Load"
-          },
-          "Load": {
-            "Type": "Task",
-            "Comment": "The one cross-schema write. Retried on States.ALL rather than only on Lambda faults: its failures are typically a dropped connection or a lock timeout, which succeed on a second attempt. The in-process orchestrator hand-rolls a fixed 250ms retry; this replaces it with exponential backoff and jitter, which is the one deliberate behavioural difference between the two executors.",
-            "Resource": "arn:aws:states:::lambda:invoke",
-            "Parameters": {
-              "FunctionName": "${LoadFunctionArn}",
-              "Payload.$": "$"
-            },
-            "OutputPath": "$.Payload",
-            "Retry": [
-              {
-                "ErrorEquals": [
-                  "States.ALL"
-                ],
-                "IntervalSeconds": 3,
-                "MaxAttempts": 2,
-                "BackoffRate": 2,
-                "JitterStrategy": "FULL"
-              }
-            ],
-            "End": true
+            "ImagesDone": {
+              "Type": "Pass",
+              "End": true
+            }
           }
         }
-      },
-      "Catch": [
-        {
-          "Comment": "One chunk failing must not fail the job. The Map's own Catch fires only after a chunk exhausts its retries; ResultPath overwrites $.chunks with the error, which Aggregate reads as 'some chunk failed' and turns into PARTIAL. Counts come from the database, so losing the per-chunk envelopes here costs nothing.",
-          "ErrorEquals": [
-            "States.ALL"
-          ],
-          "ResultPath": "$.chunks",
-          "Next": "Aggregate"
-        }
       ],
+      "ResultSelector": {
+        "chunks.$": "$[0].chunks",
+        "images.$": "$[1]"
+      },
+      "ResultPath": "$.parallelResult",
       "Next": "Aggregate"
     },
     "Aggregate": {
@@ -261,7 +326,11 @@
       "Resource": "arn:aws:states:::lambda:invoke",
       "Parameters": {
         "FunctionName": "${AggregateResultsFunctionArn}",
-        "Payload.$": "$"
+        "Payload": {
+          "jobId.$": "$.jobId",
+          "totalRecords.$": "$.totalRecords",
+          "chunks.$": "$.parallelResult.chunks"
+        }
       },
       "OutputPath": "$.Payload",
       "Retry": [

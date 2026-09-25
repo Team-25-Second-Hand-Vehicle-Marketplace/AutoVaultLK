@@ -213,162 +213,14 @@
   line-height: 1.5;
 }
 
-/* --- Bulk upload --- */
+/* --- Bulk upload ---
+   Scoped to the upload form itself, not .dealer-page generally — a form
+   reads better narrow, but the dashboard's tile grid and other pages should
+   use the full width .dealer-shell__main gives them. */
 
-.dealer-page {
+.upload-form,
+.upload-card {
   max-width: 820px;
-}
-
-/* Title and action on one line; the action wraps beneath on narrow screens. */
-.upload-head {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  align-items: flex-start;
-  justify-content: space-between;
-}
-
-.upload-form {
-  display: grid;
-  gap: 20px;
-  padding: 20px;
-  margin-bottom: 28px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: var(--shadow);
-}
-
-.upload-form__field {
-  display: grid;
-  gap: 6px;
-  padding: 0;
-  margin: 0;
-  border: 0;
-}
-
-.upload-form__field label {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-h);
-}
-
-.upload-form__field input[type='file'] {
-  padding: 10px;
-  font: inherit;
-  background: var(--bg-alt);
-  border: 1px dashed var(--border);
-  border-radius: 8px;
-}
-
-.upload-form__field:disabled input[type='file'] {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.upload-form__hint,
-.upload-form__note {
-  margin: 0;
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-.upload-form__note.is-error {
-  color: var(--danger);
-  font-weight: 600;
-}
-
-.upload-progress {
-  display: grid;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-.upload-progress__bar {
-  height: 8px;
-  overflow: hidden;
-  background: var(--bg-alt);
-  border-radius: 999px;
-}
-
-.upload-progress__fill {
-  height: 100%;
-  background: var(--accent);
-  border-radius: inherit;
-  transition: width 240ms ease;
-}
-
-/* auto-fit rather than a fixed count: three tiles on desktop, stacked on a phone. */
-.upload-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 12px;
-  margin: 24px 0;
-}
-
-.upload-stats div {
-  padding: 14px 16px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-}
-
-.upload-stats dt {
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-muted);
-}
-
-.upload-stats dd {
-  margin: 4px 0 0;
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--text-h);
-}
-
-.upload-note {
-  padding: 12px 14px;
-  margin: 0 0 20px;
-  font-size: 14px;
-  background: var(--bg-alt);
-  border-left: 3px solid var(--accent);
-  border-radius: 6px;
-}
-
-.upload-note.is-error {
-  border-left-color: var(--danger);
-}
-
-.upload-help {
-  padding-top: 20px;
-  border-top: 1px solid var(--border);
-}
-
-.upload-help h2 {
-  margin: 0 0 10px;
-  font-size: 16px;
-  color: var(--text-h);
-}
-
-.upload-help p {
-  margin: 0 0 8px;
-  font-size: 14px;
-}
-
-.upload-help__muted {
-  color: var(--text-muted);
-  font-size: 13px;
-}
-
-.upload-help code,
-.upload-note code {
-  padding: 1px 5px;
-  font-size: 0.92em;
-  background: var(--bg-alt);
-  border: 1px solid var(--border);
-  border-radius: 4px;
 }
 
 .dealer-page__actions {
@@ -711,6 +563,15 @@
   color: var(--text-muted);
 }
 
+/* FR-35.2: a bulk row with no registration number, so no image could be
+   matched automatically — distinct from the status badge, which only says
+   where the listing is in the publish flow. */
+.listing-status--review {
+  background: rgba(217, 45, 32, 0.1);
+  color: var(--danger);
+  margin-left: 6px;
+}
+
 /* Labels a screen reader needs but sighted users read from context — here, the
    actions column header above two clearly-labelled buttons. */
 .visually-hidden {
@@ -939,4 +800,111 @@
   color: var(--text);
   font-size: 0.82rem;
   margin: 0.2rem 0 0;
+}
+
+/* ── Listing details: specs + photos (Enrich/FR-35.2) ───────────────────── */
+
+.listing-details {
+  margin-top: 0.5rem;
+}
+
+.listing-details__toggle {
+  align-items: center;
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.85rem;
+  font-weight: 600;
+  gap: 0.4rem;
+  padding: 0;
+}
+
+.listing-details__toggle:hover {
+  text-decoration: underline;
+}
+
+.listing-details__flag {
+  background: rgba(217, 45, 32, 0.1);
+  border-radius: 999px;
+  color: var(--danger);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  text-transform: none;
+}
+
+.listing-details__panel {
+  margin-top: 0.6rem;
+}
+
+.listing-details__review-note {
+  background: rgba(217, 45, 32, 0.08);
+  border-radius: 8px;
+  color: var(--danger);
+  font-size: 0.85rem;
+  margin: 0 0 0.6rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.listing-details__specs {
+  display: grid;
+  gap: 0.3rem 1.2rem;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  margin: 0 0 0.6rem;
+}
+
+.listing-details__spec {
+  font-size: 0.82rem;
+}
+
+.listing-details__spec dt {
+  color: var(--text-muted);
+}
+
+.listing-details__spec dd {
+  color: var(--text);
+  font-weight: 600;
+  margin: 0;
+}
+
+.listing-details__images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.listing-details__image {
+  margin: 0;
+  position: relative;
+}
+
+.listing-details__image img,
+.listing-details__image-placeholder {
+  background: var(--bg-alt);
+  border-radius: 6px;
+  display: block;
+  height: 72px;
+  object-fit: cover;
+  width: 96px;
+}
+
+.listing-details__image-badge {
+  background: var(--accent);
+  border-radius: 4px;
+  color: var(--bg);
+  font-size: 0.62rem;
+  font-weight: 700;
+  left: 4px;
+  padding: 1px 5px;
+  position: absolute;
+  text-transform: uppercase;
+  top: 4px;
+}
+
+.listing-details__no-images {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  margin: 0;
 }
