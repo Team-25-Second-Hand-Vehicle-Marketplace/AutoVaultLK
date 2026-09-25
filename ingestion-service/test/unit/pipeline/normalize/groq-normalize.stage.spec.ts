@@ -137,7 +137,12 @@ describe('groqNormalizeStage', () => {
         row(1),
       ]);
 
-      expect(result.metrics).toEqual({ candidates: 2, repaired: 0 });
+      expect(result.metrics).toEqual({
+        candidates: 2,
+        repaired: 0,
+        batches: 0,
+        failedBatches: 0,
+      });
     });
 
     it('treats a whitespace-only key as unconfigured', async () => {
@@ -307,9 +312,121 @@ describe('groqNormalizeStage', () => {
       expect(payload.rows.map((r) => r.id)).toEqual([1, 3]);
     });
 
-    it('supplies the allowed vocabulary in the prompt', async () => {
+    describe('sub-batching (rate-limit tolerance)', () => {
+      // A whole chunk's candidates sent in one request routinely exceeded
+      // Groq's free-tier 8,000 TPM limit once the dictionary vocabulary was
+      // included — reproduced directly against the API as a 413 on a
+      // 250-row chunk. Splitting into groups of GROQ_BATCH_SIZE (8) keeps
+      // each request small regardless of how many rows a chunk has.
+      it('splits more than one batch worth of candidates into sequential requests', async () => {
+        groqResponds({ rows: [] });
+
+        const nineCandidates = Array.from({ length: 9 }, (_, i) => row(0, i + 1));
+        await groqNormalizeStage.run(ctx(), nineCandidates);
+
+        expect(global.fetch).toHaveBeenCalledTimes(2);
+
+        const firstBody = JSON.parse(
+          (global.fetch as jest.Mock).mock.calls[0][1].body as string,
+        ) as { messages: { content: string }[] };
+        const firstPayload = JSON.parse(firstBody.messages[1].content) as {
+          rows: { id: number }[];
+        };
+        expect(firstPayload.rows).toHaveLength(8);
+
+        const secondBody = JSON.parse(
+          (global.fetch as jest.Mock).mock.calls[1][1].body as string,
+        ) as { messages: { content: string }[] };
+        const secondPayload = JSON.parse(secondBody.messages[1].content) as {
+          rows: { id: number }[];
+        };
+        expect(secondPayload.rows).toHaveLength(1);
+      });
+
+      it('merges repairs from every batch, not just the first', async () => {
+        const fetchSpy = jest
+          .fn()
+          .mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({
+              choices: [
+                { message: { content: '{"rows":[{"id":1,"make":"Toyota","model":"Corolla"}]}' } },
+              ],
+            }),
+          })
+          .mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({
+              choices: [
+                { message: { content: '{"rows":[{"id":9,"make":"Honda","model":"Civic"}]}' } },
+              ],
+            }),
+          });
+        global.fetch = fetchSpy as never;
+
+        const nineCandidates = Array.from({ length: 9 }, (_, i) => row(0, i + 1));
+        const result = await groqNormalizeStage.run(ctx(), nineCandidates);
+
+        expect(result.metrics).toMatchObject({ batches: 2, failedBatches: 0, repaired: 2 });
+        expect(result.rows.find((r) => r.rowNumber === 1)?.normalized.make).toBe('Toyota');
+        expect(result.rows.find((r) => r.rowNumber === 9)?.normalized.make).toBe('Honda');
+      });
+
+      it('keeps repairs from a succeeding batch when a sibling batch fails', async () => {
+        const fetchSpy = jest
+          .fn()
+          .mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({
+              choices: [
+                { message: { content: '{"rows":[{"id":1,"make":"Toyota","model":"Corolla"}]}' } },
+              ],
+            }),
+          })
+          .mockResolvedValueOnce({ ok: false, status: 429 });
+        global.fetch = fetchSpy as never;
+
+        const nineCandidates = Array.from({ length: 9 }, (_, i) => row(0, i + 1));
+        const result = await groqNormalizeStage.run(ctx(), nineCandidates);
+
+        expect(result.outcome).toBe('DEGRADED');
+        expect(result.metrics).toMatchObject({ batches: 2, failedBatches: 1, repaired: 1 });
+        expect(result.rows.find((r) => r.rowNumber === 1)?.normalized.make).toBe('Toyota');
+        // Row 9's batch failed — it keeps whatever parseNormalize gave it.
+        expect(result.rows.find((r) => r.rowNumber === 9)?.normalized.make).toBeUndefined();
+      });
+
+      it('does not fire batches concurrently', async () => {
+        // Concurrent sub-batches would just recreate the same per-minute
+        // ceiling this splitting exists to avoid.
+        let inFlight = 0;
+        let maxInFlight = 0;
+        const fetchSpy = jest.fn().mockImplementation(async () => {
+          inFlight++;
+          maxInFlight = Math.max(maxInFlight, inFlight);
+          await new Promise((resolve) => setTimeout(resolve, 5));
+          inFlight--;
+          return {
+            ok: true,
+            json: async () => ({ choices: [{ message: { content: '{"rows":[]}' } }] }),
+          };
+        });
+        global.fetch = fetchSpy as never;
+
+        const seventeenCandidates = Array.from({ length: 17 }, (_, i) => row(0, i + 1));
+        await groqNormalizeStage.run(ctx(), seventeenCandidates);
+
+        expect(fetchSpy).toHaveBeenCalledTimes(3);
+        expect(maxInFlight).toBe(1);
+      });
+    });
+
+    it('supplies the allowed vocabulary in the prompt, scoped to candidate makes', async () => {
       groqResponds({ rows: [] });
 
+      // row(...) raw make is 'toyta' — close to Toyota, nowhere near Honda —
+      // so the scoped vocabulary should carry Toyota's models but not
+      // Honda's, unlike the old always-send-everything behaviour.
       await groqNormalizeStage.run(ctx(), [row(0, 1)]);
 
       const body = JSON.parse(
@@ -319,11 +436,31 @@ describe('groqNormalizeStage', () => {
         allowed: { makes: string[]; models: Record<string, string[]> };
       };
 
-      expect(payload.allowed.makes).toEqual(
-        expect.arrayContaining(['Toyota', 'Honda']),
-      );
+      expect(payload.allowed.makes).toContain('Toyota');
+      expect(payload.allowed.makes).not.toContain('Honda');
       expect(payload.allowed.models.Toyota).toEqual(
         expect.arrayContaining(['Corolla', 'Hilux']),
+      );
+    });
+
+    it('falls back to the full make list when nothing in the batch is a plausible match', async () => {
+      groqResponds({ rows: [] });
+
+      const garbled: NormalizedRow = {
+        ...row(0, 1),
+        raw: { make: '???', model: '???' },
+      };
+      await groqNormalizeStage.run(ctx(), [garbled]);
+
+      const body = JSON.parse(
+        (global.fetch as jest.Mock).mock.calls[0][1].body as string,
+      ) as { messages: { content: string }[] };
+      const payload = JSON.parse(body.messages[1].content) as {
+        allowed: { makes: string[] };
+      };
+
+      expect(payload.allowed.makes).toEqual(
+        expect.arrayContaining(['Toyota', 'Honda']),
       );
     });
 
