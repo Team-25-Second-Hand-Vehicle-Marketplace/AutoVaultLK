@@ -1,6 +1,7 @@
 node_modules/
 database/dist/
 dist/
+dist-lambda/
 coverage/
 .env
 .env.*

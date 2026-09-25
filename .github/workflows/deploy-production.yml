@@ -133,7 +133,7 @@ jobs:
             --function-name vehicle-marketplace-ingest-api-production \
             --image-uri ${{ env.ECR_REGISTRY }}/vehicle-marketplace/ingest-api-production:${{ github.sha }}
 
-  deploy-etl-worker:
+  deploy-job-status-api:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -142,24 +142,109 @@ jobs:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
       - uses: aws-actions/amazon-ecr-login@v2
-      # Same source tree as deploy-ingest-api, different Dockerfile (-f): the
-      # image needs a different CMD (dist/lambda/etl-worker.handler), so it
-      # gets its own repo rather than an image_config.command override on a
-      # shared one — see the ingestion-service note in production/main.tf.
       - name: Build and push image
         working-directory: ingestion-service
         run: |
           docker build --no-cache --provenance=false \
-            -f docker/etl-worker.Dockerfile \
-            -t ${{ env.ECR_REGISTRY }}/vehicle-marketplace/etl-worker-production:${{ github.sha }} \
-            -t ${{ env.ECR_REGISTRY }}/vehicle-marketplace/etl-worker-production:latest .
-          docker push ${{ env.ECR_REGISTRY }}/vehicle-marketplace/etl-worker-production:${{ github.sha }}
-          docker push ${{ env.ECR_REGISTRY }}/vehicle-marketplace/etl-worker-production:latest
+            -f docker/job-status-api.Dockerfile \
+            -t ${{ env.ECR_REGISTRY }}/vehicle-marketplace/job-status-api-production:${{ github.sha }} \
+            -t ${{ env.ECR_REGISTRY }}/vehicle-marketplace/job-status-api-production:latest .
+          docker push ${{ env.ECR_REGISTRY }}/vehicle-marketplace/job-status-api-production:${{ github.sha }}
+          docker push ${{ env.ECR_REGISTRY }}/vehicle-marketplace/job-status-api-production:latest
       - name: Update Lambda
         run: |
           aws lambda update-function-code \
-            --function-name vehicle-marketplace-etl-worker-production \
-            --image-uri ${{ env.ECR_REGISTRY }}/vehicle-marketplace/etl-worker-production:${{ github.sha }}
+            --function-name vehicle-marketplace-job-status-api-production \
+            --image-uri ${{ env.ECR_REGISTRY }}/vehicle-marketplace/job-status-api-production:${{ github.sha }}
+
+  deploy-embed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - uses: aws-actions/amazon-ecr-login@v2
+      # ONNX model is ~90MB, over the 250MB zip-package unzipped cap — this
+      # ETL stage is the one exception among the 12 that runs as a container
+      # image rather than a zip. See function-config.ts.
+      - name: Build and push image
+        working-directory: ingestion-service
+        run: |
+          docker build --no-cache --provenance=false \
+            -f docker/embed.Dockerfile \
+            -t ${{ env.ECR_REGISTRY }}/vehicle-marketplace/embed-production:${{ github.sha }} \
+            -t ${{ env.ECR_REGISTRY }}/vehicle-marketplace/embed-production:latest .
+          docker push ${{ env.ECR_REGISTRY }}/vehicle-marketplace/embed-production:${{ github.sha }}
+          docker push ${{ env.ECR_REGISTRY }}/vehicle-marketplace/embed-production:latest
+      - name: Update Lambda
+        run: |
+          aws lambda update-function-code \
+            --function-name vehicle-marketplace-embed-production \
+            --image-uri ${{ env.ECR_REGISTRY }}/vehicle-marketplace/embed-production:${{ github.sha }}
+
+  deploy-process-images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - uses: aws-actions/amazon-ecr-login@v2
+      # Sharp's native binary, same reasoning as embed above.
+      - name: Build and push image
+        working-directory: ingestion-service
+        run: |
+          docker build --no-cache --provenance=false \
+            -f docker/process-images.Dockerfile \
+            -t ${{ env.ECR_REGISTRY }}/vehicle-marketplace/process-images-production:${{ github.sha }} \
+            -t ${{ env.ECR_REGISTRY }}/vehicle-marketplace/process-images-production:latest .
+          docker push ${{ env.ECR_REGISTRY }}/vehicle-marketplace/process-images-production:${{ github.sha }}
+          docker push ${{ env.ECR_REGISTRY }}/vehicle-marketplace/process-images-production:latest
+      - name: Update Lambda
+        run: |
+          aws lambda update-function-code \
+            --function-name vehicle-marketplace-process-images-production \
+            --image-uri ${{ env.ECR_REGISTRY }}/vehicle-marketplace/process-images-production:${{ github.sha }}
+
+  deploy-stage-lambdas:
+    runs-on: ubuntu-latest
+    env:
+      LAMBDA_ARTIFACTS_BUCKET: vehicle-marketplace-lambda-artifacts-production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ingestion-service/package-lock.json
+      # The 10 lightweight ETL stage Lambdas — zip-packaged, not container
+      # images (see function-config.ts / STEP-FUNCTIONS-MIGRATION-PLAN.md
+      # §S7). One shared build produces all 10 zips; each gets its own
+      # upload + update-function-code call.
+      - name: Install and build zips
+        working-directory: ingestion-service
+        run: |
+          npm ci
+          npm run build
+          npm run build:lambda-config
+          npm run build:lambda-zips
+      - name: Upload and deploy each stage Lambda
+        working-directory: ingestion-service
+        run: |
+          for slug in validate-file split-chunks parse-normalize groq-normalize validate-rows enrich load aggregate-results notify mark-job-failed; do
+            aws s3 cp "dist-lambda/$slug.zip" "s3://${{ env.LAMBDA_ARTIFACTS_BUCKET }}/lambda-artifacts/$slug.zip"
+            aws lambda update-function-code \
+              --function-name "vehicle-marketplace-$slug-production" \
+              --s3-bucket "${{ env.LAMBDA_ARTIFACTS_BUCKET }}" \
+              --s3-key "lambda-artifacts/$slug.zip"
+          done
 
   deploy-frontend:
     runs-on: ubuntu-latest
