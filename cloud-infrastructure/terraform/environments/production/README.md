@@ -371,7 +371,7 @@ This is how Issues 2, 3, 6, and 9 were all actually found — the error
 message returned over HTTP is generic by design (NestJS's default exception
 filter), but the Lambda's own log always has the real exception.
 
-## Step 9 — CI/CD (manual-trigger deploys from GitHub Actions)
+## Step 9 — CI/CD (auto-deploy on push to `main`)
 
 `modules/github-oidc` sets up an IAM role GitHub Actions can assume via
 OIDC — no long-lived AWS keys stored in GitHub. `.github/workflows/
@@ -379,10 +379,18 @@ deploy-production.yml` uses it to build+push+update the 8 container-image
 Lambdas (auth, marketplace, admin, notification, ingest-api, job-status-api,
 embed, process-images), build+upload+update the 10 zip-packaged ETL stage
 Lambdas, and sync the frontend.
-**It only runs on `workflow_dispatch`** (Actions tab → "Deploy to
-production" → Run workflow) — deliberately no `push`/`pull_request`
-trigger, since this environment gets torn down between sessions and an
-auto-deploy pipeline would just fail every run while it's down.
+**It runs on every push to `main`** and deploys only the parts whose files
+changed (auth, marketplace, admin, notification, ingestion, web-frontend),
+and only after that part's tests pass — `main` has no required status
+checks, so the workflow gates on them itself. "Run workflow" (Actions tab)
+deploys everything. Deploys are serialized (one at a time).
+
+**It does not run `terraform apply` or database migrations** — both stay
+manual on purpose. If the environment is torn down, every deploy will fail
+(resources missing): disable the workflow in the Actions tab until it's back.
+To roll back, revert the commit on `main` (it redeploys the previous code),
+or point a function at an older image: every build is also tagged with its
+commit SHA in ECR (`aws lambda update-function-code --image-uri ...:<sha>`).
 
 After `terraform apply` (this module applies alongside everything else, no
 separate step), get the role ARN:
@@ -402,10 +410,13 @@ secret, OIDC is what keeps this safe) on the GitHub repo:
 | `FRONTEND_BUCKET_NAME` | `terraform output frontend_bucket_name` |
 | `FRONTEND_DISTRIBUTION_ID` | `terraform output frontend_distribution_id` |
 
-The trust policy only allows `workflow_dispatch` runs from this repo's
-`main` branch (`repo:<org>/<repo>:ref:refs/heads/main` — see
-`modules/github-oidc/main.tf` if you need to broaden that, e.g. to allow
-deploys from a branch).
+The trust policy only allows runs from this repo's `main` branch
+(`repo:<org>/<repo>:ref:refs/heads/main` — see `modules/github-oidc/main.tf`
+if you need to broaden that, e.g. to allow deploys from another branch), so
+pull requests and other branches can never deploy.
+
+`PUBLIC_API_ENDPOINT` may include the trailing slash that `terraform output`
+prints — the frontend build strips it.
 
 **If this AWS account already has a GitHub OIDC provider** from another
 project (AWS allows only one per account for
