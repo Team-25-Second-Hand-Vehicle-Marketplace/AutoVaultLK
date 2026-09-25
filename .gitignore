@@ -43,3 +43,5 @@ mywork.txt
 # payloads. Never committed — recreated on demand.
 .storage/
 DEPLOYMENT-GAPS.md
+# Local-only notes (deployment values etc.)
+*.local.md

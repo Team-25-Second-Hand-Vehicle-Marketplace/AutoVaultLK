@@ -24,6 +24,8 @@ locals {
   }
 }
 
+data "aws_region" "current" {}
+
 resource "aws_sns_topic" "alerts" {
   name = "${var.project_name}-alerts-${var.environment}"
   tags = local.tags
@@ -185,6 +187,7 @@ locals {
       width  = 12
       height = 6
       properties = {
+        region = data.aws_region.current.name
         title  = "Lambda: ${service}"
         view   = "timeSeries"
         stat   = "Sum"
@@ -205,6 +208,7 @@ locals {
       width  = 12
       height = 6
       properties = {
+        region = data.aws_region.current.name
         title  = "RDS"
         view   = "timeSeries"
         period = 300
@@ -220,6 +224,7 @@ locals {
       width  = 12
       height = 6
       properties = {
+        region = data.aws_region.current.name
         title  = "RDS Proxy client connections"
         view   = "timeSeries"
         period = 300
@@ -233,6 +238,7 @@ locals {
       width  = 12
       height = 6
       properties = {
+        region = data.aws_region.current.name
         title  = "Ingestion queue"
         view   = "timeSeries"
         period = 300

@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useAuth } from '../../auth/useAuth'
 import { toErrorMessage } from '../../api/client'
+import { ResendVerification } from '../../components/auth/ResendVerification'
+import { isEmailNotVerifiedMessage } from '../../components/auth/email-verification'
 import { BrandMark } from '../../components/layout/BrandMark'
 import { Button } from '../../components/ui/Button'
 import { FormField } from '../../components/ui/FormField'
@@ -28,8 +30,10 @@ export function DealerLoginPage() {
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({ resolver: zodResolver(schema) })
+  const emailValue = useWatch({ control, name: 'email' })
 
   useEffect(() => {
     const controller = new AbortController()
@@ -107,6 +111,9 @@ export function DealerLoginPage() {
 
           <form onSubmit={onSubmit} noValidate>
             <ErrorBanner message={formError} />
+            {isEmailNotVerifiedMessage(formError) && (
+              <ResendVerification email={emailValue} />
+            )}
 
             <FormField
               label="Email Address"

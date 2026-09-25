@@ -11,6 +11,7 @@ import { SearchPage } from './pages/SearchPage'
 import { VehicleDetailPage } from './pages/VehicleDetailPage'
 import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
+import { VerifyEmailPage } from './pages/VerifyEmailPage'
 import { SavedPage } from './pages/SavedPage'
 import { DealerLoginPage } from './pages/dealers/DealerLoginPage'
 import { DealerRegisterPage } from './pages/dealers/DealerRegisterPage'
@@ -54,6 +55,7 @@ function App() {
               <Route path="/vehicles/:id" element={<VehicleDetailPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              <Route path="/verify-email" element={<VerifyEmailPage />} />
               <Route path="/dealer/login" element={<DealerLoginPage />} />
               <Route path="/dealer/register" element={<DealerRegisterPage />} />
               <Route

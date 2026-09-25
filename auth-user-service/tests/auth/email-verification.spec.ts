@@ -5,6 +5,7 @@ import { User } from '../../src/infrastructure/database/entities/user.entity';
 import { AUTH_SECURITY_MESSAGES } from '../../src/modules/auth/constants/auth-security.constants';
 import { AuthAbuseProtectionService } from '../../src/modules/auth/services/auth-abuse-protection.service';
 import { EmailVerificationService } from '../../src/modules/auth/services/email-verification.service';
+import { VerificationEmailService } from '../../src/modules/auth/services/verification-email.service';
 
 function hashToken(token: string) {
   const { createHash } = require('node:crypto') as typeof import('node:crypto');
@@ -30,6 +31,9 @@ describe('EmailVerificationService', () => {
   const dataSource = {
     transaction: jest.fn(),
   };
+  const verificationEmail = {
+    send: jest.fn().mockResolvedValue(true),
+  };
   const configService = {
     get: jest.fn((key: string, defaultValue?: unknown) => defaultValue),
   };
@@ -40,6 +44,7 @@ describe('EmailVerificationService', () => {
     emailVerificationTokensRepository as never,
     authAbuseProtection as unknown as AuthAbuseProtectionService,
     dataSource as unknown as DataSource,
+    verificationEmail as unknown as VerificationEmailService,
   );
 
   beforeEach(() => jest.clearAllMocks());
@@ -60,6 +65,31 @@ describe('EmailVerificationService', () => {
         tokenHash: hashToken(result.rawToken),
       }),
     );
+  });
+
+  it('emails the raw token to the user when issuing a token', async () => {
+    emailVerificationTokensRepository.revokeUnusedForUser.mockResolvedValue(undefined);
+    emailVerificationTokensRepository.create.mockResolvedValue({ id: 'token-id' });
+
+    const result = await service.issueToken({
+      id: 'user-id',
+      email: 'buyer@test.com',
+    } as User);
+
+    expect(verificationEmail.send).toHaveBeenCalledWith(
+      'buyer@test.com',
+      result.rawToken,
+    );
+  });
+
+  it('still issues the token when the email could not be sent', async () => {
+    emailVerificationTokensRepository.revokeUnusedForUser.mockResolvedValue(undefined);
+    emailVerificationTokensRepository.create.mockResolvedValue({ id: 'token-id' });
+    verificationEmail.send.mockResolvedValueOnce(false);
+
+    await expect(
+      service.issueToken({ id: 'user-id', email: 'buyer@test.com' } as User),
+    ).resolves.toEqual(expect.objectContaining({ rawToken: expect.any(String) }));
   });
 
   it('activates buyers and marks tokens used on verification', async () => {
