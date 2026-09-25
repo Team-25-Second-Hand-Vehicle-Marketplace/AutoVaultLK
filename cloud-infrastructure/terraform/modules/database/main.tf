@@ -151,3 +151,13 @@ output "master_user_secret_arn" {
   description = "AWS-managed secret holding {username, password} for the master user"
   value       = aws_db_instance.this.master_user_secret[0].secret_arn
 }
+
+output "instance_identifier" {
+  description = "For CloudWatch alarm dimensions (AWS/RDS DBInstanceIdentifier)"
+  value       = aws_db_instance.this.identifier
+}
+
+output "proxy_name" {
+  description = "For CloudWatch alarm dimensions (AWS/RDS ProxyName)"
+  value       = aws_db_proxy.this.name
+}
