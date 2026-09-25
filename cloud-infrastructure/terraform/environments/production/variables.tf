@@ -77,3 +77,36 @@ variable "alarm_email" {
   type    = string
   default = null
 }
+
+# --- SMTP email (alternative to SES) ---------------------------------------
+# When smtp_host is set, auth-user-service and notification-service send mail
+# over SMTP instead of SES — no SES sandbox exit or verified domain needed.
+# For Gmail: smtp.gmail.com / 587 / the account's address / an APP PASSWORD
+# (Google Account -> Security -> 2-Step Verification -> App passwords), never
+# the normal account password. Set these in the git-ignored *.auto.tfvars.
+variable "smtp_host" {
+  type    = string
+  default = ""
+}
+
+variable "smtp_port" {
+  type    = string
+  default = "587"
+}
+
+variable "smtp_user" {
+  type    = string
+  default = ""
+}
+
+variable "smtp_password" {
+  type      = string
+  default   = ""
+  sensitive = true
+}
+
+# Optional display From address; defaults to the SES sender, then smtp_user.
+variable "smtp_from" {
+  type    = string
+  default = ""
+}

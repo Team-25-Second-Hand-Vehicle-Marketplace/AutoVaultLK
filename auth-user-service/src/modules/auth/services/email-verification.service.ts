@@ -13,6 +13,7 @@ import { AUTH_SECURITY_MESSAGES } from '../constants/auth-security.constants';
 import { EmailVerificationTokensRepository } from '../repositories/email-verification-tokens.repository';
 import { SessionMetadata } from '../types/session-metadata.type';
 import { AuthAbuseProtectionService } from './auth-abuse-protection.service';
+import { VerificationEmailService } from './verification-email.service';
 
 @Injectable()
 export class EmailVerificationService {
@@ -24,6 +25,7 @@ export class EmailVerificationService {
     private readonly emailVerificationTokensRepository: EmailVerificationTokensRepository,
     private readonly authAbuseProtection: AuthAbuseProtectionService,
     private readonly dataSource: DataSource,
+    private readonly verificationEmail: VerificationEmailService,
   ) {}
 
   async issueToken(user: User) {
@@ -35,6 +37,10 @@ export class EmailVerificationService {
       tokenHash: this.hashToken(rawToken),
       expiresAt: new Date(Date.now() + this.getTokenTtlMs()),
     });
+
+    // Awaited on purpose: Lambda freezes once the response returns, so a
+    // fire-and-forget send would usually never complete. send() never throws.
+    await this.verificationEmail.send(user.email, rawToken);
 
     const includeInResponse = this.shouldReturnTokenInResponse();
     if (includeInResponse) {

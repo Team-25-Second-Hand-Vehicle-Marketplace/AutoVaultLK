@@ -1,24 +1,211 @@
 name: Deploy to production
 
-# Manual only — deliberately no push/pull_request trigger. This environment
-# gets torn down between sessions to save AWS credits (see
-# cloud-infrastructure/terraform/environments/production/README.md), so an
-# auto-deploy-on-push pipeline would just fail every time it's down. Trigger
-# this by hand (Actions tab → this workflow → Run workflow) once it's back up.
+# Push to main deploys ONLY the parts of the repo that changed, and only after
+# that part's tests pass. "Run workflow" (workflow_dispatch) deploys everything.
+#
+# What this does NOT do, on purpose:
+#   - terraform apply. Infrastructure changes stay manual: an unattended apply
+#     can destroy a database or recreate secrets. Run it from
+#     cloud-infrastructure/terraform/environments/production.
+#   - database migrations or seeds (they need the private-subnet bastion).
+#
+# AWS access is via the OIDC role from modules/github-oidc, which only trusts
+# this repo's `main` branch — so this cannot deploy from any other branch.
+#
+# If the production environment is torn down, every deploy here will fail
+# (resources missing). Disable the workflow in the Actions tab until it is back.
+#
+# Required repository variables (Settings -> Secrets and variables -> Actions
+# -> Variables): AWS_ACCOUNT_ID, AWS_DEPLOY_ROLE_ARN, PUBLIC_API_ENDPOINT,
+# FRONTEND_BUCKET_NAME, FRONTEND_DISTRIBUTION_ID. See the production README.
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   id-token: write # required for OIDC — do not remove
   contents: read
 
+# One deploy at a time: two overlapping update-function-code / s3 sync runs
+# could leave production on a mix of two commits. Later pushes queue.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
 env:
   AWS_REGION: ap-southeast-2
   ECR_REGISTRY: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.ap-southeast-2.amazonaws.com
 
 jobs:
+  # ---------------------------------------------------------------------------
+  # Which parts of the repo changed in this push?
+  # ---------------------------------------------------------------------------
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      auth: ${{ steps.filter.outputs.auth }}
+      marketplace: ${{ steps.filter.outputs.marketplace }}
+      admin: ${{ steps.filter.outputs.admin }}
+      notification: ${{ steps.filter.outputs.notification }}
+      ingestion: ${{ steps.filter.outputs.ingestion }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            auth:
+              - 'auth-user-service/**'
+            marketplace:
+              - 'marketplace-service/**'
+            admin:
+              - 'admin-service/**'
+            notification:
+              - 'notification-service/**'
+            ingestion:
+              - 'ingestion-service/**'
+            frontend:
+              - 'web-frontend/**'
+
+  # ---------------------------------------------------------------------------
+  # Test gates. main has no required status checks, so broken code can reach it;
+  # a deploy must not follow. Same commands as each service's own CI workflow.
+  # A test job runs only when its part changed (or on a manual run); a deploy
+  # job below needs it, so it is skipped automatically otherwise.
+  # ---------------------------------------------------------------------------
+  test-auth:
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.auth == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: auth-user-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: auth-user-service/package-lock.json
+      - run: npm ci
+      - run: npm run test:ci
+      - run: npm run build
+
+  test-marketplace:
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.marketplace == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: marketplace-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: marketplace-service/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run test:ci
+      - run: npm run test:e2e
+      - run: npm run build
+
+  test-admin:
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.admin == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: admin-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: admin-service/package-lock.json
+      - run: npm ci
+      - run: npm run test:ci
+      - run: npm run build
+
+  test-notification:
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.notification == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: notification-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: notification-service/package-lock.json
+      - run: npm ci
+      - run: npm run test:ci
+      - run: npm run build
+
+  test-ingestion:
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.ingestion == 'true'
+    runs-on: ubuntu-latest
+    # Same env as ingestion-service.yml so the suites behave identically.
+    env:
+      DB_HOST: localhost
+      DB_PORT: 5433
+      DB_NAME: vehicle_marketplace
+      DB_OWNER_USER: marketplace
+      DB_OWNER_PASSWORD: marketplace
+      DB_INGESTION_USER: ingestion_service_role
+      DB_INGESTION_PASSWORD: dev_ingestion
+      DATABASE_URL: postgresql://marketplace:marketplace@localhost:5433/vehicle_marketplace
+      INGESTION_DATABASE_URL: postgresql://ingestion_service_role:dev_ingestion@localhost:5433/vehicle_marketplace
+    defaults:
+      run:
+        working-directory: ingestion-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ingestion-service/package-lock.json
+      - run: npm ci
+      - run: npm run test:ci
+      - run: npm run test:e2e
+
+  test-frontend:
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web-frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web-frontend/package-lock.json
+      - run: npm ci
+      - run: npm run test
+      - run: npm run build
+
+  # ---------------------------------------------------------------------------
+  # Deploys. NOTE on every `update-function-code` below: its response contains
+  # the function's full configuration INCLUDING environment variables (JWT
+  # secret, database passwords, SMTP password). Actions logs are readable by
+  # anyone with repo access and GitHub only masks registered secrets, so the
+  # output is reduced to the ARN with --query.
+  # ---------------------------------------------------------------------------
   deploy-auth:
+    needs: test-auth
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -39,9 +226,11 @@ jobs:
         run: |
           aws lambda update-function-code \
             --function-name vehicle-marketplace-auth-production \
-            --image-uri ${{ env.ECR_REGISTRY }}/vehicle-marketplace/auth-production:${{ github.sha }}
+            --image-uri ${{ env.ECR_REGISTRY }}/vehicle-marketplace/auth-production:${{ github.sha }} \
+            --query FunctionArn --output text
 
   deploy-marketplace:
+    needs: test-marketplace
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -62,9 +251,11 @@ jobs:
         run: |
           aws lambda update-function-code \
             --function-name vehicle-marketplace-marketplace-production \
-            --image-uri ${{ env.ECR_REGISTRY }}/vehicle-marketplace/marketplace-production:${{ github.sha }}
+            --image-uri ${{ env.ECR_REGISTRY }}/vehicle-marketplace/marketplace-production:${{ github.sha }} \
+            --query FunctionArn --output text
 
   deploy-admin:
+    needs: test-admin
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -85,9 +276,11 @@ jobs:
         run: |
           aws lambda update-function-code \
             --function-name vehicle-marketplace-admin-production \
-            --image-uri ${{ env.ECR_REGISTRY }}/vehicle-marketplace/admin-production:${{ github.sha }}
+            --image-uri ${{ env.ECR_REGISTRY }}/vehicle-marketplace/admin-production:${{ github.sha }} \
+            --query FunctionArn --output text
 
   deploy-notification:
+    needs: test-notification
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -108,9 +301,13 @@ jobs:
         run: |
           aws lambda update-function-code \
             --function-name vehicle-marketplace-notification-production \
-            --image-uri ${{ env.ECR_REGISTRY }}/vehicle-marketplace/notification-production:${{ github.sha }}
+            --image-uri ${{ env.ECR_REGISTRY }}/vehicle-marketplace/notification-production:${{ github.sha }} \
+            --query FunctionArn --output text
 
+  # --- ingestion-service: 4 container images + 10 zip-packaged stage Lambdas.
+  # All of them build from ingestion-service/, so any change redeploys all.
   deploy-ingest-api:
+    needs: test-ingestion
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -131,9 +328,11 @@ jobs:
         run: |
           aws lambda update-function-code \
             --function-name vehicle-marketplace-ingest-api-production \
-            --image-uri ${{ env.ECR_REGISTRY }}/vehicle-marketplace/ingest-api-production:${{ github.sha }}
+            --image-uri ${{ env.ECR_REGISTRY }}/vehicle-marketplace/ingest-api-production:${{ github.sha }} \
+            --query FunctionArn --output text
 
   deploy-job-status-api:
+    needs: test-ingestion
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -155,9 +354,11 @@ jobs:
         run: |
           aws lambda update-function-code \
             --function-name vehicle-marketplace-job-status-api-production \
-            --image-uri ${{ env.ECR_REGISTRY }}/vehicle-marketplace/job-status-api-production:${{ github.sha }}
+            --image-uri ${{ env.ECR_REGISTRY }}/vehicle-marketplace/job-status-api-production:${{ github.sha }} \
+            --query FunctionArn --output text
 
   deploy-embed:
+    needs: test-ingestion
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -166,9 +367,9 @@ jobs:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
       - uses: aws-actions/amazon-ecr-login@v2
-      # ONNX model is ~90MB, over the 250MB zip-package unzipped cap — this
-      # ETL stage is the one exception among the 12 that runs as a container
-      # image rather than a zip. See function-config.ts.
+      # The MiniLM ONNX model is ~90MB, over the 250MB zip-package unzipped cap
+      # — the one ETL stage (with process-images) that ships as a container
+      # image instead of a zip. See function-config.ts.
       - name: Build and push image
         working-directory: ingestion-service
         run: |
@@ -182,9 +383,11 @@ jobs:
         run: |
           aws lambda update-function-code \
             --function-name vehicle-marketplace-embed-production \
-            --image-uri ${{ env.ECR_REGISTRY }}/vehicle-marketplace/embed-production:${{ github.sha }}
+            --image-uri ${{ env.ECR_REGISTRY }}/vehicle-marketplace/embed-production:${{ github.sha }} \
+            --query FunctionArn --output text
 
   deploy-process-images:
+    needs: test-ingestion
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -207,9 +410,11 @@ jobs:
         run: |
           aws lambda update-function-code \
             --function-name vehicle-marketplace-process-images-production \
-            --image-uri ${{ env.ECR_REGISTRY }}/vehicle-marketplace/process-images-production:${{ github.sha }}
+            --image-uri ${{ env.ECR_REGISTRY }}/vehicle-marketplace/process-images-production:${{ github.sha }} \
+            --query FunctionArn --output text
 
   deploy-stage-lambdas:
+    needs: test-ingestion
     runs-on: ubuntu-latest
     env:
       LAMBDA_ARTIFACTS_BUCKET: vehicle-marketplace-lambda-artifacts-production
@@ -225,9 +430,9 @@ jobs:
           cache: npm
           cache-dependency-path: ingestion-service/package-lock.json
       # The 10 lightweight ETL stage Lambdas — zip-packaged, not container
-      # images (see function-config.ts / STEP-FUNCTIONS-MIGRATION-PLAN.md
-      # §S7). One shared build produces all 10 zips; each gets its own
-      # upload + update-function-code call.
+      # images (see function-config.ts / STEP-FUNCTIONS-MIGRATION-PLAN.md §S7).
+      # One shared build produces all 10 zips; each gets its own upload +
+      # update-function-code call.
       - name: Install and build zips
         working-directory: ingestion-service
         run: |
@@ -243,10 +448,12 @@ jobs:
             aws lambda update-function-code \
               --function-name "vehicle-marketplace-$slug-production" \
               --s3-bucket "${{ env.LAMBDA_ARTIFACTS_BUCKET }}" \
-              --s3-key "lambda-artifacts/$slug.zip"
+              --s3-key "lambda-artifacts/$slug.zip" \
+              --query FunctionArn --output text
           done
 
   deploy-frontend:
+    needs: test-frontend
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -262,11 +469,14 @@ jobs:
       - name: Install and build
         working-directory: web-frontend
         env:
-          VITE_API_BASE_URL: ${{ vars.PUBLIC_API_ENDPOINT }}
+          PUBLIC_API_ENDPOINT: ${{ vars.PUBLIC_API_ENDPOINT }}
         run: |
           npm ci
-          npm run build
+          # The app joins paths itself (`${base}/auth/refresh`), so a trailing
+          # slash — `terraform output public_api_endpoint` ends with one —
+          # would produce `//auth/refresh`. Strip it.
+          VITE_API_BASE_URL="${PUBLIC_API_ENDPOINT%/}" npm run build
       - name: Sync to S3
         run: aws s3 sync web-frontend/dist/ s3://${{ vars.FRONTEND_BUCKET_NAME }}/ --delete
       - name: Invalidate CloudFront
-        run: aws cloudfront create-invalidation --distribution-id ${{ vars.FRONTEND_DISTRIBUTION_ID }} --paths "/*"
+        run: aws cloudfront create-invalidation --distribution-id ${{ vars.FRONTEND_DISTRIBUTION_ID }} --paths "/*" --query Invalidation.Id --output text
