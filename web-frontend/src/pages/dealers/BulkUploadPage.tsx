@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { toErrorMessage } from '../../api/client'
 import { buildTemplateCsv, uploadInventory } from '../../api/ingestion.api'
 import { COLUMN_HELP, TEMPLATE_HEADER, isRequired } from '../../api/ingestion.template'
+import { KnownValuesReference } from '../../components/dealers/KnownValuesReference'
 import { Button } from '../../components/ui/Button'
 import { ErrorBanner } from '../../components/ui/ErrorBanner'
 
@@ -183,6 +184,8 @@ export function BulkUploadPage() {
           </Button>
         </div>
       </form>
+
+      <KnownValuesReference />
 
       <section className="upload-card">
         <h2>Columns</h2>
