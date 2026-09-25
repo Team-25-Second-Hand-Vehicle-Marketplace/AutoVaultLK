@@ -63,6 +63,18 @@ variable "github_repo" {
   default = "AutoVaultLK"
 }
 
+# This repo issues immutable-ID OIDC subject claims, so the deploy role's trust
+# policy needs its numeric IDs too: gh api repos/<org>/<repo> --jq '.owner.id, .id'
+variable "github_org_id" {
+  type    = string
+  default = "301171207"
+}
+
+variable "github_repo_id" {
+  type    = string
+  default = "1329507255"
+}
+
 # Staging reuses production's GitHub OIDC provider (AWS allows only one per
 # unique provider URL per account) — see the data source in main.tf. Leave
 # this false unless production's provider genuinely doesn't exist yet.
