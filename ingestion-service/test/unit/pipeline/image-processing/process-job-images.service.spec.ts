@@ -49,6 +49,7 @@ const harness = () => {
           : null,
     ),
     findImageBySource: jest.fn().mockResolvedValue(null),
+    wasRejected: jest.fn().mockResolvedValue(false),
     countImagesForVehicle: jest.fn(async () => inserted.length),
     insertImage: jest.fn(async (image: unknown) => {
       inserted.push(image);
@@ -163,6 +164,28 @@ describe('ProcessJobImagesService', () => {
 
     expect(h.repo.findVehicleByRegistration.mock.calls.length).toBeGreaterThanOrEqual(3);
     expect(result.processed).toBe(1);
+  });
+
+  it('stops retrying immediately once the row is known to be rejected, instead of paying the full budget', async () => {
+    // The actual cost observed in practice: a ZIP where every image's row was
+    // rejected took ~30s PER IMAGE before this check existed, because the
+    // retry loop had no way to tell "still loading" from "never coming".
+    mockZip([entry('ABC1234.jpg')]);
+    const h = harness();
+    h.service.setMatchRetryTimingForTest(60_000, 5); // large budget the check must short-circuit
+    h.repo.findVehicleByRegistration.mockResolvedValue(null);
+    h.repo.wasRejected.mockResolvedValue(true);
+
+    const started = Date.now();
+    const result = await h.service.run(h.store as never, {
+      jobId: 'job-1',
+      zipKey: 'raw/job-1/images.zip',
+    });
+    const elapsed = Date.now() - started;
+
+    expect(result.unmatched).toBe(1);
+    expect(elapsed).toBeLessThan(5_000);
+    expect(h.repo.wasRejected).toHaveBeenCalledWith('job-1', 'ABC-1234');
   });
 
   it('does not match a vehicle from another upload job', async () => {
