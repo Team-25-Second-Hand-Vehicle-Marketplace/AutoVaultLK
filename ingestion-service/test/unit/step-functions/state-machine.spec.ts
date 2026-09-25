@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import {
   CHUNK_STAGES,
   FILE_STAGES,
+  IMAGE_STAGES,
   stageSlug,
 } from '../../../src/workers/etl-worker/pipeline/graph';
 import type { EtlStage } from '../../../src/infrastructure/database/entities/etl-stage-log.entity';
@@ -13,13 +14,19 @@ type AslState = {
   End?: boolean;
   Retry?: { ErrorEquals: string[]; MaxAttempts?: number; JitterStrategy?: string }[];
   Catch?: { ErrorEquals: string[]; Next: string; ResultPath?: string }[];
-  Parameters?: { FunctionName?: string };
+  Parameters?: {
+    FunctionName?: string;
+    Payload?: unknown;
+    'Payload.$'?: string;
+  };
   OutputPath?: string;
   ItemProcessor?: { StartAt: string; States: Record<string, AslState> };
   ItemsPath?: string;
   ResultPath?: string;
+  ResultSelector?: Record<string, string>;
   MaxConcurrency?: number;
   Default?: string;
+  Branches?: { StartAt: string; States: Record<string, AslState> }[];
 };
 
 const asl = JSON.parse(
@@ -29,7 +36,10 @@ const asl = JSON.parse(
   ),
 ) as { StartAt: string; States: Record<string, AslState> };
 
-const map = asl.States.ProcessChunks;
+const parallel = asl.States.ProcessRows;
+const chunksBranch = parallel.Branches?.[0].States as Record<string, AslState>;
+const imagesBranch = parallel.Branches?.[1].States as Record<string, AslState>;
+const map = chunksBranch.ProcessChunks;
 const iterator = map.ItemProcessor as NonNullable<AslState['ItemProcessor']>;
 
 /** Walks a Next chain from a starting state, returning the names in order. */
@@ -90,7 +100,7 @@ describe('ETL state machine', () => {
     });
 
     it('has a handler file for every state it invokes', () => {
-      for (const stage of [...FILE_STAGES, ...CHUNK_STAGES]) {
+      for (const stage of [...FILE_STAGES, ...CHUNK_STAGES, ...IMAGE_STAGES]) {
         const path = resolve(__dirname, `../../../src/lambda/${stageSlug(stage)}.ts`);
         expect(existsSync(path)).toBe(true);
       }
@@ -101,15 +111,64 @@ describe('ETL state machine', () => {
     });
   });
 
+  describe('ProcessRows: images run parallel with the chunk Map', () => {
+    it('is a Parallel state with a chunks branch and an images branch', () => {
+      expect(parallel.Type).toBe('Parallel');
+      expect(parallel.Branches).toHaveLength(2);
+    });
+
+    it('runs ProcessImages once per upload, not once per chunk', () => {
+      // Images are keyed by registration_number, not by chunk membership, so
+      // the whole ZIP is processed in a single invocation alongside the Map,
+      // rather than being folded into the per-chunk iterator.
+      expect(Object.keys(imagesBranch)).toEqual(['ProcessImages', 'ImagesDone']);
+      expect(imagesBranch.ProcessImages.Next).toBe('ImagesDone');
+    });
+
+    it("points ProcessImages at its own Lambda", () => {
+      const fn = imagesBranch.ProcessImages.Parameters?.FunctionName ?? '';
+      expect(fn).toContain('ProcessImagesFunctionArn');
+    });
+
+    it('does not let an image-branch infrastructure failure fail the whole job', () => {
+      // The dealer's vehicles are the primary outcome; a photo-matching
+      // failure must not undo rows that already loaded in the other branch.
+      const caught = imagesBranch.ProcessImages.Catch?.find((c) =>
+        c.ErrorEquals.includes('States.ALL'),
+      );
+
+      expect(caught).toBeDefined();
+      expect(caught?.Next).toBe('ImagesDone');
+    });
+
+    it('feeds Aggregate the chunk array, not the raw Parallel output', () => {
+      // ResultSelector reshapes the two branches' outputs before ResultPath
+      // merges them back onto the existing state, so jobId/totalRecords
+      // survive for Aggregate to read alongside the chunk array.
+      expect(parallel.ResultSelector).toMatchObject({
+        'chunks.$': '$[0].chunks',
+        'images.$': '$[1]',
+      });
+      expect(parallel.ResultPath).toBe('$.parallelResult');
+
+      const aggregatePayload = asl.States.Aggregate.Parameters?.Payload as
+        | Record<string, string>
+        | undefined;
+      expect(aggregatePayload?.['chunks.$']).toBe('$.parallelResult.chunks');
+    });
+  });
+
   describe('chunk isolation', () => {
     it('catches a failed chunk on the Map rather than failing the job', () => {
       // THE correctness requirement. Without this Catch one bad chunk fails
       // the whole execution and a dealer loses 399 good vehicles to one bad
-      // row — the opposite of what PARTIAL exists for.
+      // row — the opposite of what PARTIAL exists for. The Map sits inside
+      // ProcessRows's chunks branch, so it converges on that branch's own
+      // terminal Pass state, not directly on Aggregate.
       const caught = map.Catch?.find((c) => c.ErrorEquals.includes('States.ALL'));
 
       expect(caught).toBeDefined();
-      expect(caught?.Next).toBe('Aggregate');
+      expect(caught?.Next).toBe('ChunksDone');
     });
 
     it('does not let the iterator swallow its own failures', () => {
@@ -180,8 +239,9 @@ describe('ETL state machine', () => {
     });
 
     it('reaches Aggregate whether chunks succeeded or failed', () => {
-      expect(map.Next).toBe('Aggregate');
-      expect(map.Catch?.[0].Next).toBe('Aggregate');
+      expect(map.Next).toBe('ChunksDone');
+      expect(map.Catch?.[0].Next).toBe('ChunksDone');
+      expect(parallel.Next).toBe('Aggregate');
     });
 
     it('marks the job FAILED before failing the execution', () => {

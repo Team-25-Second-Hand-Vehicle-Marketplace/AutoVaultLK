@@ -140,6 +140,21 @@ export const FUNCTION_CONFIGS: Record<string, FunctionConfig> = {
     env: [...BASE_ENV, ...PIPELINE_ENV],
   },
 
+  'process-images': {
+    slug: 'process-images',
+    // Sharp's native binary and its image buffers are the memory driver here,
+    // the same reason images.ts's local orchestrator equivalent runs as a
+    // container image — see docker/process-images.Dockerfile.
+    packaging: 'image',
+    memoryMb: 2048,
+    // Runs concurrently with ProcessChunks (Parallel branch), so its budget
+    // must cover the whole upload's photo set, not one chunk's worth — plus
+    // the registration-lookup retry budget (up to 30s per unmatched image)
+    // for rows whose Load has not landed yet.
+    timeoutSeconds: 600,
+    env: BASE_ENV,
+  },
+
   'aggregate-results': {
     slug: 'aggregate-results',
     packaging: 'zip',

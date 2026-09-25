@@ -178,7 +178,7 @@ describe('MarketplaceVehiclesWriteAdapter', () => {
       await adapter.upsertBatch('job-1', 'dealer-1', [row(), row(), row()]);
 
       expect(query).toHaveBeenCalledTimes(1);
-      expect(query.mock.calls[0][1]).toHaveLength(75);
+      expect(query.mock.calls[0][1]).toHaveLength(81);
     });
 
     it('passes a null embedding through rather than skipping the row', async () => {

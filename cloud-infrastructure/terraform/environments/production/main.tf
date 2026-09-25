@@ -147,6 +147,30 @@ module "images" {
   cors_allowed_origins = ["https://${module.frontend.distribution_domain_name}"]
 }
 
+# Sensitive KYC documents (NIC scans, business registration certificates) —
+# a separate bucket from vehicle images on purpose: distinct IAM roles and
+# access pattern (only auth, which owns upload/resolve during registration,
+# and admin, which only resolves a viewing URL for the approval screen —
+# never marketplace or the public). See DOCUMENT_SERVE_MODE in
+# auth-user-service and admin-service's document-serve.config.ts.
+module "verification_documents" {
+  source = "../../modules/s3-images"
+
+  project_name          = var.project_name
+  environment           = var.environment
+  bucket_name_override  = "${var.project_name}-verification-docs-${var.environment}"
+
+  reader_role_names = [module.iam.role_names["auth"], module.iam.role_names["admin"]]
+  writer_role_names = [module.iam.role_names["auth"]]
+
+  # No direct browser upload/GET the way vehicle images use CORS for — every
+  # verification-document read is a backend-minted presigned URL an admin
+  # opens directly, and upload goes through auth-user-service's own API, so
+  # this stays scoped to the frontend origin rather than the images bucket's
+  # cors_allowed_origins default.
+  cors_allowed_origins = ["https://${module.frontend.distribution_domain_name}"]
+}
+
 locals {
   db_url = {
     for svc in ["auth", "marketplace", "admin", "notification", "ingestion"] :
@@ -192,6 +216,10 @@ module "auth_lambda" {
     AUTH_RETURN_PASSWORD_RESET_TOKEN = tostring(var.auth_return_verification_token)
     SES_FROM_EMAIL                   = coalesce(var.ses_sender_email, var.ses_domain_name != null ? "no-reply@${var.ses_domain_name}" : "")
     NOTIFICATION_INTERNAL_URL        = "${module.api_gateway.internal_api_endpoint}/notifications"
+    # Verification-document upload (FR-02.1) — same s3/local/demo modes as
+    # marketplace's image serving; production always runs s3.
+    DOCUMENT_SERVE_MODE      = "s3"
+    VERIFICATION_DOCS_BUCKET = module.verification_documents.bucket_name
   })
 }
 
@@ -237,6 +265,11 @@ module "admin_lambda" {
     AUTH_SERVICE_INTERNAL_URL = "${module.api_gateway.internal_api_endpoint}/internal"
     AUTH_INTERNAL_URL         = "${module.api_gateway.internal_api_endpoint}/internal"
     NOTIFICATION_INTERNAL_URL = "${module.api_gateway.internal_api_endpoint}/notifications"
+    # Resolves a stored verification-document key into a presigned URL for
+    # the dealer approval screen — read-only, never uploads (see
+    # DocumentUrlResolverService in admin-service).
+    DOCUMENT_SERVE_MODE      = "s3"
+    VERIFICATION_DOCS_BUCKET = module.verification_documents.bucket_name
   })
 }
 
@@ -451,6 +484,7 @@ module "api_gateway" {
     auth              = module.auth_lambda.invoke_arn
     users             = module.auth_lambda.invoke_arn
     "dealer-profiles" = module.auth_lambda.invoke_arn
+    documents         = module.auth_lambda.invoke_arn
     marketplace       = module.marketplace_lambda.invoke_arn
     admin             = module.admin_lambda.invoke_arn
     # Both controllers (IngestionController, JobStatusController) live in the
@@ -580,6 +614,8 @@ output "images_bucket_name" {
   value = module.images.bucket_name
 }
 
+output "verification_documents_bucket_name" {
+  value = module.verification_documents.bucket_name
 output "ingestion_sqs_queue_url" {
   value = aws_sqs_queue.ingestion_jobs.url
 }

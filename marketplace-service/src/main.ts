@@ -1,10 +1,12 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { ProductionExceptionFilter } from './common/filters/production-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.enableCors();
+  app.useGlobalFilters(new ProductionExceptionFilter());
 
   // Enforces every class-validator decorator across all DTOs (FilterSearchDto
   // included) and — critically — transform: true actually mutates incoming

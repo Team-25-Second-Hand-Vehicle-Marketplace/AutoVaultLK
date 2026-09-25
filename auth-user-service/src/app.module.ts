@@ -9,6 +9,7 @@ import { DatabaseModule } from './infrastructure/database/database.module';
 import { DealerProfilesModule } from './modules/dealers/dealers.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
+import { DocumentsModule } from './modules/documents/documents.module';
 
 @Module({
   imports: [
@@ -68,6 +69,7 @@ import { UsersModule } from './modules/users/users.module';
     AuthModule,
     UsersModule,
     DealerProfilesModule,
+    DocumentsModule,
     HealthModule,
   ],
 })

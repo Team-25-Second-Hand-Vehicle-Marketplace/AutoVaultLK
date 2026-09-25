@@ -4,6 +4,7 @@ import { ManualListingStatusDto } from '../../../../src/modules/listings/dto/cre
 
 describe('ListingRepository', () => {
   const queryBuilder = {
+    leftJoinAndSelect: jest.fn(),
     where: jest.fn(),
     orderBy: jest.fn(),
     addOrderBy: jest.fn(),
@@ -30,7 +31,7 @@ describe('ListingRepository', () => {
       searchText: null,
       embedding: null,
     });
-    for (const key of ['where', 'orderBy', 'addOrderBy'] as const) {
+    for (const key of ['leftJoinAndSelect', 'where', 'orderBy', 'addOrderBy'] as const) {
       queryBuilder[key].mockReturnValue(queryBuilder);
     }
     queryBuilder.getMany.mockResolvedValue([]);
@@ -144,6 +145,7 @@ describe('ListingRepository', () => {
       expect(vehicleRepo.find).toHaveBeenCalledWith({
         where: { dealerId: 'dealer-1' },
         order: { createdAt: 'DESC' },
+        relations: ['images'],
       });
     });
 

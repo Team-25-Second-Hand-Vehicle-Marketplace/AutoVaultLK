@@ -23,8 +23,13 @@ describe('AdminReadsService', () => {
       loadReports: jest.fn().mockResolvedValue({ listings: {} }),
     };
     const auditLogs = { search: jest.fn().mockResolvedValue([]) };
-    const service = new AdminReadsService(reads as never, auditLogs as never);
-    return { service, reads, auditLogs };
+    const documentUrlResolver = { resolve: jest.fn().mockResolvedValue(null) };
+    const service = new AdminReadsService(
+      reads as never,
+      auditLogs as never,
+      documentUrlResolver as never,
+    );
+    return { service, reads, auditLogs, documentUrlResolver };
   }
 
   it('maps dashboard SQL aggregates', async () => {

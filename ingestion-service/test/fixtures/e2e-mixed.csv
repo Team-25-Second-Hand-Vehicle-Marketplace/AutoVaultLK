@@ -1,41 +1,41 @@
-registration_number,make,model,year,price,mileage,fuel_type,transmission,body_type
-WP-0001,Nissan,Sunny,2016,23888592,166159,UnknownFuel,Automatic,Wagon
-WP-0002,Mercedes-Benz,E200,2019,20133440,128035,Hybrid,Automatic,Wagon
-WP-0003,BMW,X3,2022,4899434,15053,Diesel,manual,SUV
-WP-0004,BMW,X1,2023,19829727,141182,Diesel,Manual,Sedan
-WP-0005,Honda,CR-V,2018,23735984,120811,Petrol,Automatic,SUV
-WP-0006,Toyota,Prius,2021,15449203,150233,Petrol,Manual,SUV
-WP-0007,BMW,X1,2024,18944073,120110,Electric,Automatic,Sedan
-WP-0008,Toyota,Corolla,2017,5147301,64339,Petrol,Manual,Coupe
-WP-0009,Nissan,Sunny,2021,12054655,102700,Hybrid,Automatic,Wagon
-WP-0010,Nissan,,2026,10198996,20333,Electric,Automatic,Coupe
-WP-0011,,X-Trail,2020,17998463,158720,Hybrid,Automatic,Wagon
-WP-0012,BMW,X1,2024,11133246,144256,Electric,Manual,Wagon
-WP-0013,Nissan,March,2019,24990204,7414,Diesel,Manual,SUV
-WP-0014,Mercedes-Benz,GLA,2023,5267573,-100,Hybrid,Automatic,Hatchback
-WP-0015,BMW,320i,2022,21176864,166260,Diesel,Manual,Sedan
-WP-0016,Mercedes-Benz,C200,2017,19078040,178135,Electric,Manual,Hatchback
-WP-0017,Toyota,Prius,2017,13895758,178082,Petrol,Manual,Coupe
-WP-0018,Nissan,X-Trail,2022,12750962,124444,Hybrid,Automatic,Sedan
-WP-0019,BMW,520i,2026,23416211,85576,Petrol,manual,SUV
-WP-0020,BMW,X1,2026,18933256,55383,Petrol,Manual,SUV
-WP-0021,Nissan,Leaf,2017,12563242,106503,Hybrid,Automatic,Hatchback
-WP-0022,Toyota,,2025,19533858,140263,Electric,Automatic,Coupe
-WP-0023,Nissan,March,2015,22021640,135342,Diesel,Automatic,Sedan
-WP-0024,Nissan,Leaf,2020,14279659,94983,Electric,Manual,Coupe
-WP-0025,Honda,Fit,2019,22379316,34886,Diesel,Automatic,Sedan
-WP-0026,BMW,X3,2022,12708840,17608,Electric,Manual,Coupe
-WP-0027,Toyota,Corolla,2015,17718519,169107,Diesel,UnknownTransmission,SUV
-WP-0028,Toyota,Prius,2022,19709992,119924,Electric,Automatic,Coupe
-WP-0029,Toyota,Yaris,2021,15760882,68719,petrol,Automatic,Wagon
-WP-0030,Mercedes-Benz,GLC,2023,8513489,63834,Petrol,Manual,Wagon
-WP-0031,BMW,320i,2018,19465663,23436,Hybrid,Automatic,Sedan
-WP-0032,Mercedes-Benz,GLC,2020,14784137,114414,UnknownFuel,Manual,Coupe
-WP-0033,,Yaris,2021,8267574,148094,Hybrid,Automatic,Wagon
-WP-0034,Honda,Civic,2022,16338965,172409,Petrol,Automatic,Sedan
-WP-0035,Toyota,Corolla,2020,4556801,89075,Diesel,manual,SUV
-WP-0036,Nissan,Sunny,2026,19802572,"120,483 km",Hybrid,Manual,Coupe
-WP-0037,BMW,X1,2020,18804072,89127,Diesel,Automatic,SUV
-WP-0038,Mercedes-Benz,,2020,20327126,126808,Petrol,Automatic,Wagon
-WP-0039,Nissan,March,2018,3789160,96790,Petrol,Automatic,SUV
-WP-0040,Toyota,Vitz,2024,5262182,140416,Petrol,Automatic,Sedan
+registration_number,make,model,year,price,mileage,fuel_type,transmission,body_type,color,engine_capacity_cc,owners_count,location_district
+WP-0001,Nissan,X-Trail,2016,-500000,43932,Diesel,Automatic,SUV,Blue,1798,1,Galle
+WP-0002,Nissan,Leaf,2018,3719260,38846,Electric,Manual,Wagon,Pearl White,2916,4,Galle
+WP-0003,Toyota,Yaris,2020,22024704,57067,Diesel,Automatic,Sedan,Blue,2215,2,Galle
+WP-0004,Toyota,Corolla,2019,19903241,150660,Diesel,Manual,Coupe,Grey,1501,2,Gampaha
+WP-0005,Toyota,RAV4,2019,"Rs 11,110,727",123268,Hybrid,Automatic,SUV,Silver,1840,4,Gampaha
+WP-0006,Toyota,Vitz,2016,16267916,63263,Petrol,Manual,Wagon,Blue,2672,2,Galle
+WP-0007,  Honda , Fit ,2026,9671314,118254,Petrol,Automatic,Hatchback,White,2811,4,Galle
+WP-0008,Toyota,Corolla,2025,14113988,13126,Hybrid,Manual,Wagon,Silver,2269,4,Colombo
+WP-0009,Nissan,March,2023,15954047,147246,Petrol,Manual,Hatchback,Silver,2083,3,Kandy
+WP-0010,Nissan,,2020,24303774,58157,Electric,Automatic,Coupe,Silver,1043,1,Colombo
+WP-0011,Toyota,Corolla,2018,5344381,85903,Petrol,Manual,Sedan,Silver,2787,2,Galle
+WP-0012,BMW,320i,2026,12848025,159438,Hybrid,Manual,Sedan,Grey,1768,1,Galle
+WP-0013,BMW,X1,2017,22258261,24210,Petrol,Manual,SUV,Black,1033,2,Colombo
+WP-0014,Nissan,Sunny,2017,21911668,6999,Electric,Automatic,Coupe,White,1608,2,Galle
+WP-0015,Mercedes-Benz,GLA,2021,19143158,44873,Hybrid,Manual,SUV,White,2427,1,Colombo
+WP-0016,Mercedes-Benz,GLA,2023,4084548,133180,Hybrid,Manual,Hatchback,Pearl White,2133,4,Colombo
+WP-0017,Nissan,Leaf,2022,10950458,140399,Petrol,Manual,Hatchback,White,1904,4,Kandy
+WP-0018,Toyota,RAV4,2019,15378207,151121,Diesel,Automatic,Hatchback,Blue,2565,3,Kurunegala
+WP-0019,Honda,Vezel,2023,16115642,-100,Petrol,Automatic,Coupe,Silver,2155,3,Colombo
+WP-0020,Mercedes-Benz,GLC,2020,22189926,96416,Petrol,Manual,Coupe,Red,1194,1,Galle
+WP-0021,Honda,Civic,2017,16140285,135121,Diesel,Manual,Wagon,Silver,2749,4,Galle
+WP-0022,Honda,Vezel,2018,12668822,"106,601 km",Electric,Automatic,SUV,Grey,2139,1,Kandy
+WP-0023,Toyota,Corolla,2025,17182070,32921,DIESEL,automatic,Sedan,Blue,2234,3,Kandy
+WP-0024,Nissan,X-Trail,2018,15926567,"117,733 km",Hybrid,Manual,Wagon,Blue,2375,3,Gampaha
+WP-0025,Nissan,Leaf,2026,18925105,136406,Electric,Manual,Wagon,Blue,2860,2,Galle
+WP-0026,BMW,X3,2016,6867745,19143,Petrol,Automatic,Wagon,Blue,2438,3,Kandy
+WP-0027,Toyota,Yaris,2017,24568733,"84,344 km",Hybrid,Automatic,SUV,Pearl White,1729,3,Kandy
+WP-0028,Honda,Fit,2024,11504523,119702,Diesel,Manual,Hatchback,Silver,2133,3,Kurunegala
+WP-0029,BMW,320i,2019,13720715,44516,Hybrid,Manual,SUV,Red,1529,2,Kandy
+WP-0030,BMW,320i,2020,18612920,120124,Petrol,Manual,Sedan,Red,1559,3,Kurunegala
+WP-0031,Nissan,Leaf,2022,7817377,10346,Petrol,Automatic,Coupe,Black,1412,3,Kurunegala
+WP-0032,Mercedes-Benz,,2015,15536674,12250,Hybrid,Manual,Coupe,Grey,1346,3,Kurunegala
+WP-0033,Toyota,Vitz,2018,9560252,73067,Hybrid,Automatic,Hatchback,Pearl White,2855,2,Kandy
+WP-0034,Toyota,Vitz,2019,20183091,34644,petrol,Automatic,Hatchback,Blue,2323,1,Kurunegala
+WP-0035,Toyota,RAV4,2024,15373995,144079,Diesel,manual,Coupe,Red,1889,2,Kurunegala
+WP-0036,Honda,CR-V,2022,20403592,121310,Electric,Automatic,Hatchback,Grey,2711,4,Kandy
+WP-0037,Nissan,March,2016,19418873,104675,DIESEL,automatic,SUV,Red,1559,1,Gampaha
+WP-0038,BMW,320i,2017,13670150,150664,Hybrid,Automatic,Coupe,Silver,2206,2,Galle
+WP-0039,Mercedes-Benz,C200,2022,21900468,41533,Electric,Manual,Wagon,White,1744,2,Kandy
+WP-0040,Mercedes-Benz,E200,2018,23833397,8189,Hybrid,Automatic,Sedan,Grey,1330,3,Colombo

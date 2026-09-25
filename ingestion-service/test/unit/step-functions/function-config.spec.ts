@@ -78,9 +78,17 @@ describe('lambda function config', () => {
       expect(FUNCTION_CONFIGS.embed.packaging).toBe('image');
     });
 
+    it('ships process-images as a container image', () => {
+      // Sharp's native binary is the same category of dependency MiniLM is —
+      // too heavy for a zip's layer cap comfortably.
+      expect(FUNCTION_CONFIGS['process-images'].packaging).toBe('image');
+    });
+
     it('ships everything else as a zip', () => {
       // Zips cold-start faster, and nothing else carries a heavy dependency.
-      for (const config of configs.filter((c) => c.slug !== 'embed')) {
+      for (const config of configs.filter(
+        (c) => c.slug !== 'embed' && c.slug !== 'process-images',
+      )) {
         expect(config.packaging).toBe('zip');
       }
     });

@@ -20,6 +20,13 @@ const VALID: VehicleFields = {
   manufactureYear: 2015,
   price: 3_500_000,
   mileage: 45_000,
+  // Widened from optional to required per the updated SRS Appendix A.
+  fuelType: 'PETROL',
+  transmissionType: 'AUTOMATIC',
+  color: 'White',
+  engineCapacityCc: 1000,
+  ownersCount: 1,
+  locationDistrict: 'Colombo',
 };
 
 const row = (
@@ -49,15 +56,24 @@ describe('validateRowsStage', () => {
     expect(result.rejections).toEqual([]);
   });
 
-  it.each(['make', 'model', 'manufactureYear', 'price', 'mileage'] as const)(
-    'rejects a row missing %s',
-    async (field) => {
-      const result = await run([without(field)]);
+  it.each([
+    'make',
+    'model',
+    'manufactureYear',
+    'price',
+    'mileage',
+    'fuelType',
+    'transmissionType',
+    'color',
+    'engineCapacityCc',
+    'ownersCount',
+    'locationDistrict',
+  ] as const)('rejects a row missing %s', async (field) => {
+    const result = await run([without(field)]);
 
-      expect(result.rows).toHaveLength(0);
-      expect(result.rejections).toHaveLength(1);
-    },
-  );
+    expect(result.rows).toHaveLength(0);
+    expect(result.rejections).toHaveLength(1);
+  });
 
   it('distinguishes a blank cell from an unrecognised value', async () => {
     // Different fixes: one means "you left this empty", the other means "we do

@@ -29,12 +29,50 @@ const BODY_TYPES = [
   'MOTORBIKE',
 ] as const;
 
-/** Int spec keys and their bounds, from the same constants file. */
-const INT_SPECS: Record<string, { column: string; min: number; max: number }> = {
+/**
+ * Category-specific attribute schemas (SRS Appendix B.2), gated by
+ * vehicle_type. A column here is only ever read into `specs` for a row whose
+ * vehicle_type matches its category — a TRUCK's `axle_count` column on a CAR
+ * row is ignored, not stored, the same way an out-of-range int spec is
+ * dropped rather than stored under a misleading key.
+ *
+ * The universal equipment keys (sunroof, full_option, alloy_wheels,
+ * reverse_camera, leather_seats, power_steering, air_conditioning — see
+ * BOOL_SPECS below) are the deliberate exception: a van or truck can have a
+ * sunroof too, so those apply to every vehicle_type rather than being gated
+ * here.
+ */
+const CAR_SUV_TYPES = new Set(['CAR', 'SUV']);
+const BIKE_TYPES = new Set(['BIKE']);
+const VAN_BUS_TYPES = new Set(['VAN', 'BUS']);
+const TRUCK_TYPES = new Set(['TRUCK', 'LORRY', 'PICKUP']);
+
+const STROKE_TYPES = ['2_STROKE', '4_STROKE'] as const;
+const COOLING_SYSTEMS = ['AIR', 'LIQUID'] as const;
+const START_TYPES = ['ELECTRIC', 'KICK'] as const;
+
+const ROOF_TYPES = ['HIGH_ROOF', 'STANDARD'] as const;
+const WHEELBASES = ['SHORT', 'MEDIUM', 'LONG'] as const;
+const DOOR_CONFIGURATIONS = ['SLIDING', 'HINGED', 'SLIDING_AND_HINGED'] as const;
+
+const CARGO_BED_TYPES = ['FLATBED', 'BOX', 'TIPPER', 'REFRIGERATED', 'OTHER'] as const;
+
+/** CAR/SUV int specs. Doors/seats/airbags describe a car or SUV's cabin, not a bike, van or truck's. */
+const CAR_SUV_INT_SPECS: Record<string, { column: string; min: number; max: number }> = {
   seats: { column: 'seats', min: 2, max: 60 },
   doors: { column: 'doors', min: 2, max: 6 },
   airbags: { column: 'airbags', min: 0, max: 12 },
+};
+
+const VAN_BUS_INT_SPECS: Record<string, { column: string; min: number; max: number }> = {
+  seating_capacity: { column: 'seating_capacity', min: 2, max: 60 },
+};
+
+/** Trucks/lorries/pickups: cargo capacity, from the pre-existing load_capacity_kg key. */
+const TRUCK_INT_SPECS: Record<string, { column: string; min: number; max: number }> = {
   load_capacity_kg: { column: 'load_capacity_kg', min: 500, max: 20_000 },
+  payload_capacity_kg: { column: 'payload_capacity_kg', min: 100, max: 50_000 },
+  axle_count: { column: 'axle_count', min: 2, max: 6 },
 };
 
 const DRIVE_TYPES = ['FWD', 'RWD', 'AWD', '4WD'] as const;
@@ -74,6 +112,12 @@ const BOOL_SPECS: Record<string, string> = {
   air_con: 'air_conditioning',
 };
 
+/** BIKE-only boolean spec. Gated the same way the category int/enum tables are. */
+const BIKE_BOOL_SPECS: Record<string, string> = {
+  abs_equipped: 'abs_equipped',
+  abs: 'abs_equipped',
+};
+
 /**
  * Columns the pipeline consumes as vehicle fields rather than specs. Listed so
  * carryUnmappedColumns can tell "already used" from "extra".
@@ -100,8 +144,18 @@ const CONSUMED_COLUMNS = new Set([
   'description',
   'is_negotiable',
   'drive_type',
-  ...Object.keys(INT_SPECS),
+  'stroke_type',
+  'cooling_system',
+  'start_type',
+  'roof_type',
+  'wheelbase',
+  'door_configuration',
+  'cargo_bed_type',
+  ...Object.keys(CAR_SUV_INT_SPECS),
+  ...Object.keys(VAN_BUS_INT_SPECS),
+  ...Object.keys(TRUCK_INT_SPECS),
   ...Object.keys(BOOL_SPECS),
+  ...Object.keys(BIKE_BOOL_SPECS),
 ]);
 
 /**
@@ -112,8 +166,27 @@ const CONSUMED_COLUMNS = new Set([
 const MAX_CARRIED_COLUMNS = 8;
 const MAX_CARRIED_VALUE_LENGTH = 60;
 
+/**
+ * Cap on how many unmapped columns may be written into `specs` verbatim.
+ * Distinct from MAX_CARRIED_COLUMNS (the description cap) because a column
+ * lands in *both* places: specs preserves the dealer's own field name/value
+ * pair as structured data (FR-15 / Appendix B.2), while description carries
+ * it as prose the embedding can read. A dealer export with dozens of DMS
+ * columns should not turn `specs` into an unbounded bag either.
+ */
+const MAX_DYNAMIC_SPEC_KEYS = 20;
+const MAX_DYNAMIC_SPEC_VALUE_LENGTH = 200;
+
 /** marketplace.vehicles.condition defaults to USED; stated here rather than relied on. */
 export const DEFAULT_CONDITION = 'USED';
+
+/**
+ * marketplace.vehicles.review_reason (migration 30000). A short machine code
+ * rather than a sentence, so the review UI can branch on it without parsing
+ * text — see the migration's own comment for why this is a separate column
+ * from `status`.
+ */
+export const REVIEW_REASON_NO_REGISTRATION_NUMBER = 'NO_REGISTRATION_NUMBER';
 
 /**
  * Fills in what the dealer did not supply and builds the `specs` jsonb.
@@ -127,16 +200,18 @@ export const DEFAULT_CONDITION = 'USED';
  * text embeds to a different vector. That is FR-22.1 drift arriving through
  * the side door, so body type is resolved here and not left to Load.
  *
- * Unknown spec keys are never written to `specs`. That column is queried by
- * search facets against KNOWN_SPEC_KEYS, so an arbitrary dealer column stored
- * there is unqueryable weight on every row that still looks like data to
- * anyone reading the table.
+ * Known spec keys (body_type, seats, sunroof, etc.) are validated and typed
+ * before being written, because search facets query them against
+ * KNOWN_SPEC_KEYS — a malformed or out-of-range value there would be
+ * unqueryable weight, or worse, a facet that silently returns nothing.
  *
- * They are not discarded either. A dealer writing "Warranty: 2 years" or
- * "Service records: full" is describing the vehicle, and that is worth keeping
- * — so unmapped columns are appended to `description`, which is human-readable
- * on the listing and reaches the embedding through buildSearchText. Text is
- * the right home for information we cannot filter on.
+ * Everything else the dealer's CSV carries is NOT discarded (FR-15 /
+ * Appendix B.2): a truly unmapped column is written into `specs` verbatim
+ * under its own header name, preserving the dealer's data even though no
+ * facet can filter on it yet, AND appended to `description` so it still
+ * reaches the embedding through buildSearchText. A dealer writing
+ * "Warranty: 2 years" is describing the vehicle either way — specs keeps the
+ * structured fact, description keeps it readable and searchable.
  */
 export const enrichStage: StageRunner<ValidatedRow[], StageResult<EnrichedRow>> = {
   stage: 'ENRICH',
@@ -157,6 +232,15 @@ function enrichRow(ctx: StageContext, row: ValidatedRow): EnrichedRow {
   if (!normalized.condition) normalized.condition = DEFAULT_CONDITION;
   if (normalized.isNegotiable === undefined) normalized.isNegotiable = false;
 
+  // FR-35.2: a blank registration_number is not a defect (unregistered
+  // imports are legitimate stock) but it means the images branch has no key
+  // to match photos against, so the row needs a dealer's eyes before it can
+  // go LIVE even after the rest of the listing looks fine.
+  if (!normalized.registrationNumber) {
+    normalized.needsManualReview = true;
+    normalized.reviewReason = REVIEW_REASON_NO_REGISTRATION_NUMBER;
+  }
+
   const specs = buildSpecs(ctx, row);
   if (Object.keys(specs).length > 0) normalized.specs = specs;
 
@@ -168,24 +252,47 @@ function enrichRow(ctx: StageContext, row: ValidatedRow): EnrichedRow {
 
 function buildSpecs(ctx: StageContext, row: ValidatedRow): Record<string, unknown> {
   const specs: Record<string, unknown> = { ...(row.normalized.specs ?? {}) };
+  const vehicleType = row.normalized.vehicleType;
 
   const bodyType = resolveBodyType(ctx, row.raw['body_type']);
   if (bodyType) specs.body_type = bodyType;
 
-  for (const [column, spec] of Object.entries(INT_SPECS)) {
-    const value = coerceInteger(row.raw[column]);
-    // Out-of-range is dropped rather than clamped: 200 seats is a typo, and
-    // clamping it to 60 would invent a plausible-looking fact.
-    if (value !== null && value >= spec.min && value <= spec.max) {
-      specs[spec.column] = value;
+  // Category-gated int specs: a column only ever lands in `specs` when the
+  // row's vehicle_type matches the category it describes.
+  if (vehicleType && CAR_SUV_TYPES.has(vehicleType)) {
+    applyIntSpecs(specs, row, CAR_SUV_INT_SPECS);
+
+    const driveType = coerceText(row.raw['drive_type'])?.toUpperCase().replace(/[\s-]/g, '');
+    if (driveType && (DRIVE_TYPES as readonly string[]).includes(driveType)) {
+      specs.drive_type = driveType;
     }
   }
 
-  const driveType = coerceText(row.raw['drive_type'])?.toUpperCase().replace(/[\s-]/g, '');
-  if (driveType && (DRIVE_TYPES as readonly string[]).includes(driveType)) {
-    specs.drive_type = driveType;
+  if (vehicleType && BIKE_TYPES.has(vehicleType)) {
+    applyEnumSpec(specs, row, 'stroke_type', STROKE_TYPES);
+    applyEnumSpec(specs, row, 'cooling_system', COOLING_SYSTEMS);
+    applyEnumSpec(specs, row, 'start_type', START_TYPES);
+
+    for (const [column, key] of Object.entries(BIKE_BOOL_SPECS)) {
+      const value = coerceBooleanSpec(row.raw[column]);
+      if (value !== null && !(key in specs)) specs[key] = value;
+    }
   }
 
+  if (vehicleType && VAN_BUS_TYPES.has(vehicleType)) {
+    applyIntSpecs(specs, row, VAN_BUS_INT_SPECS);
+    applyEnumSpec(specs, row, 'roof_type', ROOF_TYPES);
+    applyEnumSpec(specs, row, 'wheelbase', WHEELBASES);
+    applyEnumSpec(specs, row, 'door_configuration', DOOR_CONFIGURATIONS);
+  }
+
+  if (vehicleType && TRUCK_TYPES.has(vehicleType)) {
+    applyIntSpecs(specs, row, TRUCK_INT_SPECS);
+    applyEnumSpec(specs, row, 'cargo_bed_type', CARGO_BED_TYPES);
+  }
+
+  // Universal equipment: applies regardless of vehicle_type, since a van or
+  // truck can have a sunroof or full option just as a car can.
   for (const [column, key] of Object.entries(BOOL_SPECS)) {
     const value = coerceBooleanSpec(row.raw[column]);
     // First column wins: "alloys" and "alloy_wheels" in the same file map to
@@ -193,7 +300,69 @@ function buildSpecs(ctx: StageContext, row: ValidatedRow): Record<string, unknow
     if (value !== null && !(key in specs)) specs[key] = value;
   }
 
+  addDynamicSpecs(row, specs);
+
   return specs;
+}
+
+function applyIntSpecs(
+  specs: Record<string, unknown>,
+  row: ValidatedRow,
+  table: Record<string, { column: string; min: number; max: number }>,
+): void {
+  for (const [column, spec] of Object.entries(table)) {
+    const value = coerceInteger(row.raw[column]);
+    // Out-of-range is dropped rather than clamped: 200 seats is a typo, and
+    // clamping it to 60 would invent a plausible-looking fact.
+    if (value !== null && value >= spec.min && value <= spec.max) {
+      specs[spec.column] = value;
+    }
+  }
+}
+
+/** Reads a category-specific enum column, storing it only if it matches the allowed list exactly. */
+function applyEnumSpec(
+  specs: Record<string, unknown>,
+  row: ValidatedRow,
+  column: string,
+  allowed: readonly string[],
+): void {
+  const raw = coerceText(row.raw[column])?.toUpperCase().replace(/[\s-]/g, '_');
+  if (raw && allowed.includes(raw)) {
+    specs[column] = raw;
+  }
+}
+
+/**
+ * Writes truly unmapped columns into `specs` verbatim, under their own
+ * (already snake_case, per csv-contract's normalizeHeader) header name.
+ *
+ * Deliberately separate from the known-key blocks above: those validate type
+ * and range because a search facet queries them, while this preserves
+ * whatever the dealer's own DMS export happened to carry — a raw string, not
+ * a typed/bounded value; no facet queries these keys, so there is nothing to
+ * protect them from except unbounded size (MAX_DYNAMIC_SPEC_KEYS/VALUE).
+ *
+ * A column already written by the known-key blocks (specs.body_type,
+ * specs.sunroof, ...) is skipped here via CONSUMED_COLUMNS, which lists
+ * every column those blocks read from — so a value never gets written twice
+ * under two different keys for the same column.
+ */
+function addDynamicSpecs(row: ValidatedRow, specs: Record<string, unknown>): void {
+  let added = 0;
+
+  for (const [column, raw] of Object.entries(row.raw)) {
+    if (added >= MAX_DYNAMIC_SPEC_KEYS) break;
+    if (CONSUMED_COLUMNS.has(column)) continue;
+
+    const value = coerceText(raw);
+    if (!value) continue;
+
+    specs[column] = value.length > MAX_DYNAMIC_SPEC_VALUE_LENGTH
+      ? `${value.slice(0, MAX_DYNAMIC_SPEC_VALUE_LENGTH - 1)}…`
+      : value;
+    added += 1;
+  }
 }
 
 /**

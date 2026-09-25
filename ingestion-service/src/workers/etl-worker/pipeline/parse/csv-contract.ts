@@ -19,8 +19,26 @@
  * `registration_number` is deliberately NOT required: unregistered imports are
  * legitimate stock and arrive with the column blank. It is still declared in
  * KNOWN_COLUMNS because the image matcher (§B3) keys on it.
+ *
+ * `fuel_type`, `transmission`, `color`, `engine_capacity_cc`, `owners_count`
+ * and `location_district` were widened from optional to required per the
+ * updated SRS Appendix A: a listing missing any of these was judged too thin
+ * for a buyer to evaluate, so a dealer file predating this column set is
+ * rejected at the file gate rather than silently loading incomplete rows.
  */
-export const REQUIRED_COLUMNS = ['make', 'model', 'year', 'price', 'mileage'] as const;
+export const REQUIRED_COLUMNS = [
+  'make',
+  'model',
+  'year',
+  'price',
+  'mileage',
+  'fuel_type',
+  'transmission',
+  'color',
+  'engine_capacity_cc',
+  'owners_count',
+  'location_district',
+] as const;
 
 /**
  * Every column the pipeline reads as a field or a spec.
@@ -32,16 +50,22 @@ export const REQUIRED_COLUMNS = ['make', 'model', 'year', 'price', 'mileage'] as
  */
 export const KNOWN_COLUMNS = [
   ...REQUIRED_COLUMNS,
+  // Not in REQUIRED_COLUMNS: an absent/unrecognised value leaves
+  // Vehicle.vehicleType at its schema default ('CAR') via deriveVehicleType's
+  // dictionary fallback (parse-normalize.stage.ts) rather than failing the
+  // row — the SRS/SAD Appendix A table lists this as a required relational
+  // column, but making it a hard CSV requirement would reject every dealer
+  // file that predates this column for no benefit over the existing default.
+  'vehicle_type',
   'registration_number',
-  'fuel_type',
-  'transmission',
+  // fuel_type, transmission, color, engine_capacity_cc, owners_count and
+  // location_district already arrive via the REQUIRED_COLUMNS spread above —
+  // repeating them here would duplicate the column in every downloadable
+  // template and in TEMPLATE_HEADER, which is exactly the header a dealer's
+  // upload gets checked against.
   'body_type',
   'condition',
-  'engine_capacity_cc',
-  'color',
-  'owners_count',
   'location_city',
-  'location_district',
   'chassis_number',
   'description',
   'is_negotiable',
@@ -61,6 +85,21 @@ export const KNOWN_COLUMNS = [
   'leather_seats',
   'power_steering',
   'air_conditioning',
+  // Category-gated columns (SRS Appendix B.2) — read into specs only when
+  // the row's vehicle_type matches the category each one describes (BIKE,
+  // VAN/BUS, TRUCK/LORRY/PICKUP). See enrich.stage.ts's CAR_SUV/BIKE/
+  // VAN_BUS/TRUCK tables.
+  'stroke_type',
+  'cooling_system',
+  'start_type',
+  'abs_equipped',
+  'seating_capacity',
+  'roof_type',
+  'wheelbase',
+  'door_configuration',
+  'payload_capacity_kg',
+  'axle_count',
+  'cargo_bed_type',
 ] as const;
 
 export type KnownColumn = (typeof KNOWN_COLUMNS)[number];
@@ -72,6 +111,9 @@ export type KnownColumn = (typeof KNOWN_COLUMNS)[number];
  * dealer a support ticket.
  */
 const HEADER_ALIASES: Record<string, KnownColumn> = {
+  type: 'vehicle_type',
+  category: 'vehicle_type',
+  vehicle_category: 'vehicle_type',
   manufacturer: 'make',
   brand: 'make',
   variant: 'model',
@@ -127,15 +169,14 @@ export function normalizeHeader(header: string): string {
   return HEADER_ALIASES[key] ?? key;
 }
 
-/** The header row of the downloadable dealer template (§B5). */
-export const TEMPLATE_HEADER: readonly string[] = [
-  'registration_number',
-  'make',
-  'model',
-  'year',
-  'price',
-  'mileage',
-  'fuel_type',
-  'transmission',
-  'body_type',
-];
+/**
+ * The header row of the downloadable dealer template (§B5).
+ *
+ * Every KNOWN_COLUMNS entry, in the same order — the template is a complete
+ * reference of what the pipeline accepts, not just the minimum to pass
+ * validateFile. Only REQUIRED_COLUMNS + registration_number are mandatory;
+ * everything else may be left blank, but showing dealers the full set means
+ * they don't have to guess whether e.g. "sunroof" is something this pipeline
+ * understands.
+ */
+export const TEMPLATE_HEADER: readonly string[] = [...KNOWN_COLUMNS];
