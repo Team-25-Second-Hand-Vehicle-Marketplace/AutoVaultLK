@@ -41,7 +41,19 @@ variable "ecr_repository_arns" {
 
 variable "lambda_function_arns" {
   type        = list(string)
-  description = "The 4 service Lambda function ARNs"
+  description = "Container-image-packaged Lambda function ARNs (deployed via ECR push + UpdateFunctionCode --image-uri)"
+}
+
+variable "zip_lambda_function_arns" {
+  type        = list(string)
+  description = "Zip-packaged Lambda function ARNs (deployed via S3 upload + UpdateFunctionCode --s3-bucket/--s3-key) — same UpdateFunctionCode/GetFunction grant as lambda_function_arns, just a separate list since they come from a different pipeline"
+  default     = []
+}
+
+variable "lambda_artifact_bucket_arn" {
+  type        = string
+  description = "The lambda-artifacts S3 bucket CI uploads zip_lambda_function_arns' packages to before updating each function. Null skips the grant (e.g. an environment with no zip-packaged Lambdas)."
+  default     = null
 }
 
 variable "frontend_bucket_arn" {

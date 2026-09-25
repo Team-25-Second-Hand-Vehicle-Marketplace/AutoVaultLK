@@ -4,6 +4,7 @@ import request from 'supertest';
 import { JobStatusController } from '../../src/modules/job-status/controllers/job-status.controller';
 import { JobStatusService } from '../../src/modules/job-status/services/job-status.service';
 import { JobStatusRepository } from '../../src/modules/job-status/repositories/job-status.repository';
+import { EtlStageLogRepository } from '../../src/modules/ingestion/repositories/etl-stage-log.repository';
 import { JwtAuthGuard } from '../../src/modules/auth/guards/jwt-auth.guard';
 import type { AuthenticatedUser } from '../../src/modules/auth/types/authenticated-user.type';
 
@@ -43,16 +44,19 @@ const JOB = {
 // guard, so standing them up twice would only duplicate the wiring.
 let app: INestApplication;
 let repository: { findById: jest.Mock; findRejectedRecords: jest.Mock };
+let stageLogRepository: { findForJob: jest.Mock };
 let authenticated = true;
 
 beforeAll(async () => {
   repository = { findById: jest.fn(), findRejectedRecords: jest.fn() };
+  stageLogRepository = { findForJob: jest.fn() };
 
   const moduleRef: TestingModule = await Test.createTestingModule({
     controllers: [JobStatusController],
     providers: [
       JobStatusService,
       { provide: JobStatusRepository, useValue: repository },
+      { provide: EtlStageLogRepository, useValue: stageLogRepository },
     ],
   })
     .overrideGuard(JwtAuthGuard)
@@ -88,6 +92,10 @@ beforeEach(() => {
 });
 
 describe('GET /jobs/:id (e2e)', () => {
+  beforeEach(() => {
+    stageLogRepository.findForJob.mockResolvedValue([]);
+  });
+
   it('returns the job with the counts the status page renders', async () => {
     repository.findById.mockResolvedValue(JOB);
 
@@ -103,6 +111,51 @@ describe('GET /jobs/:id (e2e)', () => {
       validRecords: 34,
       invalidRecords: 6,
     });
+  });
+
+  it('reports per-stage progress from the ETL stage log', async () => {
+    repository.findById.mockResolvedValue(JOB);
+    stageLogRepository.findForJob.mockResolvedValue([
+      {
+        stage: 'VALIDATE_FILE',
+        status: 'SUCCEEDED',
+        chunkId: null,
+        retryCount: 0,
+        startedAt: new Date('2026-09-01T10:00:01.000Z'),
+        completedAt: new Date('2026-09-01T10:00:02.000Z'),
+        errorMessage: null,
+      },
+      {
+        stage: 'GROQ_NORMALIZE',
+        status: 'FAILED',
+        chunkId: 3,
+        retryCount: 1,
+        startedAt: new Date('2026-09-01T10:00:05.000Z'),
+        completedAt: null,
+        errorMessage: 'Groq request timed out',
+      },
+    ]);
+
+    const response = await request(app.getHttpServer())
+      .get(`/jobs/${JOB_ID}`)
+      .expect(200);
+
+    expect(response.body.stages).toEqual([
+      expect.objectContaining({
+        stage: 'VALIDATE_FILE',
+        status: 'SUCCEEDED',
+        chunkId: null,
+        retryCount: 0,
+      }),
+      expect.objectContaining({
+        stage: 'GROQ_NORMALIZE',
+        status: 'FAILED',
+        chunkId: 3,
+        retryCount: 1,
+        errorMessage: 'Groq request timed out',
+      }),
+    ]);
+    expect(stageLogRepository.findForJob).toHaveBeenCalledWith(JOB_ID);
   });
 
   it('scopes the lookup to the caller', async () => {
