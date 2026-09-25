@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { createTransport, type Transporter } from 'nodemailer';
 
 const DEFAULT_TIMEOUT_MS = 5000;
 
@@ -13,17 +14,39 @@ export class SesUnavailableError extends Error {
 }
 
 /**
- * FR-51 / SAD 3.6.3. Locally SES_FROM_EMAIL is empty → log and succeed
- * (same skip as Groq). Production sets the from-address and AWS credentials.
+ * FR-51 / SAD 3.6.3. Locally neither SES_FROM_EMAIL nor SMTP_HOST is set →
+ * log and succeed (same skip as Groq).
+ *
+ * Two transports behind one interface: when SMTP_HOST is set, mail goes out
+ * over SMTP (nodemailer) — this needs no SES sandbox exit or verified domain.
+ * Otherwise it uses SES. The name is historical; the retry/idempotency logic
+ * in NotificationEventHandler is transport-independent.
  */
 @Injectable()
 export class SesAdapter {
   private readonly logger = new Logger(SesAdapter.name);
+  private smtp?: Transporter;
 
   constructor(private readonly config: ConfigService) {}
 
   isConfigured(): boolean {
-    return (this.config.get<string>('SES_FROM_EMAIL') ?? '').trim().length > 0;
+    return this.useSmtp() || this.sesFrom().length > 0;
+  }
+
+  private useSmtp(): boolean {
+    return (this.config.get<string>('SMTP_HOST') ?? '').trim().length > 0;
+  }
+
+  private sesFrom(): string {
+    return (this.config.get<string>('SES_FROM_EMAIL') ?? '').trim();
+  }
+
+  private smtpFrom(): string {
+    return (
+      (this.config.get<string>('SMTP_FROM') ?? '').trim() ||
+      this.sesFrom() ||
+      (this.config.get<string>('SMTP_USER') ?? '').trim()
+    );
   }
 
   async send(to: string, subject: string, body: string): Promise<void> {
@@ -48,7 +71,42 @@ export class SesAdapter {
   }
 
   private async once(to: string, subject: string, body: string): Promise<void> {
-    const from = this.config.get<string>('SES_FROM_EMAIL')!.trim();
+    if (this.useSmtp()) {
+      await this.viaSmtp(to, subject, body);
+      return;
+    }
+    await this.viaSes(to, subject, body);
+  }
+
+  private async viaSmtp(to: string, subject: string, body: string): Promise<void> {
+    const timeoutMs = Number(this.config.get('SES_TIMEOUT_MS') ?? DEFAULT_TIMEOUT_MS);
+
+    try {
+      this.smtp ??= createTransport({
+        host: (this.config.get<string>('SMTP_HOST') ?? '').trim(),
+        port: Number(this.config.get('SMTP_PORT') ?? 587),
+        // 465 is implicit TLS; 587 upgrades with STARTTLS (required, never plaintext).
+        secure: Number(this.config.get('SMTP_PORT') ?? 587) === 465,
+        requireTLS: true,
+        auth: this.config.get<string>('SMTP_USER')
+          ? {
+              user: this.config.get<string>('SMTP_USER'),
+              pass: this.config.get<string>('SMTP_PASS'),
+            }
+          : undefined,
+        connectionTimeout: timeoutMs,
+        greetingTimeout: timeoutMs,
+        socketTimeout: timeoutMs,
+      });
+
+      await this.smtp.sendMail({ from: this.smtpFrom(), to, subject, text: body });
+    } catch (err) {
+      throw toSmtpError(err);
+    }
+  }
+
+  private async viaSes(to: string, subject: string, body: string): Promise<void> {
+    const from = this.sesFrom();
     const region = this.config.get<string>('AWS_REGION') ?? 'ap-southeast-1';
     const timeoutMs = Number(this.config.get('SES_TIMEOUT_MS') ?? DEFAULT_TIMEOUT_MS);
 
@@ -88,6 +146,22 @@ export class SesAdapter {
       );
     }
   }
+}
+
+/**
+ * Maps nodemailer failures onto the adapter's HTTP-shaped retry contract:
+ * SMTP 4xx replies and connection-level errors are transient (retryable,
+ * 503); 5xx replies (bad auth, rejected recipient) are permanent (400).
+ */
+function toSmtpError(err: unknown): SesUnavailableError {
+  const e = err as { message?: string; code?: string; responseCode?: number };
+  const message = `SMTP: ${e?.message ?? 'send failed'}`;
+
+  if (typeof e?.responseCode === 'number') {
+    return new SesUnavailableError(message, e.responseCode >= 500 ? 400 : 503);
+  }
+  // No SMTP reply at all: ETIMEDOUT / ECONNECTION / ESOCKET / DNS — transient.
+  return new SesUnavailableError(message, 503);
 }
 
 function isRetryable(err: unknown): boolean {

@@ -8,6 +8,7 @@ import { toErrorMessage } from '../api/client'
 import { Button } from '../components/ui/Button'
 import { FormField } from '../components/ui/FormField'
 import { ErrorBanner } from '../components/ui/ErrorBanner'
+import { ResendVerification } from '../components/auth/ResendVerification'
 
 const registerSchema = z
   .object({
@@ -33,6 +34,7 @@ export function RegisterPage() {
   const navigate = useNavigate()
   const [formError, setFormError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [registeredEmail, setRegisteredEmail] = useState('')
 
   const {
     register,
@@ -52,6 +54,7 @@ export function RegisterPage() {
       // Once email verification ships, registration stops returning tokens
       // and returns a message instead; show it rather than assuming a session.
       if (result.message) {
+        setRegisteredEmail(values.email.trim())
         setNotice(result.message)
         return
       }
@@ -67,6 +70,8 @@ export function RegisterPage() {
         <div className="auth-card">
           <h1>Almost there</h1>
           <p role="status">{notice}</p>
+          <p>Didn't get the email? Check your spam folder, or request another.</p>
+          <ResendVerification email={registeredEmail} />
           <Link className="button button--primary" to="/login">
             Go to sign in
           </Link>

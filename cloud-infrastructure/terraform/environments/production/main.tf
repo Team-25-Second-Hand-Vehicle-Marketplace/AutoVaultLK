@@ -202,6 +202,18 @@ locals {
   }
 }
 
+locals {
+  # Only the two services that send mail get the SMTP settings (incl. the
+  # password) — not every Lambda via common_env.
+  smtp_env = var.smtp_host == "" ? {} : {
+    SMTP_HOST = var.smtp_host
+    SMTP_PORT = var.smtp_port
+    SMTP_USER = var.smtp_user
+    SMTP_PASS = var.smtp_password
+    SMTP_FROM = var.smtp_from
+  }
+}
+
 module "auth_lambda" {
   source = "../../modules/lambda"
 
@@ -213,7 +225,7 @@ module "auth_lambda" {
   subnet_ids         = module.networking.private_subnet_ids
   security_group_ids = [module.networking.lambda_security_group_id]
 
-  environment_variables = merge(local.common_env, {
+  environment_variables = merge(local.common_env, local.smtp_env, {
     AUTH_DATABASE_URL                = local.db_url["auth"]
     COOKIE_SECURE                    = "true"
     AUTH_USE_REFRESH_COOKIES         = "true"
@@ -290,15 +302,18 @@ module "notification_lambda" {
   subnet_ids         = module.networking.private_subnet_ids
   security_group_ids = [module.networking.lambda_security_group_id]
 
-  environment_variables = merge(local.common_env, {
+  environment_variables = merge(local.common_env, local.smtp_env, {
     NOTIFICATION_DATABASE_URL = local.db_url["notification"]
     SES_FROM_EMAIL            = coalesce(var.ses_sender_email, var.ses_domain_name != null ? "no-reply@${var.ses_domain_name}" : "")
     SES_TIMEOUT_MS            = "5000"
-    # No NOTIFICATION_SQS_QUEUE_URL — the consumer disables itself gracefully
-    # when unset (confirmed in sqs.consumer.ts). Notification delivery from
-    # ingestion goes through NOTIFICATION_INTERNAL_URL (a direct HTTP call
-    # from the notify stage Lambda, module.stage_lambda_zip["notify"]), not
-    # this queue, so it stays unset even though ingestion is deployed.
+    # No NOTIFICATION_SQS_QUEUE_URL on purpose: with no queue configured,
+    # POST /notifications/events delivers synchronously (see
+    # NotificationsController). The queue path still exists in code, but an
+    # in-process SQS consumer cannot run reliably on Lambda, and nothing
+    # provisions a queue or an SQS trigger here. Failed sends are retried by
+    # the EventBridge sweep below. Callers (admin, ingestion's notify stage)
+    # therefore wait for the send — hence NOTIFICATION_TIMEOUT_MS = 20000 on
+    # the notify stage.
 
     # NotificationRetrySweeper's own setInterval never fires reliably in
     # Lambda — the process freezes between invocations, so the timer only
@@ -553,7 +568,7 @@ locals {
     GROQ_TIMEOUT_MS           = "4000"
     NOTIFICATION_INTERNAL_URL = "${module.api_gateway.internal_api_endpoint}/notifications"
     INTERNAL_SERVICE_KEY      = module.secrets.internal_service_key_value
-    NOTIFICATION_TIMEOUT_MS   = "5000"
+    NOTIFICATION_TIMEOUT_MS   = "20000"
   }
 }
 
@@ -574,7 +589,12 @@ module "stage_lambda_zip" {
 
   environment_variables = {
     for key in each.value.env : key => local.stage_env_values[key]
-    if key != "AWS_REGION"
+    # Excludes AWS_REGION (Lambda-reserved, never settable) and
+    # INGESTION_CHUNK_SIZE / INGESTION_GROQ_CONFIDENCE_THRESHOLD (no entry in
+    # stage_env_values — pipeline.config.ts's app-level defaults cover them).
+    # Any key function-config.ts lists that isn't in stage_env_values is
+    # assumed intentionally absent for the same reason, rather than an error.
+    if contains(keys(local.stage_env_values), key)
   }
 }
 
