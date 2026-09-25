@@ -52,3 +52,20 @@ variable "auth_return_verification_token" {
   type    = bool
   default = true
 }
+
+variable "github_org" {
+  type    = string
+  default = "Team-25-Second-Hand-Vehicle-Marketplace"
+}
+
+variable "github_repo" {
+  type    = string
+  default = "AutoVaultLK"
+}
+
+# Set false only if this AWS account already has a GitHub OIDC provider from
+# another project — AWS allows just one per unique provider URL per account.
+variable "create_github_oidc_provider" {
+  type    = bool
+  default = true
+}

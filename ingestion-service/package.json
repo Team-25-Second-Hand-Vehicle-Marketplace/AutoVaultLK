@@ -27,6 +27,7 @@
     "@aws-sdk/client-s3": "^3.1128.0",
     "@aws-sdk/client-sqs": "^3.1128.0",
     "@aws-sdk/lib-storage": "^3.1128.0",
+    "@codegenie/serverless-express": "^4.17.1",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.0.1",

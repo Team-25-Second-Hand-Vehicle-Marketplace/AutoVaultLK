@@ -26,8 +26,28 @@ provider "aws" {
 }
 
 # -----------------------------------------------------------------------------
-# ingestion-service is intentionally not composed here — no S3/SQS/Step
-# Functions/ingestion Lambdas. See DEPLOYMENT-GAPS.md for what that would add.
+# ingestion-service: MVP deployment path, not the full design.
+#
+# The full design (SAD §6.6) is one Lambda per ETL stage, fanned out by a Step
+# Functions state machine — src/infrastructure/step-functions/etl-state-
+# machine.asl.json defines it, but nothing in AWS runs it yet, and two of its
+# Lambda handlers (ingest-api, job-status-api split from it, process-images)
+# were never written. Building that out is still pending.
+#
+# What's here instead: two Lambdas sharing one execution role ("ingestion") —
+# module.ingest_api_lambda serves POST /ingest/upload and GET /jobs/{id}
+# (both controllers already live in one NestJS app, ingestion-service/src/
+# app.module.ts), and module.etl_worker_lambda is SQS-triggered and runs the
+# exact same LocalOrchestrator the local/Docker path and every unit test
+# already exercise — the whole pipeline in one Lambda invocation per job,
+# instead of fanned out across the ASL's per-stage Lambdas. See
+# ingestion-service/src/lambda/etl-worker.ts.
+#
+# Known limitation: a job's entire pipeline (parse, Groq, embed, image
+# processing, load) has to finish inside one Lambda invocation, capped at 15
+# minutes. Fine for the file sizes this has been tested against; a dealer
+# upload large enough to blow that budget needs the real Step Functions
+# fan-out, not a bigger timeout here.
 # -----------------------------------------------------------------------------
 
 module "networking" {
@@ -43,6 +63,10 @@ module "secrets" {
   project_name = var.project_name
   environment  = var.environment
   groq_api_key = var.groq_api_key
+
+  # Default is ["auth", "marketplace", "admin", "notification"] — "ingestion"
+  # added now that module.ingest_api_lambda / module.etl_worker_lambda exist.
+  db_service_roles = ["auth", "marketplace", "admin", "notification", "ingestion"]
 }
 
 module "ses" {
@@ -72,11 +96,17 @@ module "iam" {
   environment        = var.environment
   shared_secret_arns = [module.secrets.jwt_access_secret_arn, module.secrets.internal_service_key_arn]
 
+  # Default is ["auth", "marketplace", "admin", "notification"] — "ingestion"
+  # added for the two ingestion Lambdas (they share one execution role; see
+  # module.ingest_api_lambda / module.etl_worker_lambda below).
+  service_names = ["auth", "marketplace", "admin", "notification", "ingestion"]
+
   service_extra_secret_arns = {
     auth         = [module.secrets.db_service_role_arns["auth"]]
     marketplace  = [module.secrets.db_service_role_arns["marketplace"], module.secrets.groq_api_key_arn]
     admin        = [module.secrets.db_service_role_arns["admin"]]
     notification = [module.secrets.db_service_role_arns["notification"]]
+    ingestion    = [module.secrets.db_service_role_arns["ingestion"], module.secrets.groq_api_key_arn]
   }
 
   ses_send_services = ["auth"]
@@ -107,13 +137,12 @@ module "images" {
   # marketplace mints presigned GET URLs (see IMAGE_SERVE_MODE=s3 in
   # marketplace-service) — reader access. It also now owns the manual
   # listing image upload endpoint (POST /listings/:id/images), so it needs
-  # PutObject too — writer access. ingestion-service is not deployed in
-  # this pass (see the note at the top of this file), so its own name is
-  # not in either list yet; add module.iam.role_names["ingestion"] to
-  # writer_role_names the day that changes. Nothing else in this module
-  # needs to.
+  # PutObject too — writer access. ingestion-service's raw/staging/images
+  # prefixes (see this module's own comment above) live in this same bucket —
+  # writer access covers both PutObject and GetObject, which is all the ETL
+  # pipeline needs to write and re-read its own inter-stage output.
   reader_role_names = [module.iam.role_names["marketplace"]]
-  writer_role_names = [module.iam.role_names["marketplace"]]
+  writer_role_names = [module.iam.role_names["marketplace"], module.iam.role_names["ingestion"]]
 
   cors_allowed_origins = ["https://${module.frontend.distribution_domain_name}"]
 }
@@ -144,7 +173,7 @@ module "verification_documents" {
 
 locals {
   db_url = {
-    for svc in ["auth", "marketplace", "admin", "notification"] :
+    for svc in ["auth", "marketplace", "admin", "notification", "ingestion"] :
     svc => "postgresql://${svc}_service_role:${module.secrets.db_service_role_passwords[svc]}@${module.database.proxy_endpoint}:${module.database.port}/${module.database.db_name}"
   }
 
@@ -215,7 +244,7 @@ module "marketplace_lambda" {
     # NFR-19: presigned GET URLs, never a public bucket. IMAGE_SERVE_MODE=s3
     # is production's default; dev/local environments run demo or local
     # instead (see .env.example and image-serve.config.ts).
-    IMAGE_SERVE_MODE         = "s3"
+    IMAGE_SERVE_MODE          = "s3"
     MARKETPLACE_IMAGES_BUCKET = module.images.bucket_name
   })
 }
@@ -262,7 +291,178 @@ module "notification_lambda" {
     # No NOTIFICATION_SQS_QUEUE_URL — the consumer disables itself gracefully
     # when unset (confirmed in sqs.consumer.ts), and there's no producer
     # anyway since ingestion isn't deployed.
+
+    # NotificationRetrySweeper's own setInterval never fires reliably in
+    # Lambda — the process freezes between invocations, so the timer only
+    # ticks during the brief window a request happens to be in flight.
+    # aws_cloudwatch_event_rule.notification_retry_sweep below is the real
+    # trigger; disable the in-process one so it isn't silently doing nothing.
+    NOTIFICATION_RETRY_ENABLED = "false"
   })
+}
+
+# -----------------------------------------------------------------------------
+# FR-53's actual trigger in Lambda. EventBridge invokes the notification
+# Lambda directly (not through API Gateway) with a fixed payload that
+# src/lambda/notifier.ts recognizes and routes straight to
+# NotificationRetrySweeper.sweep(), bypassing serverless-express entirely.
+# rate(1 minute) is EventBridge's finest granularity; the sweeper's own
+# DEFAULT_INTERVAL_MS (30s) doesn't translate directly, but a due retry is
+# just picked up on the next minute rather than the next 30s.
+# -----------------------------------------------------------------------------
+
+resource "aws_cloudwatch_event_rule" "notification_retry_sweep" {
+  name                = "${var.project_name}-notification-retry-sweep-${var.environment}"
+  description         = "Drives FR-53: periodically invokes the notification Lambda to retry due notification sends."
+  schedule_expression = "rate(1 minute)"
+}
+
+resource "aws_cloudwatch_event_target" "notification_retry_sweep" {
+  rule = aws_cloudwatch_event_rule.notification_retry_sweep.name
+  arn  = module.notification_lambda.function_arn
+  input = jsonencode({
+    action = "sweep-notifications"
+  })
+}
+
+resource "aws_lambda_permission" "notification_retry_sweep" {
+  statement_id  = "AllowEventBridgeRetrySweep"
+  action        = "lambda:InvokeFunction"
+  function_name = module.notification_lambda.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.notification_retry_sweep.arn
+}
+
+# -----------------------------------------------------------------------------
+# ingestion-service (MVP path — see the note at the top of this file).
+#
+# One SQS queue takes the place of the Step Functions execution the full
+# design would start: POST /ingest/upload (module.ingest_api_lambda, via
+# SqsJobQueue) sends {jobId} here, and module.etl_worker_lambda's event
+# source mapping picks it up and runs LocalOrchestrator.run(jobId) — the
+# whole pipeline, in one invocation, per FR-30.1's chunk fan-out happening
+# inside that call rather than across separate Lambdas.
+# -----------------------------------------------------------------------------
+
+resource "aws_sqs_queue" "ingestion_jobs_dlq" {
+  name = "${var.project_name}-ingestion-jobs-dlq-${var.environment}"
+  # 14 days: long enough that a stuck job can be investigated and redriven
+  # manually rather than lost to the queue's own retention window.
+  message_retention_seconds = 1209600
+}
+
+resource "aws_sqs_queue" "ingestion_jobs" {
+  name = "${var.project_name}-ingestion-jobs-${var.environment}"
+
+  # Matches module.etl_worker_lambda's timeout: SQS requires the queue's
+  # visibility timeout to be at least the consuming Lambda's timeout, or a
+  # slow job would become visible to a second poller before the first
+  # invocation finishes.
+  visibility_timeout_seconds = 900
+
+  redrive_policy = jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.ingestion_jobs_dlq.arn
+    # FR-41.3: after 3 failed deliveries (not 3 failed pipeline runs —
+    # LocalOrchestrator marks the job FAILED internally and returns
+    # normally, so a redelivery only happens when the invocation itself
+    # crashed or timed out), the message moves to the DLQ instead of
+    # retrying forever.
+    maxReceiveCount = 3
+  })
+}
+
+data "aws_iam_policy_document" "ingestion_sqs_access" {
+  statement {
+    sid    = "SendUploadJobs"
+    effect = "Allow"
+    actions = [
+      "sqs:SendMessage",
+    ]
+    resources = [aws_sqs_queue.ingestion_jobs.arn]
+  }
+
+  statement {
+    sid    = "ConsumeUploadJobs"
+    effect = "Allow"
+    actions = [
+      "sqs:ReceiveMessage",
+      "sqs:DeleteMessage",
+      "sqs:GetQueueAttributes",
+    ]
+    resources = [aws_sqs_queue.ingestion_jobs.arn]
+  }
+
+  # Shared by both Lambdas rather than split (ingest-api only ever needs
+  # Send, etl-worker only ever needs Receive/Delete) — this MVP path uses one
+  # execution role for both, so the statements are combined here rather than
+  # attaching two separate aws_iam_role_policy resources to the same role.
+}
+
+resource "aws_iam_role_policy" "ingestion_sqs_access" {
+  name   = "ingestion-sqs-access"
+  role   = module.iam.role_names["ingestion"]
+  policy = data.aws_iam_policy_document.ingestion_sqs_access.json
+}
+
+module "ingest_api_lambda" {
+  source = "../../modules/lambda"
+
+  project_name       = var.project_name
+  environment        = var.environment
+  service_name       = "ingest-api"
+  image_tag          = var.image_tag
+  execution_role_arn = module.iam.role_arns["ingestion"]
+  subnet_ids         = module.networking.private_subnet_ids
+  security_group_ids = [module.networking.lambda_security_group_id]
+
+  environment_variables = merge(local.common_env, {
+    INGESTION_DATABASE_URL   = local.db_url["ingestion"]
+    INGESTION_STORAGE_DRIVER = "s3"
+    INGESTION_S3_BUCKET      = module.images.bucket_name
+    INGESTION_QUEUE_DRIVER   = "sqs"
+    INGESTION_SQS_QUEUE_URL  = aws_sqs_queue.ingestion_jobs.url
+  })
+}
+
+module "etl_worker_lambda" {
+  source = "../../modules/lambda"
+
+  project_name       = var.project_name
+  environment        = var.environment
+  service_name       = "etl-worker"
+  image_tag          = var.image_tag
+  execution_role_arn = module.iam.role_arns["ingestion"]
+  subnet_ids         = module.networking.private_subnet_ids
+  security_group_ids = [module.networking.lambda_security_group_id]
+
+  # 3008 MB / 900 s: the heaviest single stage (embed, the MiniLM ONNX model)
+  # already needs 3008 MB on its own in the full per-stage design, and this
+  # Lambda runs that stage plus Groq normalization, image processing (Sharp)
+  # and the database load all in the same invocation. 900s (15 min) is
+  # Lambda's hard ceiling — see the "known limitation" note at the top of
+  # this file.
+  memory_size = 3008
+  timeout     = 900
+
+  environment_variables = merge(local.common_env, {
+    INGESTION_DATABASE_URL    = local.db_url["ingestion"]
+    INGESTION_STORAGE_DRIVER  = "s3"
+    INGESTION_S3_BUCKET       = module.images.bucket_name
+    INGESTION_QUEUE_DRIVER    = "sqs"
+    INGESTION_SQS_QUEUE_URL   = aws_sqs_queue.ingestion_jobs.url
+    GROQ_API_KEY              = var.groq_api_key
+    GROQ_MODEL                = "openai/gpt-oss-20b"
+    GROQ_TIMEOUT_MS           = "4000"
+    EMBEDDING_DISABLED        = "false"
+    NOTIFICATION_INTERNAL_URL = "${module.api_gateway.internal_api_endpoint}/notifications"
+    NOTIFICATION_TIMEOUT_MS   = "5000"
+  })
+}
+
+resource "aws_lambda_event_source_mapping" "ingestion_jobs" {
+  event_source_arn = aws_sqs_queue.ingestion_jobs.arn
+  function_name    = module.etl_worker_lambda.function_name
+  batch_size       = 1
 }
 
 module "api_gateway" {
@@ -287,6 +487,11 @@ module "api_gateway" {
     documents         = module.auth_lambda.invoke_arn
     marketplace       = module.marketplace_lambda.invoke_arn
     admin             = module.admin_lambda.invoke_arn
+    # Both controllers (IngestionController, JobStatusController) live in the
+    # one ingest-api Lambda's NestJS app — see the ingestion-service note at
+    # the top of this file.
+    ingest = module.ingest_api_lambda.invoke_arn
+    jobs   = module.ingest_api_lambda.invoke_arn
   }
 
   internal_lambda_integrations = {
@@ -335,6 +540,50 @@ resource "aws_lambda_permission" "notification_internal" {
   source_arn    = "${module.api_gateway.internal_api_execution_arn}/*/*"
 }
 
+resource "aws_lambda_permission" "ingest_api_public" {
+  statement_id  = "AllowPublicApiGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = module.ingest_api_lambda.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${module.api_gateway.public_api_execution_arn}/*/*"
+}
+
+module "github_oidc" {
+  source = "../../modules/github-oidc"
+
+  project_name         = var.project_name
+  environment          = var.environment
+  github_org           = var.github_org
+  github_repo          = var.github_repo
+  create_oidc_provider = var.create_github_oidc_provider
+
+  ecr_repository_arns = [
+    module.auth_lambda.ecr_repository_arn,
+    module.marketplace_lambda.ecr_repository_arn,
+    module.admin_lambda.ecr_repository_arn,
+    module.notification_lambda.ecr_repository_arn,
+    module.ingest_api_lambda.ecr_repository_arn,
+    module.etl_worker_lambda.ecr_repository_arn,
+  ]
+
+  lambda_function_arns = [
+    module.auth_lambda.function_arn,
+    module.marketplace_lambda.function_arn,
+    module.admin_lambda.function_arn,
+    module.notification_lambda.function_arn,
+    module.ingest_api_lambda.function_arn,
+    module.etl_worker_lambda.function_arn,
+  ]
+
+  frontend_bucket_arn       = module.frontend.bucket_arn
+  frontend_distribution_arn = module.frontend.distribution_arn
+}
+
+output "github_deploy_role_arn" {
+  description = "Put this in the deploy workflow's role-to-assume, and it's the only value that needs to change if this gets redeployed to a different AWS account"
+  value       = module.github_oidc.role_arn
+}
+
 output "public_api_endpoint" {
   value = module.api_gateway.public_api_endpoint
 }
@@ -367,6 +616,8 @@ output "images_bucket_name" {
 
 output "verification_documents_bucket_name" {
   value = module.verification_documents.bucket_name
+output "ingestion_sqs_queue_url" {
+  value = aws_sqs_queue.ingestion_jobs.url
 }
 
 output "frontend_distribution_id" {
@@ -388,6 +639,8 @@ output "ecr_repository_urls" {
     marketplace  = module.marketplace_lambda.ecr_repository_url
     admin        = module.admin_lambda.ecr_repository_url
     notification = module.notification_lambda.ecr_repository_url
+    ingest-api   = module.ingest_api_lambda.ecr_repository_url
+    etl-worker   = module.etl_worker_lambda.ecr_repository_url
   }
 }
 
