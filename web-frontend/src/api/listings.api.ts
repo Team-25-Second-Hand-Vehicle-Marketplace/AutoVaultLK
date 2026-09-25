@@ -100,6 +100,16 @@ export async function approveListing(
   return data.data
 }
 
+/**
+ * DELETE /marketplace/listings/:id — permanently removes the listing.
+ * Distinct from `deactivateListing`, which only hides it: the backend 409s
+ * unless the listing is DRAFT, PENDING_REVIEW or REJECTED — a LIVE, SOLD or
+ * ARCHIVED listing can only be archived, never deleted.
+ */
+export async function deleteListing(id: string, signal?: AbortSignal): Promise<void> {
+  await apiClient.delete(`/marketplace/listings/${id}`, { signal })
+}
+
 /** Every images route answers `{ message, data }` with an array of rows. */
 interface ImagesEnvelope {
   message: string

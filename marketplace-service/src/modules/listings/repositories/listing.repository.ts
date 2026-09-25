@@ -183,4 +183,21 @@ export class ListingRepository {
     vehicle.status = 'LIVE';
     return this.vehicleRepo.save(vehicle);
   }
+
+  /**
+   * Permanently removes a listing — distinct from `deactivate`, which only
+   * hides it. Restricted by the service to DRAFT/PENDING_REVIEW/REJECTED:
+   * nothing external (favourites, recommendations, search history) should
+   * reasonably reference a listing that was never LIVE, but a listing that
+   * was or is LIVE/SOLD might already be, so those stay Archive-only.
+   *
+   * `vehicle_images` cascades on `vehicle_id` (migration 7000) and
+   * `favourites` cascades on `vehicle_id` (migration 10000), so this needs no
+   * manual cleanup of either — the FK constraints do it in the same
+   * transaction as the DELETE.
+   */
+  async remove(id: string): Promise<boolean> {
+    const result = await this.vehicleRepo.delete({ id });
+    return (result.affected ?? 0) > 0;
+  }
 }

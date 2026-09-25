@@ -4,6 +4,7 @@ import {
   approveListing,
   createListing,
   deactivateListing,
+  deleteListing,
   getMyListings,
   updateListing,
   uploadListingImages,
@@ -47,6 +48,15 @@ function StatusBadge({ status }: { status: ListingStatus }) {
   return <span className={`listing-status listing-status--${status.toLowerCase()}`}>{status.replace(/_/g, ' ')}</span>
 }
 
+/**
+ * Statuses the backend allows a hard delete on — mirrors
+ * ListingService.DELETABLE_STATUSES. A LIVE, SOLD or ARCHIVED listing may
+ * already be referenced by a favourite or a recommendation, so those only
+ * ever offer Archive; keeping this list here means the button never appears
+ * only to 409 on click.
+ */
+const DELETABLE_STATUSES: ListingStatus[] = ['DRAFT', 'PENDING_REVIEW', 'REJECTED']
+
 type Mode =
   | { kind: 'list' }
   | { kind: 'create' }
@@ -56,6 +66,7 @@ export function DealerListingsPage() {
   const [mode, setMode] = useState<Mode>({ kind: 'list' })
   const [archiving, setArchiving] = useState<string | null>(null)
   const [approving, setApproving] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
   const confirm = useConfirm()
 
   // FR-42.1's default: a dealer opening this page with rows awaiting review
@@ -148,6 +159,29 @@ export function DealerListingsPage() {
       toast.error(toErrorMessage(error, 'Could not archive the listing.'))
     } finally {
       setArchiving(null)
+    }
+  }
+
+  const onDelete = async (listing: DealerListing) => {
+    if (
+      !confirm(
+        `Permanently delete ${listing.make} ${listing.model}? This cannot be undone — the listing and its photos are removed entirely, not just hidden.`,
+      )
+    ) {
+      return
+    }
+
+    setDeleting(listing.id)
+    try {
+      await deleteListing(listing.id)
+      toast.success('Listing deleted')
+      listings.reload()
+    } catch (error) {
+      // The backend 409s a listing that moved to LIVE/SOLD/ARCHIVED between
+      // page load and this click; its message explains that directly.
+      toast.error(toErrorMessage(error, 'Could not delete the listing.'))
+    } finally {
+      setDeleting(null)
     }
   }
 
@@ -307,6 +341,17 @@ export function DealerListingsPage() {
                           onClick={() => void onDeactivate(listing)}
                         >
                           {archiving === listing.id ? 'Archiving…' : 'Archive'}
+                        </Button>
+                      )}
+                      {/* Never went live: nothing external can reference it, so a permanent delete is safe. */}
+                      {DELETABLE_STATUSES.includes(listing.status) && (
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          disabled={deleting === listing.id}
+                          onClick={() => void onDelete(listing)}
+                        >
+                          {deleting === listing.id ? 'Deleting…' : 'Delete'}
                         </Button>
                       )}
                     </td>
