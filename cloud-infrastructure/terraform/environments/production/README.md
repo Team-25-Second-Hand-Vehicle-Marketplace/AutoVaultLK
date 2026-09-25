@@ -7,11 +7,11 @@ symptom described in "Known issues," jump straight to that fix instead of
 re-diagnosing from scratch.
 
 **Scope:** auth-user-service, marketplace-service, admin-service,
-notification-service, web-frontend, plus an **MVP path for
-ingestion-service** (two Lambdas — `ingest-api` and `etl-worker` — instead
-of the full one-Lambda-per-stage Step Functions design; see the
-"ingestion-service" comment block at the top of `main.tf` for what that
-means and what it doesn't cover yet).
+notification-service, web-frontend, plus **the full ingestion-service
+design**: `ingest-api` and `job-status-api` (two thin API Lambdas) plus a
+12-Lambda Step Functions pipeline (`embed`/`process-images` as container
+images, the other 10 stages as zip packages) — see the "ingestion-service"
+comment block at the top of `main.tf`.
 
 **Status: the first 4 services + frontend are fully deployed and verified
 working**, end to end, as of this writing. All 4 confirmed live through the
@@ -24,15 +24,19 @@ public API Gateway:
   connected, routes mapped (`POST /notifications/events` is its only real
   endpoint; there's no `GET /notifications`)
 
-**ingestion-service's MVP path has not yet been run against a real AWS
-account** — it's new in this revision. Follow the same steps below (it's
-folded into the same ECR bootstrap / image build / apply flow), but verify
-it explicitly once deployed:
+**ingestion-service has never been run against a real AWS account** — the
+full Step Functions design replaces an earlier MVP (one `etl-worker` Lambda)
+that was written but never applied either, so there's no prior deployment to
+compare against. Follow Step 3a below (new — the zip-packaged stage Lambdas
+need their artifacts uploaded before `terraform apply` can create them,
+same bootstrap-order problem as ECR needing an image first), then verify
+explicitly once deployed:
 ```
 curl -X POST <public_api_endpoint>/ingest/upload -H "Authorization: Bearer <dealer JWT>" -F csv=@test/fixtures/e2e-mixed.csv
 curl <public_api_endpoint>/jobs/<jobId returned above> -H "Authorization: Bearer <dealer JWT>"
 ```
-and watch `aws logs tail /aws/lambda/vehicle-marketplace-etl-worker-production --since 10m`
+and watch the state machine's execution in the Step Functions console (or
+`aws stepfunctions list-executions --state-machine-arn <etl_state_machine_arn output>`)
 for the pipeline actually running. If something in this path breaks, it's
 uncharted — the "Known issues" section below predates it.
 
@@ -109,40 +113,62 @@ terraform init
 terraform plan
 ```
 
-## Step 3 — Bootstrap the 6 ECR repos only
+## Step 3 — Bootstrap the 8 ECR repos only
 
 Image-based Lambdas can't be created against an empty ECR repo, so create
 just the repos first:
 
 ```
-terraform apply -auto-approve -target=module.auth_lambda.aws_ecr_repository.this -target=module.marketplace_lambda.aws_ecr_repository.this -target=module.admin_lambda.aws_ecr_repository.this -target=module.notification_lambda.aws_ecr_repository.this -target=module.ingest_api_lambda.aws_ecr_repository.this -target=module.etl_worker_lambda.aws_ecr_repository.this
+terraform apply -auto-approve -target=module.auth_lambda.aws_ecr_repository.this -target=module.marketplace_lambda.aws_ecr_repository.this -target=module.admin_lambda.aws_ecr_repository.this -target=module.notification_lambda.aws_ecr_repository.this -target=module.ingest_api_lambda.aws_ecr_repository.this -target=module.job_status_api_lambda.aws_ecr_repository.this -target=module.embed_lambda.aws_ecr_repository.this -target=module.process_images_lambda.aws_ecr_repository.this
 ```
 
-Log in to ECR (once — good for all 6 repos, same registry host):
+Log in to ECR (once — good for all 8 repos, same registry host):
 
 ```
 aws ecr get-login-password --region ap-southeast-2 | docker login --username AWS --password-stdin <account-id>.dkr.ecr.ap-southeast-2.amazonaws.com
 ```
 
-## Step 4 — Build and push all 6 images
+## Step 3a — Bootstrap the lambda-artifacts bucket and build the 10 zip Lambdas
+
+The 10 lightweight ETL stage functions deploy as zip packages, not container
+images (see `function-config.ts`) — same chicken-and-egg problem as the ECR
+repos above: the S3 object has to exist before `terraform apply` can create
+the Lambda function pointing at it.
+
+```
+terraform apply -auto-approve -target=aws_s3_bucket.lambda_artifacts
+cd ingestion-service
+npm run build
+npm run build:lambda-config
+npm run build:lambda-zips
+aws s3 sync dist-lambda/ s3://<lambda_artifacts_bucket_name output>/lambda-artifacts/ --exclude "*" --include "*.zip"
+cd ..
+```
+
+## Step 4 — Build and push all 8 images
 
 **Use `--no-cache --provenance=false` on every build — both flags matter,
 see Issues 2 and 3 below for why.**
 
 ```bash
-for svc in auth-user-service:auth marketplace-service:marketplace admin-service:admin notification-service:notification ingestion-service:ingest-api; do
+for svc in auth-user-service:auth marketplace-service:marketplace admin-service:admin notification-service:notification ingestion-service:ingest-api ingestion-service:job-status-api; do
   dir="${svc%%:*}"; name="${svc##*:}"
   cd "$dir"
-  docker build --no-cache --provenance=false -t <account-id>.dkr.ecr.ap-southeast-2.amazonaws.com/vehicle-marketplace/$name-production:latest .
+  dockerfile="Dockerfile"
+  [ "$dir" = "ingestion-service" ] && dockerfile="docker/$name.Dockerfile"
+  docker build --no-cache --provenance=false -f "$dockerfile" -t <account-id>.dkr.ecr.ap-southeast-2.amazonaws.com/vehicle-marketplace/$name-production:latest .
   docker push <account-id>.dkr.ecr.ap-southeast-2.amazonaws.com/vehicle-marketplace/$name-production:latest
   cd ..
 done
 
-# etl-worker is a different Dockerfile in the same ingestion-service tree
-# (different CMD — see the note in production/main.tf) — build it separately.
+# embed and process-images are separate Dockerfiles in the same
+# ingestion-service tree (heavier deps — ONNX runtime, Sharp — kept out of
+# the two API Lambdas' images) — build them the same way.
 cd ingestion-service
-docker build --no-cache --provenance=false -f docker/etl-worker.Dockerfile -t <account-id>.dkr.ecr.ap-southeast-2.amazonaws.com/vehicle-marketplace/etl-worker-production:latest .
-docker push <account-id>.dkr.ecr.ap-southeast-2.amazonaws.com/vehicle-marketplace/etl-worker-production:latest
+for name in embed process-images; do
+  docker build --no-cache --provenance=false -f docker/$name.Dockerfile -t <account-id>.dkr.ecr.ap-southeast-2.amazonaws.com/vehicle-marketplace/$name-production:latest .
+  docker push <account-id>.dkr.ecr.ap-southeast-2.amazonaws.com/vehicle-marketplace/$name-production:latest
+done
 cd ..
 ```
 
@@ -155,11 +181,12 @@ cd ..
 terraform apply
 ```
 
-This creates everything else: VPC, RDS + Proxy, IAM, SES, the 6 Lambdas, the
-ingestion SQS queue + DLQ, API Gateway routes, S3+CloudFront. **Expect
-10–15 minutes** — RDS and the NAT Gateway are the slow parts. If this fails
-partway through with a network error while saving state, see Issue 5 below
-**before** retrying.
+This creates everything else: VPC, RDS + Proxy, IAM, SES, the 18 Lambdas (8
+container-image, 10 zip), the Step Functions state machine, the EventBridge
+Pipe that starts an execution per SQS message, the ingestion SQS queue + DLQ,
+API Gateway routes, S3+CloudFront. **Expect 10–15 minutes** — RDS and the NAT
+Gateway are the slow parts. If this fails partway through with a network
+error while saving state, see Issue 5 below **before** retrying.
 
 If a Lambda `CreateFunction` call 409s with `Function already exist` on a
 retry, the function actually was created in an earlier attempt but state
@@ -172,7 +199,11 @@ terraform import module.marketplace_lambda.aws_lambda_function.this vehicle-mark
 terraform import module.admin_lambda.aws_lambda_function.this vehicle-marketplace-admin-production
 terraform import module.notification_lambda.aws_lambda_function.this vehicle-marketplace-notification-production
 terraform import module.ingest_api_lambda.aws_lambda_function.this vehicle-marketplace-ingest-api-production
-terraform import module.etl_worker_lambda.aws_lambda_function.this vehicle-marketplace-etl-worker-production
+terraform import module.job_status_api_lambda.aws_lambda_function.this vehicle-marketplace-job-status-api-production
+terraform import module.embed_lambda.aws_lambda_function.this vehicle-marketplace-embed-production
+terraform import module.process_images_lambda.aws_lambda_function.this vehicle-marketplace-process-images-production
+# Same 409/import fix applies to any of the 10 zip-packaged stage Lambdas:
+# terraform import module.stage_lambda_zip[\"<slug>\"].aws_lambda_function.this vehicle-marketplace-<slug>-production
 ```
 
 ## Step 6 — One-time database setup
@@ -340,16 +371,26 @@ This is how Issues 2, 3, 6, and 9 were all actually found — the error
 message returned over HTTP is generic by design (NestJS's default exception
 filter), but the Lambda's own log always has the real exception.
 
-## Step 9 — CI/CD (manual-trigger deploys from GitHub Actions)
+## Step 9 — CI/CD (auto-deploy on push to `main`)
 
 `modules/github-oidc` sets up an IAM role GitHub Actions can assume via
 OIDC — no long-lived AWS keys stored in GitHub. `.github/workflows/
-deploy-production.yml` uses it to build+push+update all 6 Lambdas (auth,
-marketplace, admin, notification, ingest-api, etl-worker) and the frontend.
-**It only runs on `workflow_dispatch`** (Actions tab → "Deploy to
-production" → Run workflow) — deliberately no `push`/`pull_request`
-trigger, since this environment gets torn down between sessions and an
-auto-deploy pipeline would just fail every run while it's down.
+deploy-production.yml` uses it to build+push+update the 8 container-image
+Lambdas (auth, marketplace, admin, notification, ingest-api, job-status-api,
+embed, process-images), build+upload+update the 10 zip-packaged ETL stage
+Lambdas, and sync the frontend.
+**It runs on every push to `main`** and deploys only the parts whose files
+changed (auth, marketplace, admin, notification, ingestion, web-frontend),
+and only after that part's tests pass — `main` has no required status
+checks, so the workflow gates on them itself. "Run workflow" (Actions tab)
+deploys everything. Deploys are serialized (one at a time).
+
+**It does not run `terraform apply` or database migrations** — both stay
+manual on purpose. If the environment is torn down, every deploy will fail
+(resources missing): disable the workflow in the Actions tab until it's back.
+To roll back, revert the commit on `main` (it redeploys the previous code),
+or point a function at an older image: every build is also tagged with its
+commit SHA in ECR (`aws lambda update-function-code --image-uri ...:<sha>`).
 
 After `terraform apply` (this module applies alongside everything else, no
 separate step), get the role ARN:
@@ -369,10 +410,13 @@ secret, OIDC is what keeps this safe) on the GitHub repo:
 | `FRONTEND_BUCKET_NAME` | `terraform output frontend_bucket_name` |
 | `FRONTEND_DISTRIBUTION_ID` | `terraform output frontend_distribution_id` |
 
-The trust policy only allows `workflow_dispatch` runs from this repo's
-`main` branch (`repo:<org>/<repo>:ref:refs/heads/main` — see
-`modules/github-oidc/main.tf` if you need to broaden that, e.g. to allow
-deploys from a branch).
+The trust policy only allows runs from this repo's `main` branch
+(`repo:<org>/<repo>:ref:refs/heads/main` — see `modules/github-oidc/main.tf`
+if you need to broaden that, e.g. to allow deploys from another branch), so
+pull requests and other branches can never deploy.
+
+`PUBLIC_API_ENDPOINT` may include the trailing slash that `terraform output`
+prints — the frontend build strips it.
 
 **If this AWS account already has a GitHub OIDC provider** from another
 project (AWS allows only one per account for

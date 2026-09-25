@@ -35,6 +35,30 @@ export async function registerDealer(payload: RegisterDealerRequest): Promise<Re
   return data
 }
 
+export type VerifyEmailResponse = {
+  message: string
+  emailVerified: boolean
+  role: string
+}
+
+/**
+ * POST /auth/email/resend-verification. The server answers the same way
+ * whether or not the address exists or is already verified (no account
+ * enumeration), so callers must not imply an email definitely went out.
+ */
+export async function resendVerification(email: string): Promise<{ message: string }> {
+  const { data } = await apiClient.post<{ message: string }>('/auth/email/resend-verification', {
+    email,
+  })
+  return { message: data.message }
+}
+
+/** POST /auth/email/verify — consumes the token from the emailed link. */
+export async function verifyEmail(token: string): Promise<VerifyEmailResponse> {
+  const { data } = await apiClient.post<VerifyEmailResponse>('/auth/email/verify', { token })
+  return data
+}
+
 /**
  * POST /documents/verification — uploads a business registration certificate
  * before the dealer account exists, returning a stored key. That key is what

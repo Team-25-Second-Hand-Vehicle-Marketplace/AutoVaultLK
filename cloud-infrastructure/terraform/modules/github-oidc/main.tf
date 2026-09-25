@@ -94,7 +94,25 @@ data "aws_iam_policy_document" "github_deploy" {
   statement {
     sid       = "LambdaDeploy"
     actions   = ["lambda:UpdateFunctionCode", "lambda:GetFunction"]
-    resources = var.lambda_function_arns
+    resources = concat(var.lambda_function_arns, var.zip_lambda_function_arns)
+  }
+
+  dynamic "statement" {
+    for_each = var.lambda_artifact_bucket_arn != null ? [1] : []
+    content {
+      sid       = "LambdaArtifactUpload"
+      actions   = ["s3:PutObject"]
+      resources = ["${var.lambda_artifact_bucket_arn}/lambda-artifacts/*"]
+    }
+  }
+
+  dynamic "statement" {
+    for_each = var.lambda_artifact_bucket_arn != null ? [1] : []
+    content {
+      sid       = "LambdaArtifactBucketList"
+      actions   = ["s3:ListBucket"]
+      resources = [var.lambda_artifact_bucket_arn]
+    }
   }
 
   statement {

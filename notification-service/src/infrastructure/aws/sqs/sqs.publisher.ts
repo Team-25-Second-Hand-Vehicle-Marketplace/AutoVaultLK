@@ -54,6 +54,15 @@ export class SqsPublisher {
       ) ?? '';
   }
 
+  /** True when a queue is configured; otherwise callers deliver synchronously. */
+
+  isConfigured(): boolean {
+
+    return this.queueUrl.length > 0;
+
+  }
+
+
   async publish(
     event: NotificationEvent,
   ): Promise<void> {
