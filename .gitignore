@@ -1,6 +1,7 @@
 node_modules/
 database/dist/
 dist/
+dist-lambda/
 coverage/
 .env
 .env.*
@@ -53,3 +54,6 @@ ingestion-service/test-runs/
 ingestion-service/test-data/300_rows*.csv
 ingestion-service/test-data/10_rows.csv
 ingestion-service/test-data/3_dirty_rows.csv
+
+# Local-only notes (deployment values etc.)
+*.local.md

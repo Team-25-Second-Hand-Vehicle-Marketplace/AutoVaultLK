@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useAuth } from '../auth/useAuth'
@@ -8,6 +8,8 @@ import { toErrorMessage } from '../api/client'
 import { Button } from '../components/ui/Button'
 import { FormField } from '../components/ui/FormField'
 import { ErrorBanner } from '../components/ui/ErrorBanner'
+import { ResendVerification } from '../components/auth/ResendVerification'
+import { isEmailNotVerifiedMessage } from '../components/auth/email-verification'
 
 const loginSchema = z.object({
   email: z.string().min(1, 'Email is required').email('Enter a valid email address'),
@@ -29,8 +31,10 @@ export function LoginPage() {
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormValues>({ resolver: zodResolver(loginSchema) })
+  const emailValue = useWatch({ control, name: 'email' })
 
   // Return the user to whatever they were trying to reach, defaulting to
   // search. RequireAuth stashes this on redirect.
@@ -55,6 +59,7 @@ export function LoginPage() {
 
         <form onSubmit={onSubmit} noValidate>
           <ErrorBanner message={formError} />
+          {isEmailNotVerifiedMessage(formError) && <ResendVerification email={emailValue} />}
 
           <FormField
             label="Email"

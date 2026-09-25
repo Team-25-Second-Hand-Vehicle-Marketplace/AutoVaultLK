@@ -18,6 +18,7 @@ import { SecurityEventsRepository } from './repositories/security-events.reposit
 import { AuthAbuseProtectionService } from './services/auth-abuse-protection.service';
 import { AuthService } from './services/auth.service';
 import { EmailVerificationService } from './services/email-verification.service';
+import { VerificationEmailService } from './services/verification-email.service';
 import { PasswordService } from './services/password.service';
 
 @Module({
@@ -39,6 +40,7 @@ import { PasswordService } from './services/password.service';
     AuthService,
     AuthAbuseProtectionService,
     EmailVerificationService,
+    VerificationEmailService,
     PasswordService,
     RefreshTokensRepository,
     SecurityEventsRepository,

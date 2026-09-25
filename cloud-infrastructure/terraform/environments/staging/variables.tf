@@ -5,7 +5,7 @@ variable "aws_region" {
 
 variable "environment" {
   type    = string
-  default = "production"
+  default = "staging"
 }
 
 variable "project_name" {
@@ -13,8 +13,8 @@ variable "project_name" {
   default = "vehicle-marketplace"
 }
 
-# The only value you MUST supply — see cloud-infrastructure/terraform/environments/production/README.md.
-# Pass via a git-ignored production.auto.tfvars, never commit a real key.
+# The only value you MUST supply — see cloud-infrastructure/terraform/environments/staging/README.md.
+# Pass via a git-ignored staging.auto.tfvars, never commit a real key.
 variable "groq_api_key" {
   type      = string
   sensitive = true
@@ -63,16 +63,16 @@ variable "github_repo" {
   default = "AutoVaultLK"
 }
 
-# Set false only if this AWS account already has a GitHub OIDC provider from
-# another project — AWS allows just one per unique provider URL per account.
+# Staging reuses production's GitHub OIDC provider (AWS allows only one per
+# unique provider URL per account) — see the data source in main.tf. Leave
+# this false unless production's provider genuinely doesn't exist yet.
 variable "create_github_oidc_provider" {
   type    = bool
-  default = true
+  default = false
 }
 
 # Optional — the alerts SNS topic (module.monitoring) is created either way;
-# this just subscribes an inbox to it at apply time. Subscribe later from the
-# console instead if you'd rather not put an email in tfvars.
+# this just subscribes an inbox to it at apply time.
 variable "alarm_email" {
   type    = string
   default = null

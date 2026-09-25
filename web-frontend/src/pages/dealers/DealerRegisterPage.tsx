@@ -11,6 +11,7 @@ import { BrandMark } from '../../components/layout/BrandMark'
 import { Button } from '../../components/ui/Button'
 import { FormField } from '../../components/ui/FormField'
 import { ErrorBanner } from '../../components/ui/ErrorBanner'
+import { ResendVerification } from '../../components/auth/ResendVerification'
 
 /** Mirrors auth-user-service's DocumentUploadService limits exactly. */
 const ACCEPTED_DOCUMENT_TYPES = ['application/pdf', 'image/jpeg', 'image/png']
@@ -87,6 +88,7 @@ export function DealerRegisterPage() {
   const [step, setStep] = useState(0)
   const [formError, setFormError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [registeredEmail, setRegisteredEmail] = useState('')
 
   const [documentKey, setDocumentKey] = useState<string | null>(null)
   const [documentName, setDocumentName] = useState<string | null>(null)
@@ -181,6 +183,7 @@ export function DealerRegisterPage() {
         window.location.assign('/')
         return
       }
+      setRegisteredEmail(v.email.trim())
       setNotice(result.message)
     } catch (error) {
       setFormError(toErrorMessage(error, 'Could not create your dealership account.'))
@@ -194,6 +197,8 @@ export function DealerRegisterPage() {
           <BrandMark to="/" />
           <h1>Almost there</h1>
           <p role="status">{notice}</p>
+          <p>Didn't get the email? Check your spam folder, or request another.</p>
+          <ResendVerification email={registeredEmail} />
           <Link className="button button--primary" to="/dealer/login">
             Go to dealer sign in
           </Link>

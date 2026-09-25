@@ -14,7 +14,7 @@ terraform {
 
   backend "s3" {
     bucket       = "vehicle-marketplace-tfstate-287761904540"
-    key          = "production/terraform.tfstate"
+    key          = "staging/terraform.tfstate"
     region       = "ap-southeast-2"
     encrypt      = true
     use_lockfile = true # native S3 conditional-write locking (TF 1.10+) — no DynamoDB table needed
@@ -739,14 +739,23 @@ resource "aws_lambda_permission" "job_status_api_public" {
   source_arn    = "${module.api_gateway.public_api_execution_arn}/*/*"
 }
 
+# AWS allows only one OIDC provider per unique URL per account, and
+# production already created one — staging looks it up instead of creating a
+# second one. See environments/staging/README.md.
+data "aws_iam_openid_connect_provider" "github" {
+  count = var.create_github_oidc_provider ? 0 : 1
+  url   = "https://token.actions.githubusercontent.com"
+}
+
 module "github_oidc" {
   source = "../../modules/github-oidc"
 
-  project_name         = var.project_name
-  environment          = var.environment
-  github_org           = var.github_org
-  github_repo          = var.github_repo
-  create_oidc_provider = var.create_github_oidc_provider
+  project_name               = var.project_name
+  environment                = var.environment
+  github_org                 = var.github_org
+  github_repo                = var.github_repo
+  create_oidc_provider       = var.create_github_oidc_provider
+  existing_oidc_provider_arn = var.create_github_oidc_provider ? null : data.aws_iam_openid_connect_provider.github[0].arn
 
   ecr_repository_arns = [
     module.auth_lambda.ecr_repository_arn,
