@@ -257,6 +257,7 @@ module "marketplace_lambda" {
   project_name       = var.project_name
   environment        = var.environment
   service_name       = "marketplace"
+  memory_size        = 2048 # MiniLM embedding runs inline on create; 512MB was too slow
   image_tag          = var.image_tag
   execution_role_arn = module.iam.role_arns["marketplace"]
   subnet_ids         = module.networking.private_subnet_ids

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { MoreThanOrEqual, Repository } from 'typeorm';
 
 import {
   Vehicle,
@@ -62,6 +62,29 @@ export class ListingRepository {
     vehicle.embedding = embedding;
 
     return this.vehicleRepo.save(vehicle);
+  }
+
+  /**
+   * The same dealer's listing with identical vehicle details created within
+   * `windowMs`. A double-click or a retry after a client timeout re-sends the
+   * same body; this lets the service return the first listing instead of
+   * creating a twin.
+   */
+  findRecentDuplicate(dto: CreateListingDto, windowMs: number) {
+    return this.vehicleRepo.findOne({
+      where: {
+        dealerId: dto.dealerId,
+        make: dto.make,
+        model: dto.model,
+        manufactureYear: dto.manufactureYear,
+        price: dto.price,
+        mileage: dto.mileage,
+        fuelType: dto.fuelType,
+        transmissionType: dto.transmissionType,
+        createdAt: MoreThanOrEqual(new Date(Date.now() - windowMs)),
+      },
+      order: { createdAt: 'DESC' },
+    });
   }
 
   findAllLive() {
