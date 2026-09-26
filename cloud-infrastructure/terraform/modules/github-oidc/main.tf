@@ -115,8 +115,11 @@ data "aws_iam_policy_document" "github_deploy" {
   dynamic "statement" {
     for_each = var.lambda_artifact_bucket_arn != null ? [1] : []
     content {
-      sid       = "LambdaArtifactUpload"
-      actions   = ["s3:PutObject"]
+      sid = "LambdaArtifactUpload"
+      # GetObject is required too: `lambda update-function-code --s3-bucket`
+      # reads the zip with the CALLER's credentials, not Lambda's, and fails
+      # with "Your access has been denied by S3" without it.
+      actions   = ["s3:PutObject", "s3:GetObject"]
       resources = ["${var.lambda_artifact_bucket_arn}/lambda-artifacts/*"]
     }
   }
