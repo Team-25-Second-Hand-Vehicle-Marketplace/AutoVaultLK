@@ -30,6 +30,10 @@ function toNumbers(data: ArrayLike<number> | BigInt64Array): number[] {
 
 async function loadPipeline(): Promise<FeaturePipeline> {
   const mod = await import('@xenova/transformers');
+  // In the Lambda image the model is baked in at build time; point the library
+  // at it so a cold start reads from disk instead of downloading from the hub.
+  const cacheDir = process.env.EMBEDDING_MODEL_CACHE_DIR;
+  if (cacheDir) mod.env.cacheDir = cacheDir;
   return (await mod.pipeline(
     'feature-extraction',
     EMBEDDING_MODEL_ID,
