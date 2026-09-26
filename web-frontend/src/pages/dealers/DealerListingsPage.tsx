@@ -14,7 +14,7 @@ import type {
   DealerListing,
   ListingStatus,
 } from '../../api/listings.types'
-import { toErrorMessage } from '../../api/client'
+import { isNoResponseError, toErrorMessage } from '../../api/client'
 import { useAsyncData } from '../../hooks/useAsyncData'
 import { ListingForm } from '../../components/dealers/ListingForm'
 import { ListingDetails } from '../../components/dealers/ListingDetails'
@@ -111,6 +111,17 @@ export function DealerListingsPage() {
       backToList()
       listings.reload()
     } catch (error) {
+      if (isNoResponseError(error)) {
+        // No answer is not the same as "failed": the server may have created
+        // the listing anyway. Leaving the form open invites a second submit
+        // and a duplicate, so go back to the list and let the dealer check.
+        toast.error(
+          'The server took too long to respond. Your listing may still have been created — check My listings before adding it again.',
+        )
+        backToList()
+        listings.reload()
+        return
+      }
       toast.error(toErrorMessage(error, 'Could not create the listing.'))
     }
   }

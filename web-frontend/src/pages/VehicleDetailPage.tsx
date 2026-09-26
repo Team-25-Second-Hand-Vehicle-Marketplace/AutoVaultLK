@@ -8,7 +8,6 @@ import { RecommendationsSection } from '../components/search/RecommendationsSect
 import { SaveButton } from '../components/search/SaveButton'
 import { YearDisplay } from '../components/search/YearDisplay'
 import { formatMileage, formatPrice, humanizeEnum } from '../components/search/vehicle-format'
-import { demoImageFor, isContainImage } from '../assets/demo-images'
 
 /** specs is untyped JSONB; render whatever is there rather than a fixed list. */
 function formatSpecKey(key: string): string {
@@ -31,7 +30,6 @@ export function VehicleDetailPage() {
   }>({ vehicle: null, loading: true, error: null, notFound: false })
   const { vehicle, loading, error, notFound } = state
 
-  const [galleryFailed, setGalleryFailed] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -100,16 +98,8 @@ export function VehicleDetailPage() {
   )
 
 
-  const primaryImage =
-    vehicle.images[0] ??
-    demoImageFor(vehicle.id, {
-      vehicleType: vehicle.vehicleType,
-      make: vehicle.make,
-      model: vehicle.model,
-      bodyType: typeof vehicle.specs.body_type === 'string' ? vehicle.specs.body_type : undefined,
-      fuelType: vehicle.fuelType,
-      price: vehicle.price,
-    })
+  // The listing's own first photo, or none: no stock fallback.
+  const primaryImage = vehicle.images[0]
 
   return (
     <div className="detail-page">
@@ -124,16 +114,11 @@ export function VehicleDetailPage() {
       <div className="detail-page__grid">
         <div className="detail-page__main">
           <div className="detail-gallery">
-            {vehicle.images.length > 0 || !galleryFailed ? (
+            {primaryImage ? (
               <img
                 src={primaryImage}
                 alt={`${vehicle.make} ${vehicle.model}`}
-                className={
-                  isContainImage(primaryImage)
-                    ? 'detail-gallery__primary detail-gallery__primary--contain'
-                    : 'detail-gallery__primary'
-                }
-                onError={() => setGalleryFailed(true)}
+                className="detail-gallery__primary"
               />
             ) : (
               // No environment has image rows yet; say so plainly rather

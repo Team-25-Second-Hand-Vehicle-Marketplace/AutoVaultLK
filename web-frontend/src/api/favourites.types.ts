@@ -9,8 +9,8 @@ import type { VehicleCardResult } from '../components/search/VehicleCard'
  *
  * `vehicle` is the raw `Vehicle` entity rather than the search-result shape, so
  * it carries no `imageUrl`, `thumbnailUrl` or `dealerVerified`. `VehicleCard`
- * tolerates all three being absent: it falls back to `demoImageFor` for the
- * image and renders no verification badge.
+ * tolerates all three being absent: it shows its "no photo" placeholder and
+ * renders no verification badge.
  */
 export interface Favourite {
   id: string
