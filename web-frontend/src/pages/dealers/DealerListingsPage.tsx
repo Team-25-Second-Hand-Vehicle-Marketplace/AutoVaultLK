@@ -24,6 +24,7 @@ import {
 } from '../../components/dealers/NormalizationBadge'
 import { Button } from '../../components/ui/Button'
 import { ErrorBanner } from '../../components/ui/ErrorBanner'
+import { useDealerProfile } from './useDealerProfile'
 import { formatMileage, formatPrice } from '../../components/search/vehicle-format'
 
 /**
@@ -80,6 +81,7 @@ export function DealerListingsPage() {
     [reviewOrder],
   )
   const listings = useAsyncData<DealerListing[]>(fetchListings, listingsError)
+  const dealer = useDealerProfile().data
 
   const pendingReviewCount =
     listings.data?.filter((l) => l.status === 'PENDING_REVIEW').length ?? 0
@@ -275,7 +277,9 @@ export function DealerListingsPage() {
         <div className="empty-state">
           <p>You have no listings yet.</p>
           <p className="empty-state__detail">
-            Add one here, or upload your whole inventory at once from Bulk upload.
+            {dealer?.dealerType === 'business'
+              ? 'Upload your whole inventory at once from Bulk upload.'
+              : 'Add your first vehicle with the New listing button above.'}
           </p>
         </div>
       )}
