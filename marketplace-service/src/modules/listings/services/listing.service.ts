@@ -179,6 +179,47 @@ export class ListingService {
   }
 
   /**
+   * Permanently removes a listing — distinct from `deactivateListing`, which
+   * only hides it from the public feed and keeps the row. Restricted to
+   * DRAFT, PENDING_REVIEW and REJECTED: those never went live, so nothing
+   * external (a buyer's favourite, a recommendation, search history) should
+   * reasonably reference one. LIVE, SOLD and ARCHIVED listings can only be
+   * archived, never hard-deleted, because they may already be referenced —
+   * ON DELETE CASCADE on vehicle_images/favourites would remove those
+   * references cleanly, but a buyer who favourited a listing that then
+   * vanishes without a trace is a worse experience than one that stays
+   * visible as archived.
+   */
+  private static readonly DELETABLE_STATUSES = ['DRAFT', 'PENDING_REVIEW', 'REJECTED'] as const;
+
+  async deleteListing(id: string, actor: AuthenticatedUser) {
+    const existing = await this.listingRepository.findById(id);
+
+    if (!existing) {
+      throw new NotFoundException(`Vehicle listing with ID ${id} not found`);
+    }
+
+    this.assertOwnership(existing, actor);
+
+    if (!(ListingService.DELETABLE_STATUSES as readonly string[]).includes(existing.status)) {
+      throw new ConflictException(
+        `Vehicle listing ${id} is ${existing.status} and can only be archived, not deleted. ` +
+          `Delete is only available for ${ListingService.DELETABLE_STATUSES.join(', ')} listings.`,
+      );
+    }
+
+    const removed = await this.listingRepository.remove(id);
+
+    if (!removed) {
+      // The findById above already confirmed it exists; only a race with
+      // another delete between that read and this write reaches here.
+      throw new NotFoundException(`Vehicle listing with ID ${id} not found`);
+    }
+
+    return { message: 'Vehicle listing deleted permanently' };
+  }
+
+  /**
    * FR-58: attaches photos to a listing the dealer owns. The manual listing
    * form never had an image field before this — a dealer creating one
    * vehicle at a time had no way to attach a photo at all, unlike bulk

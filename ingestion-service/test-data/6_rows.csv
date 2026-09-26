@@ -1,0 +1,4 @@
+vehicle_type,make,model,year,price,mileage,fuel_type,transmission,registration_number,body_type,condition,engine_capacity_cc,owners_count,location_city,location_district,description
+Car,Toyta,C200,2013,7182115,66513,Petrol,Manual,CAS-9935,Sedan,recon,wite,2800,1,Negombo,Gampaha,"2013 Mercedes-Benz C200 in fair condition with 66,513 km. Available in Negombo."
+suv,Toyota,Aqua,2015,26 mil,60124,Hybrd,Automatic,NCC-7873,Hatchback,used,Red,2200 cc,3,Anuradhapura,Anuradhapura,"2015 Toyota Aqua in good condition with 60,124 km. Available in Anuradhapura."
+Van,Ford,Ranger,2012,7717026,80842,Diesel,Auto,CB  -6514,Sedan,new,Blue,2800,1,kegale,kegale,"2012 Ford Ranger, sporty, 80,842 km milage. reverse camera and full opton"

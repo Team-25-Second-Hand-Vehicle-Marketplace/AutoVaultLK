@@ -17,6 +17,7 @@ describe('ListingService', () => {
     update: jest.fn(),
     deactivate: jest.fn(),
     approve: jest.fn(),
+    remove: jest.fn(),
   };
   const dealerService = {
     getDealerById: jest.fn(),
@@ -431,6 +432,80 @@ describe('ListingService', () => {
 
       await expect(service.approveListing('v-1', DEALER)).rejects.toThrow(
         ConflictException,
+      );
+    });
+  });
+
+  describe('deleteListing', () => {
+    it('404s when the listing does not exist', async () => {
+      listingRepository.findById.mockResolvedValue(null);
+
+      await expect(service.deleteListing('missing', DEALER)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('forbids a non-owning dealer from deleting the listing', async () => {
+      listingRepository.findById.mockResolvedValue(
+        vehicle({ dealerId: DEALER.id, status: 'DRAFT' }),
+      );
+
+      await expect(service.deleteListing('v-1', OTHER_DEALER)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it.each(['DRAFT', 'PENDING_REVIEW', 'REJECTED'] as const)(
+      'allows the owning dealer to permanently delete a %s listing',
+      async (status) => {
+        listingRepository.findById.mockResolvedValue(
+          vehicle({ dealerId: DEALER.id, status }),
+        );
+        listingRepository.remove.mockResolvedValue(true);
+
+        await expect(service.deleteListing('v-1', DEALER)).resolves.toMatchObject({
+          message: expect.stringContaining('deleted'),
+        });
+        expect(listingRepository.remove).toHaveBeenCalledWith('v-1');
+      },
+    );
+
+    // LIVE, SOLD and ARCHIVED listings may already be referenced by a
+    // favourite or a recommendation; only Archive is offered for those.
+    it.each(['LIVE', 'SOLD', 'ARCHIVED'] as const)(
+      '409s a %s listing rather than deleting it',
+      async (status) => {
+        listingRepository.findById.mockResolvedValue(
+          vehicle({ dealerId: DEALER.id, status }),
+        );
+
+        await expect(service.deleteListing('v-1', DEALER)).rejects.toThrow(
+          ConflictException,
+        );
+        expect(listingRepository.remove).not.toHaveBeenCalled();
+      },
+    );
+
+    it('allows ADMIN to delete any dealer\'s DRAFT/PENDING_REVIEW/REJECTED listing', async () => {
+      listingRepository.findById.mockResolvedValue(
+        vehicle({ dealerId: DEALER.id, status: 'PENDING_REVIEW' }),
+      );
+      listingRepository.remove.mockResolvedValue(true);
+
+      await expect(service.deleteListing('v-1', ADMIN)).resolves.toBeDefined();
+    });
+
+    // The status check happened on a read; a race with another delete
+    // between that read and the write below is the only way the repository
+    // call itself returns false despite the check passing.
+    it('404s when the repository delete loses a race', async () => {
+      listingRepository.findById.mockResolvedValue(
+        vehicle({ dealerId: DEALER.id, status: 'DRAFT' }),
+      );
+      listingRepository.remove.mockResolvedValue(false);
+
+      await expect(service.deleteListing('v-1', DEALER)).rejects.toThrow(
+        NotFoundException,
       );
     });
   });

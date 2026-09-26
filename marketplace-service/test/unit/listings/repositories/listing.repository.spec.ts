@@ -15,6 +15,7 @@ describe('ListingRepository', () => {
     save: jest.fn(),
     find: jest.fn(),
     findOne: jest.fn(),
+    delete: jest.fn(),
     createQueryBuilder: jest.fn(() => queryBuilder),
   };
   const searchIndexService = {
@@ -391,5 +392,20 @@ describe('ListingRepository', () => {
         await expect(repository.approve('v-1')).resolves.toBeNull();
       },
     );
+  });
+
+  describe('remove', () => {
+    it('returns true when a row was deleted', async () => {
+      vehicleRepo.delete.mockResolvedValue({ affected: 1 });
+
+      await expect(repository.remove('v-1')).resolves.toBe(true);
+      expect(vehicleRepo.delete).toHaveBeenCalledWith({ id: 'v-1' });
+    });
+
+    it('returns false when nothing matched', async () => {
+      vehicleRepo.delete.mockResolvedValue({ affected: 0 });
+
+      await expect(repository.remove('missing')).resolves.toBe(false);
+    });
   });
 });

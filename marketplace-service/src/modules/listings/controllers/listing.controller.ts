@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
@@ -78,6 +79,21 @@ export class ListingController {
     @CurrentUser() actor: AuthenticatedUser,
   ) {
     return this.listingService.deactivateListing(id, actor);
+  }
+
+  /**
+   * Permanently removes a listing — distinct from `deactivate`, which only
+   * hides it. Only DRAFT/PENDING_REVIEW/REJECTED listings qualify; see
+   * ListingService.deleteListing for why LIVE/SOLD/ARCHIVED are 409s here.
+   */
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('DEALER', 'ADMIN')
+  deleteListing(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.listingService.deleteListing(id, actor);
   }
 
   /**

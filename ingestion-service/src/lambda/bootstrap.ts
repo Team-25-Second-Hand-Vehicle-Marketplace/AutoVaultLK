@@ -75,6 +75,7 @@ export async function getContext(): Promise<LambdaContext> {
   const vehicleImages = new VehicleImageRepository(
     dataSource.getRepository(VehicleWriteEntity),
     dataSource.getRepository(VehicleImageWriteEntity),
+    dataSource,
   );
 
   cached = {

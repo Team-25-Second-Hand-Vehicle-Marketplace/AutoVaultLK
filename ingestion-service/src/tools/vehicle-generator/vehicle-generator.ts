@@ -5,7 +5,7 @@
 import { mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
 
-type Vehicle = {
+export type Vehicle = {
   registration_number: string;
   make: string;
   model: string;
@@ -25,7 +25,7 @@ type Vehicle = {
   location_district: string;
 };
 
-type GenerationMode = 'clean' | 'dirty' | 'invalid' | 'mixed';
+export type GenerationMode = 'clean' | 'dirty' | 'invalid' | 'mixed';
 
 const MAKES = [
   {
@@ -236,7 +236,7 @@ function makeInvalid(vehicle: Vehicle, index: number): Vehicle {
   }
 }
 
-function generateVehicle(
+export function generateVehicle(
   index: number,
   mode: GenerationMode,
 ): Vehicle {
@@ -332,7 +332,7 @@ function escapeCsv(value: string | number): string {
   return stringValue;
 }
 
-function convertToCsv(vehicles: Vehicle[]): string {
+export function convertToCsv(vehicles: Vehicle[]): string {
   const headers = [
     'registration_number',
     'make',
@@ -398,11 +398,15 @@ async function main() {
   console.log(`Output: ${outputPath}`);
 }
 
-main().catch((error) => {
-  console.error(
-    'Vehicle generation failed:',
-    error.message,
-  );
+// Guarded so ingestion-tester.ts can import generateVehicle/convertToCsv
+// without also triggering this file's own CLI run as a side effect of import.
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(
+      'Vehicle generation failed:',
+      error.message,
+    );
 
-  process.exit(1);
-});
+    process.exit(1);
+  });
+}

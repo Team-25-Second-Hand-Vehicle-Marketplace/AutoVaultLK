@@ -5,6 +5,7 @@ import {
   FUEL_TYPES,
   TRANSMISSION_TYPES,
 } from './enum-vocabulary';
+import { trigramSimilarity } from './trigram';
 
 /**
  * The system prompt for whole-row repair.
@@ -77,16 +78,43 @@ const MAX_FIELD_LENGTH = 60;
 const MAX_DESCRIPTION_LENGTH = 500;
 
 /**
+ * How many makes stay in the prompt per batch, at most. Enough headroom for
+ * a batch whose rows span several genuinely different makes, without paying
+ * for the whole dictionary on every request.
+ */
+const MAX_CANDIDATE_MAKES = 8;
+
+/**
+ * Below this trigram score a make is not a plausible candidate for what the
+ * dealer typed — same floor dictionary-snapshot.ts's fuzzy match uses, so a
+ * make Groq would never have resolved locally anyway is not worth a slot in
+ * an already-tight vocabulary budget.
+ */
+const CANDIDATE_MAKE_THRESHOLD = 0.3;
+
+/**
  * Builds the user payload: the rows to repair plus the makes and models they
  * are allowed to resolve to. Every other field's allowed vocabulary is fixed
  * and already stated in SYSTEM_PROMPT, so only make/model need a per-request
  * candidate list.
  *
- * The allowed list is scoped to *candidate* makes rather than the whole
- * dictionary. Sending 30 makes and 137 models on every call would be wasteful,
- * but more importantly a long list invites the model to pattern-match against
- * something unrelated. Here it sees the handful of makes plausibly near what
- * the dealer typed, and the models under them.
+ * **The allowed list is scoped to candidate makes, not the whole
+ * dictionary.** This used to be true only in the doc comment — every call
+ * actually sent the full ~30-make, ~140-model vocabulary regardless of what
+ * the batch needed, which was the dominant cost in a real 429/413 against
+ * Groq's free-tier 8,000 TPM limit: ~30 makes and their full model lists ran
+ * to roughly 700-900 tokens on their own, before a single row's data. Now
+ * each batch's candidate list is the union of, per row, the makes whose
+ * canonical name or alias trigram-matches the dealer's raw text above
+ * CANDIDATE_MAKE_THRESHOLD — the same floor the deterministic fuzzy match
+ * uses — capped at MAX_CANDIDATE_MAKES. A make nothing in the batch is even
+ * close to typing is not a candidate Groq needs to see; sending it anyway
+ * both costs tokens and invites the model to pattern-match toward something
+ * unrelated to what the dealer wrote.
+ *
+ * Falls back to the full make list only when nothing in the batch scores
+ * above the threshold against anything — better to offer every option than
+ * none when the raw text is too garbled to narrow down at all.
  */
 export function buildUserPayload(
   rows: NormalizedRow[],
@@ -94,7 +122,10 @@ export function buildUserPayload(
   allowedMakes: readonly string[],
   modelsByMake: ReadonlyMap<string, readonly string[]>,
 ): string {
-  void dictionary;
+  const candidateMakes = selectCandidateMakes(rows, allowedMakes);
+  const scopedModelsByMake = new Map(
+    candidateMakes.map((make) => [make, modelsByMake.get(make) ?? []]),
+  );
 
   const promptRows: PromptRow[] = rows.map((row) => ({
     id: row.rowNumber,
@@ -112,14 +143,49 @@ export function buildUserPayload(
 
   return JSON.stringify({
     allowed: {
-      makes: allowedMakes,
-      models: Object.fromEntries(modelsByMake),
+      makes: candidateMakes,
+      models: Object.fromEntries(scopedModelsByMake),
       fuel_type: FUEL_TYPES,
       transmission: TRANSMISSION_TYPES,
       condition: CONDITIONS,
     },
     rows: promptRows,
   });
+}
+
+/**
+ * The makes worth sending for this batch: every allowed make whose trigram
+ * similarity to any row's raw make text clears CANDIDATE_MAKE_THRESHOLD,
+ * ranked by best score across the batch and capped at MAX_CANDIDATE_MAKES.
+ * Falls back to the full list when nothing scores above the threshold at
+ * all — a batch of raw text too garbled to narrow down gets every option
+ * rather than an empty (and useless) candidate list.
+ */
+function selectCandidateMakes(
+  rows: NormalizedRow[],
+  allowedMakes: readonly string[],
+): readonly string[] {
+  const bestScoreByMake = new Map<string, number>();
+
+  for (const row of rows) {
+    const rawMake = row.raw['make'];
+    if (!rawMake) continue;
+
+    for (const make of allowedMakes) {
+      const score = trigramSimilarity(rawMake, make);
+      if (score < CANDIDATE_MAKE_THRESHOLD) continue;
+
+      const existing = bestScoreByMake.get(make) ?? 0;
+      if (score > existing) bestScoreByMake.set(make, score);
+    }
+  }
+
+  if (bestScoreByMake.size === 0) return allowedMakes;
+
+  return [...bestScoreByMake.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, MAX_CANDIDATE_MAKES)
+    .map(([make]) => make);
 }
 
 /** One repaired row, after parsing but before whitelist validation. */
