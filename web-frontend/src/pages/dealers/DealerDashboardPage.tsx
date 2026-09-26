@@ -1,11 +1,12 @@
 import { useCallback } from 'react'
-import { getMyDealerProfile } from '../../api/dealer.api'
+import { Link } from 'react-router-dom'
 import type { DealerProfile } from '../../api/dealer.types'
 import { getMyListings } from '../../api/listings.api'
 import type { DealerListing, ListingStatus } from '../../api/listings.types'
 import { toErrorMessage } from '../../api/client'
 import { useAsyncData } from '../../hooks/useAsyncData'
 import { ErrorBanner } from '../../components/ui/ErrorBanner'
+import { useDealerProfile } from './useDealerProfile'
 
 const STATUS_TILES: { label: string; statuses: ListingStatus[] }[] = [
   { label: 'Live', statuses: ['LIVE'] },
@@ -20,14 +21,12 @@ function countByStatus(listings: DealerListing[], statuses: ListingStatus[]): nu
   return listings.filter((l) => statuses.includes(l.status)).length
 }
 
-const profileError = (err: unknown) => toErrorMessage(err, 'Could not load your dealer profile.')
 const listingsError = (err: unknown) => toErrorMessage(err, 'Could not load your listings.')
 
 export function DealerDashboardPage() {
-  const fetchProfile = useCallback((signal: AbortSignal) => getMyDealerProfile(signal), [])
   const fetchListings = useCallback((signal: AbortSignal) => getMyListings(undefined, signal), [])
 
-  const profile = useAsyncData<DealerProfile>(fetchProfile, profileError)
+  const profile = useDealerProfile()
   const listings = useAsyncData<DealerListing[]>(fetchListings, listingsError)
 
   if (profile.loading) {
@@ -79,9 +78,14 @@ export function DealerDashboardPage() {
       )}
 
       <p className="dealer-note">
-        {dealer.dealerType === 'individual'
-          ? 'As an individual dealer, add vehicles one at a time from My listings.'
-          : 'As a business dealer, upload your whole inventory at once from Bulk upload, or add vehicles individually from My listings.'}
+        {dealer.dealerType === 'individual' ? (
+          <>
+            As an individual dealer, add your vehicles one at a time from{' '}
+            <Link to="/dealer/listings">My listings</Link>.
+          </>
+        ) : (
+          'As a business dealer, upload your whole inventory at once from Bulk upload.'
+        )}
       </p>
     </div>
   )
