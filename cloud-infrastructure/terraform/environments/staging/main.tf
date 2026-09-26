@@ -214,6 +214,16 @@ locals {
   }
 }
 
+locals {
+  # Base URL for service-to-service calls over the internal API. It must be the
+  # API ROOT: the callers append the full path themselves (admin ->
+  # /internal/dealers/{id}/approve, /notifications/events, ...), and the gateway
+  # routes on that first segment. A base ending in /internal or /notifications
+  # doubles it (POST /internal/internal/... -> 404). trimsuffix drops the
+  # trailing slash the $default stage URL ends with.
+  internal_api_base = trimsuffix(module.api_gateway.internal_api_endpoint, "/")
+}
+
 module "auth_lambda" {
   source = "../../modules/lambda"
 
@@ -233,7 +243,7 @@ module "auth_lambda" {
     AUTH_RETURN_VERIFICATION_TOKEN   = tostring(var.auth_return_verification_token)
     AUTH_RETURN_PASSWORD_RESET_TOKEN = tostring(var.auth_return_verification_token)
     SES_FROM_EMAIL                   = coalesce(var.ses_sender_email, var.ses_domain_name != null ? "no-reply@${var.ses_domain_name}" : "")
-    NOTIFICATION_INTERNAL_URL        = "${module.api_gateway.internal_api_endpoint}/notifications"
+    NOTIFICATION_INTERNAL_URL        = local.internal_api_base
     # Verification-document upload (FR-02.1) — same s3/local/demo modes as
     # marketplace's image serving; production always runs s3.
     DOCUMENT_SERVE_MODE      = "s3"
@@ -258,7 +268,7 @@ module "marketplace_lambda" {
     GROQ_MODEL               = "openai/gpt-oss-20b"
     GROQ_TIMEOUT_MS          = "4000"
     EMBEDDING_DISABLED       = "false"
-    AUTH_INTERNAL_URL        = "${module.api_gateway.internal_api_endpoint}/internal"
+    AUTH_INTERNAL_URL        = local.internal_api_base
     # NFR-19: presigned GET URLs, never a public bucket. IMAGE_SERVE_MODE=s3
     # is production's default; dev/local environments run demo or local
     # instead (see .env.example and image-serve.config.ts).
@@ -280,9 +290,9 @@ module "admin_lambda" {
 
   environment_variables = merge(local.common_env, {
     ADMIN_DATABASE_URL        = local.db_url["admin"]
-    AUTH_SERVICE_INTERNAL_URL = "${module.api_gateway.internal_api_endpoint}/internal"
-    AUTH_INTERNAL_URL         = "${module.api_gateway.internal_api_endpoint}/internal"
-    NOTIFICATION_INTERNAL_URL = "${module.api_gateway.internal_api_endpoint}/notifications"
+    AUTH_SERVICE_INTERNAL_URL = local.internal_api_base
+    AUTH_INTERNAL_URL         = local.internal_api_base
+    NOTIFICATION_INTERNAL_URL = local.internal_api_base
     # Resolves a stored verification-document key into a presigned URL for
     # the dealer approval screen — read-only, never uploads (see
     # DocumentUrlResolverService in admin-service).
@@ -566,7 +576,7 @@ locals {
     GROQ_API_KEY              = var.groq_api_key
     GROQ_MODEL                = "openai/gpt-oss-20b"
     GROQ_TIMEOUT_MS           = "4000"
-    NOTIFICATION_INTERNAL_URL = "${module.api_gateway.internal_api_endpoint}/notifications"
+    NOTIFICATION_INTERNAL_URL = local.internal_api_base
     INTERNAL_SERVICE_KEY      = module.secrets.internal_service_key_value
     NOTIFICATION_TIMEOUT_MS   = "20000"
   }
