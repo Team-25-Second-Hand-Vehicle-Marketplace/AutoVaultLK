@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
+import { COUNTRY_CODES, dealerRegisterSchema as schema, type FormValues } from './dealerRegisterSchema'
 import { registerDealer, uploadVerificationDocument } from '../../api/auth.api'
 import { isTokenResponse } from '../../api/auth.types'
 import { saveSession } from '../../api/auth.storage'
@@ -17,62 +17,6 @@ import { ResendVerification } from '../../components/auth/ResendVerification'
 const ACCEPTED_DOCUMENT_TYPES = ['application/pdf', 'image/jpeg', 'image/png']
 const MAX_DOCUMENT_SIZE_BYTES = 5 * 1024 * 1024
 
-/** Sri Lankan NIC: old format (9 digits + V/X) or new format (12 digits) — matches the backend's NIC_REGEX. */
-const NIC_REGEX = /^(?:\d{9}[vVxX]|\d{12})$/
-
-/** Small fixed set of dial codes — Sri Lanka first/default since this is a Sri Lankan marketplace. */
-const COUNTRY_CODES = [
-  { code: '+94', label: '🇱🇰 +94 (Sri Lanka)' },
-  { code: '+91', label: '🇮🇳 +91 (India)' },
-  { code: '+1', label: '🇺🇸 +1 (US/Canada)' },
-  { code: '+44', label: '🇬🇧 +44 (UK)' },
-  { code: '+61', label: '🇦🇺 +61 (Australia)' },
-] as const
-
-const schema = z
-  .object({
-    // Step 1 — company
-    companyName: z.string().trim().min(2, 'Company name is required'),
-    dealerType: z.enum(['individual', 'business']),
-    businessRegistrationNumber: z.string().trim().min(1, 'Registration number is required'),
-    businessAddress: z.string().trim().min(4, 'Business address is required'),
-    city: z.string().trim().min(2, 'City is required'),
-    // Individual dealers only — an NIC is a known-format identifier, so it's
-    // typed as text rather than uploaded as a document scan.
-    nicNumber: z.string().trim().optional(),
-
-    // Step 2 — contact
-    name: z.string().trim().min(2, 'Contact name is required'),
-    countryCode: z.enum(COUNTRY_CODES.map((c) => c.code) as [string, ...string[]]),
-    // Local number only — no leading 0, no country code. The backend's
-    // PHONE_REGEX (^\+?[1-9]\d{8,14}$) is applied to countryCode + this
-    // combined, so this stays digits-only and matches what's left of a
-    // Sri Lankan number once its leading 0 is stripped.
-    contactNumber: z
-      .string()
-      .trim()
-      .regex(/^[1-9]\d{7,10}$/, 'Enter a valid phone number, without the leading 0'),
-
-    // Step 3 — account
-    email: z.string().min(1, 'Email is required').email('Enter a valid email address'),
-    password: z
-      .string()
-      .min(8, 'Password must be at least 8 characters')
-      .regex(/[a-z]/, 'Include at least one lowercase letter')
-      .regex(/[A-Z]/, 'Include at least one uppercase letter')
-      .regex(/[0-9]/, 'Include at least one number'),
-    confirmPassword: z.string(),
-  })
-  .refine((v) => v.password === v.confirmPassword, {
-    message: 'Passwords do not match',
-    path: ['confirmPassword'],
-  })
-  .refine((v) => v.dealerType !== 'individual' || NIC_REGEX.test(v.nicNumber ?? ''), {
-    message: 'Enter a valid NIC (9 digits + V/X, or 12 digits)',
-    path: ['nicNumber'],
-  })
-
-type FormValues = z.infer<typeof schema>
 
 const STEPS = ['Company Info', 'Contact Details', 'Account Setup', 'Review'] as const
 
@@ -168,7 +112,7 @@ export function DealerRegisterPage() {
         password: v.password,
         name: v.name.trim(),
         dealerType: v.dealerType,
-        businessRegistrationNumber: v.businessRegistrationNumber.trim(),
+        businessRegistrationNumber: (v.businessRegistrationNumber ?? '').trim() || undefined,
         businessAddress: v.businessAddress.trim(),
         city: v.city.trim(),
         companyName: v.companyName.trim(),
@@ -269,7 +213,11 @@ export function DealerRegisterPage() {
             </fieldset>
 
             <FormField
-              label="Business Registration Number *"
+              label={
+                values.dealerType === 'business'
+                  ? 'Business Registration Number *'
+                  : 'Business Registration Number (optional)'
+              }
               type="text"
               placeholder="e.g. PV 12345"
               error={errors.businessRegistrationNumber?.message}
