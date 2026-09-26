@@ -23,17 +23,35 @@ import {
 
 /**
  * What the stage did, for the orchestrator to log. SKIPPED when no key is
- * configured or nothing needed help; DEGRADED when the call failed and rows
- * kept their deterministic values.
+ * configured or nothing needed help; DEGRADED when at least one sub-batch's
+ * call failed and those rows kept their deterministic values; SUCCEEDED when
+ * every sub-batch that was attempted came back — including a chunk where
+ * some sub-batches succeeded and others degraded, since the rows that did
+ * get repaired should not be reported as a wholesale failure.
  */
 export type GroqOutcome = 'SKIPPED' | 'SUCCEEDED' | 'DEGRADED';
 
 export type GroqNormalizeResult = StageResult<NormalizedRow> & {
   outcome: GroqOutcome;
-  metrics: { candidates: number; repaired: number };
-  /** Present only on DEGRADED, for the stage log's error_message. */
+  metrics: { candidates: number; repaired: number; batches: number; failedBatches: number };
+  /** Present only when at least one sub-batch degraded, for the stage log's error_message. */
   error?: string;
 };
+
+/**
+ * Candidates per Groq request, not per chunk.
+ *
+ * A whole chunk's low-confidence rows (up to INGESTION_CHUNK_SIZE, 250 by
+ * default) sent in one request routinely exceeded Groq's free-tier 8,000
+ * TPM limit once the full ~30-make dictionary vocabulary was included in the
+ * same payload — observed directly against the API as a 413 ("Request too
+ * large") on the first chunk and a 429 on the second, degrading Groq
+ * normalization on every realistically-sized file. Splitting into small
+ * sub-batches keeps each request's token count well under the cap
+ * regardless of chunk size, at the cost of more sequential round trips per
+ * chunk instead of one.
+ */
+const GROQ_BATCH_SIZE = 8;
 
 /**
  * The LLM fallback for rows the dictionary could not resolve (ADR-004:
@@ -84,32 +102,62 @@ export const groqNormalizeStage: StageRunner<
       return skipped(rows, 0);
     }
 
-    try {
-      const repairs = await requestRepairs(ctx, candidates);
-      const repaired = applyRepairs(ctx, rows, repairs);
+    // Sequential, not Promise.all: parallel sub-batches would just recreate
+    // the same per-minute token ceiling this splitting exists to avoid,
+    // firing several large requests at once instead of one.
+    const batches = chunkInto(candidates, GROQ_BATCH_SIZE);
+    let mergedRows = rows;
+    let repairedCount = 0;
+    let failedBatches = 0;
+    const errors: string[] = [];
 
-      return {
-        rows: repaired.rows,
-        rejections: [],
-        outcome: 'SUCCEEDED',
-        metrics: { candidates: candidates.length, repaired: repaired.count },
-      };
-    } catch (err) {
-      // Rows keep whatever parseNormalize determined and continue to
-      // validateRows, which may well accept them — low confidence is not
-      // invalidity. A Groq outage must cost enrichment, not stock.
-      return {
-        rows,
-        rejections: [],
-        outcome: 'DEGRADED',
-        metrics: { candidates: candidates.length, repaired: 0 },
-        error: err instanceof Error ? err.message : String(err),
-      };
+    for (const batch of batches) {
+      try {
+        const repairs = await requestRepairs(ctx, batch);
+        const result = applyRepairs(ctx, mergedRows, repairs);
+        mergedRows = result.rows;
+        repairedCount += result.count;
+      } catch (err) {
+        // This batch's rows keep whatever parseNormalize determined and
+        // continue to validateRows, which may well accept them — low
+        // confidence is not invalidity. One batch failing must not discard
+        // repairs another batch in the same chunk already made.
+        failedBatches++;
+        errors.push(err instanceof Error ? err.message : String(err));
+      }
     }
+
+    const metrics = {
+      candidates: candidates.length,
+      repaired: repairedCount,
+      batches: batches.length,
+      failedBatches,
+    };
+
+    if (failedBatches === 0) {
+      return { rows: mergedRows, rejections: [], outcome: 'SUCCEEDED', metrics };
+    }
+
+    return {
+      rows: mergedRows,
+      rejections: [],
+      outcome: 'DEGRADED',
+      metrics,
+      error: errors.join(' | '),
+    };
   },
 };
 
-/** One batched completion for the whole chunk's candidates. */
+/** Splits an array into consecutive groups of at most `size`. */
+function chunkInto<T>(items: T[], size: number): T[][] {
+  const batches: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    batches.push(items.slice(i, i + size));
+  }
+  return batches;
+}
+
+/** One completion for one sub-batch of candidates. */
 async function requestRepairs(
   ctx: StageContext,
   candidates: NormalizedRow[],
@@ -314,6 +362,6 @@ function skipped(
     rows,
     rejections: [],
     outcome: 'SKIPPED',
-    metrics: { candidates, repaired: 0 },
+    metrics: { candidates, repaired: 0, batches: 0, failedBatches: 0 },
   };
 }

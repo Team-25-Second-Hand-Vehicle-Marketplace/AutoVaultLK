@@ -43,5 +43,17 @@ mywork.txt
 # payloads. Never committed — recreated on demand.
 .storage/
 DEPLOYMENT-GAPS.md
+
+# ingestion-tester's per-run output (generated CSV/ZIP/HTML report) and the
+# large one-off scratch CSVs manually generated during ETL testing — both
+# regenerated on demand by vehicle-generator.ts / image-generator.ts /
+# ingestion-tester.ts, never meant to be committed. Named explicitly rather
+# than by a broad glob so this never shadows the committed fixtures
+# (test-data/6_rows.csv, 100_rows.csv, 120_rows.csv, 6_rows_images.zip).
+ingestion-service/test-runs/
+ingestion-service/test-data/300_rows*.csv
+ingestion-service/test-data/10_rows.csv
+ingestion-service/test-data/3_dirty_rows.csv
+
 # Local-only notes (deployment values etc.)
 *.local.md

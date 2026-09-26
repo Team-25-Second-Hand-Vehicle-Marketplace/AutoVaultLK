@@ -908,3 +908,56 @@
   font-size: 0.82rem;
   margin: 0;
 }
+
+/* ── Bulk upload: known values reference ────────────────────────────────── */
+
+.known-values {
+  margin-top: 0.75rem;
+}
+
+.known-values__group {
+  border-top: 1px solid var(--border);
+  padding: 0.6rem 0;
+}
+
+.known-values__group:first-of-type {
+  border-top: none;
+  padding-top: 0.75rem;
+}
+
+.known-values__group h3 {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin: 0 0 0.25rem;
+}
+
+.known-values__group p {
+  color: var(--text);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.known-values__makes {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.known-values__make {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.known-values__make dt {
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.known-values__make dd {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin: 0;
+}

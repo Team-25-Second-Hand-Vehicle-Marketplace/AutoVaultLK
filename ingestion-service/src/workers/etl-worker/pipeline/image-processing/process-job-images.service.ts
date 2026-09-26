@@ -161,8 +161,18 @@ export class ProcessJobImagesService {
    * run concurrently with the chunk Map that inserts it (see
    * MATCH_RETRY_BUDGET_MS above) — the row may simply not exist yet, not be
    * permanently absent. Stops early the moment it appears, so a fast Load
-   * costs nothing extra; only a row that never lands (rejected, or the job
-   * genuinely has no such registration) pays the full budget.
+   * costs nothing extra.
+   *
+   * Also stops early — before spending the retry budget at all — when this
+   * registration number was already rejected somewhere in the pipeline. A
+   * rejected row is not "not yet loaded", it is "will never be loaded", and
+   * waiting the full budget for it anyway was the actual cost observed in
+   * practice: an 11-image ZIP where every registration belonged to a
+   * rejected row took ~5.5 minutes to report "unmatched" for all of them,
+   * one 30s wait at a time. Checked once per poll (not just at the start) so
+   * an image whose row is rejected mid-wait — a slower chunk failing after
+   * this loop already began — still exits promptly instead of running out
+   * the clock regardless.
    */
   private async findVehicleWithRetry(
     jobId: string,
@@ -176,6 +186,11 @@ export class ProcessJobImagesService {
         jobId,
       );
       if (vehicle) return vehicle;
+
+      if (await this.vehicleImages.wasRejected(jobId, registrationNumber)) {
+        return null;
+      }
+
       if (Date.now() >= deadline) return null;
 
       await sleep(this.matchRetryIntervalMs);

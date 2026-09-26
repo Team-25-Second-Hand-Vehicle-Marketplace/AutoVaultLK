@@ -107,6 +107,46 @@ describe('groq-client', () => {
     expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 
+  it('includes the response body in a 400 error, not just the bare status', async () => {
+    // json_validate_failed and an invalid-parameter 400 both read identically
+    // as "Groq HTTP 400" without this — the body is what actually names the
+    // cause in etl_stage_logs.error_message.
+    const fetchSpy = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      text: async () => '{"error":{"message":"Failed to validate JSON.","code":"json_validate_failed"}}',
+    });
+    global.fetch = fetchSpy as never;
+
+    await expect(complete('system', 'user')).rejects.toThrow(/json_validate_failed/);
+  });
+
+  it('does not throw when the error response has no readable body', async () => {
+    const fetchSpy = jest.fn().mockResolvedValue({ ok: false, status: 400 });
+    global.fetch = fetchSpy as never;
+
+    await expect(complete('system', 'user')).rejects.toThrow(/HTTP 400/);
+  });
+
+  it('sends reasoning_effort and max_completion_tokens to bound the response budget', async () => {
+    // openai/gpt-oss-20b can spend its whole completion on chain-of-thought
+    // reasoning and leave nothing for the JSON answer, which Groq's
+    // response_format validator then rejects — this is what keeps that from
+    // happening.
+    const fetchSpy = jest.fn().mockResolvedValue(okResponse());
+    global.fetch = fetchSpy as never;
+
+    await complete('system', 'user');
+
+    const body = JSON.parse(fetchSpy.mock.calls[0][1].body as string) as {
+      reasoning_effort?: string;
+      max_completion_tokens?: number;
+    };
+
+    expect(body.reasoning_effort).toBe('low');
+    expect(body.max_completion_tokens).toBeGreaterThan(0);
+  });
+
   it('throws when GROQ_API_KEY is not set', async () => {
     delete process.env.GROQ_API_KEY;
 
