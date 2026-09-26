@@ -11,7 +11,6 @@ import { CategoryIcon } from '../components/home/CategoryIcon'
 import { HeroSearchPanel } from '../components/home/HeroSearchPanel'
 import { VehicleCarousel } from '../components/home/VehicleCarousel'
 import { humanizeEnum } from '../components/search/vehicle-format'
-import { HERO_IMAGE } from '../assets/demo-images'
 
 const nf = new Intl.NumberFormat('en-LK')
 
@@ -45,13 +44,6 @@ export function HomePage() {
       {}
       <section className="hero">
         <div className="hero__backdrop" aria-hidden="true" />
-        <img
-          src={HERO_IMAGE}
-          alt=""
-          className="hero__bg"
-          fetchPriority="high"
-          aria-hidden="true"
-        />
         <div className="hero__scrim" aria-hidden="true" />
 
         <div className="hero__inner">

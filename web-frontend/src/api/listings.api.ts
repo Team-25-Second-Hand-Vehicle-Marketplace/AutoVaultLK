@@ -38,6 +38,14 @@ export async function getMyListings(
  * The owner comes from the JWT, never the body, so there is no dealer id to
  * pass. A manual listing lands PENDING_REVIEW unless `status: 'DRAFT'` is sent.
  */
+/**
+ * Creating or editing a listing (re-embedding it for search) and uploading photos
+ * are slower than a normal call, especially on a cold backend, so they get more
+ * than the client's 10s default. Cutting them off early does not stop the server:
+ * the listing still gets created, the client just never hears about it.
+ */
+const SLOW_WRITE_TIMEOUT_MS = 60_000
+
 export async function createListing(
   input: CreateListingInput,
   signal?: AbortSignal,
@@ -45,7 +53,7 @@ export async function createListing(
   const { data } = await apiClient.post<ListingEnvelope>(
     '/marketplace/listings',
     input,
-    { signal },
+    { signal, timeout: SLOW_WRITE_TIMEOUT_MS },
   )
   return data.data
 }
@@ -59,7 +67,7 @@ export async function updateListing(
   const { data } = await apiClient.patch<ListingEnvelope>(
     `/marketplace/listings/${id}`,
     input,
-    { signal },
+    { signal, timeout: SLOW_WRITE_TIMEOUT_MS },
   )
   return data.data
 }
@@ -139,6 +147,7 @@ export async function uploadListingImages(
     form,
     {
       signal,
+      timeout: SLOW_WRITE_TIMEOUT_MS,
       // Content-Type deliberately unset: the browser must add the
       // multipart boundary itself (see uploadInventory in ingestion.api.ts
       // for the same reasoning) — naming the header here would overwrite it
