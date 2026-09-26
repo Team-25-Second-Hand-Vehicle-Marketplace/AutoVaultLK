@@ -11,6 +11,7 @@ import type { DealerSummary } from '../../../../src/modules/dealers/repositories
 describe('ListingService', () => {
   const listingRepository = {
     create: jest.fn(),
+    findRecentDuplicate: jest.fn(),
     findAllLive: jest.fn(),
     findByDealer: jest.fn(),
     findById: jest.fn(),
@@ -36,7 +37,11 @@ describe('ListingService', () => {
     imageUrlResolver as never,
   );
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // mockClear keeps implementations, so reset the duplicate lookup explicitly.
+    listingRepository.findRecentDuplicate.mockResolvedValue(null);
+  });
 
   const DEALER: AuthenticatedUser = {
     id: 'dealer-1',
@@ -82,6 +87,21 @@ describe('ListingService', () => {
   }
 
   describe('createListing', () => {
+    it('returns the existing listing instead of creating a twin on an identical resubmit', async () => {
+      dealerService.getDealerById.mockResolvedValue(DEALER_SUMMARY);
+      const existing = vehicle();
+      listingRepository.findRecentDuplicate.mockResolvedValue(existing);
+
+      const result = await service.createListing({ make: 'Toyota' } as never, DEALER);
+
+      expect(listingRepository.create).not.toHaveBeenCalled();
+      expect(result.data).toBe(existing);
+      expect(listingRepository.findRecentDuplicate).toHaveBeenCalledWith(
+        expect.objectContaining({ dealerId: DEALER.id }),
+        expect.any(Number),
+      );
+    });
+
     it('ignores a dealerId in the DTO and attributes the listing to the JWT actor (FR-13/FR-58)', async () => {
       dealerService.getDealerById.mockResolvedValue(DEALER_SUMMARY);
       listingRepository.create.mockResolvedValue(vehicle());

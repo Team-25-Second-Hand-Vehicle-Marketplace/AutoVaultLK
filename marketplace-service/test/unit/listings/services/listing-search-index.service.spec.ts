@@ -132,6 +132,22 @@ describe('ListingSearchIndexService', () => {
     });
   });
 
+  describe('EMBEDDING_DISABLED', () => {
+    afterEach(() => {
+      delete process.env.EMBEDDING_DISABLED;
+    });
+
+    it('keeps the search text but never touches the model', async () => {
+      process.env.EMBEDDING_DISABLED = 'true';
+
+      const result = await new ListingSearchIndexService().build(VEHICLE);
+
+      expect(result.searchText).toContain('Toyota Vitz 2015');
+      expect(result.embedding).toBeNull();
+      expect(embed).not.toHaveBeenCalled();
+    });
+  });
+
   describe('degradation', () => {
     it('saves the listing without a vector when MiniLM is down', async () => {
       // Refusing the listing would be worse: the row still has search_text, so
