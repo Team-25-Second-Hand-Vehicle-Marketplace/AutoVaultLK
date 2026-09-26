@@ -20,6 +20,7 @@ import { DealerDashboardPage } from './pages/dealers/DealerDashboardPage'
 import { DealerListingsPage } from './pages/dealers/DealerListingsPage'
 import { BulkUploadPage } from './pages/dealers/BulkUploadPage'
 import { UploadStatusPage } from './pages/dealers/UploadStatusPage'
+import { RequireDealerType } from './pages/dealers/RequireDealerType'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { AdminLoginPage } from './pages/admin/AdminLoginPage'
 import { AdminLayout } from './pages/admin/AdminLayout'
@@ -68,8 +69,22 @@ function App() {
               >
                 <Route index element={<DealerDashboardPage />} />
                 <Route path="listings" element={<DealerListingsPage />} />
-                <Route path="upload" element={<BulkUploadPage />} />
-                <Route path="uploads/:jobId" element={<UploadStatusPage />} />
+                <Route
+                  path="upload"
+                  element={
+                    <RequireDealerType type="business" fallbackTo="/dealer/listings">
+                      <BulkUploadPage />
+                    </RequireDealerType>
+                  }
+                />
+                <Route
+                  path="uploads/:jobId"
+                  element={
+                    <RequireDealerType type="business" fallbackTo="/dealer/listings">
+                      <UploadStatusPage />
+                    </RequireDealerType>
+                  }
+                />
               </Route>
               <Route
                 path="/saved"
