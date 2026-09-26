@@ -18,6 +18,9 @@ import { ListingRepository } from '../repositories/listing.repository';
 import { Vehicle } from '../../../infrastructure/database/entities/vehicle.entity';
 import type { AuthenticatedUser } from '../../auth/types/authenticated-user.type';
 
+/** Identical resubmissions inside this window are treated as one listing. */
+const DUPLICATE_CREATE_WINDOW_MS = 2 * 60 * 1000;
+
 @Injectable()
 export class ListingService {
   private readonly logger = new Logger(ListingService.name);
@@ -32,6 +35,19 @@ export class ListingService {
   async createListing(dto: CreateListingDto, actor: AuthenticatedUser) {
     const dealer = await this.dealerService.getDealerById(actor.id);
     this.assertManualUploadAllowed(dealer);
+
+    // Duplicate guard: a client that timed out and resubmitted must not end up
+    // with two identical listings.
+    const duplicate = await this.listingRepository.findRecentDuplicate(
+      { ...dto, dealerId: actor.id },
+      DUPLICATE_CREATE_WINDOW_MS,
+    );
+    if (duplicate) {
+      return {
+        message: 'Vehicle listing created successfully',
+        data: duplicate,
+      };
+    }
 
     const status = dto.status ?? 'LIVE';
     const listing = await this.listingRepository.create(

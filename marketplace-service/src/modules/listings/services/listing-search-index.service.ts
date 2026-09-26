@@ -46,6 +46,11 @@ export class ListingSearchIndexService {
       return { searchText: null, embedding: null };
     }
 
+    // Same switch QueryEmbeddingService honours: keep the text, skip the model.
+    if (process.env.EMBEDDING_DISABLED === 'true') {
+      return { searchText: trimmed, embedding: null };
+    }
+
     try {
       const vector = await this.getEmbedder().embed(trimmed);
       return { searchText: trimmed, embedding: toPgVector(vector) };
