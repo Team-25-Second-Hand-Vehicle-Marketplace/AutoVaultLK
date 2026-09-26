@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { VehicleSearchResult } from '../../api/search.types'
-import { demoImageFor, isContainImage } from '../../assets/demo-images'
 import { SaveButton } from './SaveButton'
 import { YearDisplay } from './YearDisplay'
 import { formatMileage, formatPrice, humanizeEnum } from './vehicle-format'
@@ -24,8 +23,8 @@ function ImagePlaceholder({ vehicleType }: { vehicleType: string }) {
  * What the card actually needs. Wider than `VehicleSearchResult` on purpose:
  * the favourites endpoint joins the raw `Vehicle` row, which carries no
  * computed `imageUrl`, `thumbnailUrl` or `dealerVerified`. Each is read as a
- * truthiness check below, so absent behaves exactly like false — the image
- * falls back to `demoImageFor` and the verification badge is simply omitted.
+ * truthiness check below, so absent behaves exactly like false — the card shows
+ * its "no photo" placeholder and the verification badge is simply omitted.
  */
 type OptionalOnCard =
   | 'effectiveYear'
@@ -39,17 +38,9 @@ export type VehicleCardResult = Omit<VehicleSearchResult, OptionalOnCard> &
 
 export function VehicleCard({ result }: { result: VehicleCardResult }) {
 
-  const image =
-    result.thumbnailUrl ??
-    result.imageUrl ??
-    demoImageFor(result.id, {
-      vehicleType: result.vehicleType,
-      make: result.make,
-      model: result.model,
-      bodyType: typeof result.specs.body_type === 'string' ? result.specs.body_type : undefined,
-      fuelType: result.fuelType,
-      price: result.price,
-    })
+  // Only ever the listing's own photo. No photo means the placeholder below,
+  // never a stock picture of some other vehicle.
+  const image = result.thumbnailUrl ?? result.imageUrl ?? null
 
   const [failed, setFailed] = useState(false)
 
@@ -67,11 +58,7 @@ export function VehicleCard({ result }: { result: VehicleCardResult }) {
             <img
               src={image}
               alt={`${result.make} ${result.model}`}
-              className={
-                isContainImage(image)
-                  ? 'vehicle-card__image vehicle-card__image--contain'
-                  : 'vehicle-card__image'
-              }
+              className="vehicle-card__image"
               loading="lazy"
               onError={() => setFailed(true)}
             />

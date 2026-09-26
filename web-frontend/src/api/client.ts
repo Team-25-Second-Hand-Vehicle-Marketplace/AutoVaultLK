@@ -98,6 +98,15 @@ apiClient.interceptors.response.use(
   },
 )
 
+/**
+ * True when the request went out but no HTTP response came back (timeout or
+ * dropped connection). For a write this is ambiguous: the server may well have
+ * completed it, so callers must not blindly resubmit.
+ */
+export function isNoResponseError(error: unknown): boolean {
+  return axios.isAxiosError(error) && !error.response && error.code !== 'ERR_CANCELED'
+}
+
 export function toErrorMessage(error: unknown, fallback = 'Something went wrong'): string {
   if (axios.isAxiosError(error)) {
     const data = error.response?.data as { message?: string | string[] } | undefined
