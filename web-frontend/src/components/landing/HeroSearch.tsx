@@ -115,7 +115,7 @@ export function HeroSearch() {
         </select>
       </label>
 
-      <button type="submit" className="nx-btn nx-btn--gold nx-hsearch__go">
+      <button type="submit" className="nx-btn nx-btn--light nx-hsearch__go">
         {filtersOnly && count !== null ? `Show ${nf.format(count)}` : 'Search'}
         <ArrowRight size={16} />
       </button>
