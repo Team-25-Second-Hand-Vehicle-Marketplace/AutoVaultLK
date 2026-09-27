@@ -28,3 +28,14 @@ export interface UpdateDealerProfileInput {
   city?: string;
   contactNumber?: string;
 }
+
+/**
+ * PATCH /dealer-profiles/:userId/resubmit — the same fields as
+ * UpdateDealerProfileInput, plus the one thing that endpoint requires:
+ * verificationDocuments, shaped the same way registerDealer sends it
+ * (`{ nic: '...' }` for an individual dealer, `{ businessRegistrationCertificate: key }`
+ * for a business one — see DealerRegisterPage).
+ */
+export interface ResubmitDealerProfileInput extends UpdateDealerProfileInput {
+  verificationDocuments: Record<string, unknown>;
+}

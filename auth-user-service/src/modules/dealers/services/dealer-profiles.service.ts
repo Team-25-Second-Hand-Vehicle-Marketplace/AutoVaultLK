@@ -1,16 +1,18 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
+import { verificationDocumentsError } from '../../../common/validation/verification-documents.decorator';
 import {
   DealerProfile,
   VerificationStatus,
 } from '../../../infrastructure/database/entities/dealer-profile.entity';
-import { User } from '../../../infrastructure/database/entities/user.entity';
 import { CreateDealerProfileDto } from '../dto/create-dealer-profile.dto';
+import { ResubmitDealerProfileDto } from '../dto/resubmit-dealer-profile.dto';
 import { UpdateDealerProfileDto } from '../dto/update-dealer-profile.dto';
 import { DealerProfilesRepository } from '../repositories/dealer-profiles.repository';
 import { UsersRepository } from '../../users/repositories/users.repository';
@@ -47,29 +49,52 @@ export class DealerProfilesService {
   }
 
   async approveDealer(dealerUserId: string, adminId: string) {
-    return this.decideVerification(
-      dealerUserId,
-      adminId,
-      VerificationStatus.VERIFIED,
-      true,
-    );
+    return this.decideVerification(dealerUserId, adminId, VerificationStatus.VERIFIED);
   }
 
   async rejectDealer(dealerUserId: string, adminId: string, reason?: string) {
-    return this.decideVerification(
-      dealerUserId,
-      adminId,
-      VerificationStatus.REJECTED,
-      false,
-      reason,
-    );
+    return this.decideVerification(dealerUserId, adminId, VerificationStatus.REJECTED, reason);
   }
 
+  /**
+   * A rejected dealer fixing their details and trying again. Its own action
+   * rather than a side effect on the generic `update()` above, so an already
+   * VERIFIED dealer editing their address is never silently sent back to
+   * PENDING — only this explicit path can do that, and only from REJECTED.
+   */
+  async resubmit(userId: string, data: ResubmitDealerProfileDto) {
+    const profile = await this.findByUserId(userId);
+
+    if (profile.verificationStatus !== VerificationStatus.REJECTED) {
+      throw new ConflictException(
+        `Dealer profile is ${profile.verificationStatus}, not REJECTED — nothing to resubmit`,
+      );
+    }
+
+    const docError = verificationDocumentsError(profile.dealerType, data.verificationDocuments);
+    if (docError) {
+      throw new BadRequestException(docError);
+    }
+
+    return this.dealerProfilesRepository.update(userId, {
+      ...data,
+      verificationStatus: VerificationStatus.PENDING,
+      rejectionReason: null,
+    });
+  }
+
+  /**
+   * `isActive` is not touched here — a dealer's ability to authenticate is
+   * decided once, on email verification (see EmailVerificationService), the
+   * same as a buyer. Only DealerProfile fields change on approve/reject; see
+   * assertManualUploadAllowed (marketplace-service) and
+   * isVerifiedBusinessDealer (ingestion-service) for where verificationStatus
+   * actually gates anything.
+   */
   private async decideVerification(
     dealerUserId: string,
     adminId: string,
     status: VerificationStatus,
-    activateAccount: boolean,
     reason?: string,
   ) {
     const profile = await this.findByUserId(dealerUserId);
@@ -104,18 +129,6 @@ export class DealerProfilesService {
       if (!profileUpdate.affected) {
         throw new NotFoundException(
           `Dealer profile for user ${dealerUserId} was not found`,
-        );
-      }
-
-      const userUpdate = await manager.update(
-        User,
-        { id: dealerUserId },
-        { isActive: activateAccount },
-      );
-
-      if (!userUpdate.affected) {
-        throw new NotFoundException(
-          `Dealer user ${dealerUserId} was not found`,
         );
       }
 

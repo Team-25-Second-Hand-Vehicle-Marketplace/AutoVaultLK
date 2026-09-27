@@ -1,5 +1,9 @@
 import { apiClient } from './client'
-import type { DealerProfile, UpdateDealerProfileInput } from './dealer.types'
+import type {
+  DealerProfile,
+  ResubmitDealerProfileInput,
+  UpdateDealerProfileInput,
+} from './dealer.types'
 
 export async function getMyDealerProfile(signal?: AbortSignal): Promise<DealerProfile> {
   const { data } = await apiClient.get<DealerProfile>('/dealer-profiles/me', { signal })
@@ -19,5 +23,23 @@ export async function updateMyDealerProfile(
   const { data } = await apiClient.patch<DealerProfile>(`/dealer-profiles/${userId}`, input, {
     signal,
   })
+  return data
+}
+
+/**
+ * PATCH /dealer-profiles/:userId/resubmit — only for a REJECTED profile (the
+ * backend 409s otherwise); on success the profile goes back to PENDING for
+ * an admin to review again, and its rejectionReason is cleared.
+ */
+export async function resubmitMyDealerProfile(
+  userId: string,
+  input: ResubmitDealerProfileInput,
+  signal?: AbortSignal,
+): Promise<DealerProfile> {
+  const { data } = await apiClient.patch<DealerProfile>(
+    `/dealer-profiles/${userId}/resubmit`,
+    input,
+    { signal },
+  )
   return data
 }
