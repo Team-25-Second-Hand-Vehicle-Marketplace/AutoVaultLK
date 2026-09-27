@@ -28,6 +28,7 @@ export function VehicleCard({ result }: { result: VehicleCardResult }) {
   // never a stock picture of some other vehicle.
   const image = result.thumbnailUrl ?? result.imageUrl ?? null
   const [failed, setFailed] = useState(false)
+  const [loaded, setLoaded] = useState(false)
   const title = `${result.make} ${result.model}`
 
   return (
@@ -40,8 +41,10 @@ export function VehicleCard({ result }: { result: VehicleCardResult }) {
             <img
               src={image}
               alt={title}
-              className="nx-card__img"
+              className={`nx-card__img ${loaded ? 'is-loaded' : 'nx-img-fade'}`}
               loading="lazy"
+              decoding="async"
+              onLoad={() => setLoaded(true)}
               onError={() => setFailed(true)}
             />
           ) : (
