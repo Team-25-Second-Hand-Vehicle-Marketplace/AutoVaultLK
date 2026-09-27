@@ -1502,10 +1502,7 @@ h4 {
   font-weight: 600;
   letter-spacing: -0.04em;
   line-height: 1;
-  background: linear-gradient(120deg, var(--accent), var(--text-h));
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text-h);
 }
 
 .nx-stats__item span {
@@ -1910,12 +1907,6 @@ h4 {
 .nx-marquee__item:hover {
   color: var(--text-h);
   -webkit-text-stroke-color: var(--text-h);
-}
-
-.nx-stats__item b {
-  background: none;
-  -webkit-text-fill-color: currentColor;
-  color: var(--text-h);
 }
 
 .nx-story__n {
