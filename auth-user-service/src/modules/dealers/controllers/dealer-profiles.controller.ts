@@ -17,6 +17,7 @@ import { ResourceOwnerGuard } from '../../auth/guards/resource-owner.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import type { AuthenticatedUser } from '../../auth/types/authenticated-user.type';
 import { CreateDealerProfileDto } from '../dto/create-dealer-profile.dto';
+import { ResubmitDealerProfileDto } from '../dto/resubmit-dealer-profile.dto';
 import { UpdateDealerProfileDto } from '../dto/update-dealer-profile.dto';
 import { DealerProfilesService } from '../services/dealer-profiles.service';
 
@@ -69,5 +70,20 @@ export class DealerProfilesController {
     @Body() data: UpdateDealerProfileDto,
   ) {
     return this.dealerProfilesService.update(userId, data);
+  }
+
+  /**
+   * A rejected dealer fixing their details and trying again. Its own route
+   * rather than a flag on the PATCH above — see DealerProfilesService.resubmit's
+   * doc comment for why that matters.
+   */
+  @Patch(':userId/resubmit')
+  @Roles('DEALER')
+  @ResourceOwner('userId')
+  resubmit(
+    @Param('userId', ParseUUIDPipe) userId: string,
+    @Body() data: ResubmitDealerProfileDto,
+  ) {
+    return this.dealerProfilesService.resubmit(userId, data);
   }
 }

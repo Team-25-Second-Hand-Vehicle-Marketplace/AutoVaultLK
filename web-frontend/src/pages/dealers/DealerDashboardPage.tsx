@@ -1,11 +1,11 @@
 import { useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import type { DealerProfile } from '../../api/dealer.types'
 import { getMyListings } from '../../api/listings.api'
 import type { DealerListing, ListingStatus } from '../../api/listings.types'
 import { toErrorMessage } from '../../api/client'
 import { useAsyncData } from '../../hooks/useAsyncData'
 import { ErrorBanner } from '../../components/ui/ErrorBanner'
+import { DealerVerificationGate } from './DealerVerificationGate'
 import { useDealerProfile } from './useDealerProfile'
 
 const STATUS_TILES: { label: string; statuses: ListingStatus[] }[] = [
@@ -49,6 +49,14 @@ export function DealerDashboardPage() {
 
   const dealer = profile.data
 
+  // A dealer can now log in while PENDING or REJECTED (approval no longer
+  // gates login — see auth-user-service's DealerProfilesService). Until
+  // they're VERIFIED, this is the only thing they get; see
+  // RequireVerifiedDealer and DealerLayout's empty nav for the rest.
+  if (dealer.verificationStatus !== 'VERIFIED') {
+    return <DealerVerificationGate profile={profile} />
+  }
+
   return (
     <div className="dealer-page">
       <header className="dealer-page__header">
@@ -56,7 +64,10 @@ export function DealerDashboardPage() {
         <p>Your dealership at a glance.</p>
       </header>
 
-      <VerificationBanner dealer={dealer} />
+      <div className="dealer-banner dealer-banner--verified">
+        <strong>Verified dealer</strong>
+        <span>Your account has been verified by an administrator.</span>
+      </div>
 
       {listings.loading ? (
         <p className="dealer-muted" role="status">
@@ -87,33 +98,6 @@ export function DealerDashboardPage() {
           'As a business dealer, upload your whole inventory at once from Bulk upload.'
         )}
       </p>
-    </div>
-  )
-}
-
-function VerificationBanner({ dealer }: { dealer: DealerProfile }) {
-  if (dealer.verificationStatus === 'VERIFIED') {
-    return (
-      <div className="dealer-banner dealer-banner--verified">
-        <strong>Verified dealer</strong>
-        <span>Your account has been verified by an administrator.</span>
-      </div>
-    )
-  }
-
-  if (dealer.verificationStatus === 'REJECTED') {
-    return (
-      <div className="dealer-banner dealer-banner--rejected">
-        <strong>Verification rejected</strong>
-        <span>{dealer.rejectionReason ?? 'Contact support for details.'}</span>
-      </div>
-    )
-  }
-
-  return (
-    <div className="dealer-banner dealer-banner--pending">
-      <strong>Verification pending</strong>
-      <span>An administrator is reviewing your account. Some actions are unavailable until you&apos;re verified.</span>
     </div>
   )
 }

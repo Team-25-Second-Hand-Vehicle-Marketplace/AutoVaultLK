@@ -17,7 +17,6 @@ import { ResendVerification } from '../../components/auth/ResendVerification'
 const ACCEPTED_DOCUMENT_TYPES = ['application/pdf', 'image/jpeg', 'image/png']
 const MAX_DOCUMENT_SIZE_BYTES = 5 * 1024 * 1024
 
-
 const STEPS = ['Company Info', 'Contact Details', 'Account Setup', 'Review'] as const
 
 /** Which fields each step is responsible for, for per-step validation. */
@@ -361,10 +360,12 @@ export function DealerRegisterPage() {
                 <dt>Dealer type</dt>
                 <dd>{values.dealerType === 'business' ? 'Business' : 'Individual'}</dd>
               </div>
-              <div>
-                <dt>Registration no.</dt>
-                <dd>{values.businessRegistrationNumber || '—'}</dd>
-              </div>
+              {values.dealerType === 'business' && (
+                <div>
+                  <dt>Registration no.</dt>
+                  <dd>{values.businessRegistrationNumber || '—'}</dd>
+                </div>
+              )}
               <div>
                 <dt>Address</dt>
                 <dd>

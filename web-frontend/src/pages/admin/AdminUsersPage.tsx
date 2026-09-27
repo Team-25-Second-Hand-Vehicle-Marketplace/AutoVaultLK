@@ -173,13 +173,21 @@ export function AdminUsersPage() {
                         variant="ghost"
                         size="sm"
                         disabled={busy}
-                        onClick={() =>
+                        onClick={() => {
+                          // The dealer sees this reason on their resubmit screen
+                          // once logged back in — an empty rejection tells them
+                          // nothing to fix, so this asks rather than skipping
+                          // straight to rejectDealer(dealerId) with no reason.
+                          const reason = window.prompt(
+                            `Reject ${row.name}? Tell them what to fix (shown on their account):`,
+                          )
+                          if (reason === null) return
                           void runMutation(
                             dealerId,
-                            () => rejectDealer(dealerId),
+                            () => rejectDealer(dealerId, reason.trim() || undefined),
                             'Dealer rejected',
                           )
-                        }
+                        }}
                       >
                         Reject
                       </Button>
