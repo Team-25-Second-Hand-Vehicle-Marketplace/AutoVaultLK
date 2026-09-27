@@ -6,16 +6,23 @@ interface Props {
   slot: ImageSlotId
   alt?: string
   className?: string
-  /** Above-the-fold images load eagerly; the rest are lazy. */
+  /** Above-the-fold images load eagerly and skip the fade-in; the rest are lazy. */
   priority?: boolean
 }
 
 /**
  * A design photo slot. Renders `/images/<slot>.jpg` when it exists, otherwise a
  * labelled placeholder that says what belongs there (see assets/image-slots.ts).
+ *
+ * Fades in on load rather than popping in once the file arrives — the popping
+ * in is what read as "not smooth" on a fresh page load, on top of the images
+ * themselves being heavier than they needed to be (see scripts/optimize-images.mjs).
+ * `priority` images (the first hero photo) skip the fade so the very first
+ * thing the page shows isn't itself an animation.
  */
 export function SlotImage({ slot, alt = '', className = '', priority = false }: Props) {
   const [missing, setMissing] = useState(false)
+  const [loaded, setLoaded] = useState(false)
   const meta = IMAGE_SLOTS[slot]
 
   if (missing) {
@@ -44,9 +51,11 @@ export function SlotImage({ slot, alt = '', className = '', priority = false }: 
     <img
       src={`/images/${slot}.jpg`}
       alt={alt}
-      className={className}
+      className={`${className} ${priority || loaded ? 'is-loaded' : 'nx-img-fade'}`}
       loading={priority ? 'eager' : 'lazy'}
+      fetchPriority={priority ? 'high' : undefined}
       decoding="async"
+      onLoad={() => setLoaded(true)}
       onError={() => setMissing(true)}
     />
   )

@@ -477,6 +477,24 @@ jobs:
           # would produce `//auth/refresh`. Strip it.
           VITE_API_BASE_URL="${PUBLIC_API_ENDPOINT%/}" npm run build
       - name: Sync to S3
-        run: aws s3 sync web-frontend/dist/ s3://${{ vars.FRONTEND_BUCKET_NAME }}/ --delete
+        # Three passes, worst-cacheability first, so a broader later pass never
+        # undoes a more specific header an earlier one set:
+        #   1. Everything, short/no cache — covers index.html, which must always
+        #      be re-fetched or a returning visitor keeps an old build's HTML
+        #      pointing at hashed bundle files that no longer exist.
+        #   2. /assets/* (Vite's hashed JS/CSS) — the filename changes whenever
+        #      the content does, so these can be cached for a year.
+        #   3. /images/* (unhashed design photos) — cached for a day. Long
+        #      enough that a repeat visit in the same session or the next day
+        #      doesn't re-download 1MB of photos; short enough that swapping a
+        #      photo (see scripts/optimize-images.mjs) shows up for returning
+        #      visitors within a day rather than up to a year.
+        run: |
+          aws s3 sync web-frontend/dist/ s3://${{ vars.FRONTEND_BUCKET_NAME }}/ --delete \
+            --cache-control "public, max-age=60, must-revalidate"
+          aws s3 sync web-frontend/dist/assets/ s3://${{ vars.FRONTEND_BUCKET_NAME }}/assets/ \
+            --cache-control "public, max-age=31536000, immutable"
+          aws s3 sync web-frontend/dist/images/ s3://${{ vars.FRONTEND_BUCKET_NAME }}/images/ \
+            --cache-control "public, max-age=86400"
       - name: Invalidate CloudFront
         run: aws cloudfront create-invalidation --distribution-id ${{ vars.FRONTEND_DISTRIBUTION_ID }} --paths "/*" --query Invalidation.Id --output text
