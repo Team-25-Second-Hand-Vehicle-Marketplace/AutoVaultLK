@@ -21,12 +21,19 @@
   top: 0;
   height: 100vh;
   z-index: 1;
+  /* A grid item's default min-width is auto, not 0 — without this, content
+     that doesn't fit (see .dealer-shell__brand below) can force this box
+     wider than its 240px grid track and spill into the main column instead
+     of wrapping, which is exactly what made the "Dealer" badge run into the
+     page title next to it. */
+  min-width: 0;
 }
 
 .dealer-shell__brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 6px 10px;
   padding: 0 8px 20px;
   border-bottom: 1px solid var(--border);
   margin-bottom: 16px;

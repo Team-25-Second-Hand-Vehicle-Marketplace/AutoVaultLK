@@ -6,6 +6,7 @@ import {
   getStoredUser,
   getRefreshToken,
   saveSession,
+  setStoredUser,
 } from '../api/auth.storage'
 import { isTokenResponse, type AuthUser, type RegisterBuyerRequest } from '../api/auth.types'
 import { AuthContext, type AuthContextValue } from './auth-context'
@@ -57,6 +58,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }, [])
 
+  const updateUser = useCallback((patch: Partial<AuthUser>) => {
+    setUser((current) => {
+      if (!current) return current
+      const next = { ...current, ...patch }
+      setStoredUser(next)
+      return next
+    })
+  }, [])
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
@@ -66,8 +76,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loginAdmin,
       register,
       logout,
+      updateUser,
     }),
-    [user, initializing, login, loginAdmin, register, logout],
+    [user, initializing, login, loginAdmin, register, logout, updateUser],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
