@@ -75,6 +75,11 @@ describe('ListingService', () => {
     dealerType: 'business',
   };
 
+  const UNVERIFIED_DEALER_SUMMARY: DealerSummary = {
+    ...DEALER_SUMMARY,
+    verificationStatus: 'PENDING',
+  };
+
   function vehicle(overrides: Partial<Vehicle> = {}): Vehicle {
     return {
       id: 'v-1',
@@ -146,6 +151,18 @@ describe('ListingService', () => {
 
     it('forbids a business dealer from creating a manual listing (they use bulk upload)', async () => {
       dealerService.getDealerById.mockResolvedValue(BUSINESS_DEALER_SUMMARY);
+
+      await expect(
+        service.createListing({ make: 'Toyota' } as never, DEALER),
+      ).rejects.toThrow(ForbiddenException);
+      expect(listingRepository.create).not.toHaveBeenCalled();
+    });
+
+    // A dealer can now log in while PENDING or REJECTED (approval no longer
+    // gates login — see auth-user-service). This is the check that stands
+    // between that and a real LIVE listing.
+    it('forbids an individual dealer who is not yet VERIFIED', async () => {
+      dealerService.getDealerById.mockResolvedValue(UNVERIFIED_DEALER_SUMMARY);
 
       await expect(
         service.createListing({ make: 'Toyota' } as never, DEALER),

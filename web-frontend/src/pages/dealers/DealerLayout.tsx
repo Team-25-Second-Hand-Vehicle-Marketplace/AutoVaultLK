@@ -28,9 +28,17 @@ export function DealerLayout() {
   const fetchProfile = useCallback((signal: AbortSignal) => getMyDealerProfile(signal), [])
   const profile = useAsyncData<DealerProfile>(fetchProfile, profileError)
 
-  // Hidden while loading and if the profile fails to load: fail closed.
-  const navItems =
-    profile.data?.dealerType === 'business' ? [...NAV, BULK_UPLOAD_NAV] : NAV
+  // Hidden while loading and if the profile fails to load: fail closed. A
+  // dealer who is not yet VERIFIED (can now log in while PENDING/REJECTED —
+  // see auth-user-service's DealerProfilesService) sees no nav at all: the
+  // index route is the only thing there is for them, and DealerDashboardPage
+  // renders their status/resubmit screen there instead of the dashboard.
+  const verified = profile.data?.verificationStatus === 'VERIFIED'
+  const navItems = !verified
+    ? []
+    : profile.data?.dealerType === 'business'
+      ? [...NAV, BULK_UPLOAD_NAV]
+      : NAV
 
   const onSignOut = async () => {
     await logout()

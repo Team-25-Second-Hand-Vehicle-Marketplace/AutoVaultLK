@@ -31,8 +31,11 @@ describe('DealerLayout navigation', () => {
     getProfile.mockReset()
   })
 
-  it('shows Bulk upload to a business dealer', async () => {
-    getProfile.mockResolvedValue({ dealerType: 'business' } as DealerProfile)
+  it('shows Bulk upload to a verified business dealer', async () => {
+    getProfile.mockResolvedValue({
+      dealerType: 'business',
+      verificationStatus: 'VERIFIED',
+    } as DealerProfile)
     renderLayout()
 
     expect(await screen.findByRole('link', { name: 'Bulk upload' })).toHaveAttribute(
@@ -42,8 +45,11 @@ describe('DealerLayout navigation', () => {
     expect(screen.getByRole('link', { name: 'My listings' })).toBeInTheDocument()
   })
 
-  it('does not show Bulk upload to an individual dealer, but keeps My listings', async () => {
-    getProfile.mockResolvedValue({ dealerType: 'individual' } as DealerProfile)
+  it('does not show Bulk upload to a verified individual dealer, but keeps My listings', async () => {
+    getProfile.mockResolvedValue({
+      dealerType: 'individual',
+      verificationStatus: 'VERIFIED',
+    } as DealerProfile)
     renderLayout()
 
     // Let the profile request settle before asserting an absence, otherwise
@@ -67,16 +73,52 @@ describe('DealerLayout navigation', () => {
     expect(screen.getByText('Dashboard content')).toBeInTheDocument()
   })
 
-  it('does not show Bulk upload until the profile says the dealer is a business', async () => {
-    // A request that never settles: the layout must not show it while the
-    // dealer's type is still unknown.
+  it('shows no nav links until the profile — and so verification status — is known', async () => {
+    // A request that never settles: the layout must not show any nav item
+    // while it doesn't yet know whether the dealer is verified. The Outlet
+    // content (DealerDashboardPage in real use) renders regardless — it has
+    // its own loading state — this is only about the sidebar.
     getProfile.mockReturnValue(new Promise(() => {}))
     renderLayout()
 
     await waitFor(() => expect(getProfile).toHaveBeenCalled())
 
     expect(screen.queryByRole('link', { name: 'Bulk upload' })).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'My listings' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'My listings' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Dashboard' })).not.toBeInTheDocument()
     expect(screen.getByText('Dashboard content')).toBeInTheDocument()
+  })
+
+  // A dealer can now log in while PENDING or REJECTED (approval no longer
+  // gates login). Until VERIFIED, the resubmit/status screen at /dealer is
+  // the only thing there is — so there is nothing to link to.
+  it('shows no nav links to a dealer who is not yet verified', async () => {
+    getProfile.mockResolvedValue({
+      dealerType: 'business',
+      verificationStatus: 'PENDING',
+    } as DealerProfile)
+    renderLayout()
+
+    await waitFor(() => expect(getProfile).toHaveBeenCalled())
+    await act(async () => {})
+
+    expect(screen.queryByRole('link', { name: 'Dashboard' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'My listings' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Bulk upload' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Business details' })).not.toBeInTheDocument()
+  })
+
+  it('shows no nav links to a rejected dealer either', async () => {
+    getProfile.mockResolvedValue({
+      dealerType: 'individual',
+      verificationStatus: 'REJECTED',
+    } as DealerProfile)
+    renderLayout()
+
+    await waitFor(() => expect(getProfile).toHaveBeenCalled())
+    await act(async () => {})
+
+    expect(screen.queryByRole('link', { name: 'My listings' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Business details' })).not.toBeInTheDocument()
   })
 })
