@@ -19,7 +19,7 @@ export function DealerCta() {
                 and your listings go in front of buyers who search the way they talk.
               </p>
               <div className="nx-cta__actions">
-                <Link to="/dealer/register" className="nx-btn nx-btn--gold nx-btn--lg">
+                <Link to="/dealer/register" className="nx-btn nx-btn--light nx-btn--lg">
                   Register as dealer <ArrowUpRight size={18} />
                 </Link>
                 <Link to="/dealer/login" className="nx-btn nx-btn--glass nx-btn--lg">
