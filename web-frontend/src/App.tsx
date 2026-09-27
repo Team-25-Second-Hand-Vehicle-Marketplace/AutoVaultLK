@@ -1,5 +1,7 @@
 import { Routes, Route, useLocation } from 'react-router-dom'
 import { Toaster } from 'sonner'
+import { MotionConfig } from 'motion/react'
+import { SmoothScroll } from './components/layout/SmoothScroll'
 import { AuthProvider } from './auth/AuthContext'
 import { RequireAuth } from './auth/RequireAuth'
 import { RequireRole } from './auth/RequireRole'
@@ -44,7 +46,9 @@ function App() {
     pathname.startsWith('/dealer')
 
   return (
+    <MotionConfig reducedMotion="user">
     <AuthProvider>
+      <SmoothScroll />
       <div className="app-shell">
         {!bare && <Header />}
         <main className="app-shell__main">
@@ -117,6 +121,7 @@ function App() {
       </div>
       <Toaster position="top-right" richColors />
     </AuthProvider>
+    </MotionConfig>
   )
 }
 

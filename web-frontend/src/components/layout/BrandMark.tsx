@@ -4,14 +4,16 @@ export function BrandMark({ to = '/' }: { to?: string | null }) {
   const content = (
     <>
       <span className="brand__tile" aria-hidden="true">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M4 15v-2.2l1.8-3.6A2 2 0 0 1 7.6 8h8.8a2 2 0 0 1 1.8 1.2L20 12.8V15" />
-          <path d="M4 15h16" />
-          <circle cx="8" cy="16.8" r="1.5" />
-          <circle cx="16" cy="16.8" r="1.5" />
+        {/* A vault dial crossed by a road: the "V" in vault, the line of travel. */}
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M7.5 8.5 12 17l4.5-8.5" />
+          <path d="M12 3v2.2M3 12h2.2M18.8 12H21" opacity=".55" />
         </svg>
       </span>
-      <span className="brand__name">AutoVaultLK</span>
+      <span className="brand__name">
+        AutoVault<span>LK</span>
+      </span>
     </>
   )
 

@@ -8,6 +8,7 @@ import { toErrorMessage } from '../../api/client'
 import { ResendVerification } from '../../components/auth/ResendVerification'
 import { isEmailNotVerifiedMessage } from '../../components/auth/email-verification'
 import { BrandMark } from '../../components/layout/BrandMark'
+import { SlotImage } from '../../components/ui/SlotImage'
 import { Button } from '../../components/ui/Button'
 import { FormField } from '../../components/ui/FormField'
 import { ErrorBanner } from '../../components/ui/ErrorBanner'
@@ -79,6 +80,8 @@ export function DealerLoginPage() {
   return (
     <div className="dealer-auth">
       <aside className="dealer-auth__panel">
+        <SlotImage slot="auth-dealer" priority className="dealer-auth__img" />
+        <div className="dealer-auth__shade" aria-hidden="true" />
         <BrandMark to="/" />
 
         <div className="dealer-auth__panel-body">
