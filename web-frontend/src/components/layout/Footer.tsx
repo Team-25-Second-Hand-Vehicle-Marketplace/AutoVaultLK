@@ -11,7 +11,7 @@ export function Footer() {
           <br />
           <em>one search away.</em>
         </h2>
-        <Link to="/search" className="nx-btn nx-btn--gold nx-btn--lg">
+        <Link to="/search" className="nx-btn nx-btn--light nx-btn--lg">
           Browse all vehicles <ArrowUpRight size={18} />
         </Link>
       </div>
