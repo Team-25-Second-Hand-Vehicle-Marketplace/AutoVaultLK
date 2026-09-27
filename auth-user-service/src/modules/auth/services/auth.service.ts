@@ -380,7 +380,7 @@ export class AuthService {
     }
 
     if (!user.isActive) {
-      this.throwInactiveAccountError();
+      await this.throwInactiveAccountError(user);
     }
 
     return user;
@@ -511,15 +511,27 @@ export class AuthService {
     );
   }
 
-  /**
-   * Reached only pre-email-verification now: a dealer's isActive is set on
-   * email verification the same as a buyer's (see EmailVerificationService),
-   * so a dealer account no longer stays inactive while PENDING or REJECTED —
-   * that used to be the case, which meant a rejected dealer had no way to log
-   * back in and resubmit. Whether a dealer may create listings is decided
-   * separately by DealerProfile.verificationStatus, not isActive.
-   */
-  private throwInactiveAccountError(): never {
+  private async throwInactiveAccountError(user: User): Promise<never> {
+    if (user.role === 'DEALER') {
+      const profile = await this.dealerProfilesRepository.findByUserId(user.id);
+
+      if (!user.emailVerifiedAt) {
+        throw new UnauthorizedException(AUTH_SECURITY_MESSAGES.EMAIL_NOT_VERIFIED);
+      }
+
+      if (profile?.verificationStatus === VerificationStatus.PENDING) {
+        throw new UnauthorizedException(
+          'Your dealer account is pending administrator approval',
+        );
+      }
+
+      if (profile?.verificationStatus === VerificationStatus.REJECTED) {
+        throw new UnauthorizedException(
+          'Your dealer registration was rejected. Contact support to resubmit',
+        );
+      }
+    }
+
     throw new UnauthorizedException('This account is inactive');
   }
 

@@ -8,19 +8,14 @@
 }
 
 .dealer-shell__sidebar {
-  /* var(--surface) (white) against the shell's var(--bg-alt) (light grey) —
-     using var(--bg) here made the sidebar the same tone as the page
-     background it sits on, so the two panels had almost no visible seam. */
-  background: var(--surface);
+  background: var(--bg);
   border-right: 1px solid var(--border);
-  box-shadow: var(--shadow);
   display: flex;
   flex-direction: column;
   padding: 20px 16px;
   position: sticky;
   top: 0;
   height: 100vh;
-  z-index: 1;
 }
 
 .dealer-shell__brand {
@@ -123,36 +118,17 @@
 
 .dealer-page__header {
   margin-bottom: 24px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid var(--border);
 }
 
 .dealer-page__header h1 {
   margin: 0 0 6px;
-  font-family: var(--display);
-  font-size: 28px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  font-size: 26px;
   color: var(--text-h);
 }
 
 .dealer-page__header p {
   margin: 0;
   color: var(--text-muted);
-}
-
-/* --- Business details form --- */
-
-.dealer-form {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  max-width: 520px;
-  padding: 24px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
 }
 
 .dealer-muted {

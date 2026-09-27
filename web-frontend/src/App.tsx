@@ -20,11 +20,9 @@ import { DealerRegisterPage } from './pages/dealers/DealerRegisterPage'
 import { DealerLayout } from './pages/dealers/DealerLayout'
 import { DealerDashboardPage } from './pages/dealers/DealerDashboardPage'
 import { DealerListingsPage } from './pages/dealers/DealerListingsPage'
-import { DealerProfilePage } from './pages/dealers/DealerProfilePage'
 import { BulkUploadPage } from './pages/dealers/BulkUploadPage'
 import { UploadStatusPage } from './pages/dealers/UploadStatusPage'
 import { RequireDealerType } from './pages/dealers/RequireDealerType'
-import { RequireVerifiedDealer } from './pages/dealers/RequireVerifiedDealer'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { AdminLoginPage } from './pages/admin/AdminLoginPage'
 import { AdminLayout } from './pages/admin/AdminLayout'
@@ -74,33 +72,21 @@ function App() {
                 }
               >
                 <Route index element={<DealerDashboardPage />} />
-                <Route
-                  path="listings"
-                  element={
-                    <RequireVerifiedDealer>
-                      <DealerListingsPage />
-                    </RequireVerifiedDealer>
-                  }
-                />
-                <Route path="profile" element={<DealerProfilePage />} />
+                <Route path="listings" element={<DealerListingsPage />} />
                 <Route
                   path="upload"
                   element={
-                    <RequireVerifiedDealer>
-                      <RequireDealerType type="business" fallbackTo="/dealer/listings">
-                        <BulkUploadPage />
-                      </RequireDealerType>
-                    </RequireVerifiedDealer>
+                    <RequireDealerType type="business" fallbackTo="/dealer/listings">
+                      <BulkUploadPage />
+                    </RequireDealerType>
                   }
                 />
                 <Route
                   path="uploads/:jobId"
                   element={
-                    <RequireVerifiedDealer>
-                      <RequireDealerType type="business" fallbackTo="/dealer/listings">
-                        <UploadStatusPage />
-                      </RequireDealerType>
-                    </RequireVerifiedDealer>
+                    <RequireDealerType type="business" fallbackTo="/dealer/listings">
+                      <UploadStatusPage />
+                    </RequireDealerType>
                   }
                 />
               </Route>
