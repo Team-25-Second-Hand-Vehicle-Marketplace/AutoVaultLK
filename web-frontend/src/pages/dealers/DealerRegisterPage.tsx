@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
+import { COUNTRY_CODES, dealerRegisterSchema as schema, type FormValues } from './dealerRegisterSchema'
 import { registerDealer, uploadVerificationDocument } from '../../api/auth.api'
 import { isTokenResponse } from '../../api/auth.types'
 import { saveSession } from '../../api/auth.storage'
@@ -182,6 +182,7 @@ export function DealerRegisterPage() {
         // NOT NULL and this is a create, not the partial-update a PATCH is.
         businessRegistrationNumber:
           v.dealerType === 'business' ? v.businessRegistrationNumber.trim() : '',
+        businessRegistrationNumber: (v.businessRegistrationNumber ?? '').trim() || undefined,
         businessAddress: v.businessAddress.trim(),
         city: v.city.trim(),
         companyName: v.companyName.trim(),
@@ -281,15 +282,17 @@ export function DealerRegisterPage() {
               </div>
             </fieldset>
 
-            {values.dealerType === 'business' && (
-              <FormField
-                label="Business Registration Number *"
-                type="text"
-                placeholder="e.g. PV 12345"
-                error={errors.businessRegistrationNumber?.message}
-                {...register('businessRegistrationNumber')}
-              />
-            )}
+            <FormField
+              label={
+                values.dealerType === 'business'
+                  ? 'Business Registration Number *'
+                  : 'Business Registration Number (optional)'
+              }
+              type="text"
+              placeholder="e.g. PV 12345"
+              error={errors.businessRegistrationNumber?.message}
+              {...register('businessRegistrationNumber')}
+            />
 
             <FormField
               label="Business Address *"

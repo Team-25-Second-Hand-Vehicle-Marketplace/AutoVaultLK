@@ -40,7 +40,8 @@ export interface RegisterDealerRequest {
   password: string;
   name: string;
   dealerType: 'individual' | 'business';
-  businessRegistrationNumber: string;
+  /** Required by the API only when dealerType is 'business'. */
+  businessRegistrationNumber?: string;
   businessAddress: string;
   city: string;
   companyName: string;
