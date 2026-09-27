@@ -34,7 +34,11 @@ const schema = z
     // Step 1 — company
     companyName: z.string().trim().min(2, 'Company name is required'),
     dealerType: z.enum(['individual', 'business']),
-    businessRegistrationNumber: z.string().trim().min(1, 'Registration number is required'),
+    // Required for business dealers only — individual dealers identify with
+    // their NIC instead (see nicNumber below and its refine), which is why
+    // this has no .min() here; the requirement is enforced in the refine at
+    // the bottom of this schema instead, gated on dealerType.
+    businessRegistrationNumber: z.string().trim(),
     businessAddress: z.string().trim().min(4, 'Business address is required'),
     city: z.string().trim().min(2, 'City is required'),
     // Individual dealers only — an NIC is a known-format identifier, so it's
@@ -70,6 +74,10 @@ const schema = z
   .refine((v) => v.dealerType !== 'individual' || NIC_REGEX.test(v.nicNumber ?? ''), {
     message: 'Enter a valid NIC (9 digits + V/X, or 12 digits)',
     path: ['nicNumber'],
+  })
+  .refine((v) => v.dealerType !== 'business' || v.businessRegistrationNumber.length > 0, {
+    message: 'Registration number is required for a business dealer',
+    path: ['businessRegistrationNumber'],
   })
 
 type FormValues = z.infer<typeof schema>
@@ -168,7 +176,12 @@ export function DealerRegisterPage() {
         password: v.password,
         name: v.name.trim(),
         dealerType: v.dealerType,
-        businessRegistrationNumber: v.businessRegistrationNumber.trim(),
+        // Individual dealers never see this field (it's not required of them —
+        // they identify with their NIC instead), so there is never a value to
+        // trim; sending '' rather than omitting it because the column is
+        // NOT NULL and this is a create, not the partial-update a PATCH is.
+        businessRegistrationNumber:
+          v.dealerType === 'business' ? v.businessRegistrationNumber.trim() : '',
         businessAddress: v.businessAddress.trim(),
         city: v.city.trim(),
         companyName: v.companyName.trim(),
@@ -268,13 +281,15 @@ export function DealerRegisterPage() {
               </div>
             </fieldset>
 
-            <FormField
-              label="Business Registration Number *"
-              type="text"
-              placeholder="e.g. PV 12345"
-              error={errors.businessRegistrationNumber?.message}
-              {...register('businessRegistrationNumber')}
-            />
+            {values.dealerType === 'business' && (
+              <FormField
+                label="Business Registration Number *"
+                type="text"
+                placeholder="e.g. PV 12345"
+                error={errors.businessRegistrationNumber?.message}
+                {...register('businessRegistrationNumber')}
+              />
+            )}
 
             <FormField
               label="Business Address *"
@@ -413,10 +428,12 @@ export function DealerRegisterPage() {
                 <dt>Dealer type</dt>
                 <dd>{values.dealerType === 'business' ? 'Business' : 'Individual'}</dd>
               </div>
-              <div>
-                <dt>Registration no.</dt>
-                <dd>{values.businessRegistrationNumber || '—'}</dd>
-              </div>
+              {values.dealerType === 'business' && (
+                <div>
+                  <dt>Registration no.</dt>
+                  <dd>{values.businessRegistrationNumber || '—'}</dd>
+                </div>
+              )}
               <div>
                 <dt>Address</dt>
                 <dd>

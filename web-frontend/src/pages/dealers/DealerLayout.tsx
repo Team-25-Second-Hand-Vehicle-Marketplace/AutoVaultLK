@@ -12,6 +12,7 @@ import { Button } from '../../components/ui/Button'
 const NAV = [
   { to: '/dealer', end: true, label: 'Dashboard' },
   { to: '/dealer/listings', end: false, label: 'My listings' },
+  { to: '/dealer/profile', end: false, label: 'Business details' },
 ] as const
 
 // Bulk upload is for business dealers only (the API rejects individuals), so
