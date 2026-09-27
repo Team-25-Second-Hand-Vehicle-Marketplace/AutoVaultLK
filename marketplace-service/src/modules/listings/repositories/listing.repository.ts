@@ -185,6 +185,23 @@ export class ListingRepository {
   }
 
   /**
+   * Reverses `deactivate`: brings an ARCHIVED listing back to LIVE. Only
+   * valid from ARCHIVED — returns null otherwise (does not exist, or was
+   * never archived in the first place), same "say only whether it happened"
+   * split as `approve`.
+   */
+  async unarchive(id: string) {
+    const vehicle = await this.findById(id);
+
+    if (!vehicle || vehicle.status !== 'ARCHIVED') {
+      return null;
+    }
+
+    vehicle.status = 'LIVE';
+    return this.vehicleRepo.save(vehicle);
+  }
+
+  /**
    * FR-42: moves a PENDING_REVIEW listing to LIVE. This is the "explicitly
    * approve" step the FR requires — no ETL-loaded listing becomes publicly
    * visible until the owning dealer takes this action, and until this method

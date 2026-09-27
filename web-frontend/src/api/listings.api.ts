@@ -91,6 +91,23 @@ export async function deactivateListing(
 }
 
 /**
+ * PATCH /marketplace/listings/:id/unarchive — reverses deactivateListing,
+ * bringing an ARCHIVED listing back to LIVE. The backend 409s if the listing
+ * is not ARCHIVED.
+ */
+export async function unarchiveListing(
+  id: string,
+  signal?: AbortSignal,
+): Promise<DealerListing> {
+  const { data } = await apiClient.patch<ListingEnvelope>(
+    `/marketplace/listings/${id}/unarchive`,
+    undefined,
+    { signal },
+  )
+  return data.data
+}
+
+/**
  * PATCH /marketplace/listings/:id/approve — FR-42: moves a PENDING_REVIEW
  * listing to LIVE. The backend 409s if the listing is not PENDING_REVIEW,
  * distinct from the 404 an unknown/foreign id gets — see the api-error

@@ -357,6 +357,35 @@ describe('ListingRepository', () => {
     });
   });
 
+  describe('unarchive', () => {
+    it('returns null when the listing does not exist', async () => {
+      vehicleRepo.findOne.mockResolvedValue(null);
+
+      await expect(repository.unarchive('missing')).resolves.toBeNull();
+    });
+
+    it('sets status to LIVE and persists it', async () => {
+      const existing = vehicle({ status: 'ARCHIVED' });
+      vehicleRepo.findOne.mockResolvedValue(existing);
+      vehicleRepo.save.mockImplementation((v) => Promise.resolve(v));
+
+      const result = await repository.unarchive('v-1');
+
+      expect(result).toMatchObject({ status: 'LIVE' });
+    });
+
+    // unarchive() is the only gate deciding whether an id maps to a real
+    // transition; the service relies on null here to tell "nothing to
+    // unarchive" apart from "does not exist" and raise the right status code.
+    it('returns null (not an error) for a listing that is not ARCHIVED', async () => {
+      const existing = vehicle({ status: 'LIVE' });
+      vehicleRepo.findOne.mockResolvedValue(existing);
+
+      await expect(repository.unarchive('v-1')).resolves.toBeNull();
+      expect(vehicleRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
   describe('approve (FR-42)', () => {
     it('returns null when the listing does not exist', async () => {
       vehicleRepo.findOne.mockResolvedValue(null);

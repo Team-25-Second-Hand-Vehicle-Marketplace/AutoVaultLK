@@ -195,6 +195,44 @@ export class ListingService {
   }
 
   /**
+   * Reverses deactivateListing: brings an ARCHIVED listing back to LIVE for
+   * the public feed. Its own action rather than a flag on the generic PATCH,
+   * matching approveListing's shape — a listing that is not ARCHIVED is a
+   * 409, not a 404: the id is real and the dealer may own it, but there is
+   * nothing to unarchive on a LIVE, DRAFT, PENDING_REVIEW, SOLD or REJECTED
+   * listing.
+   */
+  async unarchiveListing(id: string, actor: AuthenticatedUser) {
+    const existing = await this.listingRepository.findById(id);
+
+    if (!existing) {
+      throw new NotFoundException(`Vehicle listing with ID ${id} not found`);
+    }
+
+    this.assertOwnership(existing, actor);
+
+    if (existing.status !== 'ARCHIVED') {
+      throw new ConflictException(
+        `Vehicle listing ${id} is ${existing.status}, not ARCHIVED — nothing to unarchive`,
+      );
+    }
+
+    const listing = await this.listingRepository.unarchive(id);
+
+    if (!listing) {
+      // The status check above already confirmed ARCHIVED; only a race with
+      // another unarchive/archive between that read and this write reaches
+      // here.
+      throw new ConflictException(`Vehicle listing ${id} is no longer ARCHIVED`);
+    }
+
+    return {
+      message: 'Vehicle listing restored and published',
+      data: listing,
+    };
+  }
+
+  /**
    * Permanently removes a listing — distinct from `deactivateListing`, which
    * only hides it from the public feed and keeps the row. Restricted to
    * DRAFT, PENDING_REVIEW and REJECTED: those never went live, so nothing
