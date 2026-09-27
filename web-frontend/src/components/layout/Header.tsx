@@ -1,14 +1,46 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { Link, NavLink, useNavigate } from 'react-router-dom'
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { Heart, LogOut, Menu, Plus, Search, X } from 'lucide-react'
 import { useAuth } from '../../auth/useAuth'
 import { BrandMark } from './BrandMark'
+
+const NAV = [
+  { to: '/', label: 'Home', end: true },
+  { to: '/search', label: 'Browse', end: false },
+  { to: '/search?sort=newest', label: 'Just listed', end: false },
+  { to: '/dealer/login', label: 'Dealers', end: false },
+]
 
 export function Header() {
   const { user, isAuthenticated, logout } = useAuth()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
+  // Each panel remembers the page it was opened on, so navigating anywhere
+  // closes it without an effect.
+  const [mobilePath, setMobilePath] = useState<string | null>(null)
+  const [searchPath, setSearchPath] = useState<string | null>(null)
+  const mobileOpen = mobilePath === pathname
+  const searchOpen = searchPath === pathname
   const [keyword, setKeyword] = useState('')
+  const [scrolled, setScrolled] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const searchRef = useRef<HTMLInputElement>(null)
+
+  // On the landing page the header floats over the hero and only turns solid
+  // once you scroll; everywhere else it is always solid.
+  const overlay = pathname === '/' && !scrolled
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  useEffect(() => {
+    if (searchOpen) searchRef.current?.focus()
+  }, [searchOpen])
 
   useEffect(() => {
     if (!menuOpen) return
@@ -37,111 +69,140 @@ export function Header() {
     const q = keyword.trim()
     navigate(q ? `/search?q=${encodeURIComponent(q)}` : '/search')
     setKeyword('')
+    setSearchPath(null)
   }
 
   return (
-    <header className="site-header">
-      <div className="site-header__inner">
+    <header
+      className={`nx-header${overlay ? ' nx-header--overlay' : ''}${mobileOpen ? ' nx-header--open' : ''}`}
+    >
+      <div className="nx-header__inner">
         <BrandMark to="/" />
 
-        <form className="header-search" onSubmit={submitSearch} role="search">
-          <svg
-            className="header-search__icon"
-            width="17"
-            height="17"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            aria-hidden="true"
-          >
-            <circle cx="11" cy="11" r="7" />
-            <path d="M20 20l-3.5-3.5" />
-          </svg>
-          <input
-            type="search"
-            placeholder="Try “Toyata Corrola under 8.5m deisel”…"
-            aria-label="Search vehicles"
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
-          />
-        </form>
-
-        <nav className="site-header__nav" aria-label="Main">
-          <NavLink
-            to="/search"
-            className={({ isActive }) =>
-              isActive ? 'site-header__link site-header__link--active' : 'site-header__link'
-            }
-          >
-            Browse
-          </NavLink>
-          <NavLink
-            to="/dealer/login"
-            className={({ isActive }) =>
-              isActive ? 'site-header__link site-header__link--active' : 'site-header__link'
-            }
-          >
-            Dealers
-          </NavLink>
+        <nav className="nx-nav" aria-label="Main">
+          {NAV.map((item) => (
+            <NavLink
+              key={item.label}
+              to={item.to}
+              end={item.end}
+              className={({ isActive }) =>
+                // "Just listed" shares /search with Browse; only Browse should light up.
+                isActive && item.label !== 'Just listed' ? 'nx-nav__link is-active' : 'nx-nav__link'
+              }
+            >
+              {item.label}
+            </NavLink>
+          ))}
         </nav>
 
-        <div className="site-header__actions">
-          <Link to={isAuthenticated ? '/saved' : '/login'} className="site-header__saved">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M12 21s-6.7-4.35-9.3-8.1C.8 10.1 1.4 6.6 4.3 5.1c2.2-1.1 4.6-.4 6 1.4l1.7 2.1 1.7-2.1c1.4-1.8 3.8-2.5 6-1.4 2.9 1.5 3.5 5 1.6 7.8C18.7 16.65 12 21 12 21z" />
-            </svg>
-            <span>Saved</span>
+        <div className="nx-header__actions">
+          <form
+            className={`nx-search${searchOpen ? ' is-open' : ''}`}
+            onSubmit={submitSearch}
+            role="search"
+          >
+            <input
+              ref={searchRef}
+              type="search"
+              placeholder="Try “Toyata Corrola under 8.5m deisel”…"
+              aria-label="Search vehicles"
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              tabIndex={searchOpen ? 0 : -1}
+            />
+            <button
+              type={searchOpen && keyword.trim() ? 'submit' : 'button'}
+              className="nx-icon-btn"
+              aria-label={searchOpen ? 'Search' : 'Open search'}
+              onClick={() => {
+                if (!searchOpen) setSearchPath(pathname)
+                else if (!keyword.trim()) setSearchPath(null)
+              }}
+            >
+              <Search size={18} />
+            </button>
+          </form>
+
+          <Link
+            to={isAuthenticated ? '/saved' : '/login'}
+            className="nx-icon-btn"
+            aria-label="Saved vehicles"
+          >
+            <Heart size={18} />
           </Link>
 
           {isAuthenticated ? (
-            <div className="user-menu" ref={menuRef}>
+            <div className="nx-user" ref={menuRef}>
               <button
                 type="button"
-                className="user-menu__trigger"
+                className="nx-user__trigger"
                 onClick={() => setMenuOpen((open) => !open)}
                 aria-expanded={menuOpen}
                 aria-haspopup="menu"
               >
-                <span className="user-menu__avatar" aria-hidden="true">
+                <span className="nx-user__avatar" aria-hidden="true">
                   {user?.name?.charAt(0).toUpperCase() ?? '?'}
                 </span>
-                <span className="user-menu__name">{user?.name}</span>
               </button>
 
               {menuOpen && (
-                <div className="user-menu__dropdown" role="menu">
-                  <div className="user-menu__email">{user?.email}</div>
+                <div className="nx-user__menu" role="menu">
+                  <div className="nx-user__who">
+                    <strong>{user?.name}</strong>
+                    <span>{user?.email}</span>
+                  </div>
                   <Link
                     to="/saved"
                     role="menuitem"
-                    className="user-menu__item"
+                    className="nx-user__item"
                     onClick={() => setMenuOpen(false)}
                   >
-                    Saved vehicles
+                    <Heart size={15} /> Saved vehicles
                   </Link>
                   <button
                     type="button"
                     role="menuitem"
-                    className="user-menu__item"
+                    className="nx-user__item"
                     onClick={handleLogout}
                   >
-                    Sign out
+                    <LogOut size={15} /> Sign out
                   </button>
                 </div>
               )}
             </div>
           ) : (
-            <Link to="/login" className="button button--primary site-header__signin">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <circle cx="12" cy="8" r="3.5" />
-                <path d="M5 20c0-3.3 3.1-5.5 7-5.5s7 2.2 7 5.5" />
-              </svg>
-              Sign In
+            <Link to="/login" className="nx-link-btn">
+              Sign in
             </Link>
           )}
+
+          <Link to="/dealer/login" className="nx-btn nx-btn--outline nx-header__cta">
+            <Plus size={16} /> Add listing
+          </Link>
+
+          <button
+            type="button"
+            className="nx-icon-btn nx-header__burger"
+            aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={mobileOpen}
+            onClick={() => setMobilePath(mobileOpen ? null : pathname)}
+          >
+            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
         </div>
       </div>
+
+      {mobileOpen && (
+        <nav className="nx-mobile" aria-label="Mobile">
+          {NAV.map((item) => (
+            <Link key={item.label} to={item.to}>
+              {item.label}
+            </Link>
+          ))}
+          <Link to="/dealer/login">Add listing</Link>
+          {!isAuthenticated && <Link to="/login">Sign in</Link>}
+        </nav>
+      )}
     </header>
   )
 }

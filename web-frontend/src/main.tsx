@@ -8,6 +8,7 @@ import './styles/home.css'
 import './styles/search-skin.css'
 import './styles/admin.css'
 import './styles/dealer.css'
+import './styles/next.css'
 import App from './App.tsx'
 
 createRoot(document.getElementById('root')!).render(

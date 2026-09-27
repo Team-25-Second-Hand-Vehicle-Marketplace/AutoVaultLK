@@ -1,19 +1,31 @@
 import { Link } from 'react-router-dom'
+import { ArrowUpRight } from 'lucide-react'
 import { BrandMark } from './BrandMark'
 
 export function Footer() {
   return (
-    <footer className="site-footer">
-      <div className="site-footer__inner">
-        <div className="site-footer__brand">
+    <footer className="nx-footer">
+      <div className="nx-footer__cta">
+        <h2>
+          Your next vehicle is
+          <br />
+          <em>one search away.</em>
+        </h2>
+        <Link to="/search" className="nx-btn nx-btn--gold nx-btn--lg">
+          Browse all vehicles <ArrowUpRight size={18} />
+        </Link>
+      </div>
+
+      <div className="nx-footer__grid">
+        <div className="nx-footer__brand">
           <BrandMark />
           <p>
-            Sri Lanka&apos;s second-hand vehicle marketplace. Browse listings from verified
-            dealers with filters that actually narrow things down.
+            Sri Lanka&apos;s second-hand vehicle marketplace. Real listings from verified
+            dealers, and search that understands how people actually talk.
           </p>
         </div>
 
-        <nav className="site-footer__col" aria-label="Browse">
+        <nav aria-label="Browse">
           <h3>Browse</h3>
           <Link to="/search">All vehicles</Link>
           <Link to="/search?vehicleType=CAR">Cars</Link>
@@ -22,7 +34,7 @@ export function Footer() {
           <Link to="/search?vehicleType=THREE_WHEELER">Three wheelers</Link>
         </nav>
 
-        <nav className="site-footer__col" aria-label="By price">
+        <nav aria-label="By price">
           <h3>By price</h3>
           <Link to="/search?maxPrice=1500000">Under Rs 1.5M</Link>
           <Link to="/search?maxPrice=5000000">Under Rs 5M</Link>
@@ -31,7 +43,7 @@ export function Footer() {
           <Link to="/search?isNegotiable=true">Negotiable only</Link>
         </nav>
 
-        <nav className="site-footer__col" aria-label="Dealers">
+        <nav aria-label="Dealers">
           <h3>Dealers</h3>
           <Link to="/dealer/register">Register as dealer</Link>
           <Link to="/dealer/login">Dealer login</Link>
@@ -39,11 +51,9 @@ export function Footer() {
         </nav>
       </div>
 
-      <div className="site-footer__bar">
+      <div className="nx-footer__bar">
         <span>© {new Date().getFullYear()} AutoVaultLK</span>
-        <span className="site-footer__note">
-          A university project build — listings and dealers are seeded sample data.
-        </span>
+        <span>Made in Sri Lanka.</span>
       </div>
     </footer>
   )
