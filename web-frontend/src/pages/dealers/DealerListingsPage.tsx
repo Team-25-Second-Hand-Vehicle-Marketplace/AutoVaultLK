@@ -6,6 +6,7 @@ import {
   deactivateListing,
   deleteListing,
   getMyListings,
+  unarchiveListing,
   updateListing,
   uploadListingImages,
 } from '../../api/listings.api'
@@ -22,6 +23,7 @@ import {
   NormalizationDetails,
   NormalizationSummary,
 } from '../../components/dealers/NormalizationBadge'
+import { ActionMenu, type ActionMenuItem } from '../../components/ui/ActionMenu'
 import { Button } from '../../components/ui/Button'
 import { ErrorBanner } from '../../components/ui/ErrorBanner'
 import { useDealerProfile } from './useDealerProfile'
@@ -66,6 +68,7 @@ type Mode =
 export function DealerListingsPage() {
   const [mode, setMode] = useState<Mode>({ kind: 'list' })
   const [archiving, setArchiving] = useState<string | null>(null)
+  const [unarchiving, setUnarchiving] = useState<string | null>(null)
   const [approving, setApproving] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
   const confirm = useConfirm()
@@ -175,6 +178,22 @@ export function DealerListingsPage() {
     }
   }
 
+  const onUnarchive = async (listing: DealerListing) => {
+    setUnarchiving(listing.id)
+    try {
+      await unarchiveListing(listing.id)
+      toast.success(`${listing.make} ${listing.model} is live again`)
+      listings.reload()
+    } catch (error) {
+      // The backend 409s a listing that changed status between page load and
+      // this click (already unarchived elsewhere, say); its message explains
+      // that directly.
+      toast.error(toErrorMessage(error, 'Could not unarchive the listing.'))
+    } finally {
+      setUnarchiving(null)
+    }
+  }
+
   const onDelete = async (listing: DealerListing) => {
     if (
       !confirm(
@@ -213,6 +232,45 @@ export function DealerListingsPage() {
     } finally {
       setApproving(null)
     }
+  }
+
+  /**
+   * Edit is always offered; Archive/Unarchive/Delete only when the backend
+   * would actually accept them for this listing's current status — so the
+   * menu never offers something that just 409s on click.
+   */
+  const rowActions = (listing: DealerListing): ActionMenuItem[] => {
+    const items: ActionMenuItem[] = [
+      { label: 'Edit', onClick: () => setMode({ kind: 'edit', listing }) },
+    ]
+
+    if (listing.status === 'ARCHIVED') {
+      items.push({
+        label: unarchiving === listing.id ? 'Unarchiving…' : 'Unarchive',
+        disabled: unarchiving === listing.id,
+        onClick: () => void onUnarchive(listing),
+      })
+    } else {
+      items.push({
+        label: archiving === listing.id ? 'Archiving…' : 'Archive',
+        disabled: archiving === listing.id,
+        danger: true,
+        onClick: () => void onDeactivate(listing),
+      })
+    }
+
+    // Never went live: nothing external can reference it, so a permanent
+    // delete is safe — see ListingService.DELETABLE_STATUSES.
+    if (DELETABLE_STATUSES.includes(listing.status)) {
+      items.push({
+        label: deleting === listing.id ? 'Deleting…' : 'Delete',
+        disabled: deleting === listing.id,
+        danger: true,
+        onClick: () => void onDelete(listing),
+      })
+    }
+
+    return items
   }
 
   if (mode.kind === 'create') {
@@ -340,35 +398,10 @@ export function DealerListingsPage() {
                           {approving === listing.id ? 'Approving…' : 'Approve'}
                         </Button>
                       )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setMode({ kind: 'edit', listing })}
-                      >
-                        Edit
-                      </Button>
-                      {/* Already archived: nothing left to deactivate. */}
-                      {listing.status !== 'ARCHIVED' && (
-                        <Button
-                          variant="danger"
-                          size="sm"
-                          disabled={archiving === listing.id}
-                          onClick={() => void onDeactivate(listing)}
-                        >
-                          {archiving === listing.id ? 'Archiving…' : 'Archive'}
-                        </Button>
-                      )}
-                      {/* Never went live: nothing external can reference it, so a permanent delete is safe. */}
-                      {DELETABLE_STATUSES.includes(listing.status) && (
-                        <Button
-                          variant="danger"
-                          size="sm"
-                          disabled={deleting === listing.id}
-                          onClick={() => void onDelete(listing)}
-                        >
-                          {deleting === listing.id ? 'Deleting…' : 'Delete'}
-                        </Button>
-                      )}
+                      <ActionMenu
+                        label={`More actions for ${listing.make} ${listing.model}`}
+                        items={rowActions(listing)}
+                      />
                     </td>
                   </tr>
                   {(listing.normalization ||

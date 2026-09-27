@@ -82,6 +82,20 @@ export class ListingController {
   }
 
   /**
+   * Reverses deactivate. See ListingService.unarchiveListing for why a
+   * non-ARCHIVED listing is a 409 rather than the ownership-check's 404.
+   */
+  @Patch(':id/unarchive')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('DEALER', 'ADMIN')
+  unarchiveListing(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.listingService.unarchiveListing(id, actor);
+  }
+
+  /**
    * Permanently removes a listing — distinct from `deactivate`, which only
    * hides it. Only DRAFT/PENDING_REVIEW/REJECTED listings qualify; see
    * ListingService.deleteListing for why LIVE/SOLD/ARCHIVED are 409s here.

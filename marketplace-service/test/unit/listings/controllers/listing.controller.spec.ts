@@ -10,6 +10,7 @@ describe('ListingController', () => {
     getListingById: jest.fn(),
     updateListing: jest.fn(),
     deactivateListing: jest.fn(),
+    unarchiveListing: jest.fn(),
     approveListing: jest.fn(),
     uploadImages: jest.fn(),
   };
@@ -89,6 +90,13 @@ describe('ListingController', () => {
 
     expect(controller.approveListing('v-1', actor)).toBe('approved');
     expect(listingService.approveListing).toHaveBeenCalledWith('v-1', actor);
+  });
+
+  it('PATCH :id/unarchive passes id and actor to unarchiveListing', () => {
+    listingService.unarchiveListing.mockReturnValue('unarchived');
+
+    expect(controller.unarchiveListing('v-1', actor)).toBe('unarchived');
+    expect(listingService.unarchiveListing).toHaveBeenCalledWith('v-1', actor);
   });
 
   describe('POST :id/images (FR-58)', () => {

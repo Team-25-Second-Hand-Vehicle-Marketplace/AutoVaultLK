@@ -18,6 +18,7 @@ describe('ListingService', () => {
     update: jest.fn(),
     deactivate: jest.fn(),
     approve: jest.fn(),
+    unarchive: jest.fn(),
     remove: jest.fn(),
   };
   const dealerService = {
@@ -468,6 +469,84 @@ describe('ListingService', () => {
       listingRepository.approve.mockResolvedValue(null);
 
       await expect(service.approveListing('v-1', DEALER)).rejects.toThrow(
+        ConflictException,
+      );
+    });
+  });
+
+  describe('unarchiveListing', () => {
+    it('404s when the listing does not exist', async () => {
+      listingRepository.findById.mockResolvedValue(null);
+
+      await expect(service.unarchiveListing('missing', DEALER)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('forbids a non-owning dealer from unarchiving the listing', async () => {
+      listingRepository.findById.mockResolvedValue(
+        vehicle({ dealerId: DEALER.id, status: 'ARCHIVED' }),
+      );
+
+      await expect(service.unarchiveListing('v-1', OTHER_DEALER)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('allows the owning dealer to unarchive their own listing', async () => {
+      listingRepository.findById.mockResolvedValue(
+        vehicle({ dealerId: DEALER.id, status: 'ARCHIVED' }),
+      );
+      listingRepository.unarchive.mockResolvedValue(vehicle({ status: 'LIVE' }));
+
+      const result = await service.unarchiveListing('v-1', DEALER);
+
+      expect(result.data.status).toBe('LIVE');
+      expect(listingRepository.unarchive).toHaveBeenCalledWith('v-1');
+    });
+
+    it("allows ADMIN to unarchive any dealer's listing", async () => {
+      listingRepository.findById.mockResolvedValue(
+        vehicle({ dealerId: DEALER.id, status: 'ARCHIVED' }),
+      );
+      listingRepository.unarchive.mockResolvedValue(vehicle({ status: 'LIVE' }));
+
+      await expect(service.unarchiveListing('v-1', ADMIN)).resolves.toBeDefined();
+    });
+
+    // A listing that is not ARCHIVED is a 409, not a 404: the id is real and
+    // the dealer may own it, but there is nothing to unarchive.
+    it('409s a listing that is LIVE', async () => {
+      listingRepository.findById.mockResolvedValue(
+        vehicle({ dealerId: DEALER.id, status: 'LIVE' }),
+      );
+
+      await expect(service.unarchiveListing('v-1', DEALER)).rejects.toThrow(
+        ConflictException,
+      );
+      expect(listingRepository.unarchive).not.toHaveBeenCalled();
+    });
+
+    it('409s a DRAFT listing', async () => {
+      listingRepository.findById.mockResolvedValue(
+        vehicle({ dealerId: DEALER.id, status: 'DRAFT' }),
+      );
+
+      await expect(service.unarchiveListing('v-1', DEALER)).rejects.toThrow(
+        ConflictException,
+      );
+    });
+
+    // The status check happened on a read; a race with another
+    // archive/unarchive between that read and the write below is the only way
+    // the repository call itself returns null despite the check passing.
+    it('409s when the repository write loses a race', async () => {
+      listingRepository.findById.mockResolvedValue(
+        vehicle({ dealerId: DEALER.id, status: 'ARCHIVED' }),
+      );
+      listingRepository.unarchive.mockResolvedValue(null);
+
+      await expect(service.unarchiveListing('v-1', DEALER)).rejects.toThrow(
         ConflictException,
       );
     });

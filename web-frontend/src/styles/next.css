@@ -1999,3 +1999,73 @@ img.is-loaded {
     transition: none;
   }
 }
+
+/* ── Action menu (the "⋮" dropdown) ─────────────────────────────
+   Used wherever a row has more actions than fit inline, and not every
+   action applies to every row (My listings: Edit/Archive/Unarchive/Delete). */
+
+.action-menu {
+  display: inline-flex;
+  position: relative;
+}
+
+.action-menu__trigger {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.action-menu__trigger:hover,
+.action-menu__trigger[aria-expanded='true'] {
+  background: var(--bg-alt);
+  border-color: var(--border);
+  color: var(--text-h);
+}
+
+.action-menu__panel {
+  position: fixed;
+  z-index: 80;
+  min-width: 160px;
+  padding: 6px;
+  border-radius: var(--radius);
+  background: var(--surface, var(--bg));
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg, var(--shadow-md, var(--shadow)));
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.action-menu__item {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-h);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.action-menu__item:hover:not(:disabled) {
+  background: var(--bg-alt);
+}
+
+.action-menu__item:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.action-menu__item--danger {
+  color: var(--danger);
+}
