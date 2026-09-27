@@ -1986,3 +1986,25 @@ h4 {
 .nx-hero__beam {
   background: linear-gradient(100deg, transparent, rgba(190, 215, 255, 0.12), transparent);
 }
+
+/* ── Image load smoothing ────────────────────────────────────────────────
+   A photo pops in the instant its bytes arrive unless told otherwise; this
+   fades it in instead, which reads as smooth even on a slow first load. */
+
+.nx-img-fade {
+  opacity: 0;
+}
+
+img.is-loaded {
+  opacity: 1;
+  transition: opacity 0.5s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nx-img-fade {
+    opacity: 1;
+  }
+  img.is-loaded {
+    transition: none;
+  }
+}

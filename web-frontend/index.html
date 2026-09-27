@@ -5,6 +5,10 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AutoVaultLK</title>
+    <!-- The hero's first slide is the largest above-the-fold image on the
+         site; fetching it before the JS bundle parses is what keeps the very
+         first paint from being a blank slot that then pops in. -->
+    <link rel="preload" as="image" href="/images/hero-1.jpg" fetchpriority="high" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
