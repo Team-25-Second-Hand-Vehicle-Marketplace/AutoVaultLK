@@ -43,6 +43,15 @@ export function getStoredUser(): AuthUser | null {
   }
 }
 
+/**
+ * Overwrites just the stored user (tokens untouched) — for after a
+ * self-service profile edit (e.g. name), so a page refresh still shows the
+ * new value instead of the one from login/registration.
+ */
+export function setStoredUser(user: AuthUser): void {
+  localStorage.setItem(USER_KEY, JSON.stringify(user))
+}
+
 
 export function isAccessTokenExpired(skewSeconds = 30): boolean {
   const token = getAccessToken()

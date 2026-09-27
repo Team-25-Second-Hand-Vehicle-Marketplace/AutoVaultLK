@@ -12,6 +12,8 @@ export interface AuthContextValue {
   /** Resolves to a message when the backend requires email verification. */
   register: (payload: RegisterBuyerRequest) => Promise<{ message?: string }>
   logout: () => Promise<void>
+  /** Merges into the signed-in user and persists it — e.g. after a self-service name change. */
+  updateUser: (patch: Partial<AuthUser>) => void
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null)

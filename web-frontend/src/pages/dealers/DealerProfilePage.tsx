@@ -4,16 +4,22 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import { z } from 'zod'
 import { updateMyDealerProfile } from '../../api/dealer.api'
+import { updateMyName } from '../../api/users.api'
 import { toErrorMessage } from '../../api/client'
+import { useAuth } from '../../auth/useAuth'
 import { Button } from '../../components/ui/Button'
 import { FormField } from '../../components/ui/FormField'
 import { ErrorBanner } from '../../components/ui/ErrorBanner'
 import { useDealerProfile } from './useDealerProfile'
 
-/** Matches auth-user-service's PHONE_REGEX exactly (E.164-ish, optional +). */
+/** Matches auth-user-service's PERSON_NAME_MIN/MAX (2–255) and PHONE_REGEX exactly. */
 const PHONE_REGEX = /^\+?[1-9]\d{8,14}$/
 
 const schema = z.object({
+  // The dealer's own name (User.name — who to contact), distinct from
+  // companyName (DealerProfile — what to call the business). Two different
+  // resources, two different PATCH calls on submit; see onSubmit below.
+  name: z.string().trim().min(2, 'Contact name is required').max(255),
   companyName: z.string().trim().min(2, 'Company name is required'),
   // Business dealers only — see the conditional field below and the
   // superRefine, which is how the requirement is actually enforced (an
@@ -34,12 +40,15 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>
 
 /**
- * Self-service edit for the details a dealer gave at registration. Deliberately
+ * Self-service edit for the details a dealer gave at registration: their own
+ * name (User.name) plus the business fields (DealerProfile). Deliberately
  * does not include verification documents (a bigger, separate flow — re-upload
- * would need its own re-verification step) or dealerType/email (not part of
- * UpdateDealerProfileDto; the backend fixes dealer type at registration).
+ * would need its own re-verification step, see DealerVerificationGate) or
+ * dealerType/email (not part of UpdateDealerProfileDto; the backend fixes
+ * dealer type at registration, and email changes aren't exposed anywhere yet).
  */
 export function DealerProfilePage() {
+  const { user, updateUser } = useAuth()
   const profile = useDealerProfile()
   const dealer = profile.data
 
@@ -52,6 +61,7 @@ export function DealerProfilePage() {
     resolver: zodResolver(schema),
     mode: 'onTouched',
     defaultValues: {
+      name: '',
       companyName: '',
       businessRegistrationNumber: '',
       businessAddress: '',
@@ -60,18 +70,19 @@ export function DealerProfilePage() {
     },
   })
 
-  // The form loads before the profile does (same context, one tick behind),
-  // so its fields start empty and are filled in once the fetch resolves.
+  // The form loads before the profile (and user) does, so its fields start
+  // empty and are filled in once both have resolved.
   useEffect(() => {
     if (!dealer) return
     reset({
+      name: user?.name ?? '',
       companyName: dealer.companyName,
       businessRegistrationNumber: dealer.businessRegistrationNumber ?? '',
       businessAddress: dealer.businessAddress,
       city: dealer.city,
       contactNumber: dealer.contactNumber ?? '',
     })
-  }, [dealer, reset])
+  }, [dealer, user, reset])
 
   if (profile.loading) {
     return (
@@ -98,6 +109,12 @@ export function DealerProfilePage() {
     }
 
     try {
+      // Two different resources — User.name and the DealerProfile fields —
+      // so two PATCH calls. Name first: if it fails, nothing else is saved
+      // either, which is simpler to reason about than a partial save.
+      const updatedUser = await updateMyName(dealer.userId, values.name.trim())
+      updateUser(updatedUser)
+
       await updateMyDealerProfile(dealer.userId, {
         companyName: values.companyName.trim(),
         // Individual dealers never had this field editable here (it's hidden
@@ -125,6 +142,13 @@ export function DealerProfilePage() {
       </header>
 
       <form className="dealer-form" onSubmit={onSubmit} noValidate>
+        <FormField
+          label="Your name"
+          type="text"
+          error={errors.name?.message}
+          {...register('name')}
+        />
+
         <FormField
           label="Company name"
           type="text"
