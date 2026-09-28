@@ -119,11 +119,16 @@
   position: sticky;
   top: 0;
   height: 100vh;
+  /* A grid item defaults to min-width: auto, which lets its content (the
+     brand row below) force this track wider than the 240px column instead
+     of wrapping — same fix as .dealer-shell__sidebar. */
+  min-width: 0;
 }
 
 .admin-shell__brand {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
   padding: 0 8px 20px;
   border-bottom: 1px solid var(--border);
