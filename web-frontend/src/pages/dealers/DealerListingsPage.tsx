@@ -222,7 +222,11 @@ export function DealerListingsPage() {
     try {
       await approveListing(listing.id)
       toast.success(`${listing.make} ${listing.model} is now live`)
-      listings.reload()
+      // Updates this one row in place rather than reload()'s full re-fetch —
+      // the approve response already tells us the only thing that changed.
+      listings.setData(
+        (data) => data?.map((l) => (l.id === listing.id ? { ...l, status: 'LIVE' } : l)) ?? data,
+      )
     } catch (error) {
       // The backend 409s a listing that changed status between page load and
       // this click (someone else on the account approved it, say); the

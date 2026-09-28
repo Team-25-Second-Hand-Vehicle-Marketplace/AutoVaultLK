@@ -11,13 +11,21 @@ type ProfileState = {
   error: string | null
   loading: boolean
   reload: () => void
+  setData: (updater: (data: DealerProfile | null) => DealerProfile | null) => void
 }
 
 const profile = (dealerType: 'individual' | 'business'): DealerProfile =>
   ({ dealerType, companyName: 'Test Motors' }) as DealerProfile
 
 function renderGuard(state: Partial<ProfileState>, children: ReactNode = <div>Bulk upload page</div>) {
-  const value: ProfileState = { data: null, error: null, loading: false, reload: () => {}, ...state }
+  const value: ProfileState = {
+    data: null,
+    error: null,
+    loading: false,
+    reload: () => {},
+    setData: () => {},
+    ...state,
+  }
 
   return render(
     <MemoryRouter initialEntries={['/dealer/upload']}>

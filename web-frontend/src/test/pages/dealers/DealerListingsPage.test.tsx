@@ -72,7 +72,7 @@ const DEALER_PROFILE: DealerProfile = {
 function renderPage() {
   return render(
     <DealerProfileContext.Provider
-      value={{ data: DEALER_PROFILE, error: null, loading: false, reload: vi.fn() }}
+      value={{ data: DEALER_PROFILE, error: null, loading: false, reload: vi.fn(), setData: vi.fn() }}
     >
       <DealerListingsPage />
     </DealerProfileContext.Provider>,
@@ -137,6 +137,21 @@ describe('DealerListingsPage — row actions menu', () => {
 
     await waitFor(() => expect(unarchive).toHaveBeenCalledWith('v-ARCHIVED'))
     await waitFor(() => expect(getListings).toHaveBeenCalledTimes(2))
+  })
+
+  it('approving updates the row in place without re-fetching the list', async () => {
+    getListings.mockResolvedValue([listing({ status: 'PENDING_REVIEW' })])
+    approve.mockResolvedValue(listing({ status: 'LIVE' }))
+    renderPage()
+
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'Approve' }))
+
+    await waitFor(() => expect(approve).toHaveBeenCalledWith('v-PENDING_REVIEW'))
+    // The row's own status badge reflects the change immediately...
+    await waitFor(() => expect(screen.getByText('LIVE')).toBeInTheDocument())
+    // ...without the page falling back to a full reload() to learn it.
+    expect(getListings).toHaveBeenCalledTimes(1)
   })
 
   it('archiving a listing asks for confirmation first', async () => {
