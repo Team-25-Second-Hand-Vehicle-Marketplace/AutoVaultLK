@@ -1,0 +1,2 @@
+vehicle_type,make,model,year,price,mileage,fuel_type,transmission,registration_number,body_type,condition,color,engine_capacity_cc,owners_count,location_city,location_district,description
+Car,Toyota,Prius,2022,2400000,6004,Hybrd,Automatic,CBA-7873,Hatchback,used,Red,2200 cc,3,Anuradhapura,Anuradhapura,"2015 Toyota Aqua in good condition with 60,124 km. Available in Anuradhapura."

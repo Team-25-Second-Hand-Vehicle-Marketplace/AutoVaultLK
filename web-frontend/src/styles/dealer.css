@@ -150,16 +150,31 @@
 
 /* --- Business details form --- */
 
+/* A two-column grid rather than a single flex column: with no max-width the
+   form now fills .dealer-shell__main the same as the listings table does,
+   and a lone text input stretched across that full width reads worse than
+   the narrow card this replaces. Each FormField instead fills one column at
+   a comfortable input width, and .dealer-page__actions (the Save button,
+   the form's last child) spans both so it isn't stranded beside a field. */
 .dealer-form {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  max-width: 760px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 24px;
   padding: 24px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
+}
+
+.dealer-form .dealer-page__actions {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 720px) {
+  .dealer-form {
+    grid-template-columns: 1fr;
+  }
 }
 
 .dealer-muted {
@@ -245,16 +260,11 @@
 }
 
 /* --- Bulk upload ---
-   Scoped to the upload form itself, not .dealer-page generally — a form
-   reads better narrow, but the dashboard's tile grid and other pages should
-   use the full width .dealer-shell__main gives them. Matches the width of
-   .upload-columns below it (unconstrained, so it already fills the page) so
-   the two don't visually disagree on how wide this section is. */
-
-.upload-form,
-.upload-card {
-  max-width: 1080px;
-}
+   No max-width: the listings table (.listing-table-wrap) and the columns
+   reference below (.upload-columns) both already run edge to edge across
+   .dealer-shell__main, and this page previously read as an outlier next to
+   them — a narrow card with a wide table sitting under it. Filling the same
+   width keeps every dealer page at one consistent fill level. */
 
 .dealer-page__actions {
   display: flex;
