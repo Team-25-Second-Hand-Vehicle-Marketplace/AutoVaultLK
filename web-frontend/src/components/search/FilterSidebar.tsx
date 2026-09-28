@@ -282,17 +282,6 @@ export function FilterSidebar({
           Sunroof
         </label>
       </div>
-
-      <div className="filter-sidebar__footer">
-        <Button
-          type="button"
-          className="apply-filters-button"
-          onClick={onApply}
-          disabled={!hasUnappliedChanges}
-        >
-          {hasUnappliedChanges ? 'Apply Filters' : 'Filters Applied'}
-        </Button>
-      </div>
     </aside>
   )
 }
