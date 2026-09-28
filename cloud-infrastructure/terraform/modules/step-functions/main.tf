@@ -135,10 +135,14 @@ resource "aws_pipes_pipe" "ingestion_jobs" {
     # "Payload.$": "$" then forwards that array instead of {jobId}, and any
     # Catch's "ResultPath": "$.error" fails with States.ReferencePathConflict
     # ("Unable to apply step \"error\" to input [...]") because you can't
-    # attach a keyed field to a JSON array. <$.body> unwraps the one record
-    # down to its body, which is already the `{"jobId": "..."}` JSON the ETL
-    # state machine's states are written to expect.
-    input_template = "<$.body>"
+    # attach a keyed field to a JSON array. Pipes parses an SQS body that
+    # looks like JSON so its fields are addressable with dot notation; a bare
+    # "<$.body>" (passing the whole parsed body through unquoted) corrupted
+    # the leading character of the re-serialized object in testing
+    # (States.ExecutionFailed: InvalidExecutionInput, "was expecting
+    # double-quote to start field name"), so this builds the object
+    # explicitly instead of relying on that passthrough.
+    input_template = "{\"jobId\": <$.body.jobId>}"
 
     step_function_state_machine_parameters {
       invocation_type = "FIRE_AND_FORGET"

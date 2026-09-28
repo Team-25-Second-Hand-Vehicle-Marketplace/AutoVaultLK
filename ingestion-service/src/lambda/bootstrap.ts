@@ -128,7 +128,15 @@ async function connect(): Promise<DataSource> {
       // invocation and, under RDS Proxy, a backend connection with it. Bounded
       // below the shortest Lambda timeout so the query dies before the
       // function does, leaving a clean connection rather than an orphaned one.
-      statement_timeout: 55_000,
+      //
+      // query_timeout, not statement_timeout: the latter is a `SET
+      // statement_timeout = ...` sent to the server on connect, which RDS
+      // Proxy rejects outright ("Feature not supported: RDS Proxy currently
+      // doesn't support the option statement_timeout") — it broke every
+      // connection attempt in production. query_timeout is enforced by the
+      // pg driver itself (a client-side cancel after the deadline), so it
+      // never sends a SET and works the same under the proxy.
+      query_timeout: 55_000,
     },
   } as never);
 
