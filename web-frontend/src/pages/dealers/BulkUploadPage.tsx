@@ -1,7 +1,7 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toErrorMessage } from '../../api/client'
-import { buildTemplateCsv, uploadInventory } from '../../api/ingestion.api'
+import { buildTemplateCsv, getActiveJob, uploadInventory } from '../../api/ingestion.api'
 import { COLUMN_HELP, TEMPLATE_HEADER, isRequired } from '../../api/ingestion.template'
 import { KnownValuesReference } from '../../components/dealers/KnownValuesReference'
 import { Button } from '../../components/ui/Button'
@@ -52,9 +52,41 @@ export function BulkUploadPage() {
   const [error, setError] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState(0)
+  // Gates the form so it never flashes before a redirect to an active job.
+  const [checkingActive, setCheckingActive] = useState(true)
 
   const csvInput = useRef<HTMLInputElement>(null)
   const zipInput = useRef<HTMLInputElement>(null)
+
+  // A dealer who submitted, then navigated away while it was still
+  // PENDING/PROCESSING, otherwise has no way back to that job's status short
+  // of the URL they were on — this sends them straight there instead of a
+  // blank form they could resubmit into.
+  useEffect(() => {
+    const controller = new AbortController()
+    let cancelled = false
+
+    getActiveJob(controller.signal).then(
+      (active) => {
+        if (cancelled) return
+        if (active) {
+          navigate(`/dealer/uploads/${active.id}`, { replace: true })
+          return
+        }
+        setCheckingActive(false)
+      },
+      () => {
+        // A failed check should not block uploading a new file — worst case
+        // the dealer double-submits, which the pipeline already tolerates.
+        if (!cancelled) setCheckingActive(false)
+      },
+    )
+
+    return () => {
+      cancelled = true
+      controller.abort()
+    }
+  }, [navigate])
 
   const pickCsv = (file: File | null) => {
     setError(null)
@@ -111,6 +143,16 @@ export function BulkUploadPage() {
       setError(toErrorMessage(err, 'Upload failed. Please try again.'))
       setUploading(false)
     }
+  }
+
+  if (checkingActive) {
+    return (
+      <div className="dealer-page">
+        <p className="dealer-muted" role="status">
+          Checking for an upload already in progress…
+        </p>
+      </div>
+    )
   }
 
   return (

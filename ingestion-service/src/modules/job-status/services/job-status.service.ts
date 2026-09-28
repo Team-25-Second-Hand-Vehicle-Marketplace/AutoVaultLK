@@ -32,6 +32,12 @@ export class JobStatusService {
     private readonly etlStageLogRepository: EtlStageLogRepository,
   ) {}
 
+  /** Null means no active job — the caller (Bulk Upload page) shows the form. */
+  async getActiveJob(dealerId: string): Promise<{ id: string } | null> {
+    const job = await this.jobStatusRepository.findLatestActiveForDealer(dealerId);
+    return job ? { id: job.id } : null;
+  }
+
   async getJobStatus(
     id: string,
     dealerId: string,

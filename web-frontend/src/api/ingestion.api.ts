@@ -49,6 +49,16 @@ export async function getJobStatus(jobId: string, signal?: AbortSignal): Promise
 }
 
 /**
+ * The dealer's own most recent job that hasn't settled yet, if any — lets the
+ * Bulk Upload page notice "you already have one running" instead of showing a
+ * blank form a dealer who navigated away and came back could resubmit into.
+ */
+export async function getActiveJob(signal?: AbortSignal): Promise<{ id: string } | null> {
+  const { data } = await apiClient.get<{ id: string } | null>('/jobs/active', { signal })
+  return data
+}
+
+/**
  * FR-57: the row-level report behind the counts on getJobStatus.
  *
  * Only worth calling once a job is terminal — before that the pipeline is
