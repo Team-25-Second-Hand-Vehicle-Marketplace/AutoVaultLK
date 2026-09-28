@@ -3,6 +3,8 @@ import { getSearchOptions } from '../../api/search.api'
 import { toErrorMessage } from '../../api/client'
 import { useAsyncData } from '../../hooks/useAsyncData'
 
+const optionsError = (err: unknown) => toErrorMessage(err, 'Could not load the reference list.')
+
 /**
  * A dealer typing make/model/vehicle_type/condition into a spreadsheet has no
  * way to know what the pipeline will actually recognise until the upload
@@ -22,9 +24,7 @@ export function KnownValuesReference() {
   const panelId = useId()
 
   const fetchOptions = useCallback((signal: AbortSignal) => getSearchOptions(undefined, signal), [])
-  const options = useAsyncData(fetchOptions, (err) =>
-    toErrorMessage(err, 'Could not load the reference list.'),
-  )
+  const options = useAsyncData(fetchOptions, optionsError)
 
   return (
     <section className="upload-card">

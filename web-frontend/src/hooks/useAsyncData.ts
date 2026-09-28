@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer } from 'react'
+import { useCallback, useEffect, useReducer, useRef } from 'react'
 
 type State<T> = {
   data: T | null
@@ -39,6 +39,25 @@ export function useAsyncData<T>(
   // Bumped by reload() to re-run the effect without changing `fetcher`.
   const [nonce, bumpNonce] = useReducer((n: number) => n + 1, 0)
 
+  // `toMessage` is deliberately NOT an effect dependency below. A caller that
+  // inlines it (`(err) => toErrorMessage(err, '...')` written directly in the
+  // useAsyncData(...) call, instead of hoisted to module scope) gets a new
+  // function identity every render; if the effect depended on it, that alone
+  // would re-run the fetch every render, and every fetch's resulting dispatch
+  // triggers exactly the re-render that creates the next new identity — an
+  // infinite request loop with no error and no visible sign beyond the
+  // network tab (this took down KnownValuesReference.tsx's bulk-upload
+  // reference panel in production: ERR_INSUFFICIENT_RESOURCES from hammering
+  // GET /search/options). The ref always reads the latest `toMessage` without
+  // the effect ever needing to re-run because of it.
+  const toMessageRef = useRef(toMessage)
+  // Runs after render, never during it — writing to a ref while rendering is
+  // not allowed (breaks under concurrent rendering / StrictMode's double
+  // invocation). No dependency array: this should update after every render.
+  useEffect(() => {
+    toMessageRef.current = toMessage
+  })
+
   useEffect(() => {
     const controller = new AbortController()
     let settled = false
@@ -51,7 +70,7 @@ export function useAsyncData<T>(
       (err) => {
         settled = true
         if (!controller.signal.aborted) {
-          dispatch({ type: 'failure', error: toMessage(err) })
+          dispatch({ type: 'failure', error: toMessageRef.current(err) })
         }
       },
     )
@@ -61,7 +80,7 @@ export function useAsyncData<T>(
     })
 
     return () => controller.abort()
-  }, [fetcher, toMessage, nonce])
+  }, [fetcher, nonce])
 
   const reload = useCallback(() => bumpNonce(), [])
 
