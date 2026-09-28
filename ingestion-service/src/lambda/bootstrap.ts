@@ -16,28 +16,7 @@ import { UploadJobRepository } from '../modules/ingestion/repositories/upload-jo
 import { MarketplaceVehiclesWriteAdapter } from '../workers/etl-worker/pipeline/persistence/marketplace-vehicles-write.adapter';
 import type { DictionarySnapshot, StageContext } from '../workers/etl-worker/pipeline/types';
 
-/**
- * Per-container wiring for the stage Lambdas.
- *
- * **Deliberately not a Nest application context.** Booting Nest costs several
- * hundred milliseconds on every cold start to build a DI graph a stage cannot
- * use anyway — stages take a StageContext, not injected providers. This
- * constructs the five things a stage actually needs and nothing else.
- *
- * Everything here is cached at module scope, so a warm container pays for it
- * once. Lambda freezes the process between invocations rather than tearing it
- * down, which is what makes that safe: the DataSource's socket survives, and
- * the dictionary snapshot with it.
- *
- * **Deliberately excludes image processing.** ProcessJobImagesService pulls
- * in `sharp`, a native module — esbuild bundles its JS wrapper for the 10
- * zip-packaged stage Lambdas fine, but can't bundle its platform-specific
- * native binary, so importing it here anywhere in this module's graph broke
- * every zip stage at cold start ("Could not load the 'sharp' module using
- * the linux-x64 runtime"), not just ProcessImages. Only ProcessImages (a
- * container-image Lambda, built via Docker for linux-x64 directly) actually
- * uses it, so it wires its own copy in process-images.ts instead.
- */
+
 
 let cached: LambdaContext | undefined;
 
@@ -51,13 +30,7 @@ export type LambdaContext = {
   vehicles: MarketplaceVehiclesWriteAdapter;
 };
 
-/**
- * Reads configuration straight from process.env.
- *
- * `pipelineConfig` and `databaseConfig` are typed against ConfigService but
- * only ever call `.get(key)`, so this satisfies them structurally without
- * dragging @nestjs/config's module system into a Lambda.
- */
+
 const env = {
   get: <T = string>(key: string): T | undefined => process.env[key] as T | undefined,
 } as unknown as ConfigService;
@@ -92,17 +65,7 @@ export async function getContext(): Promise<LambdaContext> {
   return cached;
 }
 
-/**
- * One connection per container, not five.
- *
- * A Lambda handles a single invocation at a time, so a pool has nothing to
- * pool — but each concurrent execution is its own container with its own pool.
- * At MaxConcurrency 10 the default `max: 5` would be 50 connections for one
- * job, and 150 for three dealers uploading at once, against a Postgres
- * `max_connections` that defaults to 100.
- *
- * This alone is not enough at scale; RDS Proxy is the other half (plan §S6).
- */
+
 async function connect(): Promise<DataSource> {
   const base = databaseConfig() as Record<string, unknown>;
 
@@ -111,31 +74,10 @@ async function connect(): Promise<DataSource> {
     extra: {
       max: 1,
 
-      // Lambda freezes the process between invocations rather than tearing it
-      // down, so a socket can sit idle for minutes and still be reused. Long
-      // enough that a warm container does not reconnect on every request;
-      // short enough that an abandoned container releases its slot rather than
-      // holding one until the platform reaps it.
       idleTimeoutMillis: 120_000,
 
-      // Fail fast rather than burning the invocation's whole timeout waiting.
-      // Under RDS Proxy a borrow that takes this long means the proxy's own
-      // pool is exhausted, and a retry with backoff is a better answer than a
-      // Lambda that times out holding a pending connection.
       connectionTimeoutMillis: 10_000,
 
-      // A query that hangs holds the container's only connection for the whole
-      // invocation and, under RDS Proxy, a backend connection with it. Bounded
-      // below the shortest Lambda timeout so the query dies before the
-      // function does, leaving a clean connection rather than an orphaned one.
-      //
-      // query_timeout, not statement_timeout: the latter is a `SET
-      // statement_timeout = ...` sent to the server on connect, which RDS
-      // Proxy rejects outright ("Feature not supported: RDS Proxy currently
-      // doesn't support the option statement_timeout") — it broke every
-      // connection attempt in production. query_timeout is enforced by the
-      // pg driver itself (a client-side cancel after the deadline), so it
-      // never sends a SET and works the same under the proxy.
       query_timeout: 55_000,
     },
   } as never);
