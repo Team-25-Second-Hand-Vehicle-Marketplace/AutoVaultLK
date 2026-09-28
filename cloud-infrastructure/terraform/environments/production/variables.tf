@@ -26,6 +26,14 @@ variable "ses_sender_email" {
   default = null
 }
 
+# OAuth 2.0 Client ID from Google Cloud Console — verifies the audience of
+# Google ID tokens server-side. Not a secret (the frontend also ships it, via
+# VITE_GOOGLE_CLIENT_ID), so no reason to route it through Secrets Manager.
+variable "google_client_id" {
+  type    = string
+  default = ""
+}
+
 variable "ses_domain_name" {
   type    = string
   default = null

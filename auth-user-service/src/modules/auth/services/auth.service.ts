@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { DataSource, EntityManager, IsNull } from 'typeorm';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import * as bcrypt from 'bcryptjs';
+import { OAuth2Client } from 'google-auth-library';
 import {
   DealerProfile,
   VerificationStatus,
@@ -25,6 +26,7 @@ import { PasswordResetRequestDto } from '../dto/password-reset-request.dto';
 import { PasswordResetConfirmDto } from '../dto/password-reset-confirm.dto';
 import { ChangePasswordDto } from '../dto/change-password.dto';
 import { RefreshTokenDto } from '../dto/refresh-token.dto';
+import { GoogleLoginDto } from '../dto/google-login.dto';
 import { RegisterBuyerDto } from '../dto/register-buyer.dto';
 import { RegisterDealerDto } from '../dto/register-dealer.dto';
 import { RefreshTokensRepository } from '../repositories/refresh-tokens.repository';
@@ -40,6 +42,8 @@ type AuthUser = Pick<User, 'id' | 'email' | 'name' | 'role' | 'isActive'>;
 
 @Injectable()
 export class AuthService {
+  private googleClient?: OAuth2Client;
+
   constructor(
     private readonly usersRepository: UsersRepository,
     private readonly dealerProfilesRepository: DealerProfilesRepository,
@@ -245,6 +249,65 @@ export class AuthService {
       }
       throw error;
     }
+  }
+
+  /**
+   * "Continue with Google" — the ID-token flow, not a redirect: the frontend
+   * gets a signed credential directly from Google Identity Services and
+   * hands it here, so there is no redirect URI, no client secret, and no
+   * server-side round trip to Google's authorization endpoint.
+   *
+   * Deliberately excludes ADMIN, same as the password login() method does —
+   * admin sign-in stays on its own dedicated, more tightly controlled path.
+   */
+  async loginWithGoogle(data: GoogleLoginDto, session: SessionMetadata = {}) {
+    const payload = await this.verifyGoogleIdToken(data.idToken);
+
+    if (!payload.email || !payload.email_verified) {
+      throw new UnauthorizedException('Google account has no verified email address');
+    }
+
+    const email = payload.email.trim().toLowerCase();
+    let user = await this.usersRepository.findByEmail(email);
+
+    if (user?.role === 'ADMIN') {
+      throw new UnauthorizedException(AUTH_SECURITY_MESSAGES.EMAIL_NOT_VERIFIED);
+    }
+
+    if (!user) {
+      // No password is ever set on a Google-created account: a random value
+      // that can never be typed in stands in, rather than making passwordHash
+      // nullable (a schema change this one feature doesn't otherwise need).
+      // The existing forgot-password flow already overwrites this column, so
+      // this account can pick up a real password later without any extra work.
+      const placeholderPassword = randomBytes(32).toString('hex');
+      user = await this.usersRepository.create({
+        email,
+        passwordHash: await bcrypt.hash(placeholderPassword, 12),
+        name: payload.name?.trim() || email,
+        role: 'BUYER',
+        isActive: true,
+        emailVerifiedAt: new Date(),
+      });
+    } else if (!user.emailVerifiedAt || !user.isActive) {
+      // Google has already proven this email belongs to whoever is signing
+      // in — an existing not-yet-verified account (password registration
+      // abandoned before clicking the email link, say) can piggyback on
+      // that proof instead of still needing the original verification email.
+      user = await this.usersRepository.update(user.id, {
+        isActive: true,
+        emailVerifiedAt: user.emailVerifiedAt ?? new Date(),
+      });
+    }
+
+    if (!user.isActive) {
+      this.throwInactiveAccountError();
+    }
+
+    return this.issueTokenPair(user, {
+      ...session,
+      deviceLabel: data.deviceLabel ?? session.deviceLabel ?? null,
+    });
   }
 
   async refresh(
@@ -490,6 +553,32 @@ export class AuthService {
         activeCount - maxSessions + 1,
       );
     }
+  }
+
+  private async verifyGoogleIdToken(idToken: string) {
+    try {
+      const clientId = this.configService.get<string>('GOOGLE_CLIENT_ID');
+      const ticket = await this.getGoogleClient().verifyIdToken({
+        idToken,
+        audience: clientId,
+      });
+      const payload = ticket.getPayload();
+      if (!payload) {
+        throw new UnauthorizedException('Invalid Google credential');
+      }
+      return payload;
+    } catch (err) {
+      if (err instanceof UnauthorizedException) throw err;
+      // google-auth-library throws a plain Error for an expired, malformed,
+      // or wrong-audience token — never trust the token past this point.
+      throw new UnauthorizedException('Invalid Google credential');
+    }
+  }
+
+  private getGoogleClient(): OAuth2Client {
+    // Cached across warm invocations, same reasoning as VerificationEmailService's SES client.
+    this.googleClient ??= new OAuth2Client(this.configService.get<string>('GOOGLE_CLIENT_ID'));
+    return this.googleClient;
   }
 
   private signAccessToken(user: User) {

@@ -9,6 +9,7 @@ import { Button } from '../components/ui/Button'
 import { FormField } from '../components/ui/FormField'
 import { ErrorBanner } from '../components/ui/ErrorBanner'
 import { ResendVerification } from '../components/auth/ResendVerification'
+import { GoogleSignInButton } from '../components/auth/GoogleSignInButton'
 import { isEmailNotVerifiedMessage } from '../components/auth/email-verification'
 
 const loginSchema = z.object({
@@ -23,7 +24,7 @@ interface RedirectState {
 }
 
 export function LoginPage() {
-  const { login } = useAuth()
+  const { login, loginWithGoogle } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [formError, setFormError] = useState<string | null>(null)
@@ -50,6 +51,16 @@ export function LoginPage() {
       setFormError(toErrorMessage(error, 'Could not sign you in. Please try again.'))
     }
   })
+
+  const onGoogleCredential = async (idToken: string) => {
+    setFormError(null)
+    try {
+      await loginWithGoogle(idToken)
+      navigate(redirectTo, { replace: true })
+    } catch (error) {
+      setFormError(toErrorMessage(error, 'Could not sign you in with Google. Please try again.'))
+    }
+  }
 
   return (
     <div className="auth-page">
@@ -81,6 +92,14 @@ export function LoginPage() {
             {isSubmitting ? 'Signing in…' : 'Sign in'}
           </Button>
         </form>
+
+        <div className="auth-divider" role="separator">
+          <span>or</span>
+        </div>
+
+        <div className="auth-google">
+          <GoogleSignInButton onCredential={onGoogleCredential} onError={setFormError} />
+        </div>
 
         <p className="auth-card__footer">
           Don't have an account? <Link to="/register">Create one</Link>

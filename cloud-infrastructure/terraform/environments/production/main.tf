@@ -243,6 +243,7 @@ module "auth_lambda" {
     AUTH_RETURN_VERIFICATION_TOKEN   = tostring(var.auth_return_verification_token)
     AUTH_RETURN_PASSWORD_RESET_TOKEN = tostring(var.auth_return_verification_token)
     SES_FROM_EMAIL                   = coalesce(var.ses_sender_email, var.ses_domain_name != null ? "no-reply@${var.ses_domain_name}" : "")
+    GOOGLE_CLIENT_ID                 = var.google_client_id
     NOTIFICATION_INTERNAL_URL        = local.internal_api_base
     # Verification-document upload (FR-02.1) — same s3/local/demo modes as
     # marketplace's image serving; production always runs s3.

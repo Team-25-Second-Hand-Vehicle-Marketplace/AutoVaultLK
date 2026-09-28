@@ -17,6 +17,7 @@ import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import type { AuthenticatedUser } from '../types/authenticated-user.type';
 import { extractSessionMetadata } from '../utils/session-metadata.util';
 import { ChangePasswordDto } from '../dto/change-password.dto';
+import { GoogleLoginDto } from '../dto/google-login.dto';
 import { LoginDto } from '../dto/login.dto';
 import { PasswordResetConfirmDto } from '../dto/password-reset-confirm.dto';
 import { PasswordResetRequestDto } from '../dto/password-reset-request.dto';
@@ -59,6 +60,19 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.authService.login(
+      data,
+      extractSessionMetadata(req, data.deviceLabel),
+    );
+    return this.refreshTokenCookieService.attachCookies(res, result);
+  }
+
+  @Post('google')
+  async loginWithGoogle(
+    @Body() data: GoogleLoginDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.loginWithGoogle(
       data,
       extractSessionMetadata(req, data.deviceLabel),
     );
