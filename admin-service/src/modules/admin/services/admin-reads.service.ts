@@ -1,10 +1,12 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { mapDashboard } from '../mappers/dashboard.mapper';
+import { mapRejections } from '../mappers/rejections.mapper';
 import { mapTimeSeries } from '../mappers/time-series.mapper';
 import { AdminReadsRepository } from '../repositories/admin-reads.repository';
 import { AuditLogsRepository } from '../repositories/audit-logs.repository';
 import { DocumentUrlResolverService } from './document-url-resolver.service';
 import type { AuditLogsQueryDto } from '../dto/audit-logs-query.dto';
+import { DEFAULT_REJECTIONS_PAGE_SIZE } from '../dto/rejections-query.dto';
 
 /** Keys inside verificationDocuments the resolver knows how to open — see auth-user-service's verification-documents.decorator.ts. */
 const DOCUMENT_KEYS = ['businessRegistrationCertificate'] as const;
@@ -65,6 +67,23 @@ export class AdminReadsService {
 
   listUploads(status?: string) {
     return this.reads.listUploads(status);
+  }
+
+  async uploadRejections(jobId: string, page?: number, limit?: number) {
+    const job = await this.reads.findUploadJob(jobId);
+    if (!job) {
+      throw new NotFoundException(`Upload job with id ${jobId} not found`);
+    }
+
+    const resolvedPage = page ?? 1;
+    const resolvedLimit = limit ?? DEFAULT_REJECTIONS_PAGE_SIZE;
+    const { items, total } = await this.reads.findRejectionsForJob(
+      jobId,
+      resolvedPage,
+      resolvedLimit,
+    );
+
+    return mapRejections(items, total, resolvedPage, resolvedLimit);
   }
 
   reports(from: Date, to: Date) {

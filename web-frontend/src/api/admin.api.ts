@@ -11,6 +11,10 @@ import type {
   DealerVerificationStatus,
   UploadJobStatus,
 } from './admin.types'
+// Same shape as the dealer-facing endpoint (admin-service's rejections.mapper.ts
+// mirrors ingestion-service's job-status mapper field-for-field) — reusing the
+// type, and RejectionsReport itself, rather than duplicating both.
+import type { RejectionsPage } from './ingestion.types'
 
 export async function getDashboard(signal?: AbortSignal): Promise<AdminDashboard> {
   const { data } = await apiClient.get<AdminDashboard>('/admin/dashboard', { signal })
@@ -46,6 +50,18 @@ export async function getReports(
 ): Promise<AdminReports> {
   const { data } = await apiClient.get<AdminReports>('/admin/reports', {
     params: { from, to },
+    signal,
+  })
+  return data
+}
+
+export async function getUploadRejections(
+  jobId: string,
+  page = 1,
+  signal?: AbortSignal,
+): Promise<RejectionsPage> {
+  const { data } = await apiClient.get<RejectionsPage>(`/admin/uploads/${jobId}/rejections`, {
+    params: { page },
     signal,
   })
   return data

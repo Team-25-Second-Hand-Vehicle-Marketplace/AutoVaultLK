@@ -1,12 +1,14 @@
-import { useCallback } from 'react'
+import { Fragment, useCallback, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { listUploads } from '../../api/admin.api'
+import { getUploadRejections, listUploads } from '../../api/admin.api'
 import type { AdminUploadJob, UploadJobStatus } from '../../api/admin.types'
+import type { RejectionsPage } from '../../api/ingestion.types'
 import { toErrorMessage } from '../../api/client'
 import { useAsyncData } from '../../hooks/useAsyncData'
 import { ErrorBanner } from '../../components/ui/ErrorBanner'
 import { Pill, type PillVariant } from '../../components/ui/Pill'
 import { AdminTable } from '../../components/ui/AdminTable'
+import { RejectionsReport } from '../../components/dealers/RejectionsReport'
 import { formatDate } from '../../utils/format'
 
 const STATUSES: Array<UploadJobStatus | ''> = [
@@ -26,6 +28,7 @@ function statusVariant(status: string): PillVariant {
 }
 
 const uploadsError = (err: unknown) => toErrorMessage(err, 'Could not load uploads.')
+const rejectionsError = (err: unknown) => toErrorMessage(err, 'Could not load the skipped rows.')
 
 export function AdminUploadsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -41,6 +44,22 @@ export function AdminUploadsPage() {
   const { data, error, loading } = useAsyncData<AdminUploadJob[]>(fetchUploads, uploadsError,
   )
   const rows = data ?? []
+
+  // Only one job's rejections are ever shown at a time. useAsyncData, not a
+  // hand-rolled effect: refetching-on-key-change with a signal, an abort on
+  // cleanup, and a loading state that doesn't flash-set synchronously is
+  // exactly what it already does correctly elsewhere in this app.
+  const [expandedJobId, setExpandedJobId] = useState<string | null>(null)
+  const fetchRejections = useCallback(
+    (signal: AbortSignal) =>
+      expandedJobId ? getUploadRejections(expandedJobId, 1, signal) : Promise.resolve(null),
+    [expandedJobId],
+  )
+  const rejectionsState = useAsyncData<RejectionsPage | null>(fetchRejections, rejectionsError)
+
+  const toggleExpanded = (jobId: string) => {
+    setExpandedJobId((current) => (current === jobId ? null : jobId))
+  }
 
   return (
     <div className="admin-page">
@@ -79,25 +98,49 @@ export function AdminUploadsPage() {
         loadingLabel="Loading uploads…"
         emptyLabel="No upload jobs found."
         renderRow={(row) => (
-          <tr key={row.id}>
-            <td>
-              <div>{row.fileName}</div>
-              <span className="admin-muted admin-mono">{row.id}</span>
-            </td>
-            <td>
-              <Pill variant={statusVariant(row.status)}>{row.status}</Pill>
-            </td>
-            <td>
-              <span className="admin-mono">{row.dealerId}</span>
-            </td>
-            <td>
-              {row.validRecords}/{row.totalRecords}
-              {row.invalidRecords > 0 ? (
-                <span className="admin-muted"> · {row.invalidRecords} invalid</span>
-              ) : null}
-            </td>
-            <td>{formatDate(row.createdAt)}</td>
-          </tr>
+          <Fragment key={row.id}>
+            <tr>
+              <td>
+                <div>{row.fileName}</div>
+                <span className="admin-muted admin-mono">{row.id}</span>
+              </td>
+              <td>
+                <Pill variant={statusVariant(row.status)}>{row.status}</Pill>
+              </td>
+              <td>
+                <span className="admin-mono">{row.dealerId}</span>
+              </td>
+              <td>
+                {row.validRecords}/{row.totalRecords}
+                {row.invalidRecords > 0 ? (
+                  <>
+                    <span className="admin-muted"> · {row.invalidRecords} invalid</span>{' '}
+                    <button
+                      type="button"
+                      className="admin-card__link admin-link-button"
+                      onClick={() => toggleExpanded(row.id)}
+                    >
+                      {expandedJobId === row.id ? 'Hide reasons' : 'View reasons'}
+                    </button>
+                  </>
+                ) : null}
+              </td>
+              <td>{formatDate(row.createdAt)}</td>
+            </tr>
+            {expandedJobId === row.id && (
+              <tr>
+                <td colSpan={5} className="admin-table__expanded">
+                  <RejectionsReport
+                    rows={rejectionsState.data?.items ?? []}
+                    total={rejectionsState.data?.total ?? 0}
+                    skippedCount={row.invalidRecords}
+                    loading={rejectionsState.loading}
+                    error={rejectionsState.error}
+                  />
+                </td>
+              </tr>
+            )}
+          </Fragment>
         )}
       />
     </div>
