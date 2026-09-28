@@ -13,7 +13,6 @@ import { useAsyncData } from '../../hooks/useAsyncData'
 import { ErrorBanner } from '../../components/ui/ErrorBanner'
 import { Pill } from '../../components/ui/Pill'
 import { BarRow } from '../../components/admin/BarRow'
-import { Meter } from '../../components/admin/Meter'
 import { LineChart } from '../../components/admin/LineChart'
 import { PieChart } from '../../components/admin/PieChart'
 import { formatDate } from '../../utils/format'
@@ -237,25 +236,67 @@ export function AdminDashboardView({
           <header className="admin-card__head">
             <h2>Notification delivery</h2>
           </header>
-          <Meter
-            ratio={data.notifications.deliveryRate}
-            label="Delivered"
-            hint={`${data.notifications.sent.toLocaleString('en-LK')} sent · ${data.notifications.failed.toLocaleString('en-LK')} failed`}
-          />
-          {reports.data && (
-            <div className="admin-card__submeters">
-              <Meter
-                ratio={1 - reports.data.jobRates.errorRate}
-                label="Upload success rate"
-                hint={`Last ${REPORT_WINDOW_DAYS} days`}
+          <div className="admin-trend-grid">
+            <div className="admin-trend">
+              <h3 className="admin-trend__title">Delivered</h3>
+              <PieChart
+                data={[
+                  { label: 'Delivered', value: data.notifications.sent },
+                  { label: 'Failed', value: data.notifications.failed },
+                ]}
+                colors={['var(--success)', 'var(--danger)']}
+                emptyMessage="No notifications sent yet."
               />
-              <Meter
-                ratio={1 - reports.data.jobRates.partialRate}
-                label="Upload rows fully accepted"
-                hint={`Last ${REPORT_WINDOW_DAYS} days`}
-              />
+              <p className="admin-muted">
+                {data.notifications.sent.toLocaleString('en-LK')} sent ·{' '}
+                {data.notifications.failed.toLocaleString('en-LK')} failed
+              </p>
             </div>
-          )}
+
+            {reports.data && (
+              <>
+                <div className="admin-trend">
+                  <h3 className="admin-trend__title">Upload success rate</h3>
+                  <PieChart
+                    // jobRates gives a rate, not a count — the pie's legend
+                    // shows each slice's raw value beside its percentage, and
+                    // a raw 0.95 next to "95%" reads as a confusing repeat of
+                    // the same number. Recovering the whole-job count back
+                    // out of the rate gives the legend something real to say.
+                    data={(() => {
+                      const jobs = reports.data.uploads.jobs
+                      const failedJobs = Math.round(reports.data.jobRates.errorRate * jobs)
+                      return [
+                        { label: 'Successful', value: jobs - failedJobs },
+                        { label: 'Failed', value: failedJobs },
+                      ]
+                    })()}
+                    colors={['var(--success)', 'var(--danger)']}
+                  />
+                  <p className="admin-muted">Last {REPORT_WINDOW_DAYS} days</p>
+                </div>
+
+                <div className="admin-trend">
+                  <h3 className="admin-trend__title">Upload rows fully accepted</h3>
+                  <PieChart
+                    data={(() => {
+                      const jobs = reports.data.uploads.jobs
+                      const partialJobs = Math.round(reports.data.jobRates.partialRate * jobs)
+                      return [
+                        { label: 'Fully accepted', value: jobs - partialJobs },
+                        { label: 'Partially rejected', value: partialJobs },
+                      ]
+                    })()}
+                    // Warning, not danger: a partial job still loaded most of
+                    // its rows — the same distinction UPLOAD_STATUS_COLOR
+                    // already draws between PARTIAL and FAILED.
+                    colors={['var(--success)', 'var(--warning-text)']}
+                  />
+                  <p className="admin-muted">Last {REPORT_WINDOW_DAYS} days</p>
+                </div>
+              </>
+            )}
+          </div>
         </section>
 
         <section className="admin-card">

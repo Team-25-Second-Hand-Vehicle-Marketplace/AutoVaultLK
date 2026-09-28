@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { COUNTRY_CODES, dealerRegisterSchema as schema, type FormValues } from './dealerRegisterSchema'
 import { registerDealer, uploadVerificationDocument } from '../../api/auth.api'
@@ -43,7 +43,7 @@ export function DealerRegisterPage() {
     register,
     handleSubmit,
     trigger,
-    watch,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -51,7 +51,13 @@ export function DealerRegisterPage() {
     defaultValues: { dealerType: 'business', countryCode: '+94' },
   })
 
-  const values = watch()
+  // useWatch, not form.watch(): watch() returns a plain snapshot on each call
+  // rather than a properly reactive value, which is exactly what
+  // react-hooks/incompatible-library flags as unsafe to memoize under the
+  // React Compiler. useWatch is react-hook-form's own compiler-safe
+  // subscription-based equivalent — same no-name-argument shape (the whole
+  // form's values), just reactive the way the compiler expects.
+  const values = useWatch({ control })
 
   const onDocumentSelected = async (fileList: FileList | null) => {
     setDocumentError(null)

@@ -150,14 +150,16 @@ describe('AdminDashboardPage', () => {
     expect(screen.getByText('PARTIAL')).toBeInTheDocument()
   })
 
-  it('shows the notification delivery rate as a meter percentage', async () => {
+  it('shows the notification delivery split as a pie', async () => {
     mockDashboard.mockResolvedValue(DASHBOARD)
     mockReports.mockResolvedValue(REPORTS)
     mockActivity.mockResolvedValue(ACTIVITY)
 
     renderPage()
 
-    expect(await screen.findByText('96.0%')).toBeInTheDocument()
+    // DASHBOARD.notifications = { sent: 96, failed: 4 } -> 96% / 4%.
+    expect(await screen.findByText('96 · 96%')).toBeInTheDocument()
+    expect(screen.getByText('4 · 4%')).toBeInTheDocument()
     expect(screen.getByText('96 sent · 4 failed')).toBeInTheDocument()
   })
 

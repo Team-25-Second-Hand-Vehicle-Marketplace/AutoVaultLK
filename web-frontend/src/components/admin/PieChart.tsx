@@ -15,6 +15,13 @@ import { useState } from 'react'
  * adjacent-pair CVD/contrast check in light mode (this app has no dark admin
  * theme) per references/palette.md — see validate_palette.js's output for
  * the six-slot cut used here.
+ *
+ * This default is for genuinely nominal categories (statuses, makes, teams —
+ * swapping their order wouldn't change what they mean). When a pie's slices
+ * ARE a pass/fail polarity instead (delivered vs failed, accepted vs
+ * rejected), pass `colors` with the app's own reserved status tokens
+ * (var(--success), var(--danger), ...) — dataviz's collision rule: a series
+ * that *means* good/bad wears status tokens, never the categorical palette.
  */
 const CATEGORICAL_SLOTS = [
   '#2a78d6', // 1 blue
@@ -31,9 +38,11 @@ const RADIUS = SIZE / 2 - 4
 
 export function PieChart({
   data,
+  colors = CATEGORICAL_SLOTS,
   emptyMessage = 'No data in this window.',
 }: {
   data: { label: string; value: number }[]
+  colors?: string[]
   emptyMessage?: string
 }) {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
@@ -42,19 +51,19 @@ export function PieChart({
   // a generated color is indistinguishable from an existing one under CVD.
   const capped = data.filter((d) => d.value > 0)
   const slices =
-    capped.length <= CATEGORICAL_SLOTS.length
+    capped.length <= colors.length
       ? capped
       : [
           ...capped
             .slice()
             .sort((a, b) => b.value - a.value)
-            .slice(0, CATEGORICAL_SLOTS.length - 1),
+            .slice(0, colors.length - 1),
           {
             label: 'Other',
             value: capped
               .slice()
               .sort((a, b) => b.value - a.value)
-              .slice(CATEGORICAL_SLOTS.length - 1)
+              .slice(colors.length - 1)
               .reduce((sum, d) => sum + d.value, 0),
           },
         ]
@@ -69,14 +78,20 @@ export function PieChart({
     )
   }
 
-  let cursor = -Math.PI / 2 // 12 o'clock start, clockwise.
-  const arcs = slices.map((slice, i) => {
+  // reduce, not a mutated outer `cursor` variable: the React Compiler's
+  // immutability check flags reassigning a closed-over variable inside a
+  // .map() callback (its memoization assumes that callback has no side
+  // effects across iterations). Each step instead reads the previous arc's
+  // own `end` back out of the accumulator array.
+  const arcs = slices.reduce<
+    Array<{ label: string; value: number; start: number; end: number; fraction: number; color: string }>
+  >((acc, slice, i) => {
+    const start = acc.length > 0 ? acc[acc.length - 1].end : -Math.PI / 2 // 12 o'clock, clockwise.
     const fraction = slice.value / total
-    const start = cursor
-    const end = cursor + fraction * Math.PI * 2
-    cursor = end
-    return { ...slice, start, end, fraction, color: CATEGORICAL_SLOTS[i] }
-  })
+    const end = start + fraction * Math.PI * 2
+    acc.push({ ...slice, start, end, fraction, color: colors[i] })
+    return acc
+  }, [])
 
   return (
     <div className="pie-chart">

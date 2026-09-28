@@ -9,7 +9,7 @@ import type { TimeSeriesPoint } from '../../api/admin.types'
  * a whole number on a whole day.
  *
  * No axis library, no dependency — this is a handful of SVG paths, matching
- * BarRow/Meter's own hand-rolled approach elsewhere in this admin surface.
+ * BarRow/PieChart's own hand-rolled approach elsewhere in this admin surface.
  */
 
 const WIDTH = 600
