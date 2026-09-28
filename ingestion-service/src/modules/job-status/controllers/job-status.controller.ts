@@ -23,6 +23,18 @@ import { JobStatusService } from '../services/job-status.service';
 export class JobStatusController {
   constructor(private readonly jobStatusService: JobStatusService) {}
 
+  /**
+   * Lets the Bulk Upload page find its way back to an in-progress job after
+   * the dealer navigates away and returns. Registered before ':id' so
+   * "active" is never parsed as a job id.
+   */
+  @Get('active')
+  async getActiveJob(
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<{ id: string } | null> {
+    return this.jobStatusService.getActiveJob(user.id);
+  }
+
   @Get(':id')
   async getJobStatus(
     @Param('id', new ParseUUIDPipe()) id: string,

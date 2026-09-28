@@ -68,7 +68,7 @@ describe('JobStatusRepository', () => {
     it('orders by row number, then stage', async () => {
       await repository.findRejectedRecords('job-1', 'dealer-1', 1, 50);
 
-      expect(qb.orderBy).toHaveBeenCalledWith('rejected.row_number', 'ASC');
+      expect(qb.orderBy).toHaveBeenCalledWith('rejected.rowNumber', 'ASC');
       expect(qb.addOrderBy).toHaveBeenCalledWith('rejected.stage', 'ASC');
     });
 

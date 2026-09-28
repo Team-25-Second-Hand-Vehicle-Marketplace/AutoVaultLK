@@ -35,6 +35,25 @@ export class JobStatusRepository {
   }
 
   /**
+   * The dealer's own most recent job that has not settled yet, if any.
+   *
+   * Lets the Bulk Upload page notice "you already have one running" on load
+   * rather than showing a blank form a dealer could resubmit into — a dealer
+   * who submits, navigates away mid-processing, and comes back otherwise has
+   * no way back to that job's status short of the URL they were on.
+   */
+  async findLatestActiveForDealer(dealerId: string): Promise<UploadJob | null> {
+    return this.uploadJobRepository.findOne({
+      select: { id: true },
+      where: [
+        { dealerId, status: 'PENDING' },
+        { dealerId, status: 'PROCESSING' },
+      ],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  /**
    * The rejected rows of one job, scoped to the dealer that owns it.
    *
    * **The dealer filter is part of this query, not a prior check.** Fetching
@@ -63,7 +82,12 @@ export class JobStatusRepository {
         { dealerId },
       )
       .where('rejected.upload_job_id = :uploadJobId', { uploadJobId })
-      .orderBy('rejected.row_number', 'ASC')
+      // Entity property names (rowNumber), not the DB column (row_number):
+      // TypeORM's join+pagination combining pass needs the property name to
+      // resolve each order-by expression back to entity metadata, and throws
+      // ("Cannot read properties of undefined (reading 'databaseName')")
+      // deep in SelectQueryBuilder when given the raw column name instead.
+      .orderBy('rejected.rowNumber', 'ASC')
       .addOrderBy('rejected.stage', 'ASC')
       .skip((page - 1) * limit)
       .take(limit)
