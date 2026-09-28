@@ -15,6 +15,7 @@ import { Pill } from '../../components/ui/Pill'
 import { BarRow } from '../../components/admin/BarRow'
 import { Meter } from '../../components/admin/Meter'
 import { LineChart } from '../../components/admin/LineChart'
+import { PieChart } from '../../components/admin/PieChart'
 import { formatDate } from '../../utils/format'
 
 /** A status's reserved app color, by CSS custom property name — the same
@@ -181,6 +182,28 @@ export function AdminDashboardView({
                 />
               ))}
             </div>
+          )}
+        </section>
+
+        <section className="admin-card">
+          <header className="admin-card__head">
+            <h2>Listings composition</h2>
+            <span className="admin-muted">Last {REPORT_WINDOW_DAYS} days</span>
+          </header>
+          {reports.loading ? (
+            <p className="admin-muted" role="status">
+              Loading…
+            </p>
+          ) : reports.error ? (
+            <ErrorBanner message={reports.error} />
+          ) : (
+            <PieChart
+              data={listingEntries.map(([status, count]) => ({
+                label: status.replace(/_/g, ' '),
+                value: count,
+              }))}
+              emptyMessage="No listings in this window."
+            />
           )}
         </section>
 

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { AdminDashboardPage } from '../../../pages/admin/AdminDashboardPage'
 import { getDashboard, getReports, getReportsTimeSeries, searchAuditLogs } from '../../../api/admin.api'
@@ -112,10 +112,29 @@ describe('AdminDashboardPage', () => {
 
     renderPage()
 
-    expect(await screen.findByText('Listings by status')).toBeInTheDocument()
-    expect(screen.getByText('LIVE'.replace(/_/g, ' '))).toBeInTheDocument()
-    expect(screen.getByText('DRAFT')).toBeInTheDocument()
-    expect(screen.getByText('REJECTED')).toBeInTheDocument()
+    const heading = await screen.findByText('Listings by status')
+    // Scoped to this card: the same statuses also appear in the Listings
+    // composition pie's legend just below, so an unscoped getByText would be
+    // ambiguous between the two.
+    const card = heading.closest('section') as HTMLElement
+    expect(within(card).getByText('LIVE')).toBeInTheDocument()
+    expect(within(card).getByText('DRAFT')).toBeInTheDocument()
+    expect(within(card).getByText('REJECTED')).toBeInTheDocument()
+  })
+
+  it('renders a pie legend with each status’s share of listings', async () => {
+    mockDashboard.mockResolvedValue(DASHBOARD)
+    mockReports.mockResolvedValue(REPORTS)
+    mockActivity.mockResolvedValue(ACTIVITY)
+
+    renderPage()
+
+    const heading = await screen.findByText('Listings composition')
+    const card = heading.closest('section') as HTMLElement
+    // REPORTS.listings = { LIVE: 40, DRAFT: 5, REJECTED: 1 }, total 46.
+    expect(within(card).getByText('40 · 87%')).toBeInTheDocument()
+    expect(within(card).getByText('5 · 11%')).toBeInTheDocument()
+    expect(within(card).getByText('1 · 2%')).toBeInTheDocument()
   })
 
   it('renders a bar per upload status from the dashboard summary', async () => {
@@ -195,7 +214,10 @@ describe('AdminDashboardPage', () => {
     renderPage()
 
     expect(await screen.findByText('Live listings')).toBeInTheDocument()
-    expect(screen.getByText('Could not load report totals.')).toBeInTheDocument()
+    // Both Listings by status and Listings composition read from the same
+    // failed reports call, so each independently shows its own copy of the
+    // error rather than one card silently going blank.
+    expect(screen.getAllByText('Could not load report totals.')).toHaveLength(2)
     // Uploads-by-status comes from the dashboard summary, not the reports
     // call, so it must still render even though reports failed.
     expect(screen.getByText('Uploads by status')).toBeInTheDocument()

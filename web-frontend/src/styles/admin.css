@@ -783,6 +783,77 @@
   color: var(--text-muted);
 }
 
+/* --- Dashboard: pie chart --- */
+
+.pie-chart {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.pie-chart--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 160px;
+}
+
+.pie-chart__svg {
+  width: 160px;
+  height: 160px;
+  flex-shrink: 0;
+}
+
+.pie-chart__slice {
+  stroke: var(--bg);
+  stroke-width: 2;
+  transition: opacity 0.15s;
+  cursor: pointer;
+}
+
+.pie-chart__legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.pie-chart__legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: default;
+}
+
+.pie-chart__swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.pie-chart__legend-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-h);
+  text-transform: capitalize;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pie-chart__legend-value {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .activity-feed {
   list-style: none;
   margin: 0;
