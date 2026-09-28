@@ -1,0 +1,9 @@
+registration_number,make,model,year,price,mileage,fuel_type,transmission,body_type,color,engine_capacity_cc,owners_count,location_district
+CBQ-4417,Toyota,Corolla,2019,7850000,62000,Petrol,Automatic,Sedan,Pearl White,1800,1,Colombo
+cbq 4418,toyata,corrola axio,18,"Rs. 6,450,000/=","72,500 km",petrol,auto,saloon,pearl white,1500cc,2,colombo
+CBQ-4419,TOYOTA MOTOR CORPORATION JAPAN,Land Cruiser Prado TX,2021,42.5M,38000,deisel,tiptronic,jeep,Gun Metal,2755,1,Gampaha
+CBQ-4420,Honda,Vezel,2020,"9,250,000",55000,Hybrid,CVT,SUV,Ruby Red,1496,1,Kandy
+,Suzuki,Wagon R,2018,3950000,88000,Hybrid,Automatic,Hatchback,Silver,658,3,Kurunegala
+CBQ-4422,Nissan,X-Trail,2017,"3,5",95000,Petrol,Automatic,SUV,Black,1997,2,Galle
+CBQ-4423,Lamborghini,Aventador,2020,145000000,-1200,Petrol,Automatic,Coupe,Arancio,6498,1,Colombo
+CBQ-4424,Mitsubishi,Montero Sport,2077,11200000,67000,Diesel,Manual,SUV,White,2442,2,Matara
