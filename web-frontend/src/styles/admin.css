@@ -251,49 +251,60 @@
 
 /* --- Tiles --- */
 
-.admin-tiles {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 14px;
+/* --- Reports: printable business-document view --- */
+
+.report-doc {
+  margin-top: 8px;
 }
 
-.admin-tiles__item {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 18px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  box-shadow: var(--shadow);
+.report-doc__header {
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--border);
 }
 
-.admin-tiles__item--link {
-  text-decoration: none;
-  color: inherit;
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-
-.admin-tiles__item--link:hover {
-  border-color: var(--accent);
-  box-shadow: var(--shadow-md);
-}
-
-.admin-tiles__label {
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-.admin-tiles__value {
-  font-size: 28px;
-  line-height: 1.1;
+.report-doc__header h2 {
+  margin: 0 0 4px;
+  font-size: 21px;
+  font-weight: 700;
   color: var(--text-h);
-  font-weight: 600;
 }
 
-.admin-tiles__hint {
-  font-size: 12px;
-  color: var(--text-muted);
+.report-doc__kpis {
+  margin-bottom: 24px;
+}
+
+/* Everything with this class is UI chrome (nav, the date form, the export
+   button itself) that has no place on the exported document — only
+   .report-doc should survive to the printed page. */
+@media print {
+  .no-print,
+  .admin-shell__sidebar {
+    display: none !important;
+  }
+
+  .admin-shell {
+    display: block;
+  }
+
+  .admin-shell__main {
+    padding: 0;
+  }
+
+  body {
+    background: #fff;
+  }
+
+  .admin-card,
+  .admin-kpi {
+    box-shadow: none;
+    border: 1px solid #ccc;
+    break-inside: avoid;
+  }
+
+  .admin-grid {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 /* --- Tabs / toolbar / table --- */
