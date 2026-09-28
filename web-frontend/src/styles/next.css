@@ -621,20 +621,27 @@ h4 {
   font-size: clamp(46px, 7.4vw, 104px);
   font-weight: 600;
   letter-spacing: -0.045em;
-  line-height: 0.98;
+  line-height: 1.12;
   color: #fff;
+  max-width: 100%;
 }
 
 .nx-hero__word-wrap {
   display: inline-block;
-  margin-right: 0.26em;
+  width: max-content;
+  max-width: 100%;
+  margin-right: 0.18em;
   overflow: hidden;
-  padding-bottom: 0.12em;
-  margin-bottom: -0.12em;
+  line-height: 1.16;
+  /* Keeps descenders inside the reveal mask after the word settles at y: 0. */
+  padding: 0.06em 0.04em 0.3em;
+  margin-top: -0.06em;
+  vertical-align: bottom;
 }
 
 .nx-hero__word {
   display: inline-block;
+  line-height: 1.16;
 }
 
 .nx-hero__word--gold {
@@ -816,7 +823,8 @@ h4 {
   flex-direction: column;
   gap: 2px;
   padding: 14px 18px;
-  min-width: 118px;
+  min-width: 140px;
+  min-height: 140px;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.07);
   border: 1px solid rgba(255, 255, 255, 0.13);
