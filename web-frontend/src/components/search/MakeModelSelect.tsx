@@ -1,21 +1,19 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getSearchOptions } from '../../api/search.api'
-import type { MakeOption, VehicleTypeValue } from '../../api/search.types'
+import type { FilterSearchParams, MakeOption, VehicleTypeValue } from '../../api/search.types'
 
 interface Props {
   vehicleTypes: VehicleTypeValue[]
   selectedMakes: string[]
   selectedModels: string[]
-  onMakesChange: (makes: string[]) => void
-  onModelsChange: (models: string[]) => void
+  onChange: (patch: Pick<FilterSearchParams, 'make' | 'model'>) => void
 }
 
 export function MakeModelSelect({
   vehicleTypes,
   selectedMakes,
   selectedModels,
-  onMakesChange,
-  onModelsChange,
+  onChange,
 }: Props) {
   
   const scopeType = vehicleTypes.length === 1 ? vehicleTypes[0] : undefined
@@ -56,26 +54,24 @@ export function MakeModelSelect({
   const toggleMake = (name: string) => {
     if (selectedMakes.includes(name)) {
       const nextMakes = selectedMakes.filter((m) => m !== name)
-      onMakesChange(nextMakes)
-
       const stillValid = makes
         .filter((make) => nextMakes.includes(make.name))
         .flatMap((make) => make.models.map((model) => model.name))
       const nextModels = selectedModels.filter((model) => stillValid.includes(model))
-      if (nextModels.length !== selectedModels.length) {
-        onModelsChange(nextModels)
-      }
+      // A make removal can invalidate models. Send both fields together so it
+      // remains one filter update and therefore one search request.
+      onChange({ make: nextMakes, model: nextModels })
     } else {
-      onMakesChange([...selectedMakes, name])
+      onChange({ make: [...selectedMakes, name] })
     }
   }
 
   const toggleModel = (name: string) => {
-    onModelsChange(
-      selectedModels.includes(name)
+    onChange({
+      model: selectedModels.includes(name)
         ? selectedModels.filter((m) => m !== name)
         : [...selectedModels, name],
-    )
+    })
   }
 
   return (

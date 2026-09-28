@@ -833,14 +833,14 @@ h4 {
 
 .nx-glass-stat b {
   font-family: var(--display);
-  font-size: 26px;
+  font-size: 34px;
   font-weight: 600;
   letter-spacing: -0.02em;
   color: #ffffff;
 }
 
 .nx-glass-stat span {
-  font-size: 12px;
+  font-size: 14px;
   color: rgba(255, 255, 255, 0.65);
 }
 

@@ -98,7 +98,7 @@ describe('useVehicleSearch', () => {
     expect(result.current.result).toBeNull()
   })
 
-  it('updateDraft stages a change without triggering a new search', async () => {
+  it('updateDraft applies a change and triggers exactly one search with the latest filters', async () => {
     vi.mocked(filterSearch).mockResolvedValue(emptyResponse)
 
     const { result } = renderHook(() => useVehicleSearch(), {
@@ -112,12 +112,12 @@ describe('useVehicleSearch', () => {
       result.current.updateDraft('minPrice', 100000)
     })
 
-    expect(result.current.draft.minPrice).toBe(100000)
-    expect(result.current.hasUnappliedChanges).toBe(true)
-    expect(vi.mocked(filterSearch).mock.calls.length).toBe(callsBefore)
+    await waitFor(() => expect(result.current.appliedFilters.minPrice).toBe(100000))
+    await waitFor(() => expect(vi.mocked(filterSearch).mock.calls.length).toBe(callsBefore + 1))
+    expect(vi.mocked(filterSearch).mock.calls.at(-1)?.[0]).toMatchObject({ minPrice: 100000 })
   })
 
-  it('applyFilters pushes the draft to the URL and triggers a search', async () => {
+  it('updateDraftMany applies a range in one request', async () => {
     vi.mocked(filterSearch).mockResolvedValue(emptyResponse)
 
     const { result } = renderHook(() => useVehicleSearch(), {
@@ -127,36 +127,15 @@ describe('useVehicleSearch', () => {
     await waitFor(() => expect(result.current.loading).toBe(false))
 
     act(() => {
-      result.current.updateDraft('minPrice', 250000)
-    })
-    act(() => {
-      result.current.applyFilters()
+      result.current.updateDraftMany({ minPrice: 250000, maxPrice: 500000 })
     })
 
     await waitFor(() => expect(result.current.appliedFilters.minPrice).toBe(250000))
-    expect(result.current.hasUnappliedChanges).toBe(false)
-  })
-
-  it('resetDraft reverts unapplied edits back to the applied filters', async () => {
-    vi.mocked(filterSearch).mockResolvedValue(emptyResponse)
-
-    const { result } = renderHook(() => useVehicleSearch(), {
-      wrapper: wrapper('/search?minPrice=100000'),
+    await waitFor(() => expect(vi.mocked(filterSearch).mock.calls.length).toBe(2))
+    expect(vi.mocked(filterSearch).mock.calls.at(-1)?.[0]).toMatchObject({
+      minPrice: 250000,
+      maxPrice: 500000,
     })
-
-    await waitFor(() => expect(result.current.loading).toBe(false))
-
-    act(() => {
-      result.current.updateDraft('minPrice', 999999)
-    })
-    expect(result.current.hasUnappliedChanges).toBe(true)
-
-    act(() => {
-      result.current.resetDraft()
-    })
-
-    expect(result.current.draft.minPrice).toBe(100000)
-    expect(result.current.hasUnappliedChanges).toBe(false)
   })
 
   it('removeAppliedFilters clears both ends of a range filter in one call', async () => {
