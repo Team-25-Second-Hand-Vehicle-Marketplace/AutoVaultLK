@@ -33,6 +33,7 @@ import { AdminUsersPage } from './pages/admin/AdminUsersPage'
 import { AdminUploadsPage } from './pages/admin/AdminUploadsPage'
 import { AdminReportsPage } from './pages/admin/AdminReportsPage'
 import { AdminAuditLogsPage } from './pages/admin/AdminAuditLogsPage'
+import { AdminDashboardPreviewPage } from './pages/admin/AdminDashboardPreviewPage'
 
 /**
  * Full-bleed layouts that carry their own chrome — marketplace header/footer
@@ -113,6 +114,16 @@ function App() {
                 }
               />
               <Route path="/admin/login" element={<AdminLoginPage />} />
+              {/* Dev-only: renders the real dashboard against fixed mock
+                  data, no login needed — a way to check a local dashboard
+                  change in the browser before pushing it. Stripped out of
+                  a production build by this env check; not linked from
+                  anywhere in the app. Safe to delete once you're done. */}
+              {import.meta.env.DEV && (
+                <Route path="/admin/preview" element={<AdminLayout />}>
+                  <Route index element={<AdminDashboardPreviewPage />} />
+                </Route>
+              )}
               <Route
                 path="/admin"
                 element={
