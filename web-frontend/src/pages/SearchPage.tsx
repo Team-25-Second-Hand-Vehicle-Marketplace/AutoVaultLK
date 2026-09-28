@@ -17,9 +17,6 @@ export function SearchPage() {
     draft,
     updateDraft,
     updateDraftMany,
-    applyFilters,
-    resetDraft,
-    hasUnappliedChanges,
     appliedFilters,
     result,
     loading,
@@ -60,11 +57,6 @@ export function SearchPage() {
 
   const rangeStart = result && result.total > 0 ? (result.page - 1) * result.limit + 1 : 0
   const rangeEnd = result ? Math.min(result.page * result.limit, result.total) : 0
-
-  const applyAndCloseFilters = () => {
-    applyFilters()
-    if (isMobile) setFiltersOpen(false)
-  }
 
   const showSidebar = filtersOpen
   const bodyClass = [
@@ -109,9 +101,6 @@ export function SearchPage() {
               facets={result?.facets}
               onUpdate={updateDraft}
               onUpdateMany={updateDraftMany}
-              onApply={applyAndCloseFilters}
-              onReset={resetDraft}
-              hasUnappliedChanges={hasUnappliedChanges}
             />
           </div>
         )}
