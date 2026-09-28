@@ -11,6 +11,7 @@ export type ValidateFileOutput = {
   dealerId: string;
   key: string;
   headers: string[];
+  zipKey: string | null;
 };
 
 /**
@@ -52,6 +53,10 @@ export const handler = async (input: ValidateFileInput): Promise<ValidateFileOut
       dealerId: job.dealerId,
       key: result.key,
       headers: result.headers,
+      // Carried forward through SplitChunksOutput so ProcessImages (which
+      // reads this off ProcessRows' input, not off the job row) receives it.
+      // Nothing between here and there ever read job.zipS3Path itself.
+      zipKey: job.zipS3Path,
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

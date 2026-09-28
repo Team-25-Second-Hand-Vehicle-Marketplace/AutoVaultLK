@@ -4,8 +4,9 @@
   "States": {
     "ValidateFile": {
       "Type": "Task",
-      "Comment": "The only state permitted to fail the whole job on content. A file with no header row has no rows to reject individually.",
+      "Comment": "The only state permitted to fail the whole job on content. A file with no header row has no rows to reject individually. InputPath unwraps the Pipe's batch array (SQS + EventBridge Pipes always delivers a one-element array to a Step Functions target, even at batch_size 1 and with an InputTemplate) into the plain {jobId} object every state, including this one's own Retry/Catch, is written to expect. Without it, Payload.$ forwarded the whole array, input.jobId was undefined, and TypeORM silently dropped that from the WHERE clause instead of erroring - so ValidateFile silently picked an unrelated dealer's job.",
       "Resource": "arn:aws:states:::lambda:invoke",
+      "InputPath": "$[0]",
       "Parameters": {
         "FunctionName": "${ValidateFileFunctionArn}",
         "Payload.$": "$"
