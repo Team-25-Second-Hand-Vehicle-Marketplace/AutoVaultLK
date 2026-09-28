@@ -13,6 +13,10 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://marketplace:marketplace@localhost:5433/vehicle_marketplace
+      ADMIN_DATABASE_URL: postgresql://admin_service_role:dev_admin@localhost:5433/vehicle_marketplace
+
     defaults:
       run:
         working-directory: admin-service
@@ -33,6 +37,46 @@ jobs:
 
       - name: Run tests
         run: npm run test:ci
+
+      # Integration tests connect as admin_service_role and assert the
+      # cross-schema SELECT grants (auth, marketplace, ingestion,
+      # notification) actually hold, and that the raw DATE_TRUNC/
+      # query-builder SQL in AdminReadsRepository executes against a real
+      # Postgres — neither is observable from a unit test that stubs every
+      # Repository<T>. The suite skips itself when no database is reachable,
+      # so a developer without Docker gets a green local build; here the
+      # service container opts in explicitly.
+      - name: Start Postgres
+        run: docker compose up -d postgres
+        working-directory: .
+
+      - name: Wait for Postgres
+        run: |
+          for i in $(seq 1 30); do
+            if docker exec vehicle_marketplace_postgres \
+                 pg_isready -U marketplace -d vehicle_marketplace; then exit 0; fi
+            sleep 2
+          done
+          echo "Postgres did not become ready" >&2
+          exit 1
+
+      # seed:vehicles imports buildSearchText from marketplace-service, so its
+      # dependencies must be installed even though this job never runs its code.
+      - name: Install marketplace-service dependencies
+        working-directory: marketplace-service
+        run: npm ci
+
+      - name: Prepare database
+        working-directory: database
+        run: |
+          npm ci
+          npm run migration:run
+          npm run grants
+          npm run seed:dictionaries
+          npm run seed:vehicles
+
+      - name: Run integration tests
+        run: npm run test:integration
 
       - name: Build service
         run: npm run build
