@@ -4,6 +4,7 @@ import { AuditLog } from '../../infrastructure/database/entities/audit-log.entit
 import { AuthUserView } from '../../infrastructure/database/entities/auth-user.view-entity';
 import { DealerProfileView } from '../../infrastructure/database/entities/dealer-profile.view-entity';
 import { NotificationView } from '../../infrastructure/database/entities/notification.view-entity';
+import { RejectedRecordView } from '../../infrastructure/database/entities/rejected-record.view-entity';
 import { UploadJobView } from '../../infrastructure/database/entities/upload-job.view-entity';
 import { VehicleView } from '../../infrastructure/database/entities/vehicle.view-entity';
 import { JwtAuthModule } from '../auth/jwt-auth.module';
@@ -24,6 +25,7 @@ import { DocumentUrlResolverService } from './services/document-url-resolver.ser
       AuthUserView,
       DealerProfileView,
       NotificationView,
+      RejectedRecordView,
       UploadJobView,
       VehicleView,
     ]),

@@ -21,6 +21,7 @@ import { ListUploadsQueryDto } from '../dto/list-uploads-query.dto';
 import { ListUsersQueryDto } from '../dto/list-users-query.dto';
 import { RejectDealerDto } from '../dto/reject-dealer.dto';
 import { ReportsQueryDto } from '../dto/reports-query.dto';
+import { RejectionsQueryDto } from '../dto/rejections-query.dto';
 import { AdminMutationsService } from '../services/admin-mutations.service';
 import { AdminReadsService } from '../services/admin-reads.service';
 
@@ -51,6 +52,14 @@ export class AdminController {
   @Get('uploads')
   listUploads(@Query() query: ListUploadsQueryDto) {
     return this.reads.listUploads(query.status);
+  }
+
+  @Get('uploads/:id/rejections')
+  uploadRejections(
+    @Param('id', ParseUUIDPipe) jobId: string,
+    @Query() query: RejectionsQueryDto,
+  ) {
+    return this.reads.uploadRejections(jobId, query.page, query.limit);
   }
 
   @Get('reports')

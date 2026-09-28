@@ -5,6 +5,7 @@ import { AuditLog } from '../../../infrastructure/database/entities/audit-log.en
 import { AuthUserView } from '../../../infrastructure/database/entities/auth-user.view-entity';
 import { DealerProfileView } from '../../../infrastructure/database/entities/dealer-profile.view-entity';
 import { NotificationView } from '../../../infrastructure/database/entities/notification.view-entity';
+import { RejectedRecordView } from '../../../infrastructure/database/entities/rejected-record.view-entity';
 import { UploadJobView } from '../../../infrastructure/database/entities/upload-job.view-entity';
 import { VehicleView } from '../../../infrastructure/database/entities/vehicle.view-entity';
 import type { DashboardRaw, StatusCountRow } from '../mappers/dashboard.mapper';
@@ -27,6 +28,8 @@ export class AdminReadsRepository {
     private readonly notifications: Repository<NotificationView>,
     @InjectRepository(AuditLog)
     private readonly auditLogs: Repository<AuditLog>,
+    @InjectRepository(RejectedRecordView)
+    private readonly rejections: Repository<RejectedRecordView>,
   ) {}
 
   async loadDashboardRaw(): Promise<DashboardRaw> {
@@ -146,6 +149,36 @@ export class AdminReadsRepository {
       where: status ? { status } : {},
       order: { createdAt: 'DESC' },
     });
+  }
+
+  findUploadJob(id: string): Promise<UploadJobView | null> {
+    return this.uploads.findOne({ where: { id } });
+  }
+
+  /**
+   * Unscoped by dealer — unlike ingestion-service's own equivalent, which is
+   * ownership-checked for a dealer calling it about their own job. An admin
+   * reviewing any job is the point here, not a gap.
+   *
+   * Uses TypeORM's typed find options (`order: { rowNumber: ... }`), not a
+   * raw query-builder string, specifically to avoid the property-name-vs-
+   * column-name mixup that broke this exact query's sibling in
+   * ingestion-service's JobStatusRepository.findRejectedRecords — typed
+   * options can't take the wrong one, there's no string to get wrong.
+   */
+  async findRejectionsForJob(
+    uploadJobId: string,
+    page: number,
+    limit: number,
+  ): Promise<{ items: RejectedRecordView[]; total: number }> {
+    const [items, total] = await this.rejections.findAndCount({
+      where: { uploadJobId },
+      order: { rowNumber: 'ASC', stage: 'ASC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    return { items, total };
   }
 
   async loadReports(from: Date, to: Date) {
