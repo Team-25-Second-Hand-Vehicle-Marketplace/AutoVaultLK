@@ -198,4 +198,64 @@ describe('NormalizationDetails', () => {
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByText('Corrected misspelling.')).not.toBeInTheDocument()
   })
+
+  // Groq repairs a row, not a single field, and writes the same sentence onto
+  // every field it touched — "Corrected make to Suzuki, model to Wagon R..."
+  // lands on both `make` and `model`. One <dd> per field printed that
+  // sentence twice; fields sharing a reasoning string must collapse into one
+  // explanation, labelled with every field it covers.
+  it('shows a reasoning shared by multiple fields only once', async () => {
+    const shared = 'Corrected make to Suzuki, model to Wagon R, and fuel type to HYBRID.'
+    const user = userEvent.setup()
+    render(
+      <NormalizationDetails
+        normalization={{
+          fields: {
+            make: { source: 'groq', confidence: 0.8, reasoning: shared },
+            model: { source: 'groq', confidence: 0.8, reasoning: shared },
+            fuelType: { source: 'groq', confidence: 0.8, reasoning: shared },
+          },
+          rowConfidence: 0.8,
+        }}
+      />,
+    )
+
+    await user.click(screen.getByRole('button'))
+
+    expect(screen.getAllByText(shared)).toHaveLength(1)
+    // A ", " separator text node sits between grouped names, so a later
+    // field's own node contains "Model" as a substring, not the whole text.
+    const hasLabel = (label: string) =>
+      screen.getByText(
+        (_, el) =>
+          el?.className === 'normalization-field__name-item' &&
+          el?.textContent?.includes(label) === true,
+      )
+    expect(hasLabel('Make')).toBeInTheDocument()
+    expect(hasLabel('Model')).toBeInTheDocument()
+    expect(hasLabel('Fuel type')).toBeInTheDocument()
+  })
+
+  it('keeps a field with its own distinct reasoning in its own group', async () => {
+    const shared = 'Corrected make to Suzuki and model to Wagon R.'
+    const own = 'Description mentions a sunroof not listed in specs.'
+    const user = userEvent.setup()
+    render(
+      <NormalizationDetails
+        normalization={{
+          fields: {
+            make: { source: 'groq', confidence: 0.8, reasoning: shared },
+            model: { source: 'groq', confidence: 0.8, reasoning: shared },
+            description: { source: 'groq', confidence: 0.8, reasoning: own },
+          },
+          rowConfidence: 0.8,
+        }}
+      />,
+    )
+
+    await user.click(screen.getByRole('button'))
+
+    expect(screen.getAllByText(shared)).toHaveLength(1)
+    expect(screen.getByText(own)).toBeInTheDocument()
+  })
 })

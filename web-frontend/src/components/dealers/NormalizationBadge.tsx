@@ -98,6 +98,24 @@ export function NormalizationDetails({
 
   if (entries.length === 0) return null
 
+  // Groq repairs multiple fields in one call and writes the SAME reasoning
+  // sentence onto each field it touched — the model explains the row, not
+  // the field. Rendering one <dd> per field would print that sentence twice
+  // ("Corrected make to Suzuki, model to Wagon R..." under both Make and
+  // Model). Grouping by the reasoning text collapses those back into one
+  // explanation, labelled with every field it covers, while a field with its
+  // own distinct reasoning still gets its own group.
+  const groups: { fields: [string, NonNullable<(typeof entries)[number][1]>][]; reasoning?: string }[] = []
+  for (const entry of entries) {
+    const [, info] = entry
+    const group = info.reasoning ? groups.find((g) => g.reasoning === info.reasoning) : undefined
+    if (group) {
+      group.fields.push(entry)
+    } else {
+      groups.push({ fields: [entry], reasoning: info.reasoning })
+    }
+  }
+
   return (
     <div className="normalization-details">
       <button
@@ -112,21 +130,26 @@ export function NormalizationDetails({
 
       {open && (
         <dl id={panelId} className="normalization-details__list">
-          {entries.map(([field, info]) => (
-            <div key={field} className="normalization-field">
+          {groups.map((group) => (
+            <div key={group.fields.map(([field]) => field).join('+')} className="normalization-field">
               <dt className="normalization-field__name">
-                {FIELD_LABELS[field] ?? field}
-                <span
-                  className={`normalization-field__source normalization-field__source--${info.source}`}
-                >
-                  {SOURCE_LABELS[info.source] ?? info.source}
-                </span>
-                {info.confidence < LOW_CONFIDENCE_THRESHOLD && (
-                  <span className="normalization-field__flag">Low confidence</span>
-                )}
+                {group.fields.map(([field, info], i) => (
+                  <span key={field} className="normalization-field__name-item">
+                    {i > 0 && ', '}
+                    {FIELD_LABELS[field] ?? field}
+                    <span
+                      className={`normalization-field__source normalization-field__source--${info.source}`}
+                    >
+                      {SOURCE_LABELS[info.source] ?? info.source}
+                    </span>
+                    {info.confidence < LOW_CONFIDENCE_THRESHOLD && (
+                      <span className="normalization-field__flag">Low confidence</span>
+                    )}
+                  </span>
+                ))}
               </dt>
-              {info.reasoning && (
-                <dd className="normalization-field__reasoning">{info.reasoning}</dd>
+              {group.reasoning && (
+                <dd className="normalization-field__reasoning">{group.reasoning}</dd>
               )}
             </div>
           ))}

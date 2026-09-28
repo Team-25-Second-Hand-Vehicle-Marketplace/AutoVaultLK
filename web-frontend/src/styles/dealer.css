@@ -804,6 +804,12 @@
   gap: 0.4rem;
 }
 
+.normalization-field__name-item {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.4rem;
+}
+
 .normalization-field__source {
   background: var(--bg);
   border: 1px solid var(--border);
