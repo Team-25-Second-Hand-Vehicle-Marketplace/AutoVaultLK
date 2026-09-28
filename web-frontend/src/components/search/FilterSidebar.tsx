@@ -5,7 +5,6 @@ import { RangeInput } from './RangeInput'
 import { PresetSelect } from './PresetSelect'
 import { MakeModelSelect } from './MakeModelSelect'
 import { getSearchOptions } from '../../api/search.api'
-import { Button } from '../ui/Button'
 import type {
   FilterSearchParams,
   Facets,
@@ -67,9 +66,6 @@ interface Props {
   facets?: Facets
   onUpdate: <K extends keyof FilterSearchParams>(key: K, value: FilterSearchParams[K]) => void
   onUpdateMany: (patch: Partial<FilterSearchParams>) => void
-  onApply: () => void
-  onReset: () => void
-  hasUnappliedChanges: boolean
 }
 
 export function FilterSidebar({
@@ -77,9 +73,6 @@ export function FilterSidebar({
   facets,
   onUpdate,
   onUpdateMany,
-  onApply,
-  onReset,
-  hasUnappliedChanges,
 }: Props) {
   const [options, setOptions] = useState<SearchOptionsResponse | null>(null)
 
@@ -119,9 +112,6 @@ export function FilterSidebar({
     <aside className="filter-sidebar" aria-label="Filter results">
       <div className="filter-sidebar__header">
         <h2>Filter Results</h2>
-        <button type="button" className="link-button" onClick={onReset}>
-          Reset
-        </button>
       </div>
 
       <CheckboxFacetGroup
@@ -136,8 +126,12 @@ export function FilterSidebar({
         vehicleTypes={filters.vehicleType ?? []}
         selectedMakes={filters.make ?? []}
         selectedModels={filters.model ?? []}
-        onMakesChange={(v) => onUpdate('make', v.length ? v : undefined)}
-        onModelsChange={(v) => onUpdate('model', v.length ? v : undefined)}
+        onChange={(patch) => {
+          const next = { ...patch }
+          if ('make' in patch) next.make = patch.make?.length ? patch.make : undefined
+          if ('model' in patch) next.model = patch.model?.length ? patch.model : undefined
+          onUpdateMany(next)
+        }}
       />
 
       <RangeInput

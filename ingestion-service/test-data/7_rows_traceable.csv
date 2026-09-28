@@ -1,0 +1,8 @@
+registration_number,make,model,year,price,mileage,fuel_type,transmission,body_type,color,engine_capacity_cc,owners_count,location_district
+CBQ-4501,Honda,Civic,2020,8250000,48000,Petrol,Automatic,Sedan,White,1799,1,Colombo
+cbq 4502,hoda,fit shuttle,19,"Rs. 4,150,000/=","58,000 km",petrol,cvt,hatchback,silver,1300cc,2,gampaha
+CBQ-4503,Suzuki Motor Corporation,Wagon-R,2021,3.8M,42000,hyrbid,auto,hatchback,Pearl White,658,1,Kandy
+CBQ-4504,Nissan,Leaf,2019,"6,900,000",61000,Electric,Automatic,Hatchback,Blue,0,1,Galle
+CBQ-4505,BMW,X1,2016,"7,5",95000,Diesel,Automatic,SUV,Black,1995,3,Colombo
+,Mitsubishi,Montero,2018,9800000,72000,Diesel,Manual,SUV,Silver,2477,2,Kurunegala
+CBQ-4507,Ferrari,488 GTB,2022,175000000,12000,Petrol,Automatic,Coupe,Rosso Corsa,3902,1,Colombo

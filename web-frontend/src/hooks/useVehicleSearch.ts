@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import axios from 'axios'
 import { filterSearch, nlSearch } from '../api/search.api'
@@ -122,7 +122,14 @@ export function useVehicleSearch() {
   const [searchParams, setSearchParams] = useSearchParams()
   const appliedFilters = useMemo(() => paramsToFilters(searchParams), [searchParams])
 
-  const [draft, setDraft] = useState<FilterSearchParams>(appliedFilters)
+  // Sidebar controls render from the applied URL filters. Keep an immediately
+  // up-to-date snapshot for event handlers because URL updates are asynchronous.
+  const draft = appliedFilters
+  const draftRef = useRef(draft)
+
+  useEffect(() => {
+    draftRef.current = appliedFilters
+  }, [appliedFilters])
 
 
   const [search, setSearch] = useState<{
@@ -131,13 +138,6 @@ export function useVehicleSearch() {
     error: string | null
   }>({ result: null, loading: true, error: null })
   const { result, loading, error } = search
-
-
-  const [lastParams, setLastParams] = useState(searchParams)
-  if (lastParams !== searchParams) {
-    setLastParams(searchParams)
-    setDraft(appliedFilters)
-  }
 
 
   useEffect(() => {
@@ -194,34 +194,29 @@ export function useVehicleSearch() {
     [setSearchParams],
   )
 
-  /** Updates one field in the local draft only — does not trigger a search. */
+  /** Updates sidebar filters and immediately runs the existing URL-driven search. */
   const updateDraft = useCallback(
     <K extends keyof FilterSearchParams>(key: K, value: FilterSearchParams[K]) => {
-      setDraft((prev) => ({ ...prev, [key]: value }))
+      const next = { ...draftRef.current, [key]: value }
+      // Sidebar filters replace a natural-language query, as the previous
+      // "Apply Filters" behavior did, so the structured filter endpoint gets
+      // every selected value.
+      delete next.q
+      draftRef.current = next
+      applyToUrl(next)
     },
-    [],
+    [applyToUrl],
   )
 
-  const updateDraftMany = useCallback((patch: Partial<FilterSearchParams>) => {
-    setDraft((prev) => ({ ...prev, ...patch }))
-  }, [])
-
-  const applyFilters = useCallback(() => {
-    const next = { ...draft }
-    delete next.q
-    applyToUrl(next)
-  }, [draft, applyToUrl])
-
-  /** Discards draft edits and reverts the sidebar to the last applied state. */
-  const resetDraft = useCallback(() => {
-    setDraft(appliedFilters)
-  }, [appliedFilters])
-
-  const hasUnappliedChanges = useMemo(() => {
-    const draftParams = filtersToParams(draft).toString()
-    const appliedParams = filtersToParams(appliedFilters).toString()
-    return draftParams !== appliedParams
-  }, [draft, appliedFilters])
+  const updateDraftMany = useCallback(
+    (patch: Partial<FilterSearchParams>) => {
+      const next = { ...draftRef.current, ...patch }
+      delete next.q
+      draftRef.current = next
+      applyToUrl(next)
+    },
+    [applyToUrl],
+  )
 
   // Sort acts immediately — it is a CONTROL_KEY, not a staged sidebar filter.
   const setSort = useCallback(
@@ -266,13 +261,10 @@ export function useVehicleSearch() {
   }, [setSearchParams])
 
   return {
-    // Staged — bind sidebar inputs to these.
+    // Sidebar controls use the applied filters, which update immediately.
     draft,
     updateDraft,
     updateDraftMany,
-    applyFilters,
-    resetDraft,
-    hasUnappliedChanges,
     // Applied — bind result rendering, chips, and sort/pagination to these.
     appliedFilters,
     result,
