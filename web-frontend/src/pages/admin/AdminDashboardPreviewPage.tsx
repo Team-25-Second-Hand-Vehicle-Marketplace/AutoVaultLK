@@ -1,5 +1,10 @@
 import { AdminDashboardView } from './AdminDashboardPage'
-import type { AdminAuditLog, AdminDashboard, AdminReports } from '../../api/admin.types'
+import type {
+  AdminAuditLog,
+  AdminDashboard,
+  AdminReports,
+  AdminTimeSeries,
+} from '../../api/admin.types'
 
 /**
  * Renders the real dashboard against fixed mock data — no login, no backend
@@ -71,6 +76,29 @@ const MOCK_ACTIVITY: AdminAuditLog[] = [
   },
 ]
 
+/**
+ * A deterministic-but-varied 30-day series — a flat mock line would hide
+ * whether the chart actually reads shape and trend correctly.
+ */
+function buildMockSeries(base: number, amplitude: number, days = 30): { date: string; count: number }[] {
+  const jitter = [0, 2, -1, 3, 0, -2, 1, 4, -1, 0, 2, -3, 1, 0, 5, -2, 1, 0, -1, 3, 2, -2, 0, 1, 4, -1, 0, 2, -1, 3]
+  return Array.from({ length: days }, (_, i) => {
+    const daysAgo = days - 1 - i
+    const date = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+    const wave = Math.sin(i / 4) * amplitude
+    const count = Math.max(0, Math.round(base + wave + (jitter[i % jitter.length] ?? 0)))
+    return { date, count }
+  })
+}
+
+const MOCK_TIME_SERIES: AdminTimeSeries = {
+  from: new Date(Date.now() - 29 * 24 * 60 * 60 * 1000).toISOString(),
+  to: new Date().toISOString(),
+  listings: buildMockSeries(6, 3),
+  users: buildMockSeries(4, 2),
+  uploads: buildMockSeries(1, 1),
+}
+
 export function AdminDashboardPreviewPage() {
   return (
     <div>
@@ -89,6 +117,7 @@ export function AdminDashboardPreviewPage() {
         data={MOCK_DASHBOARD}
         reports={{ loading: false, error: null, data: MOCK_REPORTS }}
         activity={{ loading: false, error: null, data: MOCK_ACTIVITY }}
+        timeSeries={{ loading: false, error: null, data: MOCK_TIME_SERIES }}
       />
     </div>
   )

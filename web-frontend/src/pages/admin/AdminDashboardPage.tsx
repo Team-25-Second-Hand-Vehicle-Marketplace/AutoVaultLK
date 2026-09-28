@@ -1,14 +1,20 @@
 import { useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { Car, ClipboardList, ShieldCheck, Users } from 'lucide-react'
-import { getDashboard, getReports, searchAuditLogs } from '../../api/admin.api'
-import type { AdminAuditLog, AdminDashboard, AdminReports } from '../../api/admin.types'
+import { getDashboard, getReports, getReportsTimeSeries, searchAuditLogs } from '../../api/admin.api'
+import type {
+  AdminAuditLog,
+  AdminDashboard,
+  AdminReports,
+  AdminTimeSeries,
+} from '../../api/admin.types'
 import { toErrorMessage } from '../../api/client'
 import { useAsyncData } from '../../hooks/useAsyncData'
 import { ErrorBanner } from '../../components/ui/ErrorBanner'
 import { Pill } from '../../components/ui/Pill'
 import { BarRow } from '../../components/admin/BarRow'
 import { Meter } from '../../components/admin/Meter'
+import { LineChart } from '../../components/admin/LineChart'
 import { formatDate } from '../../utils/format'
 
 /** A status's reserved app color, by CSS custom property name — the same
@@ -34,6 +40,7 @@ const UPLOAD_STATUS_COLOR: Record<string, string> = {
 const dashboardError = (err: unknown) => toErrorMessage(err, 'Could not load dashboard.')
 const reportsError = (err: unknown) => toErrorMessage(err, 'Could not load report totals.')
 const activityError = (err: unknown) => toErrorMessage(err, 'Could not load recent activity.')
+const timeSeriesError = (err: unknown) => toErrorMessage(err, 'Could not load daily activity.')
 
 /** The window the "by the numbers" sections summarise — matches the default AdminReportsPage opens with. */
 const REPORT_WINDOW_DAYS = 30
@@ -56,20 +63,27 @@ export function AdminDashboardView({
   data,
   reports,
   activity,
+  timeSeries,
 }: {
   data: AdminDashboard
   reports: AsyncSlice<AdminReports>
   activity: AsyncSlice<AdminAuditLog[]>
+  timeSeries: AsyncSlice<AdminTimeSeries>
 }) {
+  // Tone reflects what the number means: a healthy count is --success, a
+  // queue that needs action is --warning-text (only while it's non-empty —
+  // an empty queue is not a warning), and a plain informational count stays
+  // the neutral --accent. Same reserved tokens the charts already use.
   const kpis = [
-    { icon: Car, label: 'Live listings', value: data.listings.live, to: undefined },
-    { icon: Users, label: 'Total users', value: data.users.total, to: '/admin/users' },
-    { icon: ShieldCheck, label: 'Dealers', value: data.users.dealers, to: undefined },
+    { icon: Car, label: 'Live listings', value: data.listings.live, to: undefined, tone: 'success' as const },
+    { icon: Users, label: 'Total users', value: data.users.total, to: '/admin/users', tone: 'accent' as const },
+    { icon: ShieldCheck, label: 'Dealers', value: data.users.dealers, to: undefined, tone: 'accent' as const },
     {
       icon: ClipboardList,
       label: 'Pending approvals',
       value: data.users.pendingDealers,
       to: '/admin/users?tab=pending',
+      tone: data.users.pendingDealers > 0 ? ('warning' as const) : ('accent' as const),
     },
   ]
 
@@ -87,10 +101,13 @@ export function AdminDashboardView({
       </header>
 
       <div className="admin-kpis">
-        {kpis.map(({ icon: Icon, label, value, to }) => {
+        {kpis.map(({ icon: Icon, label, value, to, tone }) => {
           const body = (
             <>
-              <span className="admin-kpi__icon" aria-hidden="true">
+              <span
+                className={`admin-kpi__icon${tone !== 'accent' ? ` admin-kpi__icon--${tone}` : ''}`}
+                aria-hidden="true"
+              >
                 <Icon size={18} />
               </span>
               <strong className="admin-kpi__value">{value.toLocaleString('en-LK')}</strong>
@@ -108,6 +125,35 @@ export function AdminDashboardView({
           )
         })}
       </div>
+
+      <section className="admin-card admin-card--wide">
+        <header className="admin-card__head">
+          <h2>Activity over time</h2>
+          <span className="admin-muted">Last {REPORT_WINDOW_DAYS} days</span>
+        </header>
+        {timeSeries.loading ? (
+          <p className="admin-muted" role="status">
+            Loading…
+          </p>
+        ) : timeSeries.error ? (
+          <ErrorBanner message={timeSeries.error} />
+        ) : (
+          <div className="admin-trend-grid">
+            <div className="admin-trend">
+              <h3 className="admin-trend__title">New listings</h3>
+              <LineChart points={timeSeries.data?.listings ?? []} colorVar="--success" />
+            </div>
+            <div className="admin-trend">
+              <h3 className="admin-trend__title">New users</h3>
+              <LineChart points={timeSeries.data?.users ?? []} colorVar="--accent" />
+            </div>
+            <div className="admin-trend">
+              <h3 className="admin-trend__title">Uploads submitted</h3>
+              <LineChart points={timeSeries.data?.uploads ?? []} colorVar="--warning-text" />
+            </div>
+          </div>
+        )}
+      </section>
 
       <div className="admin-grid">
         <section className="admin-card">
@@ -240,6 +286,13 @@ export function AdminDashboardPage() {
   const fetchActivity = useCallback((signal: AbortSignal) => searchAuditLogs({}, signal), [])
   const activity = useAsyncData<AdminAuditLog[]>(fetchActivity, activityError)
 
+  const fetchTimeSeries = useCallback((signal: AbortSignal) => {
+    const to = new Date()
+    const from = new Date(to.getTime() - (REPORT_WINDOW_DAYS - 1) * 24 * 60 * 60 * 1000)
+    return getReportsTimeSeries(from.toISOString(), to.toISOString(), signal)
+  }, [])
+  const timeSeries = useAsyncData<AdminTimeSeries>(fetchTimeSeries, timeSeriesError)
+
   if (dashboard.loading) {
     return (
       <div className="admin-page">
@@ -258,5 +311,12 @@ export function AdminDashboardPage() {
     )
   }
 
-  return <AdminDashboardView data={dashboard.data} reports={reports} activity={activity} />
+  return (
+    <AdminDashboardView
+      data={dashboard.data}
+      reports={reports}
+      activity={activity}
+      timeSeries={timeSeries}
+    />
+  )
 }

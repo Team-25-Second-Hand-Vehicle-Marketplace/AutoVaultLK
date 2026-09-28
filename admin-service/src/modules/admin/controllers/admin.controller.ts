@@ -58,6 +58,11 @@ export class AdminController {
     return this.reads.reports(query.from, query.to);
   }
 
+  @Get('reports/timeseries')
+  reportsTimeSeries(@Query() query: ReportsQueryDto) {
+    return this.reads.timeSeries(query.from, query.to);
+  }
+
   @Get('audit-logs')
   auditLogs(@Query() query: AuditLogsQueryDto) {
     return this.reads.auditLogsSearch(query);

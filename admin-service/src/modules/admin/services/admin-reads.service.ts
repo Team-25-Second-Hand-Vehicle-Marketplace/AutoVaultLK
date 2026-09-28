@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { mapDashboard } from '../mappers/dashboard.mapper';
+import { mapTimeSeries } from '../mappers/time-series.mapper';
 import { AdminReadsRepository } from '../repositories/admin-reads.repository';
 import { AuditLogsRepository } from '../repositories/audit-logs.repository';
 import { DocumentUrlResolverService } from './document-url-resolver.service';
@@ -71,6 +72,17 @@ export class AdminReadsService {
       throw new BadRequestException('from must be on or before to');
     }
     return this.reads.loadReports(from, to);
+  }
+
+  // Not async, like reports() above: the guard must throw synchronously, not
+  // reject a promise — an async function that throws before its first await
+  // turns that throw into a rejected promise instead, which the "from after
+  // to" test below caught as an unhandled rejection that crashed the worker.
+  timeSeries(from: Date, to: Date) {
+    if (from > to) {
+      throw new BadRequestException('from must be on or before to');
+    }
+    return this.reads.loadDailySeries(from, to).then((raw) => mapTimeSeries(raw, from, to));
   }
 
   auditLogsSearch(query: AuditLogsQueryDto) {
