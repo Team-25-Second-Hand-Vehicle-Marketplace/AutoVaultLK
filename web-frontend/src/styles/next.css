@@ -31,8 +31,8 @@
   --accent-hover: #0a1f42;
   --accent-ink: #ffffff;
   --accent-bg: rgba(18, 48, 95, 0.08);
-  --gold: #c9a96e;
-  --gold-strong: #8f6f2e;
+  --accent-bright: #3b82f6;
+  --accent-bright-strong: #1d4ed8;
   --success: #12805c;
   --success-bg: rgba(18, 128, 92, 0.1);
   --warning-bg: #fff4d6;
@@ -107,7 +107,7 @@ h4 {
 }
 
 .nx-kicker--light {
-  color: #e2cb9b;
+  color: #93c5fd;
 }
 
 .nx-h2 {
@@ -161,9 +161,9 @@ h4 {
   display: grid;
   place-items: center;
   flex: none;
-  color: #17120a;
-  background: linear-gradient(135deg, #f0dcae 0%, #c9a96e 55%, #a98443 100%);
-  box-shadow: 0 6px 18px rgba(201, 169, 110, 0.35);
+  color: #ffffff;
+  background: linear-gradient(135deg, #a9c8ff 0%, #3b82f6 55%, #1d4ed8 100%);
+  box-shadow: 0 6px 18px rgba(59, 130, 246, 0.35);
 }
 
 .brand__name span {
@@ -197,16 +197,16 @@ h4 {
 }
 
 .nx-btn--light {
-  color: #17120a;
-  background: linear-gradient(120deg, #e8d3a2 0%, #c9a96e 50%, #b18d4c 100%);
+  color: #ffffff;
+  background: linear-gradient(120deg, #93c5fd 0%, #3b82f6 50%, #2563eb 100%);
   background-size: 160% 100%;
-  box-shadow: 0 10px 28px rgba(201, 169, 110, 0.28);
+  box-shadow: 0 10px 28px rgba(59, 130, 246, 0.28);
 }
 
 .nx-btn--light:hover {
   background-position: 100% 0;
   transform: translateY(-2px);
-  box-shadow: 0 16px 36px rgba(201, 169, 110, 0.4);
+  box-shadow: 0 16px 36px rgba(59, 130, 246, 0.4);
 }
 
 .nx-btn--outline {
@@ -404,8 +404,8 @@ h4 {
   border-radius: 50%;
   font-weight: 800;
   font-size: 14px;
-  color: #17120a;
-  background: linear-gradient(135deg, #f0dcae, #c9a96e);
+  color: #ffffff;
+  background: linear-gradient(135deg, #a9c8ff, #3b82f6);
 }
 
 .nx-user__menu {
@@ -600,7 +600,7 @@ h4 {
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.04em;
-  color: #e8d3a2;
+  color: #93c5fd;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.07);
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -611,8 +611,8 @@ h4 {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #c9a96e;
-  box-shadow: 0 0 0 0 rgba(201, 169, 110, 0.7);
+  background: #3b82f6;
+  box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
   animation: nx-pulse 2.2s infinite;
 }
 
@@ -638,7 +638,7 @@ h4 {
 }
 
 .nx-hero__word--gold {
-  background: linear-gradient(100deg, #b8944f 0%, #f4e4bd 45%, #c9a96e 70%, #b8944f 100%);
+  background: linear-gradient(100deg, #1d4ed8 0%, #bfdbfe 45%, #3b82f6 70%, #1d4ed8 100%);
   background-size: 220% 100%;
   -webkit-background-clip: text;
   background-clip: text;
@@ -784,8 +784,8 @@ h4 {
 }
 
 .nx-orb:hover i {
-  background: #c9a96e;
-  color: #17120a;
+  background: #3b82f6;
+  color: #ffffff;
   transform: scale(1.08) rotate(8deg);
 }
 
@@ -858,9 +858,9 @@ h4 {
 
 .nx-pill:hover,
 .nx-pill.is-active {
-  background: #c9a96e;
-  border-color: #c9a96e;
-  color: #17120a;
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: #ffffff;
   transform: translateY(-2px);
 }
 
@@ -894,7 +894,7 @@ h4 {
 
 .nx-hero__dots span.is-on {
   width: 26px;
-  background: #c9a96e;
+  background: #3b82f6;
 }
 
 @media (max-width: 1000px) {
@@ -1082,8 +1082,8 @@ h4 {
 }
 
 .nx-tag--gold {
-  color: #17120a;
-  background: linear-gradient(120deg, #f0dcae, #c9a96e);
+  color: #ffffff;
+  background: linear-gradient(120deg, #a9c8ff, #3b82f6);
   border-color: transparent;
 }
 
@@ -1113,9 +1113,9 @@ h4 {
 }
 
 .nx-heart.is-saved {
-  background: #c9a96e;
-  border-color: #c9a96e;
-  color: #17120a;
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: #ffffff;
 }
 
 .nx-heart:disabled {
@@ -1316,7 +1316,7 @@ h4 {
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #e8d3a2;
+  color: #93c5fd;
 }
 
 .nx-tile h3 {
@@ -1347,8 +1347,8 @@ h4 {
 .nx-tile:hover .nx-tile__arrow {
   transform: none;
   opacity: 1;
-  background: #c9a96e;
-  color: #17120a;
+  background: #3b82f6;
+  color: #ffffff;
 }
 
 /* ── Scroll story ────────────────────────────────────────────── */
@@ -1433,7 +1433,7 @@ h4 {
   display: block;
   height: 100%;
   transform-origin: left;
-  background: linear-gradient(90deg, #c9a96e, #f0dcae);
+  background: linear-gradient(90deg, #3b82f6, #a9c8ff);
 }
 
 .nx-story__media {
@@ -1714,7 +1714,7 @@ h4 {
 .nx-slot-ph__id {
   font-family: var(--mono);
   font-size: 12px;
-  color: #c9a96e;
+  color: #3b82f6;
 }
 
 .nx-slot-ph__brief {
@@ -1745,10 +1745,10 @@ h4 {
 
 @keyframes nx-pulse {
   70% {
-    box-shadow: 0 0 0 10px rgba(201, 169, 110, 0);
+    box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(201, 169, 110, 0);
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
   }
 }
 
@@ -1788,7 +1788,7 @@ h4 {
 /* Production stand-in for a photo that has not been added: no text, just tone. */
 .nx-slot-ph--quiet {
   background:
-    radial-gradient(70% 90% at 75% 15%, rgba(201, 169, 110, 0.16) 0%, transparent 60%),
+    radial-gradient(70% 90% at 75% 15%, rgba(59, 130, 246, 0.16) 0%, transparent 60%),
     linear-gradient(160deg, #16233f 0%, #0b0d10 100%);
 }
 
@@ -1803,7 +1803,7 @@ h4 {
   width: 48px;
   height: 48px;
   border-radius: 16px;
-  color: #e8d3a2;
+  color: #93c5fd;
   background: rgba(7, 14, 30, 0.55);
   border: 1px solid rgba(255, 255, 255, 0.18);
   backdrop-filter: blur(10px);
@@ -1811,8 +1811,8 @@ h4 {
 }
 
 .nx-tile:hover .nx-tile__icon {
-  background: #c9a96e;
-  color: #17120a;
+  background: #3b82f6;
+  color: #ffffff;
   transform: rotate(-6deg) scale(1.06);
 }
 
@@ -1857,11 +1857,11 @@ h4 {
 }
 
 .dealer-auth__panel .brand__name span {
-  color: #e8d3a2;
+  color: #93c5fd;
 }
 
-/* ── Palette pass: neutral first (black / graphite / grey / white), gold as a
-   restrained highlight instead of the main colour. ─────────────────────── */
+/* ── Palette pass: neutral first (black / graphite / grey / white), one blue
+   accent used consistently instead of a separate highlight colour. ────── */
 
 .nx-kicker {
   display: inline-flex;
@@ -1875,39 +1875,39 @@ h4 {
   width: 22px;
   height: 2px;
   border-radius: 2px;
-  background: var(--gold);
+  background: var(--accent-bright);
 }
 
 .nx-kicker--light {
-  color: #e2cb9b;
+  color: #93c5fd;
 }
 
 .brand__name span {
-  color: var(--gold-strong);
+  color: var(--accent-bright-strong);
 }
 
 .nx-header--overlay .brand__name span,
 .dealer-auth__panel .brand__name span,
 .nx-footer .brand__name span {
-  color: var(--gold);
+  color: var(--accent-bright);
 }
 
 .nx-header--overlay .nx-icon-btn:hover,
 .nx-header--overlay .nx-link-btn:hover,
 .nx-header--overlay .nx-btn--outline:hover {
-  color: var(--gold);
-  border-color: var(--gold);
+  color: var(--accent-bright);
+  border-color: var(--accent-bright);
   background: transparent;
 }
 
 .nx-nav__link::after {
-  background: var(--gold);
+  background: var(--accent-bright);
 }
 
 .nx-hero :focus-visible,
 .nx-footer :focus-visible,
 .nx-cta :focus-visible {
-  outline-color: var(--gold);
+  outline-color: var(--accent-bright);
 }
 
 .nx-card:hover {
@@ -1919,7 +1919,7 @@ h4 {
 }
 
 .nx-marquee__item sup {
-  color: var(--gold-strong);
+  color: var(--accent-bright-strong);
 }
 
 .nx-marquee__item:hover {
@@ -1933,7 +1933,7 @@ h4 {
 }
 
 .nx-story__steps li.is-active .nx-story__n {
-  -webkit-text-stroke-color: var(--gold-strong);
+  -webkit-text-stroke-color: var(--accent-bright-strong);
 }
 
 /* Footer is the black anchor at the bottom of every page. */
@@ -1947,16 +1947,16 @@ h4 {
 }
 
 .nx-footer__cta em {
-  color: var(--gold);
+  color: var(--accent-bright);
 }
 
 .nx-footer__grid h3 {
-  color: var(--gold);
+  color: var(--accent-bright);
 }
 
-/* ── Palette pass 2: black / white / dark blue, gold only as a hint. ──────
-   Photos keep their warm light; every overlay and dark surface above is a
-   navy-black so the pictures and the page read as one. */
+/* ── Palette pass 2: black / white / dark blue throughout — no second
+   accent colour. Photos keep their warm light; every overlay and dark
+   surface above is a navy-black so the pictures and the page read as one. */
 
 .nx-btn--light {
   color: #0a1a36;
@@ -1991,7 +1991,7 @@ h4 {
   color: var(--accent);
 }
 
-/* Links and outlines on the light pages read as navy, not gold. */
+/* Links and outlines on the light pages read as navy — the one accent colour, used everywhere. */
 .nx-hero__beam {
   background: linear-gradient(100deg, transparent, rgba(190, 215, 255, 0.12), transparent);
 }
