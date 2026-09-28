@@ -10,6 +10,7 @@ type Action<T> =
   | { type: 'start' }
   | { type: 'success'; data: T }
   | { type: 'failure'; error: string }
+  | { type: 'update'; updater: (data: T | null) => T | null }
 
 function reducer<T>(state: State<T>, action: Action<T>): State<T> {
   switch (action.type) {
@@ -21,10 +22,22 @@ function reducer<T>(state: State<T>, action: Action<T>): State<T> {
       return { data: action.data, error: null, loading: false }
     case 'failure':
       return { ...state, error: action.error, loading: false }
+    case 'update':
+      return { ...state, data: action.updater(state.data) }
   }
 }
 
-export type AsyncData<T> = State<T> & { reload: () => void }
+export type AsyncData<T> = State<T> & {
+  reload: () => void
+  /**
+   * Applies a known server change locally instead of refetching. A caller
+   * that just performed the mutation already knows the resulting shape (a
+   * row's new status, say) — reload() would re-fetch the whole list just to
+   * learn what it already knows, which for a page-sized list is a visible
+   * loading flash for zero new information.
+   */
+  setData: (updater: (data: T | null) => T | null) => void
+}
 
 export function useAsyncData<T>(
   fetcher: (signal: AbortSignal) => Promise<T>,
@@ -83,6 +96,10 @@ export function useAsyncData<T>(
   }, [fetcher, nonce])
 
   const reload = useCallback(() => bumpNonce(), [])
+  const setData = useCallback(
+    (updater: (data: T | null) => T | null) => dispatch({ type: 'update', updater }),
+    [],
+  )
 
-  return { ...state, reload }
+  return { ...state, reload, setData }
 }

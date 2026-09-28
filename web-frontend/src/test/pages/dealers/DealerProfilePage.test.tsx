@@ -32,7 +32,13 @@ function renderPage({
   reload = vi.fn(),
   updateUser = vi.fn(),
 }: { reload?: () => void; updateUser?: (patch: unknown) => void } = {}) {
-  const profile: AsyncData<DealerProfile> = { data: DEALER, error: null, loading: false, reload }
+  const profile: AsyncData<DealerProfile> = {
+    data: DEALER,
+    error: null,
+    loading: false,
+    reload,
+    setData: vi.fn(),
+  }
   const auth = {
     user: { id: 'dealer-1', email: 'dealer@test.com', name: 'Jane Doe', role: 'DEALER', isActive: true },
     isAuthenticated: true,

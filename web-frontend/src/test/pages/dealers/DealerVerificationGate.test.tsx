@@ -14,7 +14,7 @@ const resubmit = vi.mocked(resubmitMyDealerProfile)
 const uploadDoc = vi.mocked(uploadVerificationDocument)
 
 function asyncData(dealer: DealerProfile, reload = vi.fn()): AsyncData<DealerProfile> {
-  return { data: dealer, error: null, loading: false, reload }
+  return { data: dealer, error: null, loading: false, reload, setData: vi.fn() }
 }
 
 const BASE_DEALER = {
