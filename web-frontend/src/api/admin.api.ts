@@ -4,6 +4,7 @@ import type {
   AdminDashboard,
   AdminDealerDetail,
   AdminReports,
+  AdminTimeSeries,
   AdminUploadJob,
   AdminUserRow,
   AuditLogsQuery,
@@ -44,6 +45,18 @@ export async function getReports(
   signal?: AbortSignal,
 ): Promise<AdminReports> {
   const { data } = await apiClient.get<AdminReports>('/admin/reports', {
+    params: { from, to },
+    signal,
+  })
+  return data
+}
+
+export async function getReportsTimeSeries(
+  from: string,
+  to: string,
+  signal?: AbortSignal,
+): Promise<AdminTimeSeries> {
+  const { data } = await apiClient.get<AdminTimeSeries>('/admin/reports/timeseries', {
     params: { from, to },
     signal,
   })

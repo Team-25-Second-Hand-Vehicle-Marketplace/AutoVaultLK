@@ -1,6 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { AdminReadsService } from '../../../../src/modules/admin/services/admin-reads.service';
 import { mapDashboard } from '../../../../src/modules/admin/mappers/dashboard.mapper';
+import { mapTimeSeries } from '../../../../src/modules/admin/mappers/time-series.mapper';
 
 describe('AdminReadsService', () => {
   const raw = {
@@ -21,6 +22,11 @@ describe('AdminReadsService', () => {
       listUsers: jest.fn().mockResolvedValue([]),
       listUploads: jest.fn().mockResolvedValue([]),
       loadReports: jest.fn().mockResolvedValue({ listings: {} }),
+      loadDailySeries: jest.fn().mockResolvedValue({
+        listingRows: [{ day: '2026-08-01', count: 2 }],
+        userRows: [],
+        uploadRows: [],
+      }),
     };
     const auditLogs = { search: jest.fn().mockResolvedValue([]) };
     const documentUrlResolver = { resolve: jest.fn().mockResolvedValue(null) };
@@ -49,6 +55,26 @@ describe('AdminReadsService', () => {
     const to = new Date('2026-08-01');
     expect(() => service.reports(from, to)).toThrow(BadRequestException);
     expect(reads.loadReports).not.toHaveBeenCalled();
+  });
+
+  it('rejects a time-series range where from is after to', () => {
+    const { service, reads } = makeService();
+    const from = new Date('2026-08-02');
+    const to = new Date('2026-08-01');
+    expect(() => service.timeSeries(from, to)).toThrow(BadRequestException);
+    expect(reads.loadDailySeries).not.toHaveBeenCalled();
+  });
+
+  it('fills zero-activity days into the daily series', async () => {
+    const { service } = makeService();
+    const from = new Date('2026-08-01');
+    const to = new Date('2026-08-01');
+    const raw = {
+      listingRows: [{ day: '2026-08-01', count: 2 }],
+      userRows: [],
+      uploadRows: [],
+    };
+    await expect(service.timeSeries(from, to)).resolves.toEqual(mapTimeSeries(raw, from, to));
   });
 
   it('forwards audit-log filters', async () => {

@@ -91,6 +91,19 @@ export interface AdminReports {
   activeUsers: number
 }
 
+export interface TimeSeriesPoint {
+  date: string
+  count: number
+}
+
+export interface AdminTimeSeries {
+  from: string
+  to: string
+  listings: TimeSeriesPoint[]
+  users: TimeSeriesPoint[]
+  uploads: TimeSeriesPoint[]
+}
+
 export interface AdminAuditLog {
   id: string
   actorId: string | null

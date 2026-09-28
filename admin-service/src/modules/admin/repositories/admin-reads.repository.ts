@@ -8,6 +8,7 @@ import { NotificationView } from '../../../infrastructure/database/entities/noti
 import { UploadJobView } from '../../../infrastructure/database/entities/upload-job.view-entity';
 import { VehicleView } from '../../../infrastructure/database/entities/vehicle.view-entity';
 import type { DashboardRaw, StatusCountRow } from '../mappers/dashboard.mapper';
+import type { DayCountRow, TimeSeriesRaw } from '../mappers/time-series.mapper';
 
 const RECENT_AUDIT_MS = 24 * 60 * 60 * 1000;
 
@@ -202,6 +203,50 @@ export class AdminReadsRepository {
       },
       activeUsers,
     };
+  }
+
+  /**
+   * One row per calendar day that had at least one row — days with none are
+   * simply absent, not zero; time-series.mapper.ts fills those in. Grouped
+   * by DATE_TRUNC('day', ...) rather than a plain DATE cast so it stays a
+   * timestamptz comparable across the query, not a plain date.
+   *
+   * `v.createdAt`, not `v.created_at`: TypeORM's query builder rewrites the
+   * entity property name (createdAt) to the quoted real column inside a raw
+   * clause like this — handing it the DB column name instead silently skips
+   * that rewrite and breaks in ways that only show up at query time (see
+   * ingestion-service's JobStatusRepository.findRejectedRecords for the
+   * exact failure mode this avoids).
+   */
+  async loadDailySeries(from: Date, to: Date): Promise<TimeSeriesRaw> {
+    const [listingRows, userRows, uploadRows] = await Promise.all([
+      this.vehicles
+        .createQueryBuilder('v')
+        .select("DATE_TRUNC('day', v.createdAt)", 'day')
+        .addSelect('COUNT(*)', 'count')
+        .where('v.createdAt >= :from AND v.createdAt <= :to', { from, to })
+        .groupBy("DATE_TRUNC('day', v.createdAt)")
+        .orderBy("DATE_TRUNC('day', v.createdAt)", 'ASC')
+        .getRawMany<DayCountRow>(),
+      this.users
+        .createQueryBuilder('u')
+        .select("DATE_TRUNC('day', u.createdAt)", 'day')
+        .addSelect('COUNT(*)', 'count')
+        .where('u.createdAt >= :from AND u.createdAt <= :to', { from, to })
+        .groupBy("DATE_TRUNC('day', u.createdAt)")
+        .orderBy("DATE_TRUNC('day', u.createdAt)", 'ASC')
+        .getRawMany<DayCountRow>(),
+      this.uploads
+        .createQueryBuilder('j')
+        .select("DATE_TRUNC('day', j.createdAt)", 'day')
+        .addSelect('COUNT(*)', 'count')
+        .where('j.createdAt >= :from AND j.createdAt <= :to', { from, to })
+        .groupBy("DATE_TRUNC('day', j.createdAt)")
+        .orderBy("DATE_TRUNC('day', j.createdAt)", 'ASC')
+        .getRawMany<DayCountRow>(),
+    ]);
+
+    return { listingRows, userRows, uploadRows };
   }
 
   private countByStatus(repo: Repository<{ status: string }>): Promise<StatusCountRow[]> {

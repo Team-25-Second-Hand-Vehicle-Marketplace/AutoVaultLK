@@ -2,17 +2,24 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { AdminDashboardPage } from '../../../pages/admin/AdminDashboardPage'
-import { getDashboard, getReports, searchAuditLogs } from '../../../api/admin.api'
-import type { AdminAuditLog, AdminDashboard, AdminReports } from '../../../api/admin.types'
+import { getDashboard, getReports, getReportsTimeSeries, searchAuditLogs } from '../../../api/admin.api'
+import type {
+  AdminAuditLog,
+  AdminDashboard,
+  AdminReports,
+  AdminTimeSeries,
+} from '../../../api/admin.types'
 
 vi.mock('../../../api/admin.api', () => ({
   getDashboard: vi.fn(),
   getReports: vi.fn(),
+  getReportsTimeSeries: vi.fn(),
   searchAuditLogs: vi.fn(),
 }))
 
 const mockDashboard = vi.mocked(getDashboard)
 const mockReports = vi.mocked(getReports)
+const mockTimeSeries = vi.mocked(getReportsTimeSeries)
 const mockActivity = vi.mocked(searchAuditLogs)
 
 const DASHBOARD: AdminDashboard = {
@@ -30,6 +37,26 @@ const REPORTS: AdminReports = {
   uploads: { jobs: 11, totalRecords: 500, validRecords: 480, invalidRecords: 20 },
   jobRates: { errorRate: 0.05, partialRate: 0.1 },
   activeUsers: 30,
+}
+
+const TIME_SERIES: AdminTimeSeries = {
+  from: '2026-08-01T00:00:00.000Z',
+  to: '2026-08-31T00:00:00.000Z',
+  listings: [
+    { date: '2026-08-29', count: 2 },
+    { date: '2026-08-30', count: 0 },
+    { date: '2026-08-31', count: 5 },
+  ],
+  users: [
+    { date: '2026-08-29', count: 1 },
+    { date: '2026-08-30', count: 1 },
+    { date: '2026-08-31', count: 0 },
+  ],
+  uploads: [
+    { date: '2026-08-29', count: 0 },
+    { date: '2026-08-30', count: 0 },
+    { date: '2026-08-31', count: 1 },
+  ],
 }
 
 const ACTIVITY: AdminAuditLog[] = [
@@ -58,6 +85,10 @@ describe('AdminDashboardPage', () => {
     mockDashboard.mockReset()
     mockReports.mockReset()
     mockActivity.mockReset()
+    // Every test below cares about something other than the trend charts,
+    // so this gives them a working default instead of repeating it six times;
+    // the dedicated trend-chart test overrides it with more telling data.
+    mockTimeSeries.mockReset().mockResolvedValue(TIME_SERIES)
   })
 
   it('shows the KPI row from the dashboard summary', async () => {
@@ -120,6 +151,40 @@ describe('AdminDashboardPage', () => {
 
     expect(await screen.findByText('DEALER_APPROVED')).toBeInTheDocument()
     expect(screen.getByText(/dealer-1/)).toBeInTheDocument()
+  })
+
+  it('renders a daily trend chart per metric with the right peak and total', async () => {
+    mockDashboard.mockResolvedValue(DASHBOARD)
+    mockReports.mockResolvedValue(REPORTS)
+    mockActivity.mockResolvedValue(ACTIVITY)
+
+    renderPage()
+
+    expect(await screen.findByText('Activity over time')).toBeInTheDocument()
+    expect(screen.getByText('New listings')).toBeInTheDocument()
+    expect(screen.getByText('New users')).toBeInTheDocument()
+    expect(screen.getByText('Uploads submitted')).toBeInTheDocument()
+    // Listings series: [2, 0, 5] -> peak 5, total 7.
+    expect(screen.getByText('Peak 5/day')).toBeInTheDocument()
+    expect(screen.getByText('7 total')).toBeInTheDocument()
+  })
+
+  it('shows an empty state instead of a chart when a metric has no activity', async () => {
+    mockDashboard.mockResolvedValue(DASHBOARD)
+    mockReports.mockResolvedValue(REPORTS)
+    mockActivity.mockResolvedValue(ACTIVITY)
+    mockTimeSeries.mockResolvedValue({
+      ...TIME_SERIES,
+      uploads: [
+        { date: '2026-08-29', count: 0 },
+        { date: '2026-08-30', count: 0 },
+      ],
+    })
+
+    renderPage()
+
+    expect(await screen.findByText('Uploads submitted')).toBeInTheDocument()
+    expect(screen.getByText('No activity in this window.')).toBeInTheDocument()
   })
 
   it('still shows the KPI row and uploads when the report totals fail to load', async () => {
