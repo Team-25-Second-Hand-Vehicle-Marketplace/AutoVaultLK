@@ -9,6 +9,13 @@ export type SplitChunksOutput = {
   totalRecords: number;
   /** One envelope per chunk. This array is the Map state's input. */
   chunks: ChunkEnvelope[];
+  /**
+   * Passed through, not re-derived: ProcessRows' second branch (ProcessImages)
+   * reads this off its own state input, which is this output, not off the job
+   * row — without threading it through, ProcessImages always saw undefined
+   * and silently skipped every upload's photos, zip or no zip.
+   */
+  zipKey: string | null;
 };
 
 /**
@@ -54,6 +61,7 @@ export const handler = async (input: ValidateFileOutput): Promise<SplitChunksOut
       dealerId: input.dealerId,
       totalRecords: result.totalRecords,
       chunks,
+      zipKey: input.zipKey,
     };
   } catch (err) {
     await log.finish(logId, 'FAILED', {
