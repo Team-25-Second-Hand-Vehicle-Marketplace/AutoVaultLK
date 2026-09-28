@@ -1,9 +1,33 @@
 import { getContext } from './bootstrap';
+import { VehicleImageWriteEntity } from '../infrastructure/database/entities/vehicle-image.write-entity';
+import { VehicleWriteEntity } from '../infrastructure/database/entities/vehicle.write-entity';
+import { ProcessJobImagesService } from '../workers/etl-worker/pipeline/image-processing/process-job-images.service';
+import { VehicleImageRepository } from '../workers/etl-worker/pipeline/image-processing/vehicle-image.repository';
 
 export type ProcessImagesInput = {
   jobId: string;
   zipKey: string | null;
 };
+
+// Wired here, not in bootstrap.ts's shared LambdaContext: ProcessJobImagesService
+// pulls in `sharp`, a native module. This Lambda is packaged as a container
+// image (Docker, built for linux-x64 directly), so that's safe here — it is
+// not safe in bootstrap.ts, which every esbuild-bundled zip stage Lambda
+// imports too, and esbuild can't bundle sharp's native binary into a zip.
+let cachedImageProcessing: ProcessJobImagesService | undefined;
+
+async function getImageProcessing(): Promise<ProcessJobImagesService> {
+  if (cachedImageProcessing) return cachedImageProcessing;
+
+  const ctx = await getContext();
+  const vehicleImages = new VehicleImageRepository(
+    ctx.dataSource.getRepository(VehicleWriteEntity),
+    ctx.dataSource.getRepository(VehicleImageWriteEntity),
+    ctx.dataSource,
+  );
+  cachedImageProcessing = new ProcessJobImagesService(vehicleImages);
+  return cachedImageProcessing;
+}
 
 export type ProcessImagesOutput = {
   jobId: string;
@@ -56,7 +80,8 @@ export const handler = async (
   }
 
   try {
-    const result = await ctx.imageProcessing.run(ctx.store, {
+    const imageProcessing = await getImageProcessing();
+    const result = await imageProcessing.run(ctx.store, {
       jobId: input.jobId,
       zipKey: input.zipKey,
     });
