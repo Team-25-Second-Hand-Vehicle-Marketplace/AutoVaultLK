@@ -130,6 +130,16 @@ resource "aws_pipes_pipe" "ingestion_jobs" {
   }
 
   target_parameters {
+    # Without this, Pipes hands the target the raw SQS record array
+    # (`[{ messageId, body, ... }]`) even at batch_size = 1 — every state's
+    # "Payload.$": "$" then forwards that array instead of {jobId}, and any
+    # Catch's "ResultPath": "$.error" fails with States.ReferencePathConflict
+    # ("Unable to apply step \"error\" to input [...]") because you can't
+    # attach a keyed field to a JSON array. <$.body> unwraps the one record
+    # down to its body, which is already the `{"jobId": "..."}` JSON the ETL
+    # state machine's states are written to expect.
+    input_template = "<$.body>"
+
     step_function_state_machine_parameters {
       invocation_type = "FIRE_AND_FORGET"
     }
