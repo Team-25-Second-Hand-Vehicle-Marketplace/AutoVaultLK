@@ -61,8 +61,13 @@ describe('AdminReportsPage', () => {
     await user.click(screen.getByRole('button', { name: 'Run report' }))
 
     await waitFor(() => expect(mockGetReports).toHaveBeenCalledTimes(1))
+    // Compare against the same local-time-to-ISO conversion the page itself
+    // does, not a literal 'starts with 2026-09-01' — that assumes UTC, and a
+    // local midnight can land on the previous UTC day west of Greenwich (this
+    // machine runs UTC+5:30, but the page's own conversion should match
+    // wherever it runs).
     const [fromArg] = mockGetReports.mock.calls[0]
-    expect(fromArg.startsWith('2026-09-01')).toBe(true)
+    expect(fromArg).toBe(new Date('2026-09-01T00:00:00').toISOString())
   })
 
   it('only offers Download PDF once a report has loaded', async () => {

@@ -28,6 +28,10 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface GoogleLoginRequest {
+  idToken: string;
+}
+
 export interface RegisterBuyerRequest {
   email: string;
   password: string;

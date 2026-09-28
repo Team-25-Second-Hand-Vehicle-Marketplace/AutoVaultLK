@@ -5,6 +5,7 @@ describe('AuthController', () => {
     registerBuyer: jest.fn(),
     registerDealer: jest.fn(),
     login: jest.fn(),
+    loginWithGoogle: jest.fn(),
     loginAdmin: jest.fn(),
     refresh: jest.fn(),
     logout: jest.fn(),
@@ -60,6 +61,22 @@ describe('AuthController', () => {
       data,
       expect.objectContaining({ ipAddress: '127.0.0.1' }),
     );
+  });
+
+  it('routes Google sign-in through its own service method and attaches cookies', async () => {
+    const data = { idToken: 'raw-google-token' };
+    authService.loginWithGoogle.mockResolvedValue({ accessToken: 'google-token' });
+
+    await expect(controller.loginWithGoogle(data, req, res)).resolves.toEqual({
+      accessToken: 'google-token',
+    });
+    expect(authService.loginWithGoogle).toHaveBeenCalledWith(
+      data,
+      expect.objectContaining({ ipAddress: '127.0.0.1' }),
+    );
+    expect(refreshTokenCookieService.attachCookies).toHaveBeenCalledWith(res, {
+      accessToken: 'google-token',
+    });
   });
 
   it('routes admin login separately', async () => {

@@ -9,6 +9,8 @@ export interface AuthContextValue {
   login: (email: string, password: string) => Promise<void>
   /** Admin portal sign-in via POST /auth/login/admin. */
   loginAdmin: (email: string, password: string) => Promise<void>
+  /** "Continue with Google" — idToken from Google Identity Services. */
+  loginWithGoogle: (idToken: string) => Promise<void>
   /** Resolves to a message when the backend requires email verification. */
   register: (payload: RegisterBuyerRequest) => Promise<{ message?: string }>
   logout: () => Promise<void>

@@ -470,12 +470,13 @@ jobs:
         working-directory: web-frontend
         env:
           PUBLIC_API_ENDPOINT: ${{ vars.PUBLIC_API_ENDPOINT }}
+          GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
         run: |
           npm ci
           # The app joins paths itself (`${base}/auth/refresh`), so a trailing
           # slash — `terraform output public_api_endpoint` ends with one —
           # would produce `//auth/refresh`. Strip it.
-          VITE_API_BASE_URL="${PUBLIC_API_ENDPOINT%/}" npm run build
+          VITE_API_BASE_URL="${PUBLIC_API_ENDPOINT%/}" VITE_GOOGLE_CLIENT_ID="$GOOGLE_CLIENT_ID" npm run build
       - name: Sync to S3
         # Three passes, worst-cacheability first, so a broader later pass never
         # undoes a more specific header an earlier one set:

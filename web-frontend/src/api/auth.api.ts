@@ -2,6 +2,7 @@ import axios from 'axios'
 import { apiClient } from './client'
 import type {
   AuthTokenResponse,
+  GoogleLoginRequest,
   LoginRequest,
   RegisterBuyerRequest,
   RegisterDealerRequest,
@@ -22,6 +23,12 @@ export async function login(payload: LoginRequest): Promise<AuthTokenResponse> {
 /** Admin-only login — rejects non-ADMIN accounts server-side. */
 export async function loginAdmin(payload: LoginRequest): Promise<AuthTokenResponse> {
   const { data } = await apiClient.post<AuthTokenResponse>('/auth/login/admin', payload)
+  return data
+}
+
+/** "Continue with Google" — idToken is the credential Google Identity Services hands back to the frontend directly; the backend verifies it. */
+export async function loginWithGoogle(payload: GoogleLoginRequest): Promise<AuthTokenResponse> {
+  const { data } = await apiClient.post<AuthTokenResponse>('/auth/google', payload)
   return data
 }
 
