@@ -138,13 +138,59 @@ export class VerificationEmailService {
     ].join('\n');
   }
 
+  /**
+   * Table-based layout with every style inline: Gmail, Outlook and most
+   * mobile mail clients strip <style> blocks and collapse non-table layout,
+   * so this is the only markup style that renders consistently across them.
+   * Colors match the web app's accent blue (web-frontend/src/styles/next.css).
+   */
   private htmlBody(link: string): string {
-    return (
-      '<p>Welcome to AutoVault LK.</p>' +
-      `<p><a href="${link}">Verify your email address</a></p>` +
-      `<p>If the button does not work, copy this link into your browser:<br>${link}</p>` +
-      '<p>This link expires after a limited time. If you did not create an account, you can ignore this email.</p>'
-    );
+    return `<!DOCTYPE html>
+<html>
+  <body style="margin:0; padding:0; background-color:#f1f5f9; font-family:Arial, Helvetica, sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1f5f9; padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="max-width:480px; width:100%; background-color:#ffffff; border-radius:12px; overflow:hidden;">
+            <tr>
+              <td style="background-color:#1d4ed8; padding:24px 32px;">
+                <span style="color:#ffffff; font-size:20px; font-weight:700; letter-spacing:-0.01em;">AutoVault LK</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:32px;">
+                <h1 style="margin:0 0 16px; color:#0f172a; font-size:20px; font-weight:700;">Verify your email address</h1>
+                <p style="margin:0 0 24px; color:#334155; font-size:15px; line-height:1.6;">
+                  Welcome to AutoVault LK. Confirm this is your email address to activate your account.
+                </p>
+                <table role="presentation" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td style="border-radius:8px; background-color:#3b82f6;">
+                      <a href="${link}" style="display:inline-block; padding:12px 28px; color:#ffffff; font-size:15px; font-weight:600; text-decoration:none;">
+                        Verify email address
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin:24px 0 0; color:#64748b; font-size:13px; line-height:1.6;">
+                  If the button doesn't work, copy and paste this link into your browser:<br>
+                  <a href="${link}" style="color:#1d4ed8; word-break:break-all;">${link}</a>
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:20px 32px; background-color:#f8fafc; border-top:1px solid #e2e8f0;">
+                <p style="margin:0; color:#94a3b8; font-size:12px; line-height:1.6;">
+                  This link expires after a limited time. If you didn't create an AutoVault LK account, you can safely ignore this email.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
   }
 
   private fromAddress(): string {
