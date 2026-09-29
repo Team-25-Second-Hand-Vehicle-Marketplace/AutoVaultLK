@@ -13,11 +13,14 @@ import { useDealerProfile } from './useDealerProfile'
 
 const RECENT_LISTINGS_COUNT = 5
 
+// No SOLD tile: nothing in marketplace-service ever sets a listing to SOLD —
+// it's a valid status in the schema with no code path that reaches it. A
+// dealer marks a vehicle unavailable by archiving it instead, so Archived is
+// the tile that actually means "no longer for sale" here.
 const STATUS_TILES: { label: string; statuses: ListingStatus[] }[] = [
   { label: 'Live', statuses: ['LIVE'] },
   { label: 'Pending review', statuses: ['PENDING_REVIEW'] },
   { label: 'Draft', statuses: ['DRAFT'] },
-  { label: 'Sold', statuses: ['SOLD'] },
   { label: 'Rejected', statuses: ['REJECTED'] },
   { label: 'Archived', statuses: ['ARCHIVED'] },
 ]
