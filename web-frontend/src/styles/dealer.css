@@ -248,6 +248,54 @@
   font-weight: 600;
 }
 
+.dealer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.recent-listings {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.recent-listings__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.recent-listings__item img,
+.recent-listings__no-image {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--bg-alt);
+  flex-shrink: 0;
+}
+
+.recent-listings__title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  color: var(--text-h);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-listings__price {
+  color: var(--text-muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
 .dealer-note {
   margin-top: 24px;
   padding: 16px;
