@@ -19,13 +19,7 @@ describe('hasResolvedFilters', () => {
 });
 
 describe('maxEmbeddingDistanceFor', () => {
-  // Measured directly against seed data: a bare single word ("sporty")
-  // embeds too noisily for the 0.7 multi-word cutoff to admit even its own
-  // best match (distance 0.811 to a listing describing itself as "Sporty
-  // hatch"), while a full sentence like "family friendly vehicle" is
-  // precise enough that 0.7 already excludes an unrelated listing (0.595
-  // vs an irrelevant one only means the cutoff has room to spare, it does
-  // not mean an irrelevant match would slip through).
+
   it('gives a bare single word the loosest cutoff', () => {
     expect(maxEmbeddingDistanceFor('sporty')).toBe(0.85);
   });

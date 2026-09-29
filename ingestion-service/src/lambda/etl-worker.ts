@@ -5,22 +5,6 @@ import type { UploadJobMessage } from '../infrastructure/ports/job-queue.port';
 import { UploadJobRepository } from '../modules/ingestion/repositories/upload-job.repository';
 import { LocalOrchestrator } from '../workers/etl-worker/local-orchestrator';
 
-/**
- * SQS-triggered stand-in for the Step Functions state machine (§8's minimal
- * deployment path — see production/README.md).
- *
- * The full design is one Lambda per pipeline stage, fanned out by Step
- * Functions. That is not built yet. This runs the exact same
- * `LocalOrchestrator` the local/Docker path and every unit test already
- * exercise, inside one Lambda invocation per job instead of per stage — same
- * code, different executor, matching ADR-007's own framing of
- * LocalOrchestrator as "standing in for Step Functions."
- *
- * Batch size is 1 (see the event source mapping in Terraform): a job's
- * pipeline already fans out internally via mapWithConcurrency, so batching
- * multiple jobs into one invocation would only complicate the 15-minute
- * Lambda timeout budget for no benefit.
- */
 
 const logger = new Logger('EtlWorkerLambda');
 

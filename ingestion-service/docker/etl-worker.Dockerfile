@@ -1,11 +1,3 @@
-# Container image — MVP deployment path (production/README.md). Runs the
-# whole ETL pipeline (LocalOrchestrator, including the Groq, embedding and
-# image-processing stages) in one Lambda invocation per job, SQS-triggered,
-# rather than the one-Lambda-per-stage Step Functions design. Same reason as
-# embed.Dockerfile and process-images.Dockerfile: this needs both the MiniLM
-# ONNX runtime and Sharp's native binary, so it gets the same two-stage build
-# — node_modules is installed fresh in the Lambda base image, never copied
-# from the Alpine build stage, avoiding a glibc/musl mismatch.
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY package*.json ./

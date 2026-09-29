@@ -15,30 +15,6 @@ export type UploadAccepted = {
   zipS3Path: string | null
 }
 
-/** GET /jobs/{id} — mirrors JobStatusResponseDto. */
-export type JobStatus = {
-  id: string
-  status: UploadJobStatus
-  fileName: string
-  totalRecords: number
-  validRecords: number
-  invalidRecords: number
-  createdAt: string
-  updatedAt: string
-}
-
-/**
- * GET /jobs/mine — mirrors JobsResponseDto. Each row is the same shape as
- * JobStatus, minus the per-stage detail a list view has no use for.
- */
-export type JobsPage = {
-  items: JobStatus[]
-  total: number
-  page: number
-  limit: number
-  totalPages: number
-}
-
 /** Mirrors ingestion-service's EtlStage union. */
 export type EtlStage =
   | 'VALIDATE_FILE'
@@ -52,6 +28,58 @@ export type EtlStage =
   | 'PROCESS_IMAGES'
   | 'AGGREGATE'
   | 'NOTIFY'
+
+/** Mirrors ingestion-service's EtlStageStatus union. */
+export type EtlStageStatus = 'STARTED' | 'SUCCEEDED' | 'FAILED' | 'SKIPPED' | 'DEGRADED'
+
+/** One stage's progress within a job — mirrors StageProgressDto. */
+export type StageProgress = {
+  stage: EtlStage
+  status: EtlStageStatus
+  chunkId: number | null
+  retryCount: number
+  startedAt: string | null
+  completedAt: string | null
+  errorMessage: string | null
+}
+
+/** GET /jobs/{id} — mirrors JobStatusResponseDto. */
+export type JobStatus = {
+  id: string
+  status: UploadJobStatus
+  fileName: string
+  totalRecords: number
+  validRecords: number
+  invalidRecords: number
+  createdAt: string
+  updatedAt: string
+  stages: StageProgress[]
+}
+
+/**
+ * One row of GET /jobs/mine — mirrors JobSummaryDto. Same fields as
+ * JobStatus minus `stages`: a list view has no use for per-stage detail, and
+ * the backend does not compute it per row for that endpoint.
+ */
+export type JobSummary = {
+  id: string
+  status: UploadJobStatus
+  fileName: string
+  totalRecords: number
+  validRecords: number
+  invalidRecords: number
+  createdAt: string
+  updatedAt: string
+}
+
+/** GET /jobs/mine — mirrors JobsResponseDto. */
+export type JobsPage = {
+  items: JobSummary[]
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+}
 
 /** One refused row — mirrors RejectedRecordDto. */
 export type RejectedRecord = {

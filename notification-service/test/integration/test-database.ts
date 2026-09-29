@@ -1,0 +1,156 @@
+import { execFileSync } from 'node:child_process';
+import { config as loadEnv } from 'dotenv';
+import { DataSource, Repository } from 'typeorm';
+import { AuthUserView } from '../../src/infrastructure/database/entities/auth-user.view-entity';
+import { Notification } from '../../src/infrastructure/database/entities/notification.entity';
+
+loadEnv({ path: '../.env' });
+loadEnv({ path: '.env' });
+
+/**
+ * Shared setup for the notification-service integration suite.
+ *
+ * NotificationsRepository.claimDueRetries relies on `FOR UPDATE SKIP LOCKED`
+ * so that more than one replica sweeping concurrently never sends the same
+ * notification twice (FR-53). That concurrency semantic, the
+ * auth.users cross-schema read, and the unique idempotency_key constraint
+ * are all invisible to a unit test that stubs Repository<T> — this is the
+ * level that proves them against a live Postgres.
+ *
+ * Requires a migrated, seeded database — the one docker-compose brings up:
+ *
+ *   docker compose up -d postgres
+ *   npm --prefix database run migration:run
+ *   npm --prefix database run grants
+ *   npm --prefix database run seed:vehicles
+ *
+ * When no database is reachable the suite SKIPS rather than fails, matching
+ * marketplace-service/test/integration/test-database.ts.
+ */
+
+export const INTEGRATION_DATABASE_URL =
+  process.env.NOTIFICATION_DATABASE_URL ??
+  'postgresql://notification_service_role:dev_notification@localhost:5433/vehicle_marketplace';
+
+let cached: DataSource | undefined;
+
+/**
+ * Connects as `notification_service_role`, not as the database owner.
+ *
+ * That is deliberate: the cross-schema read into auth.users depends on a
+ * grant this service does not own. Running as the owner would pass whether
+ * or not database/src/grants.sql had ever run.
+ */
+export async function connect(): Promise<DataSource | null> {
+  if (cached?.isInitialized) return cached;
+
+  const dataSource = new DataSource({
+    type: 'postgres',
+    url: INTEGRATION_DATABASE_URL,
+    // Matches src/config/database.config.ts. Without it the unqualified
+    // relations in NotificationsRepository would resolve against `public`.
+    schema: 'notification',
+    entities: [Notification, AuthUserView],
+    synchronize: false,
+    ssl:
+      process.env.DATABASE_SSL === 'true'
+        ? { rejectUnauthorized: false }
+        : false,
+    // These run serially (maxWorkers: 1); the role's pool is sized for the
+    // service, not for a test runner holding connections open.
+    extra: { max: 2 },
+  });
+
+  try {
+    await dataSource.initialize();
+    cached = dataSource;
+    return dataSource;
+  } catch {
+    return null;
+  }
+}
+
+export async function disconnect(): Promise<void> {
+  if (cached?.isInitialized) await cached.destroy();
+  cached = undefined;
+}
+
+/** A typed Repository<T> off the shared DataSource, for constructing a repository class under test. */
+export function repositoryFor<T extends object>(
+  ds: DataSource,
+  entity: new () => T,
+): Repository<T> {
+  return ds.getRepository(entity);
+}
+
+/**
+ * `describe` that skips when the database is unreachable, printing why once.
+ *
+ * Jest needs the skip decision before any `beforeAll` runs, so this probes with
+ * a synchronous child process rather than an async connect — a promise cannot
+ * be awaited at describe-registration time.
+ */
+export function describeWithDatabase(name: string, body: () => void): void {
+  if (databaseIsReachable()) {
+    describe(name, body);
+    return;
+  }
+
+  describe.skip(
+    `${name} [skipped: no database at ${redact(INTEGRATION_DATABASE_URL)}]`,
+    body,
+  );
+}
+
+let reachable: boolean | undefined;
+
+function databaseIsReachable(): boolean {
+  if (reachable !== undefined) return reachable;
+
+  // A TCP probe, not a query: enough to tell "nothing is listening" from "the
+  // database is there", which is the only distinction the skip needs.
+  const url = new URL(INTEGRATION_DATABASE_URL);
+  const port = url.port || '5432';
+
+  try {
+    execFileSync(
+      process.execPath,
+      [
+        '-e',
+        `const net=require('net');const s=net.connect(${port},${JSON.stringify(url.hostname)});` +
+          `s.setTimeout(1500);s.on('connect',()=>{s.destroy();process.exit(0)});` +
+          `s.on('error',()=>process.exit(1));s.on('timeout',()=>process.exit(1));`,
+      ],
+      { stdio: 'ignore' },
+    );
+    reachable = true;
+  } catch {
+    reachable = false;
+  }
+
+  return reachable;
+}
+
+function redact(url: string): string {
+  return url.replace(/\/\/[^@]*@/, '//***@');
+}
+
+/**
+ * Skips an individual test when the seeded data it needs is absent.
+ *
+ * A database that is migrated but not seeded should not produce failures that
+ * look like defects in the query under test.
+ */
+export function itWithData(
+  name: string,
+  hasData: () => boolean,
+  body: () => Promise<void>,
+): void {
+  it(name, async () => {
+    if (!hasData()) {
+      console.warn(`[skipped: seeded data missing] ${name}`);
+      return;
+    }
+    await body();
+  });
+}

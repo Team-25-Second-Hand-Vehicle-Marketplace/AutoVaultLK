@@ -19,7 +19,9 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json --runInBand",
-    "test:security": "jest --config ./test/jest-e2e.json --runInBand tests/e2e/auth-security"
+    "test:security": "jest --config ./test/jest-e2e.json --runInBand tests/e2e/auth-security",
+    "test:integration": "jest --config ./test/integration/jest-integration.json --runInBand",
+    "test:contract": "jest --config ./test/contract/jest-contract.json"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1136.0",
@@ -93,6 +95,12 @@
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "coverage",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "<rootDir>/test/integration/",
+      "<rootDir>/test/contract/",
+      "<rootDir>/tests/e2e/"
+    ]
   }
 }
