@@ -17,7 +17,7 @@ describe('JobStatusRepository', () => {
     getManyAndCount: jest.fn(),
   };
 
-  const uploadJobRepository = { findOne: jest.fn() };
+  const uploadJobRepository = { findOne: jest.fn(), findAndCount: jest.fn() };
   const rejectedRecordRepository = { createQueryBuilder: jest.fn(() => qb) };
 
   let repository: JobStatusRepository;
@@ -35,11 +35,57 @@ describe('JobStatusRepository', () => {
       (qb as never as Record<string, jest.Mock>)[key].mockReturnValue(qb);
     }
     qb.getManyAndCount.mockResolvedValue([[], 0]);
+    uploadJobRepository.findAndCount.mockResolvedValue([[], 0]);
 
     repository = new JobStatusRepository(
       uploadJobRepository as never,
       rejectedRecordRepository as never,
     );
+  });
+
+  describe('findByDealer', () => {
+    it('scopes the query to the given dealer', async () => {
+      await repository.findByDealer('dealer-1', 1, 20);
+
+      expect(uploadJobRepository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { dealerId: 'dealer-1' } }),
+      );
+    });
+
+    it('orders newest first', async () => {
+      await repository.findByDealer('dealer-1', 1, 20);
+
+      expect(uploadJobRepository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({ order: { createdAt: 'DESC' } }),
+      );
+    });
+
+    it('translates page/limit into skip/take', async () => {
+      await repository.findByDealer('dealer-1', 3, 20);
+
+      expect(uploadJobRepository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({ skip: 40, take: 20 }),
+      );
+    });
+
+    it('returns the rows with the unpaged total', async () => {
+      const row = { id: 'job-1' };
+      uploadJobRepository.findAndCount.mockResolvedValue([[row], 5]);
+
+      await expect(repository.findByDealer('dealer-1', 1, 20)).resolves.toEqual(
+        { rows: [row], total: 5 },
+      );
+    });
+
+    it('never selects the storage paths', async () => {
+      await repository.findByDealer('dealer-1', 1, 20);
+
+      const [args] = uploadJobRepository.findAndCount.mock.calls[0] as [
+        { select: Record<string, unknown> },
+      ];
+      expect(args.select).not.toHaveProperty('csvS3Path');
+      expect(args.select).not.toHaveProperty('zipS3Path');
+    });
   });
 
   describe('findRejectedRecords', () => {

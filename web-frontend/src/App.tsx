@@ -23,6 +23,7 @@ import { DealerListingsPage } from './pages/dealers/DealerListingsPage'
 import { DealerProfilePage } from './pages/dealers/DealerProfilePage'
 import { BulkUploadPage } from './pages/dealers/BulkUploadPage'
 import { UploadStatusPage } from './pages/dealers/UploadStatusPage'
+import { UploadHistoryPage } from './pages/dealers/UploadHistoryPage'
 import { RequireDealerType } from './pages/dealers/RequireDealerType'
 import { RequireVerifiedDealer } from './pages/dealers/RequireVerifiedDealer'
 import { NotFoundPage } from './pages/NotFoundPage'
@@ -100,6 +101,16 @@ function App() {
                     <RequireVerifiedDealer>
                       <RequireDealerType type="business" fallbackTo="/dealer/listings">
                         <UploadStatusPage />
+                      </RequireDealerType>
+                    </RequireVerifiedDealer>
+                  }
+                />
+                <Route
+                  path="uploads"
+                  element={
+                    <RequireVerifiedDealer>
+                      <RequireDealerType type="business" fallbackTo="/dealer/listings">
+                        <UploadHistoryPage />
                       </RequireDealerType>
                     </RequireVerifiedDealer>
                   }

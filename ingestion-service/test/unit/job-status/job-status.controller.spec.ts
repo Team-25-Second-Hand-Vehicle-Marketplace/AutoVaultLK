@@ -3,7 +3,11 @@ import { PATH_METADATA } from '@nestjs/common/constants';
 import { JobStatusController } from '../../../src/modules/job-status/controllers/job-status.controller';
 
 describe('JobStatusController', () => {
-  const service = { getJobStatus: jest.fn(), getRejectedRecords: jest.fn() };
+  const service = {
+    getJobStatus: jest.fn(),
+    getRejectedRecords: jest.fn(),
+    listJobs: jest.fn(),
+  };
   let controller: JobStatusController;
 
   beforeEach(() => {
@@ -47,6 +51,51 @@ describe('JobStatusController', () => {
         role: 'DEALER',
       }),
     ).resolves.toBe(dto);
+  });
+
+  describe('listJobs', () => {
+    const dealer = {
+      id: 'dealer-1',
+      email: 'd@example.com',
+      role: 'DEALER' as const,
+    };
+
+    it('is mounted at mine, ahead of :id', () => {
+      const handler = Object.getOwnPropertyDescriptor(
+        JobStatusController.prototype,
+        'listJobs',
+      )?.value as unknown;
+
+      expect(Reflect.getMetadata(PATH_METADATA, handler as object)).toBe(
+        'mine',
+      );
+    });
+
+    it('passes the authenticated user id through as the dealer scope', async () => {
+      service.listJobs.mockResolvedValue({ items: [] });
+
+      await controller.listJobs({}, dealer);
+
+      expect(service.listJobs).toHaveBeenCalledWith('dealer-1', {});
+    });
+
+    it('forwards the pagination query', async () => {
+      service.listJobs.mockResolvedValue({ items: [] });
+
+      await controller.listJobs({ page: 2, limit: 10 }, dealer);
+
+      expect(service.listJobs).toHaveBeenCalledWith('dealer-1', {
+        page: 2,
+        limit: 10,
+      });
+    });
+
+    it('returns the service result unchanged', async () => {
+      const dto = { items: [], total: 0, page: 1, limit: 20, totalPages: 0 };
+      service.listJobs.mockResolvedValue(dto);
+
+      await expect(controller.listJobs({}, dealer)).resolves.toBe(dto);
+    });
   });
 
   describe('getRejections (FR-57)', () => {

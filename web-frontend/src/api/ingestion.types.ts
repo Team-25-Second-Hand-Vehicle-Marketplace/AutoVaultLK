@@ -27,6 +27,18 @@ export type JobStatus = {
   updatedAt: string
 }
 
+/**
+ * GET /jobs/mine — mirrors JobsResponseDto. Each row is the same shape as
+ * JobStatus, minus the per-stage detail a list view has no use for.
+ */
+export type JobsPage = {
+  items: JobStatus[]
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+}
+
 /** Mirrors ingestion-service's EtlStage union. */
 export type EtlStage =
   | 'VALIDATE_FILE'

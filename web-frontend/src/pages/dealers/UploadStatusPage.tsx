@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { toErrorMessage } from '../../api/client'
-import { getJobRejections, getJobStatus } from '../../api/ingestion.api'
+import { buildRejectionsCsv, getJobRejections, getJobStatus } from '../../api/ingestion.api'
 import {
   isTerminal,
   type JobStatus,
@@ -9,7 +9,16 @@ import {
   type UploadJobStatus,
 } from '../../api/ingestion.types'
 import { RejectionsReport } from '../../components/dealers/RejectionsReport'
+import { Button } from '../../components/ui/Button'
 import { ErrorBanner } from '../../components/ui/ErrorBanner'
+
+/**
+ * Mirrors ingestion-service's MAX_REJECTIONS_PAGE_SIZE — the export fetches
+ * every rejected row for the job, so it asks for the largest page the
+ * backend allows rather than paging through at the on-screen report's
+ * smaller default.
+ */
+const MAX_EXPORT_PAGE_SIZE = 200
 
 const POLL_START_MS = 2000
 const POLL_MAX_MS = 15000
@@ -62,6 +71,9 @@ export function UploadStatusPage() {
   const [rejectionsTotal, setRejectionsTotal] = useState(0)
   const [rejectionsError, setRejectionsError] = useState<string | null>(null)
   const [rejectionsLoading, setRejectionsLoading] = useState(false)
+
+  const [csvDownloading, setCsvDownloading] = useState(false)
+  const [csvError, setCsvError] = useState<string | null>(null)
 
   // Held in refs so the polling effect does not restart on every tick.
   const delay = useRef(POLL_START_MS)
@@ -122,7 +134,7 @@ export function UploadStatusPage() {
     const load = async () => {
       setRejectionsLoading(true)
       try {
-        const page = await getJobRejections(jobId, 1, controller.signal)
+        const page = await getJobRejections(jobId, 1, undefined, controller.signal)
         if (cancelled) return
         setRejections(page.items)
         setRejectionsTotal(page.total)
@@ -144,6 +156,37 @@ export function UploadStatusPage() {
       controller.abort()
     }
   }, [jobId, job])
+
+  // Fetches every rejected row, not just the report's first page — a
+  // dealer fixing 150 skipped rows needs all of them in the file, not the 50
+  // the on-screen table shows before "showing the first 50 of 150".
+  const onDownloadCsv = async () => {
+    if (!jobId) return
+
+    setCsvDownloading(true)
+    setCsvError(null)
+    try {
+      const first = await getJobRejections(jobId, 1, MAX_EXPORT_PAGE_SIZE)
+      const rest = await Promise.all(
+        Array.from({ length: first.totalPages - 1 }, (_, i) =>
+          getJobRejections(jobId, i + 2, MAX_EXPORT_PAGE_SIZE),
+        ),
+      )
+      const allRows = [...first.items, ...rest.flatMap((page) => page.items)]
+
+      const blob = new Blob([buildRejectionsCsv(allRows)], { type: 'text/csv;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${job?.fileName ?? 'upload'}-skipped-rows.csv`
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setCsvError(toErrorMessage(err, 'Could not download the skipped rows.'))
+    } finally {
+      setCsvDownloading(false)
+    }
+  }
 
   if (!jobId) {
     return (
@@ -229,13 +272,30 @@ export function UploadStatusPage() {
       )}
 
       {settled && job.invalidRecords > 0 && (
-        <RejectionsReport
-          rows={rejections}
-          total={rejectionsTotal}
-          skippedCount={job.invalidRecords}
-          loading={rejectionsLoading}
-          error={rejectionsError}
-        />
+        <>
+          <div className="dealer-page__actions">
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={csvDownloading}
+              onClick={() => void onDownloadCsv()}
+            >
+              {csvDownloading ? 'Preparing file…' : 'Download skipped rows as CSV'}
+            </Button>
+          </div>
+          <p className="dealer-muted">
+            Includes a Row and Reason column for reference — remove them before re-uploading the
+            fixed file.
+          </p>
+          {csvError && <ErrorBanner message={csvError} />}
+          <RejectionsReport
+            rows={rejections}
+            total={rejectionsTotal}
+            skippedCount={job.invalidRecords}
+            loading={rejectionsLoading}
+            error={rejectionsError}
+          />
+        </>
       )}
 
       {job.validRecords > 0 && (
