@@ -306,6 +306,25 @@ export class ListingService {
   }
 
   /**
+   * FR-58: removes one photo from a listing the dealer owns, leaving the
+   * rest in place — see ImageUploadService.deleteImage for why this needs
+   * its own endpoint rather than reusing the replace-whole-set upload one.
+   */
+  async deleteImage(id: string, imageId: string, actor: AuthenticatedUser) {
+    const listing = await this.listingRepository.findById(id);
+
+    if (!listing) {
+      throw new NotFoundException(`Vehicle listing with ID ${id} not found`);
+    }
+
+    this.assertOwnership(listing, actor);
+
+    await this.imageUploadService.deleteImage(id, imageId);
+
+    return { message: 'Image deleted' };
+  }
+
+  /**
    * Manual, one-at-a-time listing creation is for individual dealers only.
    * Business dealers list their stock through the bulk upload pipeline
    * instead, so a stray manual listing here would bypass it.
