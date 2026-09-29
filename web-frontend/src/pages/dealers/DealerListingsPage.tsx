@@ -5,6 +5,7 @@ import {
   createListing,
   deactivateListing,
   deleteListing,
+  deleteListingImage,
   getMyListings,
   unarchiveListing,
   updateListing,
@@ -158,6 +159,27 @@ export function DealerListingsPage() {
     }
   }
 
+  const onDeleteImage = async (listingId: string, imageId: string) => {
+    try {
+      await deleteListingImage(listingId, imageId)
+      toast.success('Photo removed')
+      // The open edit form tracks its own copy of the image list and updates
+      // itself on success; this only keeps the background cache in sync so a
+      // reopened row (or the expanded details panel) reflects it too.
+      listings.setData(
+        (data) =>
+          data?.map((l) =>
+            l.id === listingId
+              ? { ...l, images: l.images.filter((img) => img.id !== imageId) }
+              : l,
+          ) ?? data,
+      )
+    } catch (error) {
+      toast.error(toErrorMessage(error, 'Could not remove the photo.'))
+      throw error
+    }
+  }
+
   const onDeactivate = async (listing: DealerListing) => {
     if (!confirm(`Archive ${listing.make} ${listing.model}? It will stop appearing in search.`)) {
       return
@@ -300,6 +322,7 @@ export function DealerListingsPage() {
         <ListingForm
           listing={mode.listing}
           onSubmit={(input, images) => onUpdate(mode.listing.id, input, images)}
+          onDeleteImage={(imageId) => onDeleteImage(mode.listing.id, imageId)}
           onCancel={backToList}
           submitLabel="Save changes"
         />

@@ -9,6 +9,7 @@ import {
   TRANSMISSION_TYPES,
   type CreateListingInput,
   type DealerListing,
+  type DealerListingImage,
 } from '../../api/listings.types'
 import { humanizeEnum } from '../search/vehicle-format'
 import { Button } from '../ui/Button'
@@ -140,13 +141,31 @@ interface ListingFormProps {
    * the price without re-selecting files).
    */
   onSubmit: (input: CreateListingInput, images: File[]) => Promise<void>
+  /**
+   * Present only in edit mode. Removes one existing photo immediately
+   * (its own request, not deferred to Save) — replaceImages requires
+   * resending every file to keep, but the browser has no File object for a
+   * photo it only knows as a stored URL, so a per-photo delete needs its own
+   * call. Rejecting leaves the thumbnail in place.
+   */
+  onDeleteImage?: (imageId: string) => Promise<void>
   onCancel: () => void
   submitLabel: string
 }
 
-export function ListingForm({ listing, onSubmit, onCancel, submitLabel }: ListingFormProps) {
+export function ListingForm({
+  listing,
+  onSubmit,
+  onDeleteImage,
+  onCancel,
+  submitLabel,
+}: ListingFormProps) {
   const [images, setImages] = useState<File[]>([])
   const [imageError, setImageError] = useState<string | null>(null)
+  const [existingImages, setExistingImages] = useState<DealerListingImage[]>(
+    listing?.images ?? [],
+  )
+  const [deletingImageId, setDeletingImageId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const {
@@ -206,6 +225,20 @@ export function ListingForm({ listing, onSubmit, onCancel, submitLabel }: Listin
     }
 
     setImages(files)
+  }
+
+  const onRemoveExisting = async (imageId: string) => {
+    if (!onDeleteImage) return
+    setDeletingImageId(imageId)
+    try {
+      await onDeleteImage(imageId)
+      setExistingImages((prev) => prev.filter((img) => img.id !== imageId))
+    } catch {
+      // The caller already surfaces a toast for the failure; the thumbnail
+      // simply stays put since nothing changed.
+    } finally {
+      setDeletingImageId(null)
+    }
   }
 
   return (
@@ -302,6 +335,39 @@ export function ListingForm({ listing, onSubmit, onCancel, submitLabel }: Listin
         <span>Description (optional)</span>
         <textarea rows={4} placeholder="Service history, extras, condition notes…" {...register('description')} />
       </label>
+
+      {listing && existingImages.length > 0 && (
+        <div className="form-field">
+          <span>Current photos</span>
+          <div className="listing-form__existing-images">
+            {existingImages.map((image) => (
+              <figure key={image.id} className="listing-form__existing-image">
+                {image.thumbnailUrl ? (
+                  <img src={image.thumbnailUrl} alt="" loading="lazy" />
+                ) : (
+                  <div className="listing-form__existing-image-placeholder" aria-hidden="true" />
+                )}
+                {image.isPrimary && (
+                  <figcaption className="listing-form__existing-image-badge">Primary</figcaption>
+                )}
+                <button
+                  type="button"
+                  className="listing-form__existing-image-remove"
+                  disabled={deletingImageId === image.id}
+                  onClick={() => void onRemoveExisting(image.id)}
+                  aria-label="Remove this photo"
+                >
+                  {deletingImageId === image.id ? 'Removing…' : 'Remove'}
+                </button>
+              </figure>
+            ))}
+          </div>
+          <span className="upload-field__hint">
+            Removing a photo here takes effect immediately, even without saving the rest of this
+            form.
+          </span>
+        </div>
+      )}
 
       <label className="form-field">
         <span>{listing ? 'Replace photos (optional)' : 'Photos (optional)'}</span>

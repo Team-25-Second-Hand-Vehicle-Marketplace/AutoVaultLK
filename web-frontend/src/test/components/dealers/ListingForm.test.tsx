@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ListingForm } from '../../../components/dealers/ListingForm'
+import type { DealerListing } from '../../../api/listings.types'
 
 /**
  * FR-58: the manual listing form never had an image field before this.
@@ -138,5 +139,101 @@ describe('ListingForm image field', () => {
 
     expect(screen.getByText('Replace photos (optional)')).toBeInTheDocument()
     expect(screen.getByText(/Leave empty to keep them/)).toBeInTheDocument()
+  })
+
+  const LISTING_WITH_IMAGES: DealerListing = {
+    id: 'v-1',
+    status: 'LIVE',
+    make: 'Toyota',
+    model: 'Vitz',
+    manufactureYear: 2015,
+    price: 3_500_000,
+    mileage: 45_000,
+    createdAt: '2026-01-01T00:00:00Z',
+    registrationYear: null,
+    fuelType: 'PETROL',
+    transmissionType: 'AUTOMATIC',
+    vehicleType: 'CAR',
+    condition: 'USED',
+    description: null,
+    normalization: null,
+    specs: null,
+    needsManualReview: false,
+    reviewReason: null,
+    images: [
+      { id: 'img-1', isPrimary: true, displayOrder: 0, url: null, thumbnailUrl: 'a.jpg' },
+      { id: 'img-2', isPrimary: false, displayOrder: 1, url: null, thumbnailUrl: 'b.jpg' },
+    ],
+  }
+
+  it('shows a Remove control for each existing photo when editing', () => {
+    render(
+      <ListingForm
+        listing={LISTING_WITH_IMAGES}
+        onSubmit={vi.fn()}
+        onDeleteImage={vi.fn()}
+        onCancel={vi.fn()}
+        submitLabel="Save changes"
+      />,
+    )
+
+    expect(screen.getByText('Current photos')).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Remove this photo' })).toHaveLength(2)
+  })
+
+  it('calls onDeleteImage with the image id and removes its thumbnail on success', async () => {
+    const onDeleteImage = vi.fn().mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    render(
+      <ListingForm
+        listing={LISTING_WITH_IMAGES}
+        onSubmit={vi.fn()}
+        onDeleteImage={onDeleteImage}
+        onCancel={vi.fn()}
+        submitLabel="Save changes"
+      />,
+    )
+
+    const [firstRemove] = screen.getAllByRole('button', { name: 'Remove this photo' })
+    await user.click(firstRemove)
+
+    expect(onDeleteImage).toHaveBeenCalledWith('img-1')
+    await waitFor(() =>
+      expect(screen.getAllByRole('button', { name: 'Remove this photo' })).toHaveLength(1),
+    )
+  })
+
+  it('keeps the thumbnail when onDeleteImage rejects', async () => {
+    const onDeleteImage = vi.fn().mockRejectedValue(new Error('network error'))
+    const user = userEvent.setup()
+    render(
+      <ListingForm
+        listing={LISTING_WITH_IMAGES}
+        onSubmit={vi.fn()}
+        onDeleteImage={onDeleteImage}
+        onCancel={vi.fn()}
+        submitLabel="Save changes"
+      />,
+    )
+
+    const [firstRemove] = screen.getAllByRole('button', { name: 'Remove this photo' })
+    await user.click(firstRemove)
+
+    await waitFor(() => expect(onDeleteImage).toHaveBeenCalled())
+    expect(screen.getAllByRole('button', { name: 'Remove this photo' })).toHaveLength(2)
+  })
+
+  it('does not show the current-photos section when the listing has no images', () => {
+    render(
+      <ListingForm
+        listing={{ ...LISTING_WITH_IMAGES, images: [] }}
+        onSubmit={vi.fn()}
+        onDeleteImage={vi.fn()}
+        onCancel={vi.fn()}
+        submitLabel="Save changes"
+      />,
+    )
+
+    expect(screen.queryByText('Current photos')).not.toBeInTheDocument()
   })
 })

@@ -149,4 +149,20 @@ export class ListingController {
     }
     return this.listingService.uploadImages(id, actor, files);
   }
+
+  /**
+   * FR-58: removes one photo without touching the rest — see
+   * ListingService.deleteImage for why this needs its own route rather than
+   * reusing uploadImages' replace-whole-set semantics.
+   */
+  @Delete(':id/images/:imageId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('DEALER', 'ADMIN')
+  deleteImage(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('imageId', ParseUUIDPipe) imageId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.listingService.deleteImage(id, imageId, actor);
+  }
 }
