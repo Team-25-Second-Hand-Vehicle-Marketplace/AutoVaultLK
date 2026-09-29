@@ -26,6 +26,7 @@ import {
 import { ActionMenu, type ActionMenuItem } from '../../components/ui/ActionMenu'
 import { Button } from '../../components/ui/Button'
 import { ErrorBanner } from '../../components/ui/ErrorBanner'
+import { StatusBadge } from '../../components/dealers/StatusBadge'
 import { useDealerProfile } from './useDealerProfile'
 import { formatMileage, formatPrice } from '../../components/search/vehicle-format'
 
@@ -45,10 +46,6 @@ const listingsError = (err: unknown) => toErrorMessage(err, 'Could not load your
 /** Archiving cannot be undone from this page, so it asks first. */
 function useConfirm() {
   return useCallback((message: string) => window.confirm(message), [])
-}
-
-function StatusBadge({ status }: { status: ListingStatus }) {
-  return <span className={`listing-status listing-status--${status.toLowerCase()}`}>{status.replace(/_/g, ' ')}</span>
 }
 
 /**
