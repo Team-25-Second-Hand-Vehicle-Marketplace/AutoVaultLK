@@ -56,6 +56,31 @@ export type JobStatus = {
   stages: StageProgress[]
 }
 
+/**
+ * One row of GET /jobs/mine — mirrors JobSummaryDto. Same fields as
+ * JobStatus minus `stages`: a list view has no use for per-stage detail, and
+ * the backend does not compute it per row for that endpoint.
+ */
+export type JobSummary = {
+  id: string
+  status: UploadJobStatus
+  fileName: string
+  totalRecords: number
+  validRecords: number
+  invalidRecords: number
+  createdAt: string
+  updatedAt: string
+}
+
+/** GET /jobs/mine — mirrors JobsResponseDto. */
+export type JobsPage = {
+  items: JobSummary[]
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+}
+
 /** One refused row — mirrors RejectedRecordDto. */
 export type RejectedRecord = {
   /** 0 means the whole file was rejected, not a particular row. */

@@ -9,6 +9,11 @@ export type RejectionsPage = {
   total: number;
 };
 
+export type JobsPage = {
+  rows: UploadJob[];
+  total: number;
+};
+
 @Injectable()
 export class JobStatusRepository {
   constructor(
@@ -51,6 +56,37 @@ export class JobStatusRepository {
       ],
       order: { createdAt: 'DESC' },
     });
+  }
+
+  /**
+   * The dealer's own upload history, newest first — lets a dealer find a past
+   * job's rejection report again after navigating away. Before this there was
+   * no way back to a settled job's page short of the URL from right after it
+   * finished; `getActiveJob` only ever covers the one still running.
+   */
+  async findByDealer(
+    dealerId: string,
+    page: number,
+    limit: number,
+  ): Promise<JobsPage> {
+    const [rows, total] = await this.uploadJobRepository.findAndCount({
+      select: {
+        id: true,
+        status: true,
+        fileName: true,
+        totalRecords: true,
+        validRecords: true,
+        invalidRecords: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      where: { dealerId },
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    return { rows, total };
   }
 
   /**
