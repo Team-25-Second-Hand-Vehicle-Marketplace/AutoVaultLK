@@ -57,7 +57,7 @@ function renderPage() {
   return render(
     <MemoryRouter>
       <DealerProfileContext.Provider
-        value={{ data: DEALER_PROFILE, error: null, loading: false, reload: vi.fn() }}
+        value={{ data: DEALER_PROFILE, error: null, loading: false, reload: vi.fn(), setData: vi.fn() }}
       >
         <DealerDashboardPage />
       </DealerProfileContext.Provider>
