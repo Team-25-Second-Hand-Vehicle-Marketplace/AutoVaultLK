@@ -13,6 +13,10 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://marketplace:marketplace@localhost:5433/vehicle_marketplace
+      AUTH_DATABASE_URL: postgresql://auth_service_role:dev_auth@localhost:5433/vehicle_marketplace
+
     defaults:
       run:
         working-directory: auth-user-service
@@ -33,6 +37,39 @@ jobs:
 
       - name: Run tests
         run: npm run test:ci
+
+      # Integration tests connect as auth_service_role against a real
+      # Postgres and assert the constraints and cascade actions a stubbed
+      # Repository<T> unit test cannot see: users.email and *_tokens.
+      # token_hash uniqueness, and that refresh_tokens/dealer_profiles/
+      # password_history cascade on user deletion while
+      # refresh_tokens.replaced_by_id and security_events.user_id SET NULL
+      # instead. The suite skips itself when no database is reachable, so a
+      # developer without Docker gets a green local build; here the service
+      # container opts in explicitly.
+      - name: Start Postgres
+        run: docker compose up -d postgres
+        working-directory: .
+
+      - name: Wait for Postgres
+        run: |
+          for i in $(seq 1 30); do
+            if docker exec vehicle_marketplace_postgres \
+                 pg_isready -U marketplace -d vehicle_marketplace; then exit 0; fi
+            sleep 2
+          done
+          echo "Postgres did not become ready" >&2
+          exit 1
+
+      - name: Prepare database
+        working-directory: database
+        run: |
+          npm ci
+          npm run migration:run
+          npm run grants
+
+      - name: Run integration tests
+        run: npm run test:integration
 
       - name: Build service
         run: npm run build

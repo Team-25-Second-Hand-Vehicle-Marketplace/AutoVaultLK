@@ -1,0 +1,40 @@
+name: API Gateway CI
+
+on:
+  push:
+    paths:
+      - 'api-gateway/**'
+      - 'cloud-infrastructure/terraform/modules/api-gateway/**'
+      - '.github/workflows/api-gateway.yml'
+  pull_request:
+    paths:
+      - 'api-gateway/**'
+      - 'cloud-infrastructure/terraform/modules/api-gateway/**'
+      - '.github/workflows/api-gateway.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api-gateway
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: api-gateway/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run contract tests (OpenAPI, CORS, nginx routes, Terraform scaffold)
+        run: npm run test:ci
+
+      - name: Validate nginx configuration
+        run: npm run test:nginx

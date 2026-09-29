@@ -15,18 +15,6 @@ export type UploadAccepted = {
   zipS3Path: string | null
 }
 
-/** GET /jobs/{id} — mirrors JobStatusResponseDto. */
-export type JobStatus = {
-  id: string
-  status: UploadJobStatus
-  fileName: string
-  totalRecords: number
-  validRecords: number
-  invalidRecords: number
-  createdAt: string
-  updatedAt: string
-}
-
 /** Mirrors ingestion-service's EtlStage union. */
 export type EtlStage =
   | 'VALIDATE_FILE'
@@ -40,6 +28,33 @@ export type EtlStage =
   | 'PROCESS_IMAGES'
   | 'AGGREGATE'
   | 'NOTIFY'
+
+/** Mirrors ingestion-service's EtlStageStatus union. */
+export type EtlStageStatus = 'STARTED' | 'SUCCEEDED' | 'FAILED' | 'SKIPPED' | 'DEGRADED'
+
+/** One stage's progress within a job — mirrors StageProgressDto. */
+export type StageProgress = {
+  stage: EtlStage
+  status: EtlStageStatus
+  chunkId: number | null
+  retryCount: number
+  startedAt: string | null
+  completedAt: string | null
+  errorMessage: string | null
+}
+
+/** GET /jobs/{id} — mirrors JobStatusResponseDto. */
+export type JobStatus = {
+  id: string
+  status: UploadJobStatus
+  fileName: string
+  totalRecords: number
+  validRecords: number
+  invalidRecords: number
+  createdAt: string
+  updatedAt: string
+  stages: StageProgress[]
+}
 
 /** One refused row — mirrors RejectedRecordDto. */
 export type RejectedRecord = {

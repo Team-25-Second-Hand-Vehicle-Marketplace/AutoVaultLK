@@ -38,7 +38,15 @@ import { EmailVerificationService } from './email-verification.service';
 import { PasswordService } from './password.service';
 import { SessionMetadata } from '../types/session-metadata.type';
 
-type AuthUser = Pick<User, 'id' | 'email' | 'name' | 'role' | 'isActive'>;
+/** Mirrors web-frontend's AuthUser (auth.types.ts). */
+export type AuthUser = Pick<User, 'id' | 'email' | 'name' | 'role' | 'isActive'>;
+
+/** Mirrors web-frontend's AuthTokenResponse (auth.types.ts). */
+export type AuthTokenResponse = {
+  accessToken: string;
+  refreshToken: string;
+  user: AuthUser;
+};
 
 @Injectable()
 export class AuthService {
