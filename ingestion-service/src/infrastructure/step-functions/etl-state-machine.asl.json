@@ -1,12 +1,17 @@
 {
   "Comment": "AutoVault LK bulk ingestion ETL. Transcribes SAD 6.6; the stage order is declared once in src/workers/etl-worker/pipeline/graph.ts and asserted against this file by test/unit/step-functions/state-machine.spec.ts. Rows never cross a state boundary - each state reads and writes S3 and passes a ~200 byte envelope, because Step Functions caps a state payload at 256KB.",
-  "StartAt": "ValidateFile",
+  "StartAt": "UnwrapPipesBatch",
   "States": {
+    "UnwrapPipesBatch": {
+      "Type": "Pass",
+      "Comment": "SQS + EventBridge Pipes always delivers a one-element array to a Step Functions target, even at batch_size 1 and with an InputTemplate. This used to be unwrapped only inside ValidateFile's own InputPath, which fed the Lambda the right {jobId} object but left the STATE's raw input - what a Catch's ResultPath merges error output onto - still the array. ValidateFile failing on real dealer input (a non-UTF-8 file) proved that: its Catch tried to write $.error onto [{jobId:...}], which is not a JSON operation any array supports, and Step Functions raised States.ReferencePathConflict and aborted the whole execution before MarkJobFailed ever ran - so the job sat at PROCESSING forever instead of showing FAILED. Unwrapping here, before any state (including ValidateFile) is entered, means every Catch downstream always merges onto a plain object.",
+      "InputPath": "$[0]",
+      "Next": "ValidateFile"
+    },
     "ValidateFile": {
       "Type": "Task",
-      "Comment": "The only state permitted to fail the whole job on content. A file with no header row has no rows to reject individually. InputPath unwraps the Pipe's batch array (SQS + EventBridge Pipes always delivers a one-element array to a Step Functions target, even at batch_size 1 and with an InputTemplate) into the plain {jobId} object every state, including this one's own Retry/Catch, is written to expect. Without it, Payload.$ forwarded the whole array, input.jobId was undefined, and TypeORM silently dropped that from the WHERE clause instead of erroring - so ValidateFile silently picked an unrelated dealer's job.",
+      "Comment": "The only state permitted to fail the whole job on content. A file with no header row has no rows to reject individually.",
       "Resource": "arn:aws:states:::lambda:invoke",
-      "InputPath": "$[0]",
       "Parameters": {
         "FunctionName": "${ValidateFileFunctionArn}",
         "Payload.$": "$"

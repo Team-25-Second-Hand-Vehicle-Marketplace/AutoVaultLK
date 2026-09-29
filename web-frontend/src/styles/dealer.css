@@ -219,19 +219,17 @@
 
 /* --- Tiles --- */
 
-/* Fixed 6-up grid (not auto-fill/minmax) so the row never wraps: columns
-   shrink to fit the container instead of dropping to a second line. Below
-   640px there isn't room for 6 legible columns, so it falls back to 3x2. */
+/* This class is shared by pages with different tile counts (6 on the
+   dashboard, 3 on the upload status page), so the column count can't be
+   hardcoded — a fixed repeat(6, ...) leaves a 3-tile row cornered on the
+   left with empty space on the right. auto-fit collapses columns that have
+   no tile to fill instead of leaving them blank, so a shorter row still
+   stretches to the full width; a longer row still wraps only when the
+   container genuinely can't fit another column at the minimum width. */
 .dealer-tiles {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 14px;
-}
-
-@media (max-width: 640px) {
-  .dealer-tiles {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
 }
 
 .dealer-tiles__item {
