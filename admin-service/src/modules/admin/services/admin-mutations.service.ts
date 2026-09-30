@@ -1,8 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { AuthenticatedUser } from '../../auth/types/authenticated-user.type';
 import { AuthInternalClient } from '../clients/auth-internal.client';
+import { MarketplaceInternalClient } from '../clients/marketplace-internal.client';
 import { NotificationInternalClient } from '../clients/notification-internal.client';
 import { AuditLogsRepository } from '../repositories/audit-logs.repository';
+import { DictionaryCandidatesRepository } from '../repositories/dictionary-candidates.repository';
 
 @Injectable()
 export class AdminMutationsService {
@@ -10,11 +12,17 @@ export class AdminMutationsService {
 
   constructor(
     private readonly auth: AuthInternalClient,
+    private readonly marketplace: MarketplaceInternalClient,
     private readonly notifications: NotificationInternalClient,
     private readonly auditLogs: AuditLogsRepository,
+    private readonly dictionaryCandidates: DictionaryCandidatesRepository,
   ) {}
 
-  async approveDealer(dealerId: string, actor: AuthenticatedUser, ipAddress: string | null) {
+  async approveDealer(
+    dealerId: string,
+    actor: AuthenticatedUser,
+    ipAddress: string | null,
+  ) {
     const dealer = await this.auth.approveDealer(dealerId, actor.id);
     const audit = await this.auditLogs.append({
       actorId: actor.id,
@@ -24,7 +32,11 @@ export class AdminMutationsService {
       changes: { verificationStatus: 'VERIFIED' },
       ipAddress,
     });
-    await this.notify(dealerId, 'DEALER_VERIFIED', `dealer.verified:${dealerId}`);
+    await this.notify(
+      dealerId,
+      'DEALER_VERIFIED',
+      `dealer.verified:${dealerId}`,
+    );
     return { dealer, audit };
   }
 
@@ -46,11 +58,20 @@ export class AdminMutationsService {
       changes: { verificationStatus: 'REJECTED', reason: reason ?? null },
       ipAddress,
     });
-    await this.notify(dealerId, 'DEALER_REJECTED', `dealer.rejected:${dealerId}`, reason);
+    await this.notify(
+      dealerId,
+      'DEALER_REJECTED',
+      `dealer.rejected:${dealerId}`,
+      reason,
+    );
     return { dealer, audit };
   }
 
-  async deactivateUser(userId: string, actor: AuthenticatedUser, ipAddress: string | null) {
+  async deactivateUser(
+    userId: string,
+    actor: AuthenticatedUser,
+    ipAddress: string | null,
+  ) {
     const user = await this.auth.deactivateUser(userId, actor.id);
     const audit = await this.auditLogs.append({
       actorId: actor.id,
@@ -63,7 +84,11 @@ export class AdminMutationsService {
     return { user, audit };
   }
 
-  async reactivateUser(userId: string, actor: AuthenticatedUser, ipAddress: string | null) {
+  async reactivateUser(
+    userId: string,
+    actor: AuthenticatedUser,
+    ipAddress: string | null,
+  ) {
     const user = await this.auth.reactivateUser(userId, actor.id);
     const audit = await this.auditLogs.append({
       actorId: actor.id,
@@ -99,6 +124,82 @@ export class AdminMutationsService {
       ipAddress,
     });
     return { user, audit };
+  }
+
+  /**
+   * "New vehicle types" tab, path 1: the raw text names something genuinely
+   * not in the dictionary yet. Dismissing the candidate after a successful
+   * add is what stops it reappearing in the review queue — the historical
+   * rejected_records rows behind it never go away, so without this the same
+   * candidate would resurface every time the tab is reopened even though an
+   * admin already acted on it.
+   */
+  async addDictionaryMake(
+    rawValue: string,
+    canonicalValue: string,
+    actor: AuthenticatedUser,
+    ipAddress: string | null,
+  ) {
+    const entry = await this.marketplace.createDictionaryEntry(
+      'MAKE',
+      canonicalValue,
+    );
+    await this.dictionaryCandidates.dismiss(rawValue, actor.id);
+    const audit = await this.auditLogs.append({
+      actorId: actor.id,
+      action: 'dictionary.make_added',
+      entityType: 'dictionary_entry',
+      entityId: (entry as { id?: string } | null)?.id ?? null,
+      changes: { dictionaryType: 'MAKE', canonicalValue, rawValue },
+      ipAddress,
+    });
+    return { entry, audit };
+  }
+
+  /**
+   * "New vehicle types" tab, path 2: the raw text is just a mangled spelling
+   * of a make that already exists — recorded as an alias of it rather than a
+   * duplicate canonical entry.
+   */
+  async addDictionaryAlias(
+    rawValue: string,
+    aliasText: string,
+    dictionaryId: string,
+    actor: AuthenticatedUser,
+    ipAddress: string | null,
+  ) {
+    const result = await this.marketplace.addDictionaryAlias(
+      dictionaryId,
+      aliasText,
+    );
+    await this.dictionaryCandidates.dismiss(rawValue, actor.id);
+    const audit = await this.auditLogs.append({
+      actorId: actor.id,
+      action: 'dictionary.alias_added',
+      entityType: 'dictionary_entry',
+      entityId: dictionaryId,
+      changes: { alias: aliasText, rawValue },
+      ipAddress,
+    });
+    return { result, audit };
+  }
+
+  /** Noise — not worth adding, but should stop showing up either. */
+  async dismissDictionaryCandidate(
+    rawValue: string,
+    actor: AuthenticatedUser,
+    ipAddress: string | null,
+  ) {
+    await this.dictionaryCandidates.dismiss(rawValue, actor.id);
+    const audit = await this.auditLogs.append({
+      actorId: actor.id,
+      action: 'dictionary.candidate_dismissed',
+      entityType: 'dictionary_candidate',
+      entityId: null,
+      changes: { rawValue },
+      ipAddress,
+    });
+    return { audit };
   }
 
   private async notify(

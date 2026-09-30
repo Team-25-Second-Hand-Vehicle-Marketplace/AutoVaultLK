@@ -9,6 +9,7 @@ const NAV = [
   { to: '/admin/uploads', end: false, label: 'Uploads' },
   { to: '/admin/reports', end: false, label: 'Reports' },
   { to: '/admin/audit-logs', end: false, label: 'Audit logs' },
+  { to: '/admin/dictionary', end: false, label: 'New vehicle types' },
 ] as const
 
 export function AdminLayout() {
