@@ -118,3 +118,13 @@ jobs:
           PORT: 3002
           MARKETPLACE_DATABASE_URL: postgresql://marketplace_service_role:dev_marketplace@localhost:5433/vehicle_marketplace
           DATABASE_SSL: 'false'
+          # JwtStrategy calls ConfigService.getOrThrow for these at boot,
+          # even though the search endpoint this smoke check exercises is
+          # unauthenticated — the module graph still constructs the guard.
+          # No other workflow in this repo has needed these because none of
+          # them boot a real, full service process; they run unit/e2e suites
+          # against a Nest testing module instead. Values are dummies, not
+          # secrets — this process never issues or verifies a real token.
+          JWT_ACCESS_SECRET: ci-smoke-test-secret-not-used-for-real-auth
+          JWT_ISSUER: autovault-lk-auth
+          JWT_AUDIENCE: autovault-lk-api
