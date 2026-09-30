@@ -1,0 +1,130 @@
+name: Load Test (manual)
+
+# Manual trigger only — matches the Test Plan's stated cadence (§5.2:
+# "full campaign on a scheduled basis against staging, and before any
+# release"), not per-push. This run takes ~3.5 minutes and registers 50
+# real accounts against whatever BASE_URL it's pointed at, which is not
+# something every PR should pay for.
+on:
+  workflow_dispatch:
+    inputs:
+      auth_base_url:
+        description: 'auth-user-service base URL'
+        required: false
+        default: 'http://localhost:3001'
+      marketplace_base_url:
+        description: 'marketplace-service base URL'
+        required: false
+        default: 'http://localhost:3002'
+
+jobs:
+  login-favourites-load:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            auth-user-service/package-lock.json
+            marketplace-service/package-lock.json
+
+      - name: Start Postgres
+        run: docker compose up -d postgres
+
+      - name: Wait for Postgres
+        run: |
+          for i in $(seq 1 30); do
+            if docker exec vehicle_marketplace_postgres \
+                 pg_isready -U marketplace -d vehicle_marketplace; then exit 0; fi
+            sleep 2
+          done
+          echo "Postgres did not become ready" >&2
+          exit 1
+
+      - name: Prepare database
+        working-directory: database
+        run: |
+          npm ci
+          npm run migration:run
+          npm run grants
+          npm run seed:dictionaries
+          npm run seed:vehicles
+        env:
+          DATABASE_URL: postgresql://marketplace:marketplace@localhost:5433/vehicle_marketplace
+
+      - name: Install auth-user-service dependencies
+        working-directory: auth-user-service
+        run: npm ci
+
+      - name: Build auth-user-service
+        working-directory: auth-user-service
+        run: npm run build
+
+      - name: Install marketplace-service dependencies
+        working-directory: marketplace-service
+        run: npm ci
+
+      - name: Build marketplace-service
+        working-directory: marketplace-service
+        run: npm run build
+
+      # Both services run as plain Node processes for the same reason the
+      # marketplace-service smoke check does: their Dockerfiles build
+      # Lambda-handler images, not runnable via `docker run -p`. Both
+      # started + waited-on + used inside ONE step so neither is at risk of
+      # being reaped at a GitHub Actions step boundary.
+      - name: Run k6 load test against live auth-user-service and marketplace-service
+        run: |
+          set -e
+
+          (
+            cd auth-user-service
+            PORT=3001 \
+            AUTH_DATABASE_URL="postgresql://auth_service_role:dev_auth@localhost:5433/vehicle_marketplace" \
+            DATABASE_SSL=false \
+            AUTH_RETURN_VERIFICATION_TOKEN=true \
+            JWT_ACCESS_SECRET=ci-load-test-secret-not-used-for-real-auth \
+            JWT_ISSUER=autovault-lk-auth \
+            JWT_AUDIENCE=autovault-lk-api \
+            JWT_ACCESS_EXPIRES_IN=15m \
+            INTERNAL_SERVICE_KEY=ci-load-test-internal-key-not-a-real-secret \
+            node dist/main &
+          )
+          AUTH_PID=$!
+
+          (
+            cd marketplace-service
+            PORT=3002 \
+            MARKETPLACE_DATABASE_URL="postgresql://marketplace_service_role:dev_marketplace@localhost:5433/vehicle_marketplace" \
+            DATABASE_SSL=false \
+            JWT_ACCESS_SECRET=ci-load-test-secret-not-used-for-real-auth \
+            JWT_ISSUER=autovault-lk-auth \
+            JWT_AUDIENCE=autovault-lk-api \
+            node dist/main &
+          )
+          MARKETPLACE_PID=$!
+
+          trap 'kill $AUTH_PID $MARKETPLACE_PID 2>/dev/null || true' EXIT
+
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3001/health > /dev/null && \
+               curl -sf http://localhost:3002/health > /dev/null; then break; fi
+            if [ "$i" -eq 30 ]; then
+              echo "services did not become ready" >&2
+              exit 1
+            fi
+            sleep 2
+          done
+
+          AUTH_BASE_URL="${{ inputs.auth_base_url }}" \
+          MARKETPLACE_BASE_URL="${{ inputs.marketplace_base_url }}" \
+          k6 run performance/scripts/login-favourites-load.js
