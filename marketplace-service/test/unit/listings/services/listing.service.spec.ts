@@ -150,19 +150,23 @@ describe('ListingService', () => {
       );
     });
 
-    it('forbids a business dealer from creating a manual listing (they use bulk upload)', async () => {
+    it('allows a verified business dealer to create a manual listing (in addition to bulk upload)', async () => {
       dealerService.getDealerById.mockResolvedValue(BUSINESS_DEALER_SUMMARY);
+      listingRepository.create.mockResolvedValue(vehicle());
 
-      await expect(
-        service.createListing({ make: 'Toyota' } as never, DEALER),
-      ).rejects.toThrow(ForbiddenException);
-      expect(listingRepository.create).not.toHaveBeenCalled();
+      await service.createListing({ make: 'Toyota' } as never, DEALER);
+
+      expect(listingRepository.create).toHaveBeenCalledWith(
+        expect.anything(),
+        'LIVE',
+      );
     });
 
     // A dealer can now log in while PENDING or REJECTED (approval no longer
     // gates login — see auth-user-service). This is the check that stands
-    // between that and a real LIVE listing.
-    it('forbids an individual dealer who is not yet VERIFIED', async () => {
+    // between that and a real LIVE listing. Applies regardless of dealer
+    // type, since manual listing is no longer restricted by dealerType.
+    it('forbids a dealer of any type who is not yet VERIFIED', async () => {
       dealerService.getDealerById.mockResolvedValue(UNVERIFIED_DEALER_SUMMARY);
 
       await expect(
