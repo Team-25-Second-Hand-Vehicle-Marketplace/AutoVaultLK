@@ -1,0 +1,130 @@
+name: Load Test - NL Search Concurrency (manual)
+
+# Manual trigger only — same reasoning as load-test.yml. 15 concurrent VUs
+# issuing real GET /search/nl calls for ~95 seconds.
+#
+# Requires GROQ_API_KEY (secret) and GROQ_MODEL (var) to exercise the real
+# Groq LLM path this test is meant to measure — see 04-load-testing.md
+# Incident 5.10: without GROQ_MODEL set, marketplace-service silently falls
+# back to the deterministic parser (NFR-12.1) and every NL search still
+# succeeds, but the test no longer measures what its own header says it
+# measures. If these are not configured as repo secrets/vars, the job still
+# runs (Groq is optional per SAD 3.6.2 — an empty key skips it and logs
+# locally) but is only exercising the fallback path.
+on:
+  workflow_dispatch:
+    inputs:
+      auth_base_url:
+        description: 'auth-user-service base URL'
+        required: false
+        default: 'http://localhost:3001'
+      marketplace_base_url:
+        description: 'marketplace-service base URL'
+        required: false
+        default: 'http://localhost:3002'
+      num_vus:
+        description: 'Peak concurrent VUs'
+        required: false
+        default: '15'
+
+jobs:
+  nl-search-concurrency-load-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            auth-user-service/package-lock.json
+            marketplace-service/package-lock.json
+
+      - name: Start Postgres
+        run: docker compose up -d postgres
+
+      - name: Wait for Postgres
+        run: |
+          for i in $(seq 1 30); do
+            if docker exec vehicle_marketplace_postgres \
+                 pg_isready -U marketplace -d vehicle_marketplace; then exit 0; fi
+            sleep 2
+          done
+          echo "Postgres did not become ready" >&2
+          exit 1
+
+      - name: Prepare database
+        working-directory: database
+        run: |
+          npm ci
+          npm run migration:run
+          npm run grants
+          npm run seed:dictionaries
+          npm run seed:vehicles
+        env:
+          DATABASE_URL: postgresql://marketplace:marketplace@localhost:5433/vehicle_marketplace
+
+      - name: Install and build auth-user-service
+        working-directory: auth-user-service
+        run: npm ci && npm run build
+
+      - name: Install and build marketplace-service
+        working-directory: marketplace-service
+        run: npm ci && npm run build
+
+      - name: Run k6 NL search concurrency test against live services
+        run: |
+          set -e
+
+          (
+            cd auth-user-service
+            PORT=3001 \
+            AUTH_DATABASE_URL="postgresql://auth_service_role:dev_auth@localhost:5433/vehicle_marketplace" \
+            DATABASE_SSL=false \
+            AUTH_RETURN_VERIFICATION_TOKEN=true \
+            JWT_ACCESS_SECRET=ci-load-test-secret-not-used-for-real-auth \
+            JWT_ISSUER=autovault-lk-auth \
+            JWT_AUDIENCE=autovault-lk-api \
+            JWT_ACCESS_EXPIRES_IN=15m \
+            INTERNAL_SERVICE_KEY=ci-load-test-internal-key-not-a-real-secret \
+            node dist/main &
+          )
+          AUTH_PID=$!
+
+          (
+            cd marketplace-service
+            PORT=3002 \
+            MARKETPLACE_DATABASE_URL="postgresql://marketplace_service_role:dev_marketplace@localhost:5433/vehicle_marketplace" \
+            DATABASE_SSL=false \
+            JWT_ACCESS_SECRET=ci-load-test-secret-not-used-for-real-auth \
+            JWT_ISSUER=autovault-lk-auth \
+            JWT_AUDIENCE=autovault-lk-api \
+            GROQ_API_KEY="${{ secrets.GROQ_API_KEY }}" \
+            GROQ_MODEL="${{ vars.GROQ_MODEL }}" \
+            node dist/main &
+          )
+          MARKETPLACE_PID=$!
+
+          trap 'kill $AUTH_PID $MARKETPLACE_PID 2>/dev/null || true' EXIT
+
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3001/health > /dev/null && \
+               curl -sf http://localhost:3002/health > /dev/null; then break; fi
+            if [ "$i" -eq 30 ]; then
+              echo "services did not become ready" >&2
+              exit 1
+            fi
+            sleep 2
+          done
+
+          AUTH_BASE_URL="${{ inputs.auth_base_url }}" \
+          MARKETPLACE_BASE_URL="${{ inputs.marketplace_base_url }}" \
+          NUM_VUS="${{ inputs.num_vus }}" \
+          k6 run performance/scripts/nl-search-concurrency.js
