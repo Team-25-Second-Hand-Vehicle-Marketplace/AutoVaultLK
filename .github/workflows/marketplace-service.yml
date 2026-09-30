@@ -4,10 +4,12 @@ on:
   push:
     paths:
       - 'marketplace-service/**'
+      - 'performance/**'
       - '.github/workflows/marketplace-service.yml'
   pull_request:
     paths:
       - 'marketplace-service/**'
+      - 'performance/**'
       - '.github/workflows/marketplace-service.yml'
 
 jobs:
@@ -49,3 +51,70 @@ jobs:
 
       - name: Build Docker image
         run: docker build --tag marketplace-service:ci .
+
+      # Smoke-scale k6 threshold check (Phase C, Test Plan §3.3.4/§5.2):
+      # a single-VU, 30s run of the structured-search baseline against NFR-09
+      # (p95 < 500ms for CRUD/browse APIs) on every push/PR. Full concurrent
+      # load/stress/spike/soak/volume campaigns (§3.3.5) run separately,
+      # scheduled against staging — not here, since this job has no
+      # production-equivalent instance sizing or network topology to make a
+      # concurrent-load result meaningful (§9.1 environment parity).
+      - name: Start Postgres
+        run: docker compose up -d postgres
+        working-directory: .
+
+      - name: Wait for Postgres
+        run: |
+          for i in $(seq 1 30); do
+            if docker exec vehicle_marketplace_postgres \
+                 pg_isready -U marketplace -d vehicle_marketplace; then exit 0; fi
+            sleep 2
+          done
+          echo "Postgres did not become ready" >&2
+          exit 1
+        working-directory: .
+        env:
+          DATABASE_URL: postgresql://marketplace:marketplace@localhost:5433/vehicle_marketplace
+
+      - name: Prepare database
+        working-directory: database
+        run: |
+          npm ci
+          npm run migration:run
+          npm run grants
+          npm run seed:dictionaries
+          npm run seed:vehicles
+        env:
+          DATABASE_URL: postgresql://marketplace:marketplace@localhost:5433/vehicle_marketplace
+
+      - name: Install k6
+        uses: grafana/setup-k6-action@v1
+
+      # start, wait, run k6, and stop all inside one step: a background
+      # process started with `&` in one `run:` step is not guaranteed to
+      # survive into the next step in GitHub Actions (each step is its own
+      # shell invocation, and the runner may reap that step's process group
+      # on exit) — keeping the service's full lifetime inside a single step
+      # avoids depending on behaviour that was never actually verified
+      # against a live GitHub Actions run.
+      - name: Run k6 smoke check against a live marketplace-service (search baseline, NFR-09)
+        run: |
+          set -e
+          node dist/main &
+          SERVICE_PID=$!
+          trap 'kill $SERVICE_PID 2>/dev/null || true' EXIT
+
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3002/health > /dev/null; then break; fi
+            if [ "$i" -eq 30 ]; then
+              echo "marketplace-service did not become ready" >&2
+              exit 1
+            fi
+            sleep 2
+          done
+
+          BASE_URL=http://localhost:3002 k6 run ../performance/scripts/search-filters-baseline.js
+        env:
+          PORT: 3002
+          MARKETPLACE_DATABASE_URL: postgresql://marketplace_service_role:dev_marketplace@localhost:5433/vehicle_marketplace
+          DATABASE_SSL: 'false'
