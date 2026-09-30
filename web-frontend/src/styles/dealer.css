@@ -219,9 +219,16 @@
 
 /* --- Tiles --- */
 
+/* This class is shared by pages with different tile counts (6 on the
+   dashboard, 3 on the upload status page), so the column count can't be
+   hardcoded — a fixed repeat(6, ...) leaves a 3-tile row cornered on the
+   left with empty space on the right. auto-fit collapses columns that have
+   no tile to fill instead of leaving them blank, so a shorter row still
+   stretches to the full width; a longer row still wraps only when the
+   container genuinely can't fit another column at the minimum width. */
 .dealer-tiles {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 14px;
 }
 
@@ -246,6 +253,54 @@
   line-height: 1.1;
   color: var(--text-h);
   font-weight: 600;
+}
+
+.dealer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.recent-listings {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.recent-listings__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.recent-listings__item img,
+.recent-listings__no-image {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--bg-alt);
+  flex-shrink: 0;
+}
+
+.recent-listings__title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  color: var(--text-h);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-listings__price {
+  color: var(--text-muted);
+  font-size: 13px;
+  white-space: nowrap;
 }
 
 .dealer-note {
@@ -519,6 +574,58 @@
   display: grid;
   gap: 1rem;
   grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+}
+
+.listing-form__existing-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.listing-form__existing-image {
+  margin: 0;
+  position: relative;
+}
+
+.listing-form__existing-image img,
+.listing-form__existing-image-placeholder {
+  background: var(--bg-alt);
+  border-radius: 6px;
+  display: block;
+  height: 72px;
+  object-fit: cover;
+  width: 96px;
+}
+
+.listing-form__existing-image-badge {
+  background: var(--accent);
+  border-radius: 4px;
+  color: var(--bg);
+  font-size: 0.62rem;
+  font-weight: 700;
+  left: 4px;
+  padding: 1px 5px;
+  position: absolute;
+  text-transform: uppercase;
+  top: 4px;
+}
+
+.listing-form__existing-image-remove {
+  background: rgb(0 0 0 / 65%);
+  border: none;
+  border-radius: 0 0 6px 6px;
+  bottom: 0;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.7rem;
+  padding: 3px 0;
+  position: absolute;
+  width: 100%;
+}
+
+.listing-form__existing-image-remove:disabled {
+  cursor: default;
+  opacity: 0.7;
 }
 
 /* ── Listings table ─────────────────────────────────────────────────────── */

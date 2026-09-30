@@ -13,6 +13,7 @@ describe('ListingController', () => {
     unarchiveListing: jest.fn(),
     approveListing: jest.fn(),
     uploadImages: jest.fn(),
+    deleteImage: jest.fn(),
   };
   const controller = new ListingController(listingService as never);
   const actor: AuthenticatedUser = {
@@ -132,6 +133,19 @@ describe('ListingController', () => {
         BadRequestException,
       );
       expect(listingService.uploadImages).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('DELETE :id/images/:imageId (FR-58)', () => {
+    it('passes id, imageId and actor to deleteImage', () => {
+      listingService.deleteImage.mockReturnValue('deleted');
+
+      expect(controller.deleteImage('v-1', 'img-1', actor)).toBe('deleted');
+      expect(listingService.deleteImage).toHaveBeenCalledWith(
+        'v-1',
+        'img-1',
+        actor,
+      );
     });
   });
 });

@@ -26,6 +26,7 @@ describe('ListingService', () => {
   };
   const imageUploadService = {
     replaceImages: jest.fn(),
+    deleteImage: jest.fn(),
   };
   const imageUrlResolver = {
     resolve: jest.fn().mockResolvedValue(null),
@@ -699,6 +700,63 @@ describe('ListingService', () => {
       ).rejects.toThrow();
 
       expect(imageUploadService.replaceImages).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('deleteImage (FR-58)', () => {
+    it('404s when the listing does not exist', async () => {
+      listingRepository.findById.mockResolvedValue(null);
+
+      await expect(
+        service.deleteImage('missing', 'img-1', DEALER),
+      ).rejects.toThrow(NotFoundException);
+      expect(imageUploadService.deleteImage).not.toHaveBeenCalled();
+    });
+
+    it('forbids a non-owning dealer from deleting a photo', async () => {
+      listingRepository.findById.mockResolvedValue(
+        vehicle({ dealerId: DEALER.id }),
+      );
+
+      await expect(
+        service.deleteImage('v-1', 'img-1', OTHER_DEALER),
+      ).rejects.toThrow(ForbiddenException);
+      expect(imageUploadService.deleteImage).not.toHaveBeenCalled();
+    });
+
+    it('allows the owning dealer to delete a photo from their own listing', async () => {
+      listingRepository.findById.mockResolvedValue(
+        vehicle({ dealerId: DEALER.id }),
+      );
+
+      await service.deleteImage('v-1', 'img-1', DEALER);
+
+      expect(imageUploadService.deleteImage).toHaveBeenCalledWith(
+        'v-1',
+        'img-1',
+      );
+    });
+
+    it('allows ADMIN to delete a photo from any listing', async () => {
+      listingRepository.findById.mockResolvedValue(
+        vehicle({ dealerId: DEALER.id }),
+      );
+
+      await expect(
+        service.deleteImage('v-1', 'img-1', ADMIN),
+      ).resolves.toBeDefined();
+    });
+
+    it('checks ownership before calling the delete', async () => {
+      listingRepository.findById.mockResolvedValue(
+        vehicle({ dealerId: DEALER.id }),
+      );
+
+      await expect(
+        service.deleteImage('v-1', 'img-1', OTHER_DEALER),
+      ).rejects.toThrow();
+
+      expect(imageUploadService.deleteImage).not.toHaveBeenCalled();
     });
   });
 });

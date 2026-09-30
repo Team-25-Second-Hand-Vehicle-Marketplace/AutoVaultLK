@@ -8,7 +8,11 @@ import type { UploadJob } from '../../../src/infrastructure/database/entities/up
  * silently never run.
  */
 describe('JobStatusService', () => {
-  const repository = { findById: jest.fn(), findRejectedRecords: jest.fn() };
+  const repository = {
+    findById: jest.fn(),
+    findRejectedRecords: jest.fn(),
+    findByDealer: jest.fn(),
+  };
   const stageLogRepository = { findForJob: jest.fn() };
   let service: JobStatusService;
 
@@ -102,6 +106,67 @@ describe('JobStatusService', () => {
 
     expect(result).not.toHaveProperty('csvS3Path');
     expect(result).not.toHaveProperty('zipS3Path');
+  });
+
+  describe('listJobs', () => {
+    beforeEach(() => {
+      repository.findByDealer.mockResolvedValue({ rows: [], total: 0 });
+    });
+
+    it("returns the dealer's jobs mapped to summaries", async () => {
+      repository.findByDealer.mockResolvedValue({ rows: [job()], total: 1 });
+
+      const result = await service.listJobs('dealer-1', {});
+
+      expect(result.items).toEqual([
+        expect.objectContaining({
+          id: 'job-1',
+          status: 'PARTIAL',
+          fileName: 'inventory.csv',
+          totalRecords: 50,
+          validRecords: 47,
+          invalidRecords: 3,
+        }),
+      ]);
+      expect(result.total).toBe(1);
+    });
+
+    it('does not leak the storage path in the response', async () => {
+      repository.findByDealer.mockResolvedValue({ rows: [job()], total: 1 });
+
+      const [item] = (await service.listJobs('dealer-1', {})).items;
+
+      expect(item).not.toHaveProperty('csvS3Path');
+      expect(item).not.toHaveProperty('zipS3Path');
+    });
+
+    it('defaults to page 1 and the default page size', async () => {
+      await service.listJobs('dealer-1', {});
+
+      expect(repository.findByDealer).toHaveBeenCalledWith('dealer-1', 1, 20);
+    });
+
+    it('applies the requested page and limit', async () => {
+      await service.listJobs('dealer-1', { page: 2, limit: 10 });
+
+      expect(repository.findByDealer).toHaveBeenCalledWith('dealer-1', 2, 10);
+    });
+
+    it('reports totalPages from the unpaged total', async () => {
+      repository.findByDealer.mockResolvedValue({ rows: [], total: 45 });
+
+      const result = await service.listJobs('dealer-1', { limit: 20 });
+
+      expect(result.totalPages).toBe(3);
+    });
+
+    it('returns an empty page for a dealer with no uploads', async () => {
+      const result = await service.listJobs('dealer-1', {});
+
+      expect(result).toEqual(
+        expect.objectContaining({ items: [], total: 0, totalPages: 0 }),
+      );
+    });
   });
 
   describe('getRejectedRecords (FR-57)', () => {

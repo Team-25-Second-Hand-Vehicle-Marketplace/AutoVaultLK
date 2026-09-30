@@ -5,6 +5,7 @@ import {
   createListing,
   deactivateListing,
   deleteListing,
+  deleteListingImage,
   getMyListings,
   unarchiveListing,
   updateListing,
@@ -26,6 +27,7 @@ import {
 import { ActionMenu, type ActionMenuItem } from '../../components/ui/ActionMenu'
 import { Button } from '../../components/ui/Button'
 import { ErrorBanner } from '../../components/ui/ErrorBanner'
+import { StatusBadge } from '../../components/dealers/StatusBadge'
 import { useDealerProfile } from './useDealerProfile'
 import { formatMileage, formatPrice } from '../../components/search/vehicle-format'
 
@@ -45,10 +47,6 @@ const listingsError = (err: unknown) => toErrorMessage(err, 'Could not load your
 /** Archiving cannot be undone from this page, so it asks first. */
 function useConfirm() {
   return useCallback((message: string) => window.confirm(message), [])
-}
-
-function StatusBadge({ status }: { status: ListingStatus }) {
-  return <span className={`listing-status listing-status--${status.toLowerCase()}`}>{status.replace(/_/g, ' ')}</span>
 }
 
 /**
@@ -158,6 +156,27 @@ export function DealerListingsPage() {
       listings.reload()
     } catch (error) {
       toast.error(toErrorMessage(error, 'Could not update the listing.'))
+    }
+  }
+
+  const onDeleteImage = async (listingId: string, imageId: string) => {
+    try {
+      await deleteListingImage(listingId, imageId)
+      toast.success('Photo removed')
+      // The open edit form tracks its own copy of the image list and updates
+      // itself on success; this only keeps the background cache in sync so a
+      // reopened row (or the expanded details panel) reflects it too.
+      listings.setData(
+        (data) =>
+          data?.map((l) =>
+            l.id === listingId
+              ? { ...l, images: l.images.filter((img) => img.id !== imageId) }
+              : l,
+          ) ?? data,
+      )
+    } catch (error) {
+      toast.error(toErrorMessage(error, 'Could not remove the photo.'))
+      throw error
     }
   }
 
@@ -303,6 +322,7 @@ export function DealerListingsPage() {
         <ListingForm
           listing={mode.listing}
           onSubmit={(input, images) => onUpdate(mode.listing.id, input, images)}
+          onDeleteImage={(imageId) => onDeleteImage(mode.listing.id, imageId)}
           onCancel={backToList}
           submitLabel="Save changes"
         />

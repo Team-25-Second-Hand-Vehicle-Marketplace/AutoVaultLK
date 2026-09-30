@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { buildTemplateCsv } from '../../api/ingestion.api'
+import { buildRejectionsCsv, buildTemplateCsv } from '../../api/ingestion.api'
 import {
   REQUIRED_COLUMNS,
   TEMPLATE_HEADER,
   isRequired,
 } from '../../api/ingestion.template'
-import { isTerminal } from '../../api/ingestion.types'
+import { isTerminal, type RejectedRecord } from '../../api/ingestion.types'
 
 describe('CSV template', () => {
   it('matches ingestion-service\'s TEMPLATE_HEADER exactly', () => {
@@ -85,6 +85,92 @@ describe('CSV template', () => {
     // The example row must have one cell per column, or a dealer editing it
     // shifts every value into the wrong field.
     expect(example.split(',')).toHaveLength(TEMPLATE_HEADER.length)
+  })
+})
+
+describe('buildRejectionsCsv', () => {
+  const rejection = (overrides: Partial<RejectedRecord> = {}): RejectedRecord => ({
+    rowNumber: 4,
+    stage: 'VALIDATE_ROWS',
+    reason: 'year is outside the accepted range',
+    rawData: { make: 'Toyota', year: '1972' },
+    rawDataTruncated: false,
+    createdAt: '2026-09-01T10:03:00.000Z',
+    ...overrides,
+  })
+
+  it('leads with row and reason, then the raw data columns', () => {
+    const [header] = buildRejectionsCsv([rejection()]).trim().split('\n')
+
+    expect(header).toBe('row,reason,make,year')
+  })
+
+  it('writes one data row per rejection', () => {
+    const [, row] = buildRejectionsCsv([rejection()]).trim().split('\n')
+
+    expect(row).toBe('4,year is outside the accepted range,Toyota,1972')
+  })
+
+  it('labels row 0 as the whole file, not row zero', () => {
+    const [, row] = buildRejectionsCsv([rejection({ rowNumber: 0 })])
+      .trim()
+      .split('\n')
+
+    expect(row.startsWith('whole file,')).toBe(true)
+  })
+
+  it('orders known columns to match the template, appending unknown ones after', () => {
+    const rows = [
+      rejection({ rawData: { color: 'White', make: 'Toyota', unknown_col: 'x' } }),
+    ]
+
+    const [header] = buildRejectionsCsv(rows).trim().split('\n')
+
+    // make comes before color in TEMPLATE_HEADER; the unrecognised column
+    // trails after every template column, alphabetically among any others.
+    expect(header).toBe('row,reason,make,color,unknown_col')
+  })
+
+  it('unions columns across rows with different shapes', () => {
+    const rows = [
+      rejection({ rowNumber: 1, rawData: { make: 'Toyota' } }),
+      rejection({ rowNumber: 2, rawData: { model: 'Vitz' } }),
+    ]
+
+    const [header] = buildRejectionsCsv(rows).trim().split('\n')
+
+    expect(header).toBe('row,reason,make,model')
+  })
+
+  it('fills a missing value with an empty cell rather than shifting columns', () => {
+    const rows = [
+      rejection({ rowNumber: 1, rawData: { make: 'Toyota' } }),
+      rejection({ rowNumber: 2, rawData: { model: 'Vitz' } }),
+    ]
+
+    const [, , secondRow] = buildRejectionsCsv(rows).trim().split('\n')
+
+    expect(secondRow).toBe('2,year is outside the accepted range,,Vitz')
+  })
+
+  it('quotes a value containing a comma', () => {
+    const rows = [rejection({ reason: 'price, mileage both missing' })]
+
+    const [, row] = buildRejectionsCsv(rows).trim().split('\n')
+
+    expect(row).toContain('"price, mileage both missing"')
+  })
+
+  it('escapes an embedded quote by doubling it', () => {
+    const rows = [rejection({ rawData: { make: 'Toyota "Vitz" edition' } })]
+
+    const [, row] = buildRejectionsCsv(rows).trim().split('\n')
+
+    expect(row).toContain('"Toyota ""Vitz"" edition"')
+  })
+
+  it('returns just the header for an empty list', () => {
+    expect(buildRejectionsCsv([]).trim()).toBe('row,reason')
   })
 })
 

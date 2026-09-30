@@ -132,6 +132,44 @@ export class AliasPromotionRepository {
     return rows.length > 0;
   }
 
+  /**
+   * Creates a new canonical dictionary entry — the admin "New vehicle types"
+   * tab's path for a make that genuinely does not exist yet, as opposed to
+   * `addAlias`'s path for one that does under a different spelling.
+   *
+   * Rejects a duplicate canonical value up front rather than letting the
+   * unique constraint 500: two admins reviewing the same candidate list is
+   * the ordinary case this guards, not a rare race.
+   */
+  async createEntry(
+    dictionaryType: string,
+    canonicalValue: string,
+  ): Promise<{ id: string }> {
+    const existing: Array<{ id: string }> = await this.dataSource.query(
+      `
+      SELECT id FROM marketplace.vehicle_dictionaries
+      WHERE dictionary_type = $1 AND LOWER(canonical_value) = LOWER($2)
+      `,
+      [dictionaryType, canonicalValue],
+    );
+    if (existing.length > 0) {
+      throw new Error(
+        `"${canonicalValue}" already exists in the ${dictionaryType} dictionary`,
+      );
+    }
+
+    const [row]: Array<{ id: string }> = await this.dataSource.query(
+      `
+      INSERT INTO marketplace.vehicle_dictionaries (dictionary_type, canonical_value)
+      VALUES ($1, $2)
+      RETURNING id
+      `,
+      [dictionaryType, canonicalValue],
+    );
+
+    return row;
+  }
+
   private toStringArray(value: unknown): string[] {
     if (Array.isArray(value)) {
       return value.filter((item): item is string => typeof item === 'string');

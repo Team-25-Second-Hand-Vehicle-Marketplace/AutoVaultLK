@@ -12,13 +12,18 @@ type AslState = {
   Type: string;
   Next?: string;
   End?: boolean;
-  Retry?: { ErrorEquals: string[]; MaxAttempts?: number; JitterStrategy?: string }[];
+  Retry?: {
+    ErrorEquals: string[];
+    MaxAttempts?: number;
+    JitterStrategy?: string;
+  }[];
   Catch?: { ErrorEquals: string[]; Next: string; ResultPath?: string }[];
   Parameters?: {
     FunctionName?: string;
     Payload?: unknown;
     'Payload.$'?: string;
   };
+  InputPath?: string;
   OutputPath?: string;
   ItemProcessor?: { StartAt: string; States: Record<string, AslState> };
   ItemsPath?: string;
@@ -31,7 +36,10 @@ type AslState = {
 
 const asl = JSON.parse(
   readFileSync(
-    resolve(__dirname, '../../../src/infrastructure/step-functions/etl-state-machine.asl.json'),
+    resolve(
+      __dirname,
+      '../../../src/infrastructure/step-functions/etl-state-machine.asl.json',
+    ),
     'utf8',
   ),
 ) as { StartAt: string; States: Record<string, AslState> };
@@ -73,26 +81,57 @@ const stateName = (stage: EtlStage): string =>
  */
 describe('ETL state machine', () => {
   it('is valid JSON with a start state', () => {
-    expect(asl.StartAt).toBe('ValidateFile');
+    expect(asl.StartAt).toBe('UnwrapPipesBatch');
     expect(Object.keys(asl.States).length).toBeGreaterThan(0);
+  });
+
+  describe('UnwrapPipesBatch', () => {
+    // The Pass state guarding against exactly the bug that shipped: a Catch's
+    // ResultPath merges error output onto the STATE's raw input, not onto
+    // whatever InputPath narrows it to for the Lambda call. Left unwrapped
+    // until inside ValidateFile's own InputPath, ValidateFile failing on real
+    // input threw States.ReferencePathConflict trying to write $.error onto
+    // the Pipe's one-element array, aborting the execution before
+    // MarkJobFailed could run — a job stuck at PROCESSING forever. Unwrapping
+    // before any state (including ValidateFile) is entered fixes it for every
+    // Catch downstream, not just this one.
+    it('is a Pass state that unwraps the Pipe batch before any other state runs', () => {
+      const state = asl.States.UnwrapPipesBatch;
+
+      expect(state.Type).toBe('Pass');
+      expect(state.InputPath).toBe('$[0]');
+      expect(state.Next).toBe('ValidateFile');
+    });
+
+    it('is not still duplicated on ValidateFile', () => {
+      // Left on both, ValidateFile would try to unwrap an already-unwrapped
+      // object — $[0] on a plain {jobId} is undefined, not an error, so this
+      // would fail silently rather than loudly.
+      expect(asl.States.ValidateFile.InputPath).toBeUndefined();
+    });
   });
 
   describe('matches pipeline/graph.ts', () => {
     it('runs the whole-file stages before the fan-out, in order', () => {
       const expected = FILE_STAGES.map(stateName);
 
-      expect(chain(asl.States, asl.StartAt).slice(0, expected.length)).toEqual(expected);
+      expect(
+        chain(asl.States, 'ValidateFile').slice(0, expected.length),
+      ).toEqual(expected);
     });
 
     it('runs every chunk stage inside the Map, in order', () => {
       // The assertion that matters: adding a stage to CHUNK_STAGES without
       // adding it here fails the build rather than a dealer's upload.
-      expect(chain(iterator.States, iterator.StartAt)).toEqual(CHUNK_STAGES.map(stateName));
+      expect(chain(iterator.States, iterator.StartAt)).toEqual(
+        CHUNK_STAGES.map(stateName),
+      );
     });
 
     it('points every stage state at its own Lambda', () => {
       for (const stage of CHUNK_STAGES) {
-        const fn = iterator.States[stateName(stage)].Parameters?.FunctionName ?? '';
+        const fn =
+          iterator.States[stateName(stage)].Parameters?.FunctionName ?? '';
 
         // Terraform substitutes the real ARN for the placeholder.
         expect(fn).toContain(`${stateName(stage)}FunctionArn`);
@@ -101,13 +140,20 @@ describe('ETL state machine', () => {
 
     it('has a handler file for every state it invokes', () => {
       for (const stage of [...FILE_STAGES, ...CHUNK_STAGES, ...IMAGE_STAGES]) {
-        const path = resolve(__dirname, `../../../src/lambda/${stageSlug(stage)}.ts`);
+        const path = resolve(
+          __dirname,
+          `../../../src/lambda/${stageSlug(stage)}.ts`,
+        );
         expect(existsSync(path)).toBe(true);
       }
     });
 
     it('has a handler for the terminal failure path', () => {
-      expect(existsSync(resolve(__dirname, '../../../src/lambda/mark-job-failed.ts'))).toBe(true);
+      expect(
+        existsSync(
+          resolve(__dirname, '../../../src/lambda/mark-job-failed.ts'),
+        ),
+      ).toBe(true);
     });
   });
 
@@ -121,11 +167,14 @@ describe('ETL state machine', () => {
       // Images are keyed by registration_number, not by chunk membership, so
       // the whole ZIP is processed in a single invocation alongside the Map,
       // rather than being folded into the per-chunk iterator.
-      expect(Object.keys(imagesBranch)).toEqual(['ProcessImages', 'ImagesDone']);
+      expect(Object.keys(imagesBranch)).toEqual([
+        'ProcessImages',
+        'ImagesDone',
+      ]);
       expect(imagesBranch.ProcessImages.Next).toBe('ImagesDone');
     });
 
-    it("points ProcessImages at its own Lambda", () => {
+    it('points ProcessImages at its own Lambda', () => {
       const fn = imagesBranch.ProcessImages.Parameters?.FunctionName ?? '';
       expect(fn).toContain('ProcessImagesFunctionArn');
     });
@@ -152,8 +201,7 @@ describe('ETL state machine', () => {
       expect(parallel.ResultPath).toBe('$.parallelResult');
 
       const aggregatePayload = asl.States.Aggregate.Parameters?.Payload as
-        | Record<string, string>
-        | undefined;
+        Record<string, string> | undefined;
       expect(aggregatePayload?.['chunks.$']).toBe('$.parallelResult.chunks');
     });
   });
@@ -165,7 +213,9 @@ describe('ETL state machine', () => {
       // row — the opposite of what PARTIAL exists for. The Map sits inside
       // ProcessRows's chunks branch, so it converges on that branch's own
       // terminal Pass state, not directly on Aggregate.
-      const caught = map.Catch?.find((c) => c.ErrorEquals.includes('States.ALL'));
+      const caught = map.Catch?.find((c) =>
+        c.ErrorEquals.includes('States.ALL'),
+      );
 
       expect(caught).toBeDefined();
       expect(caught?.Next).toBe('ChunksDone');
@@ -192,7 +242,8 @@ describe('ETL state machine', () => {
       for (const state of Object.values(iterator.States)) {
         const errors = state.Retry?.flatMap((r) => r.ErrorEquals) ?? [];
         const retries =
-          errors.includes('Lambda.TooManyRequestsException') || errors.includes('States.ALL');
+          errors.includes('Lambda.TooManyRequestsException') ||
+          errors.includes('States.ALL');
 
         expect(retries).toBe(true);
       }
@@ -213,7 +264,8 @@ describe('ETL state machine', () => {
       // A FileValidationError is the dealer's file being wrong and fails
       // identically every time; retrying wastes a minute and three
       // invocations before reporting the same thing.
-      const errors = asl.States.ValidateFile.Retry?.flatMap((r) => r.ErrorEquals) ?? [];
+      const errors =
+        asl.States.ValidateFile.Retry?.flatMap((r) => r.ErrorEquals) ?? [];
 
       expect(errors).not.toContain('States.ALL');
       expect(errors).toContain('Lambda.ServiceException');

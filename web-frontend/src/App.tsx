@@ -23,6 +23,7 @@ import { DealerListingsPage } from './pages/dealers/DealerListingsPage'
 import { DealerProfilePage } from './pages/dealers/DealerProfilePage'
 import { BulkUploadPage } from './pages/dealers/BulkUploadPage'
 import { UploadStatusPage } from './pages/dealers/UploadStatusPage'
+import { UploadHistoryPage } from './pages/dealers/UploadHistoryPage'
 import { RequireDealerType } from './pages/dealers/RequireDealerType'
 import { RequireVerifiedDealer } from './pages/dealers/RequireVerifiedDealer'
 import { NotFoundPage } from './pages/NotFoundPage'
@@ -33,6 +34,7 @@ import { AdminUsersPage } from './pages/admin/AdminUsersPage'
 import { AdminUploadsPage } from './pages/admin/AdminUploadsPage'
 import { AdminReportsPage } from './pages/admin/AdminReportsPage'
 import { AdminAuditLogsPage } from './pages/admin/AdminAuditLogsPage'
+import { AdminDictionaryPage } from './pages/admin/AdminDictionaryPage'
 import { AdminDashboardPreviewPage } from './pages/admin/AdminDashboardPreviewPage'
 
 /**
@@ -104,6 +106,16 @@ function App() {
                     </RequireVerifiedDealer>
                   }
                 />
+                <Route
+                  path="uploads"
+                  element={
+                    <RequireVerifiedDealer>
+                      <RequireDealerType type="business" fallbackTo="/dealer/listings">
+                        <UploadHistoryPage />
+                      </RequireDealerType>
+                    </RequireVerifiedDealer>
+                  }
+                />
               </Route>
               <Route
                 path="/saved"
@@ -137,6 +149,7 @@ function App() {
                 <Route path="uploads" element={<AdminUploadsPage />} />
                 <Route path="reports" element={<AdminReportsPage />} />
                 <Route path="audit-logs" element={<AdminAuditLogsPage />} />
+                <Route path="dictionary" element={<AdminDictionaryPage />} />
               </Route>
               <Route path="*" element={<NotFoundPage />} />
             </Routes>

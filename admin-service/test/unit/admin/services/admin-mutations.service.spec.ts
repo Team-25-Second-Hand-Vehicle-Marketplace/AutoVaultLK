@@ -17,19 +17,40 @@ describe('AdminMutationsService', () => {
       reactivateUser: jest.fn(),
       createAdmin: jest.fn(),
     };
+    const marketplace = {
+      createDictionaryEntry: jest.fn(),
+      addDictionaryAlias: jest.fn(),
+    };
     const notifications = { emit: jest.fn().mockResolvedValue(undefined) };
-    const auditLogs = { append: jest.fn().mockResolvedValue({ id: 'audit-1' }) };
+    const auditLogs = {
+      append: jest.fn().mockResolvedValue({ id: 'audit-1' }),
+    };
+    const dictionaryCandidates = {
+      dismiss: jest.fn().mockResolvedValue(undefined),
+    };
     const service = new AdminMutationsService(
       auth as never,
+      marketplace as never,
       notifications as never,
       auditLogs as never,
+      dictionaryCandidates as never,
     );
-    return { service, auth, notifications, auditLogs };
+    return {
+      service,
+      auth,
+      marketplace,
+      notifications,
+      auditLogs,
+      dictionaryCandidates,
+    };
   }
 
   it('writes audit_logs after Auth approve succeeds', async () => {
     const { service, auth, auditLogs, notifications } = makeService();
-    auth.approveDealer.mockResolvedValue({ userId: 'dealer-1', verificationStatus: 'VERIFIED' });
+    auth.approveDealer.mockResolvedValue({
+      userId: 'dealer-1',
+      verificationStatus: 'VERIFIED',
+    });
 
     const result = await service.approveDealer('dealer-1', actor, '127.0.0.1');
 
@@ -50,11 +71,13 @@ describe('AdminMutationsService', () => {
 
   it('does not write audit_logs when Auth rejects the call', async () => {
     const { service, auth, auditLogs, notifications } = makeService();
-    auth.approveDealer.mockRejectedValue(new BadRequestException('already VERIFIED'));
-
-    await expect(service.approveDealer('dealer-1', actor, null)).rejects.toBeInstanceOf(
-      BadRequestException,
+    auth.approveDealer.mockRejectedValue(
+      new BadRequestException('already VERIFIED'),
     );
+
+    await expect(
+      service.approveDealer('dealer-1', actor, null),
+    ).rejects.toBeInstanceOf(BadRequestException);
     expect(auditLogs.append).not.toHaveBeenCalled();
     expect(notifications.emit).not.toHaveBeenCalled();
   });
@@ -66,18 +89,27 @@ describe('AdminMutationsService', () => {
     await service.deactivateUser('user-1', actor, null);
 
     expect(auditLogs.append).toHaveBeenCalledWith(
-      expect.objectContaining({ action: 'user.deactivated', entityId: 'user-1' }),
+      expect.objectContaining({
+        action: 'user.deactivated',
+        entityId: 'user-1',
+      }),
     );
   });
 
   it('writes dealer.rejected and emits DEALER_REJECTED after Auth reject succeeds', async () => {
     const { service, auth, auditLogs, notifications } = makeService();
-    auth.rejectDealer.mockResolvedValue({ userId: 'dealer-1', verificationStatus: 'REJECTED' });
+    auth.rejectDealer.mockResolvedValue({
+      userId: 'dealer-1',
+      verificationStatus: 'REJECTED',
+    });
 
     await service.rejectDealer('dealer-1', actor, null);
 
     expect(auditLogs.append).toHaveBeenCalledWith(
-      expect.objectContaining({ action: 'dealer.rejected', entityId: 'dealer-1' }),
+      expect.objectContaining({
+        action: 'dealer.rejected',
+        entityId: 'dealer-1',
+      }),
     );
     expect(notifications.emit).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'DEALER_REJECTED', userId: 'dealer-1' }),
@@ -87,10 +119,15 @@ describe('AdminMutationsService', () => {
   it('still returns after Auth success if notification emit fails', async () => {
     jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
     const { service, auth, auditLogs, notifications } = makeService();
-    auth.approveDealer.mockResolvedValue({ userId: 'dealer-1', verificationStatus: 'VERIFIED' });
+    auth.approveDealer.mockResolvedValue({
+      userId: 'dealer-1',
+      verificationStatus: 'VERIFIED',
+    });
     notifications.emit.mockRejectedValue(new Error('notification down'));
 
-    await expect(service.approveDealer('dealer-1', actor, null)).resolves.toMatchObject({
+    await expect(
+      service.approveDealer('dealer-1', actor, null),
+    ).resolves.toMatchObject({
       audit: { id: 'audit-1' },
     });
     expect(auditLogs.append).toHaveBeenCalled();
@@ -98,9 +135,17 @@ describe('AdminMutationsService', () => {
 
   it('persists the rejection reason into the audit trail and the email', async () => {
     const { service, auth, auditLogs, notifications } = makeService();
-    auth.rejectDealer.mockResolvedValue({ userId: 'dealer-9', verificationStatus: 'REJECTED' });
+    auth.rejectDealer.mockResolvedValue({
+      userId: 'dealer-9',
+      verificationStatus: 'REJECTED',
+    });
 
-    await service.rejectDealer('dealer-9', actor, '10.0.0.1', 'Registration number unreadable');
+    await service.rejectDealer(
+      'dealer-9',
+      actor,
+      '10.0.0.1',
+      'Registration number unreadable',
+    );
 
     expect(auth.rejectDealer).toHaveBeenCalledWith(
       'dealer-9',
@@ -110,11 +155,16 @@ describe('AdminMutationsService', () => {
     expect(auditLogs.append).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'dealer.rejected',
-        changes: { verificationStatus: 'REJECTED', reason: 'Registration number unreadable' },
+        changes: {
+          verificationStatus: 'REJECTED',
+          reason: 'Registration number unreadable',
+        },
       }),
     );
     expect(notifications.emit).toHaveBeenCalledWith(
-      expect.objectContaining({ payload: { reason: 'Registration number unreadable' } }),
+      expect.objectContaining({
+        payload: { reason: 'Registration number unreadable' },
+      }),
     );
   });
 
@@ -156,7 +206,10 @@ describe('AdminMutationsService', () => {
 
   it('never writes the password of a newly created administrator to the audit log', async () => {
     const { service, auth, auditLogs } = makeService();
-    auth.createAdmin.mockResolvedValue({ id: 'admin-2', email: 'new@test.com' });
+    auth.createAdmin.mockResolvedValue({
+      id: 'admin-2',
+      email: 'new@test.com',
+    });
 
     await service.createAdmin(
       { email: 'new@test.com', name: 'New Admin', password: 'Sup3rSecret' },
@@ -185,5 +238,107 @@ describe('AdminMutationsService', () => {
     );
 
     expect(auditLogs.append.mock.calls[0][0].entityId).toBeNull();
+  });
+
+  describe('addDictionaryMake', () => {
+    it('creates the entry, dismisses the candidate, and audits the add', async () => {
+      const { service, marketplace, auditLogs, dictionaryCandidates } =
+        makeService();
+      marketplace.createDictionaryEntry.mockResolvedValue({ id: 'dict-1' });
+
+      const result = await service.addDictionaryMake(
+        'byd',
+        'BYD',
+        actor,
+        '127.0.0.1',
+      );
+
+      expect(marketplace.createDictionaryEntry).toHaveBeenCalledWith(
+        'MAKE',
+        'BYD',
+      );
+      expect(dictionaryCandidates.dismiss).toHaveBeenCalledWith(
+        'byd',
+        actor.id,
+      );
+      expect(auditLogs.append).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'dictionary.make_added',
+          entityId: 'dict-1',
+          changes: {
+            dictionaryType: 'MAKE',
+            canonicalValue: 'BYD',
+            rawValue: 'byd',
+          },
+          ipAddress: '127.0.0.1',
+        }),
+      );
+      expect(result.entry).toEqual({ id: 'dict-1' });
+    });
+
+    it('does not dismiss the candidate when marketplace rejects the create', async () => {
+      const { service, marketplace, dictionaryCandidates } = makeService();
+      marketplace.createDictionaryEntry.mockRejectedValue(
+        new Error('already exists'),
+      );
+
+      await expect(
+        service.addDictionaryMake('toyota', 'Toyota', actor, null),
+      ).rejects.toThrow('already exists');
+      expect(dictionaryCandidates.dismiss).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('addDictionaryAlias', () => {
+    it('adds the alias, dismisses the candidate, and audits it against the target entry', async () => {
+      const { service, marketplace, auditLogs, dictionaryCandidates } =
+        makeService();
+      marketplace.addDictionaryAlias.mockResolvedValue({ added: true });
+
+      const result = await service.addDictionaryAlias(
+        'toyott',
+        'Toyott',
+        'dict-toyota',
+        actor,
+        null,
+      );
+
+      expect(marketplace.addDictionaryAlias).toHaveBeenCalledWith(
+        'dict-toyota',
+        'Toyott',
+      );
+      expect(dictionaryCandidates.dismiss).toHaveBeenCalledWith(
+        'toyott',
+        actor.id,
+      );
+      expect(auditLogs.append).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'dictionary.alias_added',
+          entityId: 'dict-toyota',
+          changes: { alias: 'Toyott', rawValue: 'toyott' },
+        }),
+      );
+      expect(result.result).toEqual({ added: true });
+    });
+  });
+
+  describe('dismissDictionaryCandidate', () => {
+    it('records the dismissal and audits it with no entity id', async () => {
+      const { service, auditLogs, dictionaryCandidates } = makeService();
+
+      await service.dismissDictionaryCandidate('asdkj', actor, null);
+
+      expect(dictionaryCandidates.dismiss).toHaveBeenCalledWith(
+        'asdkj',
+        actor.id,
+      );
+      expect(auditLogs.append).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'dictionary.candidate_dismissed',
+          entityId: null,
+          changes: { rawValue: 'asdkj' },
+        }),
+      );
+    });
   });
 });

@@ -10,6 +10,8 @@ import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import type { AuthenticatedUser } from '../../auth/types/authenticated-user.type';
 import { JobStatusResponseDto } from '../dto/job-status-response.dto';
+import { JobsQueryDto } from '../dto/jobs-query.dto';
+import type { JobsResponseDto } from '../dto/jobs-response.dto';
 import { RejectionsQueryDto } from '../dto/rejections-query.dto';
 import type { RejectionsResponseDto } from '../dto/rejections-response.dto';
 import { JobStatusService } from '../services/job-status.service';
@@ -33,6 +35,21 @@ export class JobStatusController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<{ id: string } | null> {
     return this.jobStatusService.getActiveJob(user.id);
+  }
+
+  /**
+   * The dealer's own upload history — lets the Bulk Upload area point back at
+   * a past job's rejection report after the dealer has navigated away, not
+   * just the one that happens to still be running. Registered before ':id'
+   * for the same reason as 'active': Nest would otherwise parse "mine" as a
+   * job id.
+   */
+  @Get('mine')
+  async listJobs(
+    @Query() query: JobsQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<JobsResponseDto> {
+    return this.jobStatusService.listJobs(user.id, query);
   }
 
   @Get(':id')

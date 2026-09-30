@@ -1,5 +1,5 @@
 import { apiClient } from './client'
-import type { JobStatus, RejectionsPage, UploadAccepted } from './ingestion.types'
+import type { JobsPage, JobStatus, RejectedRecord, RejectionsPage, UploadAccepted } from './ingestion.types'
 import { TEMPLATE_HEADER } from './ingestion.template'
 
 /**
@@ -67,9 +67,23 @@ export async function getActiveJob(signal?: AbortSignal): Promise<{ id: string }
 export async function getJobRejections(
   jobId: string,
   page = 1,
+  limit?: number,
   signal?: AbortSignal,
 ): Promise<RejectionsPage> {
   const { data } = await apiClient.get<RejectionsPage>(`/jobs/${jobId}/rejections`, {
+    params: limit ? { page, limit } : { page },
+    signal,
+  })
+  return data
+}
+
+/**
+ * The dealer's own upload history, newest first — lets the dealer find their
+ * way back to a past job's rejection report after navigating away, since
+ * getActiveJob only ever covers the one still running.
+ */
+export async function getMyUploadJobs(page = 1, signal?: AbortSignal): Promise<JobsPage> {
+  const { data } = await apiClient.get<JobsPage>('/jobs/mine', {
     params: { page },
     signal,
   })
@@ -111,4 +125,47 @@ const EXAMPLE_ROW: Record<string, string> = {
 export function buildTemplateCsv(): string {
   const example = TEMPLATE_HEADER.map((column) => EXAMPLE_ROW[column] ?? '')
   return `${TEMPLATE_HEADER.join(',')}\n${example.join(',')}\n`
+}
+
+/**
+ * FR-57's export: a dealer fixing skipped rows needs them outside the
+ * browser, not just on screen — re-typing which rows failed from a table is
+ * exactly the manual, error-prone step this is meant to remove.
+ *
+ * `row` and `reason` lead the file for reference. They are not template
+ * columns, but a stray extra column is not a re-upload hazard either: the
+ * parser folds anything it does not recognise into `description` rather than
+ * rejecting the file (see COLUMN_HELP), so the worst case if a dealer forgets
+ * to delete them is a stray note in the description field, not a failed
+ * re-upload. The download hint says to remove them regardless.
+ */
+export function buildRejectionsCsv(rows: RejectedRecord[]): string {
+  const rawKeys = new Set<string>()
+  for (const row of rows) {
+    for (const key of Object.keys(row.rawData)) rawKeys.add(key)
+  }
+  const templateKeys = TEMPLATE_HEADER.filter((key) => rawKeys.has(key))
+  const extraKeys = [...rawKeys].filter((key) => !(TEMPLATE_HEADER as readonly string[]).includes(key)).sort()
+  const columns = [...templateKeys, ...extraKeys]
+
+  const header = ['row', 'reason', ...columns]
+  const lines = [header.map(csvCell).join(',')]
+
+  for (const row of rows) {
+    const cells = [
+      row.rowNumber === 0 ? 'whole file' : String(row.rowNumber),
+      row.reason,
+      ...columns.map((key) => {
+        const value = row.rawData[key]
+        return value === null || value === undefined ? '' : String(value)
+      }),
+    ]
+    lines.push(cells.map(csvCell).join(','))
+  }
+
+  return `${lines.join('\n')}\n`
+}
+
+function csvCell(value: string): string {
+  return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value
 }
