@@ -12,7 +12,10 @@ export interface AuthUser {
 
 export interface AuthTokenResponse {
   accessToken: string;
-  refreshToken: string;
+  // Omitted by the server once AUTH_REFRESH_TOKEN_IN_BODY=false (every
+  // deployed environment) — the refresh token travels only as an httpOnly
+  // cookie the frontend never reads directly.
+  refreshToken?: string;
   user: AuthUser;
 }
 

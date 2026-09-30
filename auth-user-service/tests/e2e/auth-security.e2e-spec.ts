@@ -417,4 +417,87 @@ describe('Auth secure token transport (e2e)', () => {
       await closeAuthE2eApp(context);
     }
   });
+
+  it('recovers a session end to end via the rotating refresh cookie', async () => {
+    const context = await createAuthE2eApp({
+      AUTH_USE_REFRESH_COOKIES: 'true',
+      AUTH_REFRESH_TOKEN_IN_BODY: 'false',
+    });
+
+    try {
+      await registerAndVerifyBuyer(context.agent, 'rotate-user@test.com');
+
+      const loginResponse = await context.agent
+        .post('/auth/login')
+        .set('X-Forwarded-For', DEFAULT_IP)
+        .send({ email: 'rotate-user@test.com', password: STRONG_PASSWORD })
+        .expect(201);
+
+      const originalCookies = loginResponse.headers['set-cookie'] as string[];
+      const originalCookieHeader = originalCookies
+        .map((cookie) => cookie.split(';')[0])
+        .join('; ');
+      const originalCsrfToken = readCookieValue(originalCookies, CSRF_TOKEN_COOKIE_NAME);
+      const originalRefreshCookie = readCookieValue(originalCookies, REFRESH_TOKEN_COOKIE_NAME);
+
+      // The access token from login is a real, working session on its own.
+      await context.agent
+        .get('/users/me')
+        .set(bearer(loginResponse.body.accessToken))
+        .expect(200);
+
+      // This is the flow the frontend actually performs once its access
+      // token expires: no refresh token in the request body anywhere, only
+      // the httpOnly cookie plus the matching CSRF header.
+      const refreshResponse = await context.agent
+        .post('/auth/refresh')
+        .set('Cookie', originalCookieHeader)
+        .set('X-CSRF-Token', originalCsrfToken)
+        .set('X-Forwarded-For', DEFAULT_IP)
+        .send({})
+        .expect(201);
+
+      // Not asserted distinct from the login access token: HS256 signing is
+      // deterministic and both are minted within the same one-second `iat`
+      // window here, so they can legitimately be byte-identical. What
+      // matters — that the refresh *token* rotated and the access token
+      // this call returns actually works — is asserted below.
+      expect(refreshResponse.body.accessToken).toBeTruthy();
+      expect(refreshResponse.body).not.toHaveProperty('refreshToken');
+
+      const rotatedCookies = refreshResponse.headers['set-cookie'] as string[];
+      const rotatedRefreshCookie = readCookieValue(rotatedCookies, REFRESH_TOKEN_COOKIE_NAME);
+      expect(rotatedRefreshCookie).toBeTruthy();
+      expect(rotatedRefreshCookie).not.toBe(originalRefreshCookie);
+
+      // The new access token authenticates a protected route, not just a 201.
+      await context.agent
+        .get('/users/me')
+        .set(bearer(refreshResponse.body.accessToken))
+        .expect(200);
+
+      // The rotated-out cookie is dead — replaying it (a stolen cookie used
+      // after the legitimate client already refreshed) is rejected, same
+      // reuse-detection the body-token flow already covers above.
+      const replay = await context.agent
+        .post('/auth/refresh')
+        .set('Cookie', originalCookieHeader)
+        .set('X-CSRF-Token', originalCsrfToken)
+        .set('X-Forwarded-For', DEFAULT_IP)
+        .send({})
+        .expect(401);
+
+      expect(replay.body.message).toBe(
+        AUTH_SECURITY_MESSAGES.INVALID_REFRESH_TOKEN,
+      );
+    } finally {
+      await closeAuthE2eApp(context);
+    }
+  });
 });
+
+function readCookieValue(cookies: string[], name: string): string {
+  const raw = cookies.find((cookie) => cookie.startsWith(`${name}=`));
+  if (!raw) throw new Error(`${name} cookie was not set`);
+  return raw.split(';')[0].slice(name.length + 1);
+}

@@ -18,6 +18,7 @@ import { AuthAbuseProtectionService } from '../../src/modules/auth/services/auth
 import { AuthService } from '../../src/modules/auth/services/auth.service';
 import { EmailVerificationService } from '../../src/modules/auth/services/email-verification.service';
 import { PasswordService } from '../../src/modules/auth/services/password.service';
+import { VerificationEmailService } from '../../src/modules/auth/services/verification-email.service';
 import { JwtStrategy } from '../../src/modules/auth/strategies/jwt.strategy';
 import { DealerProfilesController } from '../../src/modules/dealers/controllers/dealer-profiles.controller';
 import { InternalDealersController } from '../../src/modules/dealers/controllers/internal-dealers.controller';
@@ -97,6 +98,7 @@ const coreProviders = [
   AuthService,
   AuthAbuseProtectionService,
   EmailVerificationService,
+  VerificationEmailService,
   PasswordService,
   UsersService,
   DealerProfilesService,

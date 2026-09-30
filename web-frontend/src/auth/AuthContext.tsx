@@ -4,7 +4,7 @@ import { setSessionExpiredHandler } from '../api/client'
 import {
   clearSession,
   getStoredUser,
-  getRefreshToken,
+  hasSession,
   saveSession,
   setStoredUser,
 } from '../api/auth.storage'
@@ -15,9 +15,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const [user, setUser] = useState<AuthUser | null>(() => {
     const stored = getStoredUser()
-    if (stored && getRefreshToken()) return stored
-    // A user without a refresh token can't recover from expiry; treat the
-    // half-present session as no session at all.
+    if (stored && hasSession()) return stored
+    // A user without a session marker can't recover from expiry (no refresh
+    // cookie was ever issued, or it's already gone); treat the half-present
+    // session as no session at all.
     clearSession()
     return null
   })

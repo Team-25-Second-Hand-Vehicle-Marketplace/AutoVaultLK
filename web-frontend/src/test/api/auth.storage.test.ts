@@ -1,10 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { jwtDecode } from 'jwt-decode'
 import {
   clearSession,
   getAccessToken,
-  getRefreshToken,
+  getCsrfToken,
   getStoredUser,
+  hasSession,
   isAccessTokenExpired,
   saveSession,
 } from '../../api/auth.storage'
@@ -26,22 +27,38 @@ beforeEach(() => {
 })
 
 describe('saveSession / clearSession', () => {
-  it('persists the access token, refresh token, and user', () => {
-    saveSession({ accessToken: 'access-1', refreshToken: 'refresh-1', user })
+  it('persists the access token, user, and a session marker', () => {
+    saveSession({ accessToken: 'access-1', user })
 
     expect(getAccessToken()).toBe('access-1')
-    expect(getRefreshToken()).toBe('refresh-1')
+    expect(hasSession()).toBe(true)
     expect(getStoredUser()).toEqual(user)
   })
 
   it('removes all session data', () => {
-    saveSession({ accessToken: 'access-1', refreshToken: 'refresh-1', user })
+    saveSession({ accessToken: 'access-1', user })
 
     clearSession()
 
     expect(getAccessToken()).toBeNull()
-    expect(getRefreshToken()).toBeNull()
+    expect(hasSession()).toBe(false)
     expect(getStoredUser()).toBeNull()
+  })
+})
+
+describe('getCsrfToken', () => {
+  afterEach(() => {
+    document.cookie = 'csrf_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT'
+  })
+
+  it('returns null when no CSRF cookie is set', () => {
+    expect(getCsrfToken()).toBeNull()
+  })
+
+  it('reads and decodes the csrf_token cookie', () => {
+    document.cookie = 'csrf_token=abc%2Fdef'
+
+    expect(getCsrfToken()).toBe('abc/def')
   })
 })
 
