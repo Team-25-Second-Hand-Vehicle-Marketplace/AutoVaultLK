@@ -8,7 +8,7 @@ import type {
   RegisterDealerRequest,
   RegisterResponse,
 } from './auth.types'
-import { getRefreshToken } from './auth.storage'
+import { getCsrfToken } from './auth.storage'
 
 /**
  * Every auth call goes through the same /auth prefix nginx exposes, so dev
@@ -85,20 +85,33 @@ export async function uploadVerificationDocument(
   return data
 }
 
-export async function refreshSession(refreshToken: string): Promise<AuthTokenResponse> {
+/**
+ * The refresh token itself never reaches this code — it rides along as the
+ * httpOnly refresh_token cookie (withCredentials: true below). The CSRF
+ * cookie is the one piece of that pair readable from JS, and the server's
+ * CsrfGuard requires it echoed back as a header whenever the refresh cookie
+ * is present.
+ */
+export async function refreshSession(): Promise<AuthTokenResponse> {
   const { data } = await axios.post<AuthTokenResponse>(
     `${import.meta.env.VITE_API_BASE_URL ?? ''}/auth/refresh`,
-    { refreshToken },
-    { timeout: 10000 },
+    {},
+    {
+      timeout: 10000,
+      withCredentials: true,
+      headers: { 'x-csrf-token': getCsrfToken() ?? '' },
+    },
   )
   return data
 }
 
 export async function logout(): Promise<void> {
-  const refreshToken = getRefreshToken()
-  if (!refreshToken) return
   try {
-    await apiClient.post('/auth/logout', { refreshToken })
+    await apiClient.post(
+      '/auth/logout',
+      {},
+      { headers: { 'x-csrf-token': getCsrfToken() ?? '' } },
+    )
   } catch {
     return
   }

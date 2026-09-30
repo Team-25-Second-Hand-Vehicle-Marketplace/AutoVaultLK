@@ -3,33 +3,37 @@ import type { AccessTokenPayload, AuthUser } from './auth.types'
 
 
 const ACCESS_TOKEN_KEY = 'autovault.accessToken'
-const REFRESH_TOKEN_KEY = 'autovault.refreshToken'
+const HAS_SESSION_KEY = 'autovault.hasSession'
 const USER_KEY = 'autovault.user'
+const CSRF_COOKIE_NAME = 'csrf_token'
 
 export interface StoredSession {
   accessToken: string
-  refreshToken: string
   user: AuthUser
 }
 
 export function saveSession(session: StoredSession): void {
   localStorage.setItem(ACCESS_TOKEN_KEY, session.accessToken)
-  localStorage.setItem(REFRESH_TOKEN_KEY, session.refreshToken)
   localStorage.setItem(USER_KEY, JSON.stringify(session.user))
+  // The refresh token itself lives only in an httpOnly cookie the browser
+  // manages — this flag just records that one was issued, so the client
+  // knows a silent refresh is worth attempting. It carries no security
+  // weight; the cookie (and the server-side token it points to) does that.
+  localStorage.setItem(HAS_SESSION_KEY, '1')
 }
 
 export function clearSession(): void {
   localStorage.removeItem(ACCESS_TOKEN_KEY)
-  localStorage.removeItem(REFRESH_TOKEN_KEY)
   localStorage.removeItem(USER_KEY)
+  localStorage.removeItem(HAS_SESSION_KEY)
 }
 
 export function getAccessToken(): string | null {
   return localStorage.getItem(ACCESS_TOKEN_KEY)
 }
 
-export function getRefreshToken(): string | null {
-  return localStorage.getItem(REFRESH_TOKEN_KEY)
+export function hasSession(): boolean {
+  return localStorage.getItem(HAS_SESSION_KEY) === '1'
 }
 
 export function getStoredUser(): AuthUser | null {
@@ -52,6 +56,17 @@ export function setStoredUser(user: AuthUser): void {
   localStorage.setItem(USER_KEY, JSON.stringify(user))
 }
 
+/**
+ * Reads the non-httpOnly CSRF cookie the server pairs with the refresh
+ * cookie, so it can be echoed back as the X-CSRF-Token header on the
+ * cookie-authenticated /auth/refresh and /auth/logout calls.
+ */
+export function getCsrfToken(): string | null {
+  const match = document.cookie
+    .split('; ')
+    .find((row) => row.startsWith(`${CSRF_COOKIE_NAME}=`))
+  return match ? decodeURIComponent(match.slice(CSRF_COOKIE_NAME.length + 1)) : null
+}
 
 export function isAccessTokenExpired(skewSeconds = 30): boolean {
   const token = getAccessToken()

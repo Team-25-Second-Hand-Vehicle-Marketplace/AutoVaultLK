@@ -89,7 +89,7 @@ describe('HTTP security helpers', () => {
     );
   });
 
-  it('skips CSRF checks when refresh tokens are sent in the request body', () => {
+  it('still requires a matching CSRF token even when a refresh token is also sent in the body', () => {
     const context = {
       switchToHttp: () => ({
         getRequest: () => ({
@@ -104,6 +104,72 @@ describe('HTTP security helpers', () => {
       }),
     };
 
-    expect(csrfGuard.canActivate(context as never)).toBe(true);
+    expect(() => csrfGuard.canActivate(context as never)).toThrow(
+      ForbiddenException,
+    );
+  });
+
+  it('accepts a matching CSRF token from an allowed Origin', () => {
+    const csrfGuardWithOrigins = new CsrfGuard({
+      get: jest.fn((key: string, defaultValue?: unknown) => {
+        const values: Record<string, unknown> = {
+          AUTH_USE_REFRESH_COOKIES: true,
+          CORS_ORIGINS: 'https://app.example.com',
+        };
+        return values[key] ?? defaultValue;
+      }),
+    } as unknown as ConfigService);
+
+    const context = {
+      switchToHttp: () => ({
+        getRequest: () => ({
+          cookies: {
+            [REFRESH_TOKEN_COOKIE_NAME]: 'refresh-token',
+            [CSRF_TOKEN_COOKIE_NAME]: 'csrf-token',
+          },
+          body: {},
+          header: (name: string) => {
+            if (name === 'x-csrf-token') return 'csrf-token';
+            if (name === 'origin') return 'https://app.example.com';
+            return undefined;
+          },
+        }),
+      }),
+    };
+
+    expect(csrfGuardWithOrigins.canActivate(context as never)).toBe(true);
+  });
+
+  it('rejects a request from an Origin outside the allowlist even with a valid CSRF token', () => {
+    const csrfGuardWithOrigins = new CsrfGuard({
+      get: jest.fn((key: string, defaultValue?: unknown) => {
+        const values: Record<string, unknown> = {
+          AUTH_USE_REFRESH_COOKIES: true,
+          CORS_ORIGINS: 'https://app.example.com',
+        };
+        return values[key] ?? defaultValue;
+      }),
+    } as unknown as ConfigService);
+
+    const context = {
+      switchToHttp: () => ({
+        getRequest: () => ({
+          cookies: {
+            [REFRESH_TOKEN_COOKIE_NAME]: 'refresh-token',
+            [CSRF_TOKEN_COOKIE_NAME]: 'csrf-token',
+          },
+          body: {},
+          header: (name: string) => {
+            if (name === 'x-csrf-token') return 'csrf-token';
+            if (name === 'origin') return 'https://attacker.example.com';
+            return undefined;
+          },
+        }),
+      }),
+    };
+
+    expect(() => csrfGuardWithOrigins.canActivate(context as never)).toThrow(
+      ForbiddenException,
+    );
   });
 });

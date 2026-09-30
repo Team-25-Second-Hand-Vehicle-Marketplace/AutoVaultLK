@@ -2,7 +2,7 @@ import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import {
   clearSession,
   getAccessToken,
-  getRefreshToken,
+  hasSession,
   isAccessTokenExpired,
   saveSession,
 } from './auth.storage'
@@ -10,6 +10,10 @@ import {
 export const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? '',
   timeout: 10000,
+  // The refresh/CSRF cookies are cross-origin in every deployed environment
+  // (CloudFront vs API Gateway) — without this, the browser neither stores
+  // the Set-Cookie from login nor sends the cookie back on later requests.
+  withCredentials: true,
 })
 
 /** Notifies the app (AuthProvider) that the session ended and cannot be revived. */
@@ -26,11 +30,10 @@ async function refreshAccessToken(): Promise<string> {
   if (refreshPromise) return refreshPromise
 
   refreshPromise = (async () => {
-    const refreshToken = getRefreshToken()
-    if (!refreshToken) throw new Error('No refresh token')
+    if (!hasSession()) throw new Error('No session to refresh')
 
     const { refreshSession } = await import('./auth.api')
-    const session = await refreshSession(refreshToken)
+    const session = await refreshSession()
     saveSession(session)
     return session.accessToken
   })()
@@ -50,7 +53,7 @@ function isAuthEndpoint(url: string | undefined): boolean {
 apiClient.interceptors.request.use(async (config) => {
   if (isAuthEndpoint(config.url)) return config
 
-  if (getRefreshToken() && isAccessTokenExpired()) {
+  if (hasSession() && isAccessTokenExpired()) {
     try {
       await refreshAccessToken()
     } catch {
@@ -80,7 +83,7 @@ apiClient.interceptors.response.use(
       !config ||
       config._retried ||
       isAuthEndpoint(config.url) ||
-      !getRefreshToken()
+      !hasSession()
     ) {
       return Promise.reject(error)
     }
