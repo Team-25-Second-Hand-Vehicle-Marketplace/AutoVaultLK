@@ -146,8 +146,9 @@ Write entities (the cross-schema exception): `VehicleWriteEntity`,
 `IngestionUploadService.upload()`:
 
 1. **`verifyDealer`** — `isVerifiedBusinessDealer(dealerId)`. Only **verified business**
-   dealers may bulk upload. (The mirror image of marketplace's rule, where only
-   *individual* verified dealers may create listings manually.)
+   dealers may bulk upload. Manual listing creation (marketplace-service) is open to
+   verified dealers of any type, including business dealers — a business dealer may use
+   either or both paths; bulk upload is not their only option, just an additional one.
 2. **Validate the CSV** — non-empty, ≤25MB, `.csv` extension, MIME in an allowlist.
    Extension *and* MIME are both checked; the browser-supplied MIME alone is not trusted.
 3. **Validate the ZIP** if present — non-empty, ≤250MB, `.zip`, MIME allowlist.

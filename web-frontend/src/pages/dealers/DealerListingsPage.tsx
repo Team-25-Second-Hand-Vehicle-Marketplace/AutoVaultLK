@@ -371,7 +371,7 @@ export function DealerListingsPage() {
           <p>You have no listings yet.</p>
           <p className="empty-state__detail">
             {dealer?.dealerType === 'business'
-              ? 'Upload your whole inventory at once from Bulk upload.'
+              ? 'Add your first vehicle with the New listing button above, or upload your whole inventory at once from Bulk upload.'
               : 'Add your first vehicle with the New listing button above.'}
           </p>
         </div>

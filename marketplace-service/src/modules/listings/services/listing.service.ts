@@ -306,9 +306,8 @@ export class ListingService {
   }
 
   /**
-   * FR-58: removes one photo from a listing the dealer owns, leaving the
-   * rest in place — see ImageUploadService.deleteImage for why this needs
-   * its own endpoint rather than reusing the replace-whole-set upload one.
+   * FR-58: deletes one image from a listing after verifying that the caller
+   * owns the listing or is an administrator.
    */
   async deleteImage(id: string, imageId: string, actor: AuthenticatedUser) {
     const listing = await this.listingRepository.findById(id);
@@ -321,28 +320,26 @@ export class ListingService {
 
     await this.imageUploadService.deleteImage(id, imageId);
 
-    return { message: 'Image deleted' };
+    return {
+      message: 'Image deleted successfully',
+    };
   }
 
   /**
-   * Manual, one-at-a-time listing creation is for individual dealers only.
-   * Business dealers list their stock through the bulk upload pipeline
-   * instead, so a stray manual listing here would bypass it.
+   * Manual, one-at-a-time listing creation is available to every dealer
+   * type. Business dealers additionally have the bulk upload pipeline for
+   * their stock (ingestion-service's DealerProfileRepository.
+   * isVerifiedBusinessDealer still restricts that to verified business
+   * dealers only) — the two paths aren't mutually exclusive, a business
+   * dealer may also list a single vehicle manually here.
    *
-   * Verification is checked here too, not just dealerType: a dealer can now
-   * log in while PENDING or REJECTED (see auth-user-service's
-   * DealerProfilesService — approval no longer gates login, only whether the
-   * account may create listings), so this is the only thing standing between
-   * an unverified dealer and a real LIVE listing. Mirrors
-   * ingestion-service's DealerProfileRepository.isVerifiedBusinessDealer,
-   * which already requires the same for bulk upload.
+   * Verification is still checked here: a dealer can log in while PENDING
+   * or REJECTED (see auth-user-service's DealerProfilesService — approval
+   * no longer gates login, only whether the account may create listings),
+   * so this is the only thing standing between an unverified dealer of any
+   * type and a real LIVE listing.
    */
   private assertManualUploadAllowed(dealer: DealerSummary) {
-    if (dealer.dealerType !== 'individual') {
-      throw new ForbiddenException(
-        'Business dealers must add vehicles through bulk upload, not manual listing creation',
-      );
-    }
     if (dealer.verificationStatus !== 'VERIFIED') {
       throw new ForbiddenException(
         'Your account must be verified before you can list a vehicle',

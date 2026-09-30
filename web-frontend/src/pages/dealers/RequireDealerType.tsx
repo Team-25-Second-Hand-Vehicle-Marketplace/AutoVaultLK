@@ -5,9 +5,11 @@ import { ErrorBanner } from '../../components/ui/ErrorBanner'
 import { useDealerProfile } from './useDealerProfile'
 
 /**
- * Keeps a page to one kind of dealer. The API enforces the same split (bulk
- * upload: verified business dealers only; manual listing: individuals only),
- * so this is about not showing people screens that would only 403 on them.
+ * Keeps a page to one kind of dealer. The API enforces the same restriction
+ * for bulk upload (verified business dealers only) — manual listing
+ * creation has no dealerType restriction on either side and so has no
+ * RequireDealerType gate. This is about not showing people screens that
+ * would only 403 on them.
  *
  * Fails closed: until the profile has loaded, or if it cannot be loaded, the
  * page is not rendered.
