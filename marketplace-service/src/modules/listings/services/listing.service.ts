@@ -306,6 +306,26 @@ export class ListingService {
   }
 
   /**
+   * FR-58: deletes one image from a listing after verifying that the caller
+   * owns the listing or is an administrator.
+   */
+  async deleteImage(id: string, imageId: string, actor: AuthenticatedUser) {
+    const listing = await this.listingRepository.findById(id);
+
+    if (!listing) {
+      throw new NotFoundException(`Vehicle listing with ID ${id} not found`);
+    }
+
+    this.assertOwnership(listing, actor);
+
+    await this.imageUploadService.deleteImage(id, imageId);
+
+    return {
+      message: 'Image deleted successfully',
+    };
+  }
+
+  /**
    * Manual, one-at-a-time listing creation is available to every dealer
    * type. Business dealers additionally have the bulk upload pipeline for
    * their stock (ingestion-service's DealerProfileRepository.
