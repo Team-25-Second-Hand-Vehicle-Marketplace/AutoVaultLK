@@ -39,6 +39,33 @@ const DEFAULTS: Required<ImageProcessingOptions> = {
   quality: 82,
 };
 
+// Sharp/libvips has no built-in timeout: decoding a genuinely malformed or
+// non-image buffer (corrupt upload, or — as found via k6 load testing —
+// large random-byte content) can hang indefinitely rather than failing
+// fast, blocking this whole stage forever since callers await one image at
+// a time (process-job-images.service.ts's `for` loop). Bounding each
+// image's processing here turns that hang into an ordinary per-image
+// failure, which process-job-images.service.ts already knows how to skip
+// and continue past (isImageProcessingFailure/'failed' outcome) — so the
+// fix belongs at this layer, not the caller's.
+const DEFAULT_IMAGE_PROCESSING_TIMEOUT_MS = 15_000;
+
+function getImageProcessingTimeoutMs(): number {
+  const raw = Number(process.env.IMAGE_PROCESSING_TIMEOUT_MS);
+  return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_IMAGE_PROCESSING_TIMEOUT_MS;
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`Image processing timed out after ${timeoutMs}ms: ${label}`)),
+      timeoutMs,
+    );
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 /**
  * B3 - Image Processing Stage.
  *
@@ -56,6 +83,7 @@ export async function processVehicleImage(
     ...DEFAULTS,
     ...options,
   };
+  const timeoutMs = getImageProcessingTimeoutMs();
 
   if (!input.sourceKey.startsWith(`raw/${input.jobId}/`)) {
     throw new Error(
@@ -73,40 +101,52 @@ export async function processVehicleImage(
     failOn: 'error',
   });
 
-  const metadata = await image.metadata();
+  const metadata = await withTimeout(
+    image.metadata(),
+    timeoutMs,
+    `metadata ${input.sourceKey}`,
+  );
 
   if (!metadata.format) {
     throw new Error(`Unsupported or invalid image: ${input.sourceKey}`);
   }
 
-  const processedBuffer = await sharp(source)
-    .rotate()
-    .resize({
-      width: config.maxWidth,
-      height: config.maxHeight,
-      fit: 'inside',
-      withoutEnlargement: true,
-    })
-    .jpeg({
-      quality: config.quality,
-      mozjpeg: true,
-    })
-    .toBuffer();
+  const processedBuffer = await withTimeout(
+    sharp(source)
+      .rotate()
+      .resize({
+        width: config.maxWidth,
+        height: config.maxHeight,
+        fit: 'inside',
+        withoutEnlargement: true,
+      })
+      .jpeg({
+        quality: config.quality,
+        mozjpeg: true,
+      })
+      .toBuffer(),
+    timeoutMs,
+    `resize ${input.sourceKey}`,
+  );
 
-  const thumbnailBuffer = await sharp(source)
-    .rotate()
-    .resize({
-      width: config.thumbnailWidth,
-      height: config.thumbnailHeight,
-      fit: 'cover',
-      position: 'centre',
-      withoutEnlargement: true,
-    })
-    .jpeg({
-      quality: 75,
-      mozjpeg: true,
-    })
-    .toBuffer();
+  const thumbnailBuffer = await withTimeout(
+    sharp(source)
+      .rotate()
+      .resize({
+        width: config.thumbnailWidth,
+        height: config.thumbnailHeight,
+        fit: 'cover',
+        position: 'centre',
+        withoutEnlargement: true,
+      })
+      .jpeg({
+        quality: 75,
+        mozjpeg: true,
+      })
+      .toBuffer(),
+    timeoutMs,
+    `thumbnail ${input.sourceKey}`,
+  );
 
   const processedKey =
     `images/${input.jobId}/${input.vehicleId}/` +
