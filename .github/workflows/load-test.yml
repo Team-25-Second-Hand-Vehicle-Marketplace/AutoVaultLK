@@ -16,6 +16,14 @@ on:
         description: 'marketplace-service base URL'
         required: false
         default: 'http://localhost:3002'
+  # TEMPORARY, for one-off verification on this branch only: workflow_dispatch
+  # cannot be triggered by anyone — UI or gh CLI — until this file exists on
+  # the default branch, so there is no way to test it pre-merge without this.
+  # Remove this push trigger once verified; the workflow_dispatch above is
+  # the only intended trigger going forward.
+  push:
+    paths:
+      - '.github/workflows/load-test.yml'
 
 jobs:
   login-favourites-load:
