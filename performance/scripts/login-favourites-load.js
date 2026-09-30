@@ -147,14 +147,23 @@ export default function (data) {
     check(loginRes, { 'login succeeded': (r) => r.status === 200 || r.status === 201 });
     if (loginRes.status !== 200 && loginRes.status !== 201) {
       // A failed login means nothing else this VU does is authenticated —
-      // no point continuing this iteration.
+      // no point continuing this iteration. sleep(1) still runs first: an
+      // early return with no sleep lets this VU spin in a near-zero-cost
+      // tight loop instead of behaving like a paced session (confirmed by
+      // direct observation in buyer-traffic-stress.js: 46 failed logins
+      // out of 400 VUs produced 43 million iterations in under 4 minutes
+      // from exactly this gap).
+      sleep(1);
       return;
     }
 
     buyer.accessToken = JSON.parse(loginRes.body).accessToken;
   }
 
-  if (!buyer.accessToken) return; // login failed on iteration 0; nothing to authenticate with
+  if (!buyer.accessToken) {
+    sleep(1); // same reasoning as above
+    return;
+  }
 
   const authHeaders = {
     headers: {
