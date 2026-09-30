@@ -26,6 +26,31 @@ const mockZip = (files: unknown[]): void => {
 };
 
 /**
+ * Plain object, not cast through ObjectStore — a test asserting on
+ * `store.put` needs the bare jest.Mock, not a method resolved off an
+ * interface with method-shorthand syntax (that trips @typescript-eslint's
+ * unbound-method rule even behind an `as jest.Mock` cast at the call site).
+ */
+const storeFor = (
+  content: Buffer | string,
+  exists = true,
+  zipBuffer: Buffer = Buffer.from('zip'),
+) => ({
+  exists: jest.fn().mockResolvedValue(exists),
+  // A fresh Readable per call, not one shared instance: the re-encode path
+  // reads the object a second time (readHead's sample, then the whole
+  // file), and a stream already drained by the first read would make the
+  // second look empty.
+  getStream: jest
+    .fn()
+    .mockImplementation(() =>
+      Promise.resolve(Readable.from([Buffer.from(content as never)])),
+    ),
+  get: jest.fn().mockResolvedValue(zipBuffer),
+  put: jest.fn().mockResolvedValue(undefined),
+});
+
+/**
  * Minimal StageContext. Only `store` is reached by this stage, so the rest is
  * cast rather than stubbed — a stage touching anything else would be a contract
  * violation worth failing on.
@@ -39,15 +64,14 @@ const contextFor = (
     jobId: 'job-1',
     dealerId: 'dealer-1',
     chunkId: null,
-    store: {
-      exists: jest.fn().mockResolvedValue(exists),
-      getStream: jest.fn().mockResolvedValue(Readable.from([Buffer.from(content as never)])),
-      get: jest.fn().mockResolvedValue(zipBuffer),
-    },
+    store: storeFor(content, exists, zipBuffer),
   }) as never;
 
 const run = (content: Buffer | string, fileName = 'stock.csv', exists = true) =>
-  validateFileStage.run(contextFor(content, exists), { key: `raw/job-1/${fileName}`, fileName });
+  validateFileStage.run(contextFor(content, exists), {
+    key: `raw/job-1/${fileName}`,
+    fileName,
+  });
 
 const runWithZip = (
   content: Buffer | string,
@@ -120,7 +144,9 @@ describe('validateFileStage', () => {
   });
 
   it('rejects a non-csv extension', async () => {
-    await expect(run(`${HEADER}\n`, 'stock.xlsx')).rejects.toThrow(FileValidationError);
+    await expect(run(`${HEADER}\n`, 'stock.xlsx')).rejects.toThrow(
+      FileValidationError,
+    );
   });
 
   it('rejects an empty file', async () => {
@@ -128,20 +154,98 @@ describe('validateFileStage', () => {
   });
 
   it('rejects a file missing from storage', async () => {
-    await expect(run(`${HEADER}\n`, 'stock.csv', false)).rejects.toThrow(/could not be read/i);
+    await expect(run(`${HEADER}\n`, 'stock.csv', false)).rejects.toThrow(
+      /could not be read/i,
+    );
   });
 
-  it('rejects a file that is not valid UTF-8', async () => {
-    // 0xFF 0xFE is a UTF-16 BOM — a "Save as Unicode" in Excel. Decoding it
-    // leniently would yield replacement characters and fail later as a
-    // dictionary miss on every single row.
-    await expect(run(Buffer.from([0xff, 0xfe, 0x41, 0x00]))).rejects.toThrow(/UTF-8/);
+  it('accepts a file written in Windows-1252 — Excel\'s default "Save As CSV" on Windows', async () => {
+    // 0x92 is the right single quotation mark in Windows-1252 (what Excel's
+    // autocorrect turns a plain apostrophe into) and is not valid as a
+    // standalone UTF-8 byte, so this file would fail a strict UTF-8-only
+    // decode despite being a perfectly normal dealer export.
+    const content = Buffer.concat([
+      Buffer.from(
+        `${HEADER}\nCAB-1234,Toyota,Vitz,2015,3500000,45000,PETROL,AUTOMATIC,White,1000,1,Owner`,
+      ),
+      Buffer.from([0x92]),
+      Buffer.from('s garage\n'),
+    ]);
+
+    const result = await run(content);
+
+    expect(result.headers).toContain('make');
+  });
+
+  it('rewrites the object as UTF-8 when it needed the Windows-1252 fallback', async () => {
+    // Every stage after this one reads the same key assuming UTF-8 - csv-parse
+    // in splitChunks chief among them - so a file accepted here but left as
+    // Windows-1252 bytes would silently turn every accented letter, curly
+    // quote or dash into "�" the moment a row is actually parsed.
+    const content = Buffer.concat([
+      Buffer.from(
+        `${HEADER}\nCAB-1234,Toyota,Vitz,2015,3500000,45000,PETROL,AUTOMATIC,White,1000,1,Owner`,
+      ),
+      Buffer.from([0x92]),
+      Buffer.from('s garage\n'),
+    ]);
+    const store = storeFor(content);
+    const ctx = {
+      jobId: 'job-1',
+      dealerId: 'dealer-1',
+      chunkId: null,
+      store,
+    } as never;
+
+    await validateFileStage.run(ctx, {
+      key: 'raw/job-1/stock.csv',
+      fileName: 'stock.csv',
+    });
+
+    expect(store.put).toHaveBeenCalledWith(
+      'raw/job-1/stock.csv',
+      expect.stringContaining('Owner’s garage'),
+      'text/csv',
+    );
+  });
+
+  it('does not rewrite the object when it is already valid UTF-8', async () => {
+    // The common case must stay a pure read: rewriting every upload would
+    // cost an extra whole-file read and write for files that never needed it.
+    const store = storeFor(
+      `${HEADER}\nCAB-1234,Toyota,Vitz,2015,3500000,45000\n`,
+    );
+    const ctx = {
+      jobId: 'job-1',
+      dealerId: 'dealer-1',
+      chunkId: null,
+      store,
+    } as never;
+
+    await validateFileStage.run(ctx, {
+      key: 'raw/job-1/stock.csv',
+      fileName: 'stock.csv',
+    });
+
+    expect(store.put).not.toHaveBeenCalled();
+  });
+
+  it('still rejects a file that is neither UTF-8 nor a recognisable CSV once decoded', async () => {
+    // 0xFF 0xFE is a UTF-16 BOM — a "Save as Unicode" in Excel. Windows-1252
+    // has a character for every byte, so this no longer fails at the decode
+    // step; it is instead caught below for having none of the columns the
+    // pipeline requires, same as any other unrecognisable header would be.
+    await expect(run(Buffer.from([0xff, 0xfe, 0x41, 0x00]))).rejects.toThrow(
+      /Missing required columns/,
+    );
   });
 
   it('rejects duplicate columns rather than silently dropping one', async () => {
     // `make` and `Manufacturer` both fold to `make`; choosing either would
     // discard a whole column's data for every row.
-    await expect(run(`make,Manufacturer,${HEADER}\n`)).rejects.toThrow(/Duplicate columns: make/);
+    await expect(run(`make,Manufacturer,${HEADER}\n`)).rejects.toThrow(
+      /Duplicate columns: make/,
+    );
   });
 
   it('keeps a quoted comma inside a header cell', async () => {
@@ -155,7 +259,9 @@ describe('validateFileStage', () => {
 
   it('rejects a file with no row separator in the header window', async () => {
     // Stands in for an XLSX saved with a .csv extension: binary, no newline.
-    await expect(run('x'.repeat(64 * 1024 + 10))).rejects.toThrow(/no row separator/i);
+    await expect(run('x'.repeat(64 * 1024 + 10))).rejects.toThrow(
+      /no row separator/i,
+    );
   });
 
   it('is registered as the VALIDATE_FILE stage', () => {
@@ -170,12 +276,16 @@ describe('validateFileStage', () => {
     it('accepts a well-formed archive of only images', async () => {
       mockZip([zipEntry('CAB-1234.jpg'), zipEntry('CAB-1234-2.jpg')]);
 
-      await expect(runWithZip(`${HEADER}\nCAB-1234,Toyota,Vitz,2015,3500000,45000\n`)).resolves.toBeDefined();
+      await expect(
+        runWithZip(`${HEADER}\nCAB-1234,Toyota,Vitz,2015,3500000,45000\n`),
+      ).resolves.toBeDefined();
     });
 
     it('is a no-op when the dealer uploaded no photo archive', async () => {
       // Legitimate — FR-35.2 covers rows with no automated image match.
-      await expect(run(`${HEADER}\nCAB-1234,Toyota,Vitz,2015,3500000,45000\n`)).resolves.toBeDefined();
+      await expect(
+        run(`${HEADER}\nCAB-1234,Toyota,Vitz,2015,3500000,45000\n`),
+      ).resolves.toBeDefined();
       expect(unzipper.Open.buffer).not.toHaveBeenCalled();
     });
 
@@ -193,7 +303,9 @@ describe('validateFileStage', () => {
         store: {
           exists: jest
             .fn()
-            .mockImplementation((key: string) => Promise.resolve(!key.includes('missing'))),
+            .mockImplementation((key: string) =>
+              Promise.resolve(!key.includes('missing')),
+            ),
           getStream: jest
             .fn()
             .mockResolvedValue(Readable.from([Buffer.from(`${HEADER}\n`)])),
@@ -211,16 +323,24 @@ describe('validateFileStage', () => {
     });
 
     it('rejects a corrupted archive that unzipper cannot open', async () => {
-      (unzipper.Open.buffer as jest.Mock).mockRejectedValue(new Error('not a zip'));
+      (unzipper.Open.buffer as jest.Mock).mockRejectedValue(
+        new Error('not a zip'),
+      );
 
-      await expect(runWithZip(`${HEADER}\n`)).rejects.toThrow(/not a valid ZIP/i);
+      await expect(runWithZip(`${HEADER}\n`)).rejects.toThrow(
+        /not a valid ZIP/i,
+      );
     });
 
     it('rejects an archive with more entries than the limit', async () => {
-      const files = Array.from({ length: 2001 }, (_, i) => zipEntry(`CAB-${i}.jpg`));
+      const files = Array.from({ length: 2001 }, (_, i) =>
+        zipEntry(`CAB-${i}.jpg`),
+      );
       mockZip(files);
 
-      await expect(runWithZip(`${HEADER}\n`)).rejects.toThrow(/exceeds the 2000 limit/);
+      await expect(runWithZip(`${HEADER}\n`)).rejects.toThrow(
+        /exceeds the 2000 limit/,
+      );
     });
 
     it('rejects an archive with a path-traversal entry', async () => {
@@ -232,13 +352,17 @@ describe('validateFileStage', () => {
     it('rejects an archive whose declared uncompressed size is implausible', async () => {
       mockZip([zipEntry('CAB-1234.jpg', 3 * 1024 * 1024 * 1024)]);
 
-      await expect(runWithZip(`${HEADER}\n`)).rejects.toThrow(/decompresses to more data/i);
+      await expect(runWithZip(`${HEADER}\n`)).rejects.toThrow(
+        /decompresses to more data/i,
+      );
     });
 
     it('rejects an archive with no recognised image files', async () => {
       mockZip([zipEntry('readme.txt'), zipEntry('manifest.pdf')]);
 
-      await expect(runWithZip(`${HEADER}\n`)).rejects.toThrow(/no recognised image files/i);
+      await expect(runWithZip(`${HEADER}\n`)).rejects.toThrow(
+        /no recognised image files/i,
+      );
     });
 
     it('tolerates a stray non-image file alongside real photos', async () => {

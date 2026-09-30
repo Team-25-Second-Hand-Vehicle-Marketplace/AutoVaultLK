@@ -295,6 +295,7 @@ module "admin_lambda" {
     AUTH_SERVICE_INTERNAL_URL = local.internal_api_base
     AUTH_INTERNAL_URL         = local.internal_api_base
     NOTIFICATION_INTERNAL_URL = local.internal_api_base
+    MARKETPLACE_INTERNAL_URL  = local.internal_api_base
     # Resolves a stored verification-document key into a presigned URL for
     # the dealer approval screen — read-only, never uploads (see
     # DocumentUrlResolverService in admin-service).
@@ -692,6 +693,11 @@ module "api_gateway" {
   internal_lambda_integrations = {
     notifications = module.notification_lambda.invoke_arn
     internal      = module.auth_lambda.invoke_arn
+    # More specific than "internal" ("/internal/{proxy+}" -> auth_lambda), so
+    # this wins the route match for anything under /internal/dictionary
+    # instead of being swallowed by auth's catch-all — HTTP APIs resolve the
+    # most specific path match, not declaration order.
+    "internal/dictionary" = module.marketplace_lambda.invoke_arn
   }
 }
 
@@ -725,6 +731,14 @@ resource "aws_lambda_permission" "admin_public" {
   function_name = module.admin_lambda.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${module.api_gateway.public_api_execution_arn}/*/*"
+}
+
+resource "aws_lambda_permission" "marketplace_internal" {
+  statement_id  = "AllowInternalApiGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = module.marketplace_lambda.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${module.api_gateway.internal_api_execution_arn}/*/*"
 }
 
 resource "aws_lambda_permission" "notification_internal" {

@@ -450,6 +450,21 @@
   gap: 6px;
 }
 
+.admin-sample-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  max-width: 320px;
+}
+
+.admin-sample-list li {
+  padding: 2px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .button--sm {
   padding: 6px 10px;
   font-size: 13px;

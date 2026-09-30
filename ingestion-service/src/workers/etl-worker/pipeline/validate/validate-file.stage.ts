@@ -1,9 +1,6 @@
 import { parse } from 'csv-parse/sync';
 import unzipper from 'unzipper';
-import {
-  normalizeHeader,
-  REQUIRED_COLUMNS,
-} from '../parse/csv-contract';
+import { normalizeHeader, REQUIRED_COLUMNS } from '../parse/csv-contract';
 import type { StageContext, StageRunner } from '../types';
 
 /**
@@ -74,16 +71,24 @@ const MAX_HEADER_BYTES = 64 * 1024;
 
 /**
  * Gate between an uploaded blob and the pipeline: extension, non-emptiness,
- * UTF-8 decodability, a parseable header row, and the required columns.
+ * a decodable encoding, a parseable header row, and the required columns.
  *
  * Reads only the first MAX_HEADER_BYTES rather than the whole object. A 25 MB
  * upload buffered whole, across MaxConcurrency jobs, is a footprint worth
- * avoiding for a check that only ever looks at line one.
+ * avoiding for a check that only ever looks at line one — except in the rare
+ * case the file needs re-encoding, where the whole object is read once more;
+ * see reencodeWholeFile.
  */
-export const validateFileStage: StageRunner<ValidateFileInput, ValidateFileOutput> = {
+export const validateFileStage: StageRunner<
+  ValidateFileInput,
+  ValidateFileOutput
+> = {
   stage: 'VALIDATE_FILE',
 
-  async run(ctx: StageContext, input: ValidateFileInput): Promise<ValidateFileOutput> {
+  async run(
+    ctx: StageContext,
+    input: ValidateFileInput,
+  ): Promise<ValidateFileOutput> {
     const extension = extensionOf(input.fileName);
     if (!ALLOWED_EXTENSIONS.includes(extension)) {
       throw new FileValidationError(
@@ -94,7 +99,9 @@ export const validateFileStage: StageRunner<ValidateFileInput, ValidateFileOutpu
     if (!(await ctx.store.exists(input.key))) {
       // Infrastructure-shaped, but the dealer's file genuinely is not there, so
       // it is reported as a file problem rather than crashing the worker.
-      throw new FileValidationError('Uploaded file could not be read from storage.');
+      throw new FileValidationError(
+        'Uploaded file could not be read from storage.',
+      );
     }
 
     const head = await readHead(ctx, input.key);
@@ -102,8 +109,12 @@ export const validateFileStage: StageRunner<ValidateFileInput, ValidateFileOutpu
       throw new FileValidationError('File is empty.');
     }
 
-    const text = decodeUtf8(head);
-    const headerLine = firstLine(text);
+    const decoded = decodeText(head);
+    if (decoded.reencoded) {
+      await reencodeWholeFile(ctx, input.key);
+    }
+
+    const headerLine = firstLine(decoded.text);
     if (!headerLine.trim()) {
       throw new FileValidationError('File has no header row.');
     }
@@ -141,19 +152,114 @@ async function readHead(ctx: StageContext, key: string): Promise<Buffer> {
   return Buffer.concat(chunks);
 }
 
+type DecodedHead = {
+  text: string;
+  /** True when the fallback below was needed — the file must be re-encoded. */
+  reencoded: boolean;
+};
+
 /**
- * Decodes strictly. A latin-1 or UTF-16 file would otherwise decode to
- * replacement characters and fail later as a mystery dictionary miss on every
- * row, rather than here as one comprehensible message.
+ * Windows-1252 is identical to Latin-1 everywhere except these 32 bytes,
+ * where Latin-1 has unprintable C1 control codes and Windows-1252 has the
+ * typographic punctuation Word/Excel's autocorrect actually inserts — smart
+ * quotes, en/em dashes, an ellipsis. This is the one range a decode needs to
+ * get right; every other byte (0x00-0x7F and 0xA0-0xFF) maps to itself in
+ * both encodings, which is exactly what Buffer's built-in 'latin1' encoding
+ * already does with no ICU dependency at all.
+ *
+ * Deliberately NOT `TextDecoder('windows-1252')`: on this Node build (full
+ * ICU, v22.14) that silently decodes every byte as its own code point —
+ * identical to Latin-1 — instead of applying this table, despite correctly
+ * reporting `encoding: 'windows-1252'` on introspection. A dependency this
+ * silently wrong on the one range that matters is worse than not having it;
+ * this table has no runtime to be wrong about.
  */
-function decodeUtf8(buffer: Buffer): string {
-  try {
-    return new TextDecoder('utf-8', { fatal: true }).decode(buffer);
-  } catch {
-    throw new FileValidationError(
-      'File is not valid UTF-8. Re-export it as CSV UTF-8 and upload again.',
-    );
+const WINDOWS_1252_HIGH_RANGE: Readonly<Record<number, string>> = {
+  0x80: '€',
+  0x82: '‚',
+  0x83: 'ƒ',
+  0x84: '„',
+  0x85: '…',
+  0x86: '†',
+  0x87: '‡',
+  0x88: 'ˆ',
+  0x89: '‰',
+  0x8a: 'Š',
+  0x8b: '‹',
+  0x8c: 'Œ',
+  0x8e: 'Ž',
+  0x91: '‘',
+  0x92: '’',
+  0x93: '“',
+  0x94: '”',
+  0x95: '•',
+  0x96: '–',
+  0x97: '—',
+  0x98: '˜',
+  0x99: '™',
+  0x9a: 'š',
+  0x9b: '›',
+  0x9c: 'œ',
+  0x9e: 'ž',
+  0x9f: 'Ÿ',
+};
+
+function decodeWindows1252(buffer: Buffer): string {
+  const chars = new Array<string>(buffer.length);
+  for (let i = 0; i < buffer.length; i++) {
+    const byte = buffer[i];
+    chars[i] = WINDOWS_1252_HIGH_RANGE[byte] ?? String.fromCharCode(byte);
   }
+  return chars.join('');
+}
+
+/**
+ * Decodes strictly as UTF-8 first, since a wrong guess there would otherwise
+ * decode to replacement characters and fail later as a mystery dictionary
+ * miss on every row, rather than here as one comprehensible message. Falls
+ * back to Windows-1252 rather than rejecting outright: it is what Excel's
+ * default "Save As CSV" writes on Windows, which is the single most common
+ * reason a dealer's otherwise-fine file fails this check, and — being a
+ * single-byte encoding with a character at every value — it can never throw
+ * the way a wrong guess at UTF-16 or a genuinely binary file still will. A
+ * file that is neither still gets caught below, just by the header/column
+ * checks instead of a specific encoding complaint.
+ */
+function decodeText(buffer: Buffer): DecodedHead {
+  try {
+    return {
+      text: new TextDecoder('utf-8', { fatal: true }).decode(buffer),
+      reencoded: false,
+    };
+  } catch {
+    return { text: decodeWindows1252(buffer), reencoded: true };
+  }
+}
+
+/**
+ * Rewrites the object at `key` as UTF-8, translating from the Windows-1252
+ * bytes Excel wrote. Every stage after this one — csv-parse in splitChunks
+ * chief among them — reads this same key assuming UTF-8; without this, a
+ * dealer's file would pass validation only to have every accented letter,
+ * curly quote or dash silently turn into "�" the moment a row is actually
+ * parsed, which is a worse outcome than the clean rejection this replaces.
+ *
+ * Only reached on the encoding-mismatch path, so the whole-object read this
+ * needs — as opposed to readHead's early-stop streaming — only ever costs
+ * something for the rare file that actually needs re-encoding.
+ */
+async function reencodeWholeFile(
+  ctx: StageContext,
+  key: string,
+): Promise<void> {
+  const stream = await ctx.store.getStream(key);
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream as AsyncIterable<Buffer | string>) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+
+  const utf8Text = decodeWindows1252(Buffer.concat(chunks));
+  await ctx.store.put(key, utf8Text, 'text/csv');
 }
 
 /**
@@ -190,7 +296,9 @@ function firstLine(text: string): string {
 function parseHeaderRow(line: string): string[] {
   let cells: string[][];
   try {
-    cells = parse(line.replace(BOM, ''), { relaxColumnCount: true }) as string[][];
+    cells = parse(line.replace(BOM, ''), {
+      relaxColumnCount: true,
+    }) as string[][];
   } catch {
     throw new FileValidationError('Header row could not be parsed as CSV.');
   }
@@ -243,7 +351,10 @@ function assertNoDuplicates(headers: string[]): void {
  * (FR-35.2). This check only rejects a ZIP that cannot be trusted to open
  * safely, not one that happens to be empty or partial.
  */
-async function assertValidZip(ctx: StageContext, zipKey: string): Promise<void> {
+async function assertValidZip(
+  ctx: StageContext,
+  zipKey: string,
+): Promise<void> {
   const extension = extensionOf(zipKey);
   if (!ALLOWED_ZIP_EXTENSIONS.includes(extension)) {
     throw new FileValidationError(
@@ -252,7 +363,9 @@ async function assertValidZip(ctx: StageContext, zipKey: string): Promise<void> 
   }
 
   if (!(await ctx.store.exists(zipKey))) {
-    throw new FileValidationError('Uploaded photo archive could not be read from storage.');
+    throw new FileValidationError(
+      'Uploaded photo archive could not be read from storage.',
+    );
   }
 
   const zipBuffer = await ctx.store.get(zipKey);
@@ -279,8 +392,14 @@ async function assertValidZip(ctx: StageContext, zipKey: string): Promise<void> 
   for (const entry of files) {
     const normalized = entry.path.replace(/\\/g, '/');
 
-    if (normalized.startsWith('/') || normalized.includes('../') || normalized.includes('..\\')) {
-      throw new FileValidationError(`Photo archive contains an unsafe path: ${entry.path}`);
+    if (
+      normalized.startsWith('/') ||
+      normalized.includes('../') ||
+      normalized.includes('..\\')
+    ) {
+      throw new FileValidationError(
+        `Photo archive contains an unsafe path: ${entry.path}`,
+      );
     }
 
     totalUncompressedBytes += entry.uncompressedSize ?? 0;

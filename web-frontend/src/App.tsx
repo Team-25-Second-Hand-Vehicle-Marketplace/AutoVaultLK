@@ -34,6 +34,7 @@ import { AdminUsersPage } from './pages/admin/AdminUsersPage'
 import { AdminUploadsPage } from './pages/admin/AdminUploadsPage'
 import { AdminReportsPage } from './pages/admin/AdminReportsPage'
 import { AdminAuditLogsPage } from './pages/admin/AdminAuditLogsPage'
+import { AdminDictionaryPage } from './pages/admin/AdminDictionaryPage'
 import { AdminDashboardPreviewPage } from './pages/admin/AdminDashboardPreviewPage'
 
 /**
@@ -148,6 +149,7 @@ function App() {
                 <Route path="uploads" element={<AdminUploadsPage />} />
                 <Route path="reports" element={<AdminReportsPage />} />
                 <Route path="audit-logs" element={<AdminAuditLogsPage />} />
+                <Route path="dictionary" element={<AdminDictionaryPage />} />
               </Route>
               <Route path="*" element={<NotFoundPage />} />
             </Routes>

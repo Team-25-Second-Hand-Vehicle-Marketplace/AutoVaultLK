@@ -17,6 +17,11 @@ import { RolesGuard } from '../../auth/guards/roles.guard';
 import type { AuthenticatedUser } from '../../auth/types/authenticated-user.type';
 import { AuditLogsQueryDto } from '../dto/audit-logs-query.dto';
 import { CreateAdminDto } from '../dto/create-admin.dto';
+import {
+  AddDictionaryAliasDto,
+  AddDictionaryMakeDto,
+  DismissDictionaryCandidateDto,
+} from '../dto/dictionary-candidate.dto';
 import { ListUploadsQueryDto } from '../dto/list-uploads-query.dto';
 import { ListUsersQueryDto } from '../dto/list-users-query.dto';
 import { RejectDealerDto } from '../dto/reject-dealer.dto';
@@ -24,6 +29,7 @@ import { ReportsQueryDto } from '../dto/reports-query.dto';
 import { RejectionsQueryDto } from '../dto/rejections-query.dto';
 import { AdminMutationsService } from '../services/admin-mutations.service';
 import { AdminReadsService } from '../services/admin-reads.service';
+import { DictionaryCandidatesService } from '../services/dictionary-candidates.service';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -32,6 +38,7 @@ export class AdminController {
   constructor(
     private readonly reads: AdminReadsService,
     private readonly mutations: AdminMutationsService,
+    private readonly dictionaryCandidates: DictionaryCandidatesService,
   ) {}
 
   @Get('dashboard')
@@ -93,7 +100,12 @@ export class AdminController {
     @Req() req: Request,
     @Body() body: RejectDealerDto,
   ) {
-    return this.mutations.rejectDealer(dealerId, actor, requestIp(req), body?.reason);
+    return this.mutations.rejectDealer(
+      dealerId,
+      actor,
+      requestIp(req),
+      body?.reason,
+    );
   }
 
   @Post('users/:id/deactivate')
@@ -121,6 +133,53 @@ export class AdminController {
     @Req() req: Request,
   ) {
     return this.mutations.createAdmin(body, actor, requestIp(req));
+  }
+
+  @Get('dictionary-candidates')
+  dictionaryCandidatesList() {
+    return this.dictionaryCandidates.listMakeCandidates();
+  }
+
+  @Post('dictionary-candidates/add-make')
+  addDictionaryMake(
+    @Body() body: AddDictionaryMakeDto,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.mutations.addDictionaryMake(
+      body.rawValue,
+      body.canonicalValue,
+      actor,
+      requestIp(req),
+    );
+  }
+
+  @Post('dictionary-candidates/add-alias')
+  addDictionaryAlias(
+    @Body() body: AddDictionaryAliasDto,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.mutations.addDictionaryAlias(
+      body.rawValue,
+      body.aliasText,
+      body.dictionaryId,
+      actor,
+      requestIp(req),
+    );
+  }
+
+  @Post('dictionary-candidates/dismiss')
+  dismissDictionaryCandidate(
+    @Body() body: DismissDictionaryCandidateDto,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.mutations.dismissDictionaryCandidate(
+      body.rawValue,
+      actor,
+      requestIp(req),
+    );
   }
 }
 

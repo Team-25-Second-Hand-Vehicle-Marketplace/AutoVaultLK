@@ -9,6 +9,7 @@ import type {
   AdminUserRow,
   AuditLogsQuery,
   DealerVerificationStatus,
+  DictionaryCandidate,
   UploadJobStatus,
 } from './admin.types'
 // Same shape as the dealer-facing endpoint (admin-service's rejections.mapper.ts
@@ -135,5 +136,47 @@ export async function createAdmin(input: {
   password: string
 }): Promise<unknown> {
   const { data } = await apiClient.post('/admin/users', input)
+  return data
+}
+
+/** The "New vehicle types" tab: makes dealers typed that never resolved. */
+export async function listDictionaryCandidates(
+  signal?: AbortSignal,
+): Promise<DictionaryCandidate[]> {
+  const { data } = await apiClient.get<DictionaryCandidate[]>('/admin/dictionary-candidates', {
+    signal,
+  })
+  return data
+}
+
+/** Creates a brand-new canonical make — the candidate names something genuinely new. */
+export async function addDictionaryMake(
+  rawValue: string,
+  canonicalValue: string,
+): Promise<unknown> {
+  const { data } = await apiClient.post('/admin/dictionary-candidates/add-make', {
+    rawValue,
+    canonicalValue,
+  })
+  return data
+}
+
+/** Records the candidate as an alias of an existing make — it was just a mangled spelling. */
+export async function addDictionaryAlias(
+  rawValue: string,
+  aliasText: string,
+  dictionaryId: string,
+): Promise<unknown> {
+  const { data } = await apiClient.post('/admin/dictionary-candidates/add-alias', {
+    rawValue,
+    aliasText,
+    dictionaryId,
+  })
+  return data
+}
+
+/** Noise — not worth adding, but should stop showing up either. */
+export async function dismissDictionaryCandidate(rawValue: string): Promise<unknown> {
+  const { data } = await apiClient.post('/admin/dictionary-candidates/dismiss', { rawValue })
   return data
 }
