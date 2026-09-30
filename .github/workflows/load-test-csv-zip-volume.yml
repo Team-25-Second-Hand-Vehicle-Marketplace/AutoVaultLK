@@ -1,0 +1,156 @@
+name: Load Test - CSV+ZIP Volume (manual)
+
+# Manual trigger only — same reasoning as load-test.yml. This run uploads a
+# 600-row CSV with a paired ~22MB ZIP of 1,800 real images together, and
+# takes several minutes to reach COMPLETED (measured locally: ~4m).
+on:
+  workflow_dispatch:
+    inputs:
+      auth_base_url:
+        description: 'auth-user-service base URL'
+        required: false
+        default: 'http://localhost:3001'
+      ingestion_base_url:
+        description: 'ingestion-service base URL'
+        required: false
+        default: 'http://localhost:3003'
+      admin_base_url:
+        description: 'admin-service base URL'
+        required: false
+        default: 'http://localhost:3004'
+
+jobs:
+  csv-zip-volume-load-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            auth-user-service/package-lock.json
+            ingestion-service/package-lock.json
+            admin-service/package-lock.json
+
+      - name: Start Postgres
+        run: docker compose up -d postgres
+
+      - name: Wait for Postgres
+        run: |
+          for i in $(seq 1 30); do
+            if docker exec vehicle_marketplace_postgres \
+                 pg_isready -U marketplace -d vehicle_marketplace; then exit 0; fi
+            sleep 2
+          done
+          echo "Postgres did not become ready" >&2
+          exit 1
+
+      - name: Prepare database
+        working-directory: database
+        run: |
+          npm ci
+          npm run migration:run
+          npm run grants
+          npm run seed:dictionaries
+          npm run seed:vehicles
+          npm run seed:admin
+        env:
+          DATABASE_URL: postgresql://marketplace:marketplace@localhost:5433/vehicle_marketplace
+          ADMIN_SEED_EMAIL: ${{ vars.ADMIN_SEED_EMAIL }}
+          ADMIN_SEED_NAME: 'CI Admin'
+          ADMIN_SEED_PASSWORD: ${{ secrets.ADMIN_SEED_PASSWORD }}
+
+      - name: Install and build auth-user-service
+        working-directory: auth-user-service
+        run: npm ci && npm run build
+
+      - name: Install and build ingestion-service
+        working-directory: ingestion-service
+        run: npm ci && npm run build
+
+      - name: Install and build admin-service
+        working-directory: admin-service
+        run: npm ci && npm run build
+
+      # dealer-ingestion-csv-zip-volume.js reads these via open() at k6
+      # script-load time — the CSV and ZIP must be byte-for-byte paired
+      # (same registration numbers in both), per the script's own header.
+      - name: Generate CSV+ZIP fixtures
+        working-directory: ingestion-service
+        run: |
+          npx tsx src/tools/vehicle-generator/vehicle-generator.ts --count 600 --format csv --mode clean --output test-data/k6-csvzip-raw-600.csv
+          npx tsx src/tools/vehicle-generator/generate-unique-csv.ts --input test-data/k6-csvzip-raw-600.csv --output test-data/k6-csvzip-600.csv --prefix K6IMG
+          npx tsx src/tools/image-generator/image-generator.ts --from-csv test-data/k6-csvzip-600.csv --per-vehicle 3 --width 800 --height 600 --output test-data/k6-csvzip-600-images.zip
+
+      - name: Run k6 CSV+ZIP volume test against live services
+        run: |
+          set -e
+
+          (
+            cd auth-user-service
+            PORT=3001 \
+            AUTH_DATABASE_URL="postgresql://auth_service_role:dev_auth@localhost:5433/vehicle_marketplace" \
+            DATABASE_SSL=false \
+            AUTH_RETURN_VERIFICATION_TOKEN=true \
+            JWT_ACCESS_SECRET=ci-load-test-secret-not-used-for-real-auth \
+            JWT_ISSUER=autovault-lk-auth \
+            JWT_AUDIENCE=autovault-lk-api \
+            JWT_ACCESS_EXPIRES_IN=15m \
+            INTERNAL_SERVICE_KEY=ci-load-test-internal-key-not-a-real-secret \
+            node dist/main &
+          )
+          AUTH_PID=$!
+
+          (
+            cd ingestion-service
+            PORT=3003 \
+            INGESTION_DATABASE_URL="postgresql://ingestion_service_role:dev_ingestion@localhost:5433/vehicle_marketplace" \
+            DATABASE_SSL=false \
+            JWT_ACCESS_SECRET=ci-load-test-secret-not-used-for-real-auth \
+            JWT_ISSUER=autovault-lk-auth \
+            JWT_AUDIENCE=autovault-lk-api \
+            node dist/src/main &
+          )
+          INGESTION_PID=$!
+
+          (
+            cd admin-service
+            PORT=3004 \
+            ADMIN_DATABASE_URL="postgresql://admin_service_role:dev_admin@localhost:5433/vehicle_marketplace" \
+            DATABASE_SSL=false \
+            JWT_ACCESS_SECRET=ci-load-test-secret-not-used-for-real-auth \
+            JWT_ISSUER=autovault-lk-auth \
+            JWT_AUDIENCE=autovault-lk-api \
+            INTERNAL_SERVICE_KEY=ci-load-test-internal-key-not-a-real-secret \
+            AUTH_INTERNAL_URL=http://localhost:3001 \
+            node dist/main &
+          )
+          ADMIN_PID=$!
+
+          trap 'kill $AUTH_PID $INGESTION_PID $ADMIN_PID 2>/dev/null || true' EXIT
+
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3001/health > /dev/null && \
+               curl -sf http://localhost:3003/health > /dev/null && \
+               curl -sf http://localhost:3004/health > /dev/null; then break; fi
+            if [ "$i" -eq 30 ]; then
+              echo "services did not become ready" >&2
+              exit 1
+            fi
+            sleep 2
+          done
+
+          AUTH_BASE_URL="${{ inputs.auth_base_url }}" \
+          INGESTION_BASE_URL="${{ inputs.ingestion_base_url }}" \
+          ADMIN_BASE_URL="${{ inputs.admin_base_url }}" \
+          ADMIN_SEED_EMAIL="${{ vars.ADMIN_SEED_EMAIL }}" \
+          ADMIN_SEED_PASSWORD="${{ secrets.ADMIN_SEED_PASSWORD }}" \
+          k6 run performance/scripts/dealer-ingestion-csv-zip-volume.js

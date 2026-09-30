@@ -55,5 +55,14 @@ ingestion-service/test-data/300_rows*.csv
 ingestion-service/test-data/10_rows.csv
 ingestion-service/test-data/3_dirty_rows.csv
 
+# k6 load-test fixtures (performance/scripts/*.js) — regenerated on demand
+# by vehicle-generator.ts / generate-unique-csv.ts / image-generator.ts /
+# generate-oversized-zip.ts, via the exact commands documented in each
+# script's own header comment and run fresh in the matching CI workflow
+# (.github/workflows/load-test-*.yml). Some run into the hundreds of MB
+# (large-zip-upload-stress.js's fixtures), so none of this set is committed.
+ingestion-service/test-data/k6-*.csv
+ingestion-service/test-data/k6-*.zip
+
 # Local-only notes (deployment values etc.)
 *.local.md

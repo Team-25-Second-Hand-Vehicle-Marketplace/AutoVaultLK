@@ -1,0 +1,105 @@
+name: Load Test - Refresh Token Session Renewal (manual)
+
+# Manual trigger only — same reasoning as load-test.yml. 5 concurrent buyer
+# sessions x 5 refresh cycles each (25 total refreshes), deliberately kept
+# under AUTH_REFRESH_MAX_PER_IP's per-IP ceiling (see 04-load-testing.md
+# Incident 5.11 — the GitHub Actions runner is one IP, same constraint as a
+# local run).
+on:
+  workflow_dispatch:
+    inputs:
+      auth_base_url:
+        description: 'auth-user-service base URL'
+        required: false
+        default: 'http://localhost:3001'
+      num_sessions:
+        description: 'Number of concurrent sessions'
+        required: false
+        default: '5'
+      refresh_calls_per_vu:
+        description: 'Refresh cycles per session'
+        required: false
+        default: '5'
+
+jobs:
+  refresh-token-load-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            auth-user-service/package-lock.json
+
+      - name: Start Postgres
+        run: docker compose up -d postgres
+
+      - name: Wait for Postgres
+        run: |
+          for i in $(seq 1 30); do
+            if docker exec vehicle_marketplace_postgres \
+                 pg_isready -U marketplace -d vehicle_marketplace; then exit 0; fi
+            sleep 2
+          done
+          echo "Postgres did not become ready" >&2
+          exit 1
+
+      - name: Prepare database
+        working-directory: database
+        run: |
+          npm ci
+          npm run migration:run
+          npm run grants
+        env:
+          DATABASE_URL: postgresql://marketplace:marketplace@localhost:5433/vehicle_marketplace
+
+      - name: Install and build auth-user-service
+        working-directory: auth-user-service
+        run: npm ci && npm run build
+
+      - name: Run k6 refresh-token test against live auth-user-service
+        run: |
+          set -e
+
+          (
+            cd auth-user-service
+            PORT=3001 \
+            AUTH_DATABASE_URL="postgresql://auth_service_role:dev_auth@localhost:5433/vehicle_marketplace" \
+            DATABASE_SSL=false \
+            AUTH_RETURN_VERIFICATION_TOKEN=true \
+            JWT_ACCESS_SECRET=ci-load-test-secret-not-used-for-real-auth \
+            JWT_ISSUER=autovault-lk-auth \
+            JWT_AUDIENCE=autovault-lk-api \
+            JWT_ACCESS_EXPIRES_IN=15m \
+            JWT_REFRESH_EXPIRES_IN=7d \
+            AUTH_USE_REFRESH_COOKIES=true \
+            AUTH_REFRESH_TOKEN_IN_BODY=false \
+            INTERNAL_SERVICE_KEY=ci-load-test-internal-key-not-a-real-secret \
+            node dist/main &
+          )
+          AUTH_PID=$!
+
+          trap 'kill $AUTH_PID 2>/dev/null || true' EXIT
+
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3001/health > /dev/null; then break; fi
+            if [ "$i" -eq 30 ]; then
+              echo "auth-user-service did not become ready" >&2
+              exit 1
+            fi
+            sleep 2
+          done
+
+          AUTH_BASE_URL="${{ inputs.auth_base_url }}" \
+          NUM_SESSIONS="${{ inputs.num_sessions }}" \
+          REFRESH_CALLS_PER_VU="${{ inputs.refresh_calls_per_vu }}" \
+          k6 run performance/scripts/refresh-token-session-renewal.js

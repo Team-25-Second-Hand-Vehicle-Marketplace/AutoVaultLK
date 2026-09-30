@@ -1,0 +1,159 @@
+name: Load Test - DB Pool Exhaustion (manual)
+
+# Manual trigger only — same reasoning as load-test.yml. 8 concurrent
+# dealers uploading at the same moment, against ingestion-service's real
+# 5-connection Postgres pool (extra: { max: 5 }, database.config.ts) —
+# deliberately past the pool size to confirm it degrades by queuing, not
+# by erroring (04-load-testing.md Incident 5.13).
+on:
+  workflow_dispatch:
+    inputs:
+      auth_base_url:
+        description: 'auth-user-service base URL'
+        required: false
+        default: 'http://localhost:3001'
+      ingestion_base_url:
+        description: 'ingestion-service base URL'
+        required: false
+        default: 'http://localhost:3003'
+      admin_base_url:
+        description: 'admin-service base URL'
+        required: false
+        default: 'http://localhost:3004'
+      num_concurrent_uploads:
+        description: 'Number of concurrent uploads (pool size is 5)'
+        required: false
+        default: '8'
+
+jobs:
+  db-pool-exhaustion-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            auth-user-service/package-lock.json
+            ingestion-service/package-lock.json
+            admin-service/package-lock.json
+
+      - name: Start Postgres
+        run: docker compose up -d postgres
+
+      - name: Wait for Postgres
+        run: |
+          for i in $(seq 1 30); do
+            if docker exec vehicle_marketplace_postgres \
+                 pg_isready -U marketplace -d vehicle_marketplace; then exit 0; fi
+            sleep 2
+          done
+          echo "Postgres did not become ready" >&2
+          exit 1
+
+      - name: Prepare database
+        working-directory: database
+        run: |
+          npm ci
+          npm run migration:run
+          npm run grants
+          npm run seed:dictionaries
+          npm run seed:vehicles
+          npm run seed:admin
+        env:
+          DATABASE_URL: postgresql://marketplace:marketplace@localhost:5433/vehicle_marketplace
+          ADMIN_SEED_EMAIL: ${{ vars.ADMIN_SEED_EMAIL }}
+          ADMIN_SEED_NAME: 'CI Admin'
+          ADMIN_SEED_PASSWORD: ${{ secrets.ADMIN_SEED_PASSWORD }}
+
+      - name: Install and build auth-user-service
+        working-directory: auth-user-service
+        run: npm ci && npm run build
+
+      - name: Install and build ingestion-service
+        working-directory: ingestion-service
+        run: npm ci && npm run build
+
+      - name: Install and build admin-service
+        working-directory: admin-service
+        run: npm ci && npm run build
+
+      # db-pool-exhaustion.js reads this via open() at k6 script-load time.
+      - name: Generate CSV fixture
+        working-directory: ingestion-service
+        run: |
+          npx tsx src/tools/vehicle-generator/vehicle-generator.ts --count 100 --format csv --mode clean --output test-data/k6-volume-100.csv
+
+      - name: Run k6 DB pool exhaustion test against live services
+        run: |
+          set -e
+
+          (
+            cd auth-user-service
+            PORT=3001 \
+            AUTH_DATABASE_URL="postgresql://auth_service_role:dev_auth@localhost:5433/vehicle_marketplace" \
+            DATABASE_SSL=false \
+            AUTH_RETURN_VERIFICATION_TOKEN=true \
+            JWT_ACCESS_SECRET=ci-load-test-secret-not-used-for-real-auth \
+            JWT_ISSUER=autovault-lk-auth \
+            JWT_AUDIENCE=autovault-lk-api \
+            JWT_ACCESS_EXPIRES_IN=15m \
+            INTERNAL_SERVICE_KEY=ci-load-test-internal-key-not-a-real-secret \
+            node dist/main &
+          )
+          AUTH_PID=$!
+
+          (
+            cd ingestion-service
+            PORT=3003 \
+            INGESTION_DATABASE_URL="postgresql://ingestion_service_role:dev_ingestion@localhost:5433/vehicle_marketplace" \
+            DATABASE_SSL=false \
+            JWT_ACCESS_SECRET=ci-load-test-secret-not-used-for-real-auth \
+            JWT_ISSUER=autovault-lk-auth \
+            JWT_AUDIENCE=autovault-lk-api \
+            node dist/src/main &
+          )
+          INGESTION_PID=$!
+
+          (
+            cd admin-service
+            PORT=3004 \
+            ADMIN_DATABASE_URL="postgresql://admin_service_role:dev_admin@localhost:5433/vehicle_marketplace" \
+            DATABASE_SSL=false \
+            JWT_ACCESS_SECRET=ci-load-test-secret-not-used-for-real-auth \
+            JWT_ISSUER=autovault-lk-auth \
+            JWT_AUDIENCE=autovault-lk-api \
+            INTERNAL_SERVICE_KEY=ci-load-test-internal-key-not-a-real-secret \
+            AUTH_INTERNAL_URL=http://localhost:3001 \
+            node dist/main &
+          )
+          ADMIN_PID=$!
+
+          trap 'kill $AUTH_PID $INGESTION_PID $ADMIN_PID 2>/dev/null || true' EXIT
+
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3001/health > /dev/null && \
+               curl -sf http://localhost:3003/health > /dev/null && \
+               curl -sf http://localhost:3004/health > /dev/null; then break; fi
+            if [ "$i" -eq 30 ]; then
+              echo "services did not become ready" >&2
+              exit 1
+            fi
+            sleep 2
+          done
+
+          AUTH_BASE_URL="${{ inputs.auth_base_url }}" \
+          INGESTION_BASE_URL="${{ inputs.ingestion_base_url }}" \
+          ADMIN_BASE_URL="${{ inputs.admin_base_url }}" \
+          ADMIN_SEED_EMAIL="${{ vars.ADMIN_SEED_EMAIL }}" \
+          ADMIN_SEED_PASSWORD="${{ secrets.ADMIN_SEED_PASSWORD }}" \
+          NUM_CONCURRENT_UPLOADS="${{ inputs.num_concurrent_uploads }}" \
+          k6 run performance/scripts/db-pool-exhaustion.js

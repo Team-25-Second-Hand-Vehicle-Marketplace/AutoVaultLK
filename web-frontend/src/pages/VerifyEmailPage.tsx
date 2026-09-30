@@ -61,7 +61,7 @@ export function VerifyEmailPage() {
           <h1>Email verified</h1>
           <p role="status">
             {isDealer
-              ? 'Thanks — your email is confirmed. Your dealer account still needs administrator approval before you can sign in.'
+              ? 'Thanks — your email is confirmed. You can sign in now; an administrator still needs to review and approve your dealer registration before you can list or upload vehicles.'
               : 'Thanks — your email is confirmed and your account is active.'}
           </p>
           <Link className="button button--primary" to={isDealer ? '/dealer/login' : '/login'}>
