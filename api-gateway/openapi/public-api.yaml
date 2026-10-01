@@ -136,6 +136,26 @@ paths:
       responses:
         '200':
           description: Updated
+  /marketplace/listings/approve-all:
+    patch:
+      tags:
+        - marketplace
+      summary: Approve every PENDING_REVIEW listing the dealer owns (dealer)
+      description: >
+        Bulk form of the single-listing approve. Moves all of the calling
+        dealer's PENDING_REVIEW listings to LIVE in one statement and returns
+        how many moved. Scoped to the caller by the bearer token; `approved: 0`
+        (not an error) when nothing was pending.
+      operationId: approveAllPendingListings
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Approved. `data.approved` is the number published.
+        '401':
+          description: No or invalid bearer token.
+        '403':
+          description: Not a DEALER.
   /marketplace/listings/{id}/approve:
     patch:
       tags:

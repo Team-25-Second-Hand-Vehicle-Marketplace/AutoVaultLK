@@ -195,6 +195,24 @@ export class ListingService {
   }
 
   /**
+   * Approves every PENDING_REVIEW listing the calling dealer owns. Never an
+   * error when there is nothing to approve — `approved: 0` — because the page
+   * can be stale (the last row may have been approved from another tab) and
+   * "nothing left to do" is the answer the dealer wanted anyway.
+   */
+  async approveAllPending(actor: AuthenticatedUser) {
+    const approved = await this.listingRepository.approveAllPending(actor.id);
+
+    return {
+      message:
+        approved === 0
+          ? 'No listings were awaiting approval'
+          : `${approved} listing${approved === 1 ? '' : 's'} approved and published`,
+      data: { approved },
+    };
+  }
+
+  /**
    * Reverses deactivateListing: brings an ARCHIVED listing back to LIVE for
    * the public feed. Its own action rather than a flag on the generic PATCH,
    * matching approveListing's shape — a listing that is not ARCHIVED is a

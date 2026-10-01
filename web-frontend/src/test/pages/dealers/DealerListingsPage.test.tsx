@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { DealerProfileContext } from '../../../pages/dealers/dealer-profile-context'
 import { DealerListingsPage } from '../../../pages/dealers/DealerListingsPage'
 import {
+  approveAllListings,
   approveListing,
   deactivateListing,
   deleteListing,
@@ -21,6 +22,7 @@ vi.mock('../../../api/listings.api', async () => {
     ...actual,
     getMyListings: vi.fn(),
     approveListing: vi.fn(),
+    approveAllListings: vi.fn(),
     deactivateListing: vi.fn(),
     unarchiveListing: vi.fn(),
     deleteListing: vi.fn(),
@@ -29,6 +31,7 @@ vi.mock('../../../api/listings.api', async () => {
 
 const getListings = vi.mocked(getMyListings)
 const approve = vi.mocked(approveListing)
+const approveAll = vi.mocked(approveAllListings)
 const deactivate = vi.mocked(deactivateListing)
 const unarchive = vi.mocked(unarchiveListing)
 const del = vi.mocked(deleteListing)
@@ -91,6 +94,7 @@ describe('DealerListingsPage — row actions menu', () => {
   beforeEach(() => {
     getListings.mockReset()
     approve.mockReset()
+    approveAll.mockReset()
     deactivate.mockReset()
     unarchive.mockReset()
     del.mockReset()
@@ -160,6 +164,62 @@ describe('DealerListingsPage — row actions menu', () => {
     await waitFor(() => expect(screen.getByText('LIVE')).toBeInTheDocument())
     // ...without the page falling back to a full reload() to learn it.
     expect(getListings).toHaveBeenCalledTimes(1)
+  })
+
+  it('approve all asks first, then approves in one request and reloads', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    getListings.mockResolvedValue([
+      listing({ status: 'PENDING_REVIEW', id: 'v-1' }),
+      listing({ status: 'PENDING_REVIEW', id: 'v-2' }),
+      listing({ status: 'LIVE', id: 'v-3' }),
+    ])
+    approveAll.mockResolvedValue(2)
+    renderPage()
+
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'Approve all (2)' }))
+
+    expect(confirmSpy).toHaveBeenCalled()
+    await waitFor(() => expect(approveAll).toHaveBeenCalledTimes(1))
+    // One bulk call, not one per row.
+    expect(approve).not.toHaveBeenCalled()
+    await waitFor(() => expect(getListings).toHaveBeenCalledTimes(2))
+    confirmSpy.mockRestore()
+  })
+
+  it('approve all does nothing when the dealer declines the confirmation', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    getListings.mockResolvedValue([listing({ status: 'PENDING_REVIEW' })])
+    renderPage()
+
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'Approve all (1)' }))
+
+    expect(approveAll).not.toHaveBeenCalled()
+    confirmSpy.mockRestore()
+  })
+
+  it('has no approve-all button when nothing is pending', async () => {
+    getListings.mockResolvedValue([listing({ status: 'LIVE' })])
+    renderPage()
+
+    await screen.findByText('Toyota Aqua', { exact: false })
+    expect(screen.queryByRole('button', { name: /Approve all/ })).not.toBeInTheDocument()
+  })
+
+  it('sorts lowest-confidence first by default and refetches when switched to most recent', async () => {
+    getListings.mockResolvedValue([listing({ status: 'LIVE' })])
+    renderPage()
+
+    const user = userEvent.setup()
+    const sort = await screen.findByLabelText('Sort by')
+    expect(getListings).toHaveBeenLastCalledWith('confidence_asc', expect.anything())
+
+    await user.selectOptions(sort, 'createdAt')
+
+    await waitFor(() =>
+      expect(getListings).toHaveBeenLastCalledWith(undefined, expect.anything()),
+    )
   })
 
   it('archiving a listing asks for confirmation first', async () => {

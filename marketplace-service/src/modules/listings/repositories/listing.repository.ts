@@ -249,6 +249,22 @@ export class ListingRepository {
   }
 
   /**
+   * Bulk form of `approve`: moves every PENDING_REVIEW listing owned by
+   * `dealerId` to LIVE in one statement and returns how many moved. One UPDATE
+   * rather than a loop of `approve` calls, so a bulk upload of hundreds of rows
+   * is a single round trip and either all of them move or none do. Scoped by
+   * dealer in the WHERE clause itself, so it can never touch another dealer's
+   * rows.
+   */
+  async approveAllPending(dealerId: string): Promise<number> {
+    const result = await this.vehicleRepo.update(
+      { dealerId, status: 'PENDING_REVIEW' },
+      { status: 'LIVE' },
+    );
+    return result.affected ?? 0;
+  }
+
+  /**
    * Permanently removes a listing — distinct from `deactivate`, which only
    * hides it. Restricted by the service to DRAFT/PENDING_REVIEW/REJECTED:
    * nothing external (favourites, recommendations, search history) should
