@@ -55,19 +55,26 @@ describe('AdminReportsPage', () => {
     await screen.findByText('AutoVault LK — Marketplace Report')
     mockGetReports.mockClear()
 
+    // Deliberately a fixed, far-past date rather than something computed
+    // relative to "today": the page defaults From to today-minus-30-days, so
+    // a nearby hardcoded date can silently collide with that default on the
+    // day this test happens to run (react's setState no-ops when the typed
+    // value matches what's already there, so no new fetch ever fires) —
+    // 2020-01-01 can never land inside that rolling 30-day window for the
+    // realistic lifetime of this suite.
     const fromInput = screen.getByLabelText('From') as HTMLInputElement
     await user.clear(fromInput)
-    await user.type(fromInput, '2026-09-01')
+    await user.type(fromInput, '2020-01-01')
     await user.click(screen.getByRole('button', { name: 'Run report' }))
 
     await waitFor(() => expect(mockGetReports).toHaveBeenCalledTimes(1))
     // Compare against the same local-time-to-ISO conversion the page itself
-    // does, not a literal 'starts with 2026-09-01' — that assumes UTC, and a
+    // does, not a literal 'starts with 2020-01-01' — that assumes UTC, and a
     // local midnight can land on the previous UTC day west of Greenwich (this
     // machine runs UTC+5:30, but the page's own conversion should match
     // wherever it runs).
     const [fromArg] = mockGetReports.mock.calls[0]
-    expect(fromArg).toBe(new Date('2026-09-01T00:00:00').toISOString())
+    expect(fromArg).toBe(new Date('2020-01-01T00:00:00').toISOString())
   })
 
   it('only offers Download PDF once a report has loaded', async () => {
