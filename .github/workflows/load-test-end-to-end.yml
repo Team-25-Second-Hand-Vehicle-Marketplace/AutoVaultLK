@@ -1,7 +1,7 @@
 name: Load Test - End to End (manual)
 
 # Manual trigger only — same reasoning as load-test.yml: this run takes
-# ~4 minutes, registers 53 real accounts (50 buyers + 3 dealers), performs
+# 1-65 minutes depending on level (0-4), registers 2-420 real accounts, performs
 # real file uploads, and exercises every backend service at once. Not
 # something every push/PR should pay for.
 on:
@@ -23,14 +23,12 @@ on:
         description: 'admin-service base URL'
         required: false
         default: 'http://localhost:3004'
-      num_buyers:
-        description: 'Number of concurrent buyer VUs'
-        required: false
-        default: '50'
-      num_dealers:
-        description: 'Number of concurrent dealer uploads'
-        required: false
-        default: '3'
+      level:
+        description: 'Load level: 0 = smoke (1 buyer/1 dealer/2 rows/3 images); 1 = 50 buyers/3 dealers/15 rows; 2 = +60 images each; 3 = 200/10/50 rows/200 images; 4 = 400/20/150 rows/600 images'
+        required: true
+        default: '0'
+        type: choice
+        options: ['0', '1', '2', '3', '4']
 
 jobs:
   end-to-end-load:
@@ -102,6 +100,12 @@ jobs:
       # build Lambda-handler images, not runnable via `docker run -p`),
       # started + waited-on + used inside ONE step so none is at risk of
       # being reaped at a GitHub Actions step boundary.
+      # Levels 2-4 upload a CSV+ZIP pair per dealer. registration_number is
+      # globally unique, so the pairs are generated fresh for every run.
+      - name: Generate dealer CSV+ZIP fixtures
+        if: ${{ inputs.level != '1' }}
+        run: bash performance/tools/generate-e2e-fixtures.sh ${{ inputs.level }}
+
       - name: Run k6 end-to-end load test against all four live services
         run: |
           set -e
@@ -179,6 +183,5 @@ jobs:
           ADMIN_BASE_URL="${{ inputs.admin_base_url }}" \
           ADMIN_SEED_EMAIL="${{ vars.ADMIN_SEED_EMAIL }}" \
           ADMIN_SEED_PASSWORD="${{ secrets.ADMIN_SEED_PASSWORD }}" \
-          NUM_BUYERS="${{ inputs.num_buyers }}" \
-          NUM_DEALERS="${{ inputs.num_dealers }}" \
+          LEVEL="${{ inputs.level }}" \
           k6 run performance/scripts/end-to-end-load.js
