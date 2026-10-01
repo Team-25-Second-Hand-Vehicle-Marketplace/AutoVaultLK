@@ -33,6 +33,11 @@ export class ErrorBoundary extends Component<Props, State> {
           <p>
             The page failed to render. This is a bug on our side, not something you did.
           </p>
+          <p>
+            Still stuck? Email{' '}
+            <a href="mailto:autovaultlk@gmail.com">autovaultlk@gmail.com</a> or call{' '}
+            <a href="tel:+94770308165">077 030 8165</a> and we'll help.
+          </p>
           {/* Dev-only: the message is useful while building and noise in prod. */}
           {import.meta.env.DEV && (
             <pre className="error-page__details">{this.state.error.message}</pre>
