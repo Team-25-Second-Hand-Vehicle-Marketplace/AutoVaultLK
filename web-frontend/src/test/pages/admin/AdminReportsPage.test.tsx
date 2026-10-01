@@ -57,7 +57,9 @@ describe('AdminReportsPage', () => {
 
     const fromInput = screen.getByLabelText('From') as HTMLInputElement
     await user.clear(fromInput)
-    await user.type(fromInput, '2026-09-01')
+    // Far from "today minus 30 days" (the page default), so the applied range
+    // always changes and a refetch is guaranteed whatever day this runs.
+    await user.type(fromInput, '2020-01-15')
     await user.click(screen.getByRole('button', { name: 'Run report' }))
 
     await waitFor(() => expect(mockGetReports).toHaveBeenCalledTimes(1))
@@ -67,7 +69,7 @@ describe('AdminReportsPage', () => {
     // machine runs UTC+5:30, but the page's own conversion should match
     // wherever it runs).
     const [fromArg] = mockGetReports.mock.calls[0]
-    expect(fromArg).toBe(new Date('2026-09-01T00:00:00').toISOString())
+    expect(fromArg).toBe(new Date('2020-01-15T00:00:00').toISOString())
   })
 
   it('only offers Download PDF once a report has loaded', async () => {
