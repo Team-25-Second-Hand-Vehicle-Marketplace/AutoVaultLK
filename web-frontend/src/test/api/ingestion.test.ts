@@ -23,10 +23,10 @@ describe('CSV template', () => {
       'engine_capacity_cc',
       'owners_count',
       'location_district',
+      'condition',
       'vehicle_type',
       'registration_number',
       'body_type',
-      'condition',
       'location_city',
       'chassis_number',
       'description',
@@ -71,6 +71,7 @@ describe('CSV template', () => {
       'engine_capacity_cc',
       'owners_count',
       'location_district',
+      'condition',
     ])
     expect(isRequired('make')).toBe(true)
     expect(isRequired('fuel_type')).toBe(true)

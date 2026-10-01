@@ -25,6 +25,13 @@
  * updated SRS Appendix A: a listing missing any of these was judged too thin
  * for a buyer to evaluate, so a dealer file predating this column set is
  * rejected at the file gate rather than silently loading incomplete rows.
+ *
+ * `condition` joined them later: New / Used / Reconditioned is the first thing
+ * a buyer filters on, and relying on the USED default meant a dealer who never
+ * thought about the column quietly listed new stock as used. The column must
+ * exist; a blank cell in it is still defaulted to USED by the enrich stage
+ * rather than rejecting the row, the same way a blank is treated everywhere
+ * else the pipeline can infer a value.
  */
 export const REQUIRED_COLUMNS = [
   'make',
@@ -38,6 +45,7 @@ export const REQUIRED_COLUMNS = [
   'engine_capacity_cc',
   'owners_count',
   'location_district',
+  'condition',
 ] as const;
 
 /**
@@ -58,13 +66,12 @@ export const KNOWN_COLUMNS = [
   // file that predates this column for no benefit over the existing default.
   'vehicle_type',
   'registration_number',
-  // fuel_type, transmission, color, engine_capacity_cc, owners_count and
-  // location_district already arrive via the REQUIRED_COLUMNS spread above —
+  // fuel_type, transmission, color, engine_capacity_cc, owners_count,
+  // location_district and condition already arrive via the REQUIRED_COLUMNS spread above —
   // repeating them here would duplicate the column in every downloadable
   // template and in TEMPLATE_HEADER, which is exactly the header a dealer's
   // upload gets checked against.
   'body_type',
-  'condition',
   'location_city',
   'chassis_number',
   'description',

@@ -20,10 +20,10 @@ export const TEMPLATE_HEADER = [
   'engine_capacity_cc',
   'owners_count',
   'location_district',
+  'condition',
   'vehicle_type',
   'registration_number',
   'body_type',
-  'condition',
   'location_city',
   'chassis_number',
   'description',
@@ -67,6 +67,7 @@ export const REQUIRED_COLUMNS = [
   'engine_capacity_cc',
   'owners_count',
   'location_district',
+  'condition',
 ] as const
 
 export function isRequired(column: string): boolean {

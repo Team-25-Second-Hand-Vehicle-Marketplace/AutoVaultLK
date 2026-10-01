@@ -5,9 +5,9 @@ import { __setEmbedder } from '../../../src/workers/etl-worker/pipeline/embed/em
 import type { DictionaryRow } from '../../../src/workers/etl-worker/pipeline/normalize/dictionary-snapshot';
 
 const HEADER =
-  'registration_number,make,model,year,price,mileage,fuel_type,transmission,color,engine_capacity_cc,owners_count,location_district';
+  'registration_number,make,model,year,price,mileage,fuel_type,transmission,color,engine_capacity_cc,owners_count,location_district,condition';
 const ROW = (n: number) =>
-  `CAB-${n},Toyota,Vitz,2015,3500000,45000,PETROL,AUTOMATIC,White,1000,1,Colombo`;
+  `CAB-${n},Toyota,Vitz,2015,3500000,45000,PETROL,AUTOMATIC,White,1000,1,Colombo,Used`;
 
 const DICTIONARY = new InMemoryDictionarySnapshot([
   {
@@ -207,7 +207,7 @@ describe('LocalOrchestrator', () => {
         csv: [
           HEADER,
           ROW(1),
-          'CAB-9,Toyota,Vitz,1850,3500000,45000,PETROL,AUTOMATIC,White,1000,1,Colombo',
+          'CAB-9,Toyota,Vitz,1850,3500000,45000,PETROL,AUTOMATIC,White,1000,1,Colombo,Used',
         ].join('\n'),
       });
 
@@ -220,7 +220,7 @@ describe('LocalOrchestrator', () => {
       const h = harness({
         csv: [
           HEADER,
-          'CAB-9,Toyota,Vitz,1850,-1,45000,PETROL,AUTOMATIC,White,1000,1,Colombo',
+          'CAB-9,Toyota,Vitz,1850,-1,45000,PETROL,AUTOMATIC,White,1000,1,Colombo,Used',
         ].join('\n'),
       });
 
@@ -423,7 +423,7 @@ describe('LocalOrchestrator', () => {
       csv: [
         HEADER,
         ROW(1),
-        'CAB-9,Toyota,Vitz,1850,3500000,45000,PETROL,AUTOMATIC,White,1000,1,Colombo',
+        'CAB-9,Toyota,Vitz,1850,3500000,45000,PETROL,AUTOMATIC,White,1000,1,Colombo,Used',
       ].join('\n'),
     });
 

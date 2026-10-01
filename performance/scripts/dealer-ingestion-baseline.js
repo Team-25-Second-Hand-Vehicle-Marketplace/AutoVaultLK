@@ -55,10 +55,10 @@ export const options = {
 };
 
 const CSV_HEADER =
-  'registration_number,make,model,year,price,mileage,fuel_type,transmission,color,engine_capacity_cc,owners_count,location_district';
+  'registration_number,make,model,year,price,mileage,fuel_type,transmission,color,engine_capacity_cc,owners_count,location_district,condition';
 
 function csvRow(reg) {
-  return `${reg},Toyota,Corolla,2020,5500000,45000,Petrol,Automatic,White,1500,1,Colombo`;
+  return `${reg},Toyota,Corolla,2020,5500000,45000,Petrol,Automatic,White,1500,1,Colombo,Used`;
 }
 
 /** A tiny valid 1x1 PNG, base64-decoded — same fixture content as e2e/fixtures/verification-document.png. */

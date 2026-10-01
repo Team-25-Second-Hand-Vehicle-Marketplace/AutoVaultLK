@@ -13,7 +13,7 @@ import {
 import type { StageContext } from '../../../../src/workers/etl-worker/pipeline/types';
 
 const HEADER =
-  'registration_number,make,model,year,price,mileage,fuel_type,transmission,color,engine_capacity_cc,owners_count,location_district';
+  'registration_number,make,model,year,price,mileage,fuel_type,transmission,color,engine_capacity_cc,owners_count,location_district,condition';
 
 const zipEntry = (path: string, uncompressedSize = 1024) => ({
   type: 'File',
@@ -87,7 +87,7 @@ const runWithZip = (
 describe('validateFileStage', () => {
   it('accepts a well-formed file and returns canonical headers', async () => {
     const result = await run(
-      `${HEADER}\nCAB-1234,Toyota,Vitz,2015,3500000,45000,PETROL,AUTOMATIC,White,1000,1,Colombo\n`,
+      `${HEADER}\nCAB-1234,Toyota,Vitz,2015,3500000,45000,PETROL,AUTOMATIC,White,1000,1,Colombo,Used\n`,
     );
 
     expect(result.headers).toEqual([
@@ -103,13 +103,14 @@ describe('validateFileStage', () => {
       'engine_capacity_cc',
       'owners_count',
       'location_district',
+      'condition',
     ]);
     expect(result.byteLength).toBeGreaterThan(0);
   });
 
   it('folds header aliases, casing and spacing to canonical names', async () => {
     const result = await run(
-      'Manufacturer, Variant ,YOM,Asking Price,Odometer,Fuel,Gear,Color,Engine,Owners,District\n',
+      'Manufacturer, Variant ,YOM,Asking Price,Odometer,Fuel,Gear,Color,Engine,Owners,District,Condition\n',
     );
 
     expect(result.headers).toEqual([
@@ -124,7 +125,24 @@ describe('validateFileStage', () => {
       'engine_capacity_cc',
       'owners_count',
       'location_district',
+      'condition',
     ]);
+  });
+
+  it('rejects a file with no condition column, naming it', async () => {
+    // condition is required alongside the other buyer-facing columns; a file
+    // that predates it fails at the gate rather than listing everything as USED.
+    const withoutCondition = HEADER.replace(',condition', '');
+
+    await expect(run(`${withoutCondition}\n`)).rejects.toThrow(
+      /Missing required columns: condition/,
+    );
+  });
+
+  it('does not treat an unrelated header such as "state" as the condition column', async () => {
+    await expect(run(`${HEADER.replace('condition', 'state')}\n`)).rejects.toThrow(
+      /condition/,
+    );
   });
 
   it('strips the UTF-8 BOM Excel writes before the first header', async () => {
@@ -169,7 +187,7 @@ describe('validateFileStage', () => {
         `${HEADER}\nCAB-1234,Toyota,Vitz,2015,3500000,45000,PETROL,AUTOMATIC,White,1000,1,Owner`,
       ),
       Buffer.from([0x92]),
-      Buffer.from('s garage\n'),
+      Buffer.from('s garage,Used\n'),
     ]);
 
     const result = await run(content);
@@ -187,7 +205,7 @@ describe('validateFileStage', () => {
         `${HEADER}\nCAB-1234,Toyota,Vitz,2015,3500000,45000,PETROL,AUTOMATIC,White,1000,1,Owner`,
       ),
       Buffer.from([0x92]),
-      Buffer.from('s garage\n'),
+      Buffer.from('s garage,Used\n'),
     ]);
     const store = storeFor(content);
     const ctx = {
