@@ -79,6 +79,17 @@ export interface DealerListing {
   condition: string | null
   description: string | null
 
+  // The rest of the dealer CSV's vehicle columns. Nullable because bulk rows
+  // and older listings may not carry them.
+  color: string | null
+  engineCapacityCc: number | null
+  ownersCount: number | null
+  locationDistrict: string | null
+  locationCity: string | null
+  registrationNumber: string | null
+  chassisNumber: string | null
+  isNegotiable: boolean
+
   /** FR-42.1: null for a manually-created listing or one predating the column. */
   normalization: VehicleNormalization | null
 
@@ -163,6 +174,24 @@ export type TransmissionType = (typeof TRANSMISSION_TYPES)[number]
 export const CONDITIONS = ['NEW', 'USED', 'RECONDITIONED'] as const
 export type Condition = (typeof CONDITIONS)[number]
 
+/**
+ * Spec vocabularies, matching ingestion-service's enrich stage. Values are the
+ * canonical strings it stores (e.g. `2_STROKE`, `HIGH_ROOF`), so a listing made
+ * by hand filters and displays exactly like one from a CSV.
+ */
+export const BODY_TYPES = [
+  'SEDAN', 'HATCHBACK', 'SUV', 'WAGON', 'COUPE',
+  'CONVERTIBLE', 'PICKUP', 'MINIVAN', 'SCOOTER', 'MOTORBIKE',
+] as const
+export const DRIVE_TYPES = ['FWD', 'RWD', 'AWD', '4WD'] as const
+export const STROKE_TYPES = ['2_STROKE', '4_STROKE'] as const
+export const COOLING_SYSTEMS = ['AIR', 'LIQUID'] as const
+export const START_TYPES = ['ELECTRIC', 'KICK'] as const
+export const ROOF_TYPES = ['HIGH_ROOF', 'STANDARD'] as const
+export const WHEELBASES = ['SHORT', 'MEDIUM', 'LONG'] as const
+export const DOOR_CONFIGURATIONS = ['SLIDING', 'HINGED', 'SLIDING_AND_HINGED'] as const
+export const CARGO_BED_TYPES = ['FLATBED', 'BOX', 'TIPPER', 'REFRIGERATED', 'OTHER'] as const
+
 /** A dealer may only create a DRAFT or publish LIVE; review states are the platform's. */
 export const MANUAL_STATUSES = ['DRAFT', 'LIVE'] as const
 export type ManualStatus = (typeof MANUAL_STATUSES)[number]
@@ -182,9 +211,18 @@ export interface CreateListingInput {
   mileage: number
   fuelType: FuelType
   transmissionType: TransmissionType
+  // Required, as in the CSV (REQUIRED_COLUMNS).
+  color: string
+  engineCapacityCc: number
+  ownersCount: number
+  locationDistrict: string
   vehicleType?: ListableVehicleType
   condition?: Condition
   registrationYear?: number
+  locationCity?: string
+  registrationNumber?: string
+  chassisNumber?: string
+  isNegotiable?: boolean
   description?: string
   status?: ManualStatus
   specs?: Record<string, unknown>
