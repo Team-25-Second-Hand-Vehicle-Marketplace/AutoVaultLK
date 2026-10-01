@@ -1,6 +1,7 @@
 # AutoVaultLK — Load Testing Report
 
-Written 2026-09-30, branch `Testing-Improvements`. Covers the k6-based performance
+Written 2026-09-30, updated 2026-10-01 (end-to-end load restructured into five
+levels, Levels 0-3 run), branch `Testing-Improvements`. Covers the k6-based performance
 profiling and load-testing work done against the local development stack, under
 `performance/`. Every number in this report is a real measured result from an actual
 run against a live, seeded local instance of the services named — nothing here is
@@ -48,22 +49,48 @@ an error-rate ceiling of 1%).
 | `listing-detail-baseline.js` | Baseline (1 user) | `GET /search/vehicles/:id` |
 | `dealer-ingestion-baseline.js` | Baseline (1 user) | One dealer, one small CSV upload, polled to completion |
 | `login-favourites-load.js` | Load | 50 concurrent buyers (NFR-10's stated target), login once, loop favourites read/write |
-| `end-to-end-load.js` | Load (combined) | 50 buyers (with NL search mixed in) **concurrently with** 3 dealers each uploading — the actual risk scenario the Test Plan names |
+| `end-to-end-load.js` | Load (combined, 5 levels) | Buyers (with NL search mixed in) **concurrently with** dealers each uploading a CSV (and, from Level 2, an image ZIP) — the actual risk scenario the Test Plan names. Size is chosen with `LEVEL=0..4`, see §2.1 |
 | `dealer-ingestion-volume.js` | Volume | One dealer, five sequential uploads of increasing size: 100 → 500 → 2,000 → 5,000 → 15,000 rows |
 | `buyer-traffic-stress.js` | Stress | Buyer browsing ramped in stages to 400 concurrent VUs (8× NFR-10's target), no assumed ceiling |
 
-A second round added 7 more scenarios that the original set did not cover, identified as
-explicit gaps and built in this recommended order:
+A second round added 6 more scenarios that the original set did not cover, identified as
+explicit gaps. (A seventh, a standalone CSV+ZIP volume script, was later removed: its
+coverage, CSV and images uploaded together, is now Levels 2-4 of `end-to-end-load.js`.)
 
 | Script | Type | Purpose |
 |---|---|---|
-| `dealer-ingestion-csv-zip-volume.js` | Volume | CSV **+ real image ZIP** together — the actual dealer bulk-upload shape; the original volume test left the ZIP field empty |
 | `admin-service-load.js` | Load | Admin dashboard/users/uploads/audit-logs under 10 concurrent admin sessions — never exercised at any concurrency before |
 | `nl-search-concurrency.js` | Load | `GET /search/nl` at real concurrency (15 VUs), unmixed with other traffic |
 | `refresh-token-session-renewal.js` | Load | `POST /auth/refresh` under concurrent sessions — cookie/CSRF mechanics, never exercised at all before |
-| `large-zip-upload-stress.js` | Stress (boundary) | A ZIP near (230MB) and just past (260MB) the service's real 250MB cap |
+| `large-zip-upload-stress.js` | Stress (boundary) | A ZIP near (245MB) and just past (260MB) the service's real 250MB cap |
 | `db-pool-exhaustion.js` | Stress (boundary) | 8 concurrent uploads against every service's 5-connection Postgres pool |
 | `notification-delivery-load.js` | Load | `POST /notifications/events` under concurrency, including a deliberate same-key race to verify FR-53's idempotency guarantee holds under real concurrency, not just sequentially |
+
+### 2.1 End-to-end load levels
+
+`end-to-end-load.js` runs buyer traffic (filtered search, listing detail, favourites;
+a share of buyers also issue natural-language search) and dealer uploads in the same
+k6 process at the same time. `LEVEL` selects the size:
+
+| Level | Buyers | Dealers | CSV rows per dealer | Images per dealer | Buyer hold | Purpose |
+|---|---|---|---|---|---|---|
+| 0 | 1 | 1 | 2 | 3 | 30s | Smoke: does the whole path work at all |
+| 1 | 50 | 3 | 15 | none | 2m | NFR-10 target, CSV-only uploads |
+| 2 | 50 | 3 | 15 | 60 | 3m | Same, with image processing |
+| 3 | 200 | 10 | 50 | 200 | 4m | 4x buyers, 3x dealers |
+| 4 | 400 | 20 | 150 | 600 | 8m | 8x buyers, ~7x dealers (**not run yet**, see §4.3) |
+
+Levels 0 and 2-4 upload a pre-generated CSV+ZIP pair per dealer, built by
+`performance/tools/generate-e2e-fixtures.sh <level>`. Registration numbers are
+globally unique, so the pairs must be regenerated before every run. The share of
+buyers issuing NL search falls with the level (20% / 10% / 5%) because every NL search
+is a real Groq API call, and a high share of 400 buyers would trip Groq's own rate
+limit instead of testing this system.
+
+Each simulated user is sent with its own client IP (`X-Forwarded-For`), as real users
+would be. All accounts registering from one IP would hit auth-user-service's per-IP
+registration cap (max 100 per window) and test the rate limiter, not the system.
+Buyers log in during `setup()`, not inside the measured window (Incident 5.19).
 
 **Not built**, and why:
 
@@ -83,6 +110,7 @@ explicit gaps and built in this recommended order:
 |---|---|---|
 | `marketplace-service.yml` (existing workflow, extended) | Every push/PR touching `marketplace-service/**` or `performance/**` | `search-filters-baseline.js` as a 30-second smoke check — boots a real compiled marketplace-service against a migrated, seeded Postgres, then runs the baseline and gates on NFR-09 |
 | `load-test.yml` (new) | `workflow_dispatch` only (manual) | `login-favourites-load.js` — the 50-VU load test, boots both auth-user-service and marketplace-service |
+| `load-test-end-to-end.yml` | `workflow_dispatch` only (manual), `level` dropdown 0-4 | `end-to-end-load.js` at the chosen level; boots all four services, and generates the per-dealer fixtures first for levels 0 and 2-4 |
 
 The manual-trigger design matches the Test Plan's own stated cadence (§5.2): a
 reduced smoke-scale check on every push, full campaigns run on demand or scheduled —
@@ -100,14 +128,13 @@ about locally:
   4m36s, 22,414 requests, 0% failures, p95=6.85ms), then removing the temporary
   trigger — `workflow_dispatch` is the only trigger in the committed version.
 
-**The 7 gap-closing scripts are now wired into CI**, each as its own
+**The gap-closing scripts are wired into CI**, each as its own
 `workflow_dispatch`-only workflow, matching the existing `load-test*.yml` pattern
 exactly (path-filtered service boot with dummy CI secrets, a Postgres service
 container, migrate/grant/seed, then the k6 run):
 
 | Workflow | Script | Notes |
 |---|---|---|
-| `load-test-csv-zip-volume.yml` | `dealer-ingestion-csv-zip-volume.js` | Generates the paired CSV+ZIP fixture in-job (3 tool calls) before running |
 | `load-test-admin-service.yml` | `admin-service-load.js` | Boots auth-user-service + admin-service only |
 | `load-test-nl-search-concurrency.yml` | `nl-search-concurrency.js` | Passes `GROQ_API_KEY`/`GROQ_MODEL` from repo secrets/vars if configured — see caveat below |
 | `load-test-refresh-token.yml` | `refresh-token-session-renewal.js` | Boots auth-user-service only; no admin seed needed |
@@ -116,16 +143,25 @@ container, migrate/grant/seed, then the k6 run):
 | `load-test-notification-delivery.yml` | `notification-delivery-load.js` | Boots auth-user-service + notification-service; `SES_FROM_EMAIL` left empty so delivery is logged, not attempted for real |
 
 **Deliberately batched, not done incrementally**: each script was built and verified
-locally first, with CI wiring done as one pass once all 7 were confirmed working — not
-because they're less important, but because wiring seven manual-dispatch workflows one
+locally first, with CI wiring done as one pass once all were confirmed working — not
+because they're less important, but because wiring several manual-dispatch workflows one
 at a time, before knowing whether each script's design even worked, would have meant
 repeatedly reworking committed CI files as bugs (like Incidents 5.14–5.16) were found
 and fixed.
 
+**Only one k6 check runs automatically**: the search-filters smoke check inside
+`marketplace-service.yml`. Every `load-test*.yml` workflow, including every level of
+the end-to-end load, is `workflow_dispatch` only. Level 0 is deliberately *not* wired
+to push/PR either: booting all four services plus Postgres takes several minutes per
+run, which is not worth paying on every change.
+
 **Not yet run on real GitHub Actions** — verified only that each workflow file is
 valid YAML and that its steps mirror the already-CI-verified `load-test*.yml` pattern
 closely enough to be low-risk; none has had an actual dispatched run confirmed green
-yet, unlike `load-test.yml` (§3's `36712296609`).
+yet, unlike `load-test.yml` (§3's `36712296609`). `load-test-end-to-end.yml` was
+changed in this round (level selector); its levels were run locally, not dispatched
+on GitHub. A `workflow_dispatch` workflow's "Run workflow" button appears only
+once the file exists on the default branch.
 
 **`nl-search-concurrency`'s caveat carries into CI, not just local runs**: the new
 workflow passes `GROQ_API_KEY`/`GROQ_MODEL` from `secrets.GROQ_API_KEY`/`vars.GROQ_MODEL`
@@ -164,24 +200,48 @@ environment — see Section 5.4 for why local and CI numbers differ this much).
 
 ### 4.3 End-to-end — multi-dealer + multi-buyer concurrent (the actual risk scenario)
 
-`end-to-end-load.js`: 50 buyers (a fifth of them also issuing NL search) running
-**concurrently with 3 dealers each uploading their own inventory file**.
+`end-to-end-load.js`, levels 0-3 run locally on 2026-10-01, one at a time with
+nothing else running. Level 4 has **not been run**. p95 is in milliseconds, against the
+500ms NFR-09 bar (2,000ms for NL search).
 
-| Transaction (during concurrent ingestion) | p95 | Threshold | Result |
-|---|---|---|---|
-| `search_filters` | 179.67ms | <500ms | Pass |
-| `vehicle_detail` | 121.06ms | <500ms | Pass |
-| `get_favourites` | 205.6ms | <500ms | Pass |
-| `save_favourite` | 317.66ms | <500ms | Pass |
-| Ingestion job completion (per dealer) | 4.49s | No NFR | Barely different from the isolated ~2–4s baseline |
+| | Level 0 | Level 1 | Level 2 | Level 3 |
+|---|---|---|---|---|
+| Buyers / dealers | 1 / 1 | 50 / 3 | 50 / 3 | 200 / 10 |
+| Per dealer | 2 rows, 3 images | 15 rows | 15 rows, 60 images | 50 rows, 200 images |
+| Requests | 242 | 29,582 | 42,764 | 87,160 |
+| Failed requests | 0% | 0% | 0% | 0% |
+| Checks passed | 100% (187) | 100% (23,791) | 100% (34,404) | 100% (69,248) |
+| `search_filters` p95 | 18 | 96 | 89 | **1,080 (fail)** |
+| `vehicle_detail` p95 | 13 | 72 | 59 | **677 (fail)** |
+| `get_favourites` p95 | 15 | 95 | 81 | **1,210 (fail)** |
+| `save_favourite` p95 | 26 | 126 | 105 | **1,620 (fail)** |
+| `nl_search` p95 | n/a | 126 | 91 | 1,310 (pass) |
+| Ingestion job (per dealer) | 2.2s | 2.1-2.5s | 6.1-6.3s | 62-66s |
+| Result | Pass | Pass | Pass | **4 latency thresholds missed** |
 
-**98.15% of all checks passed** (18,582/18,652); the remainder were `save_favourite`
-calls failing during the ramp-down as VUs were shutting down mid-request — not a
-steady-state failure.
+**Levels 0-2 pass comfortably**: 50 buyers with 3 dealers uploading, with or without
+images, stays far under the NFR-09 bar. This answers the Test Plan's own risk question
+at the NFR-10 target: concurrent dealer ingestion does not measurably degrade buyer
+response times.
 
-**Direct answer to the Test Plan's own risk question:** at this scale (50 buyers + 3
-dealers), on this stack, concurrent dealer ingestion did **not** measurably degrade
-buyer-facing response times past the NFR-09 threshold.
+**Level 3 does not pass the latency thresholds, with zero errors.** Every request
+succeeded and every one of the 10 dealer jobs reached `COMPLETED`, but buyer p95 for
+four of five endpoints went to 0.7-1.6s. Dealer jobs also took 62-66s against 26s in an
+earlier Level 3 run in which most buyers were not active (Incident 5.19), so the
+buyer/dealer contention is real and measurable at this scale. This is a result for a
+**single laptop running the four services, Postgres, Docker and k6 together**, not a
+capacity limit of the product: on AWS each service has its own compute, so these
+numbers cannot be carried over (§6).
+
+**Level 4 (400 buyers, 20 dealers, 150 rows and 600 images each) is built but untested.**
+Two earlier attempts crashed k6 with out-of-memory errors, but those were caused by
+two runs overlapping (Incident 5.20), so they say nothing about Level 4 itself. Its
+main risk on this hardware is memory: about 420 VUs plus 20 ZIPs of ~13MB each held in
+k6 alongside the services.
+
+An earlier version of this section reported 50 buyers + 3 dealers with `search_filters`
+p95 of 179.67ms and 98.15% of checks passing; that run used the previous script, whose
+buyer-to-account mapping was flawed (Incident 5.18). Level 1 replaces it.
 
 ### 4.4 Volume — one dealer, increasing file size
 
@@ -202,12 +262,14 @@ no cliff, no evidence of an O(n²) pattern or a missing index up to 15,000 rows.
 .service.ts`'s `maxCsvSize`, is roughly 290,000 rows at this generator's average row
 width — nowhere near reached).
 
-### 4.5a CSV+ZIP volume — 600 rows, 1,800 real images
+### 4.5a CSV+ZIP volume — 600 rows, 1,800 real images (historical)
 
-`dealer-ingestion-csv-zip-volume.js`: 600-row CSV plus a paired ZIP of 1,800 synthetic
-800×600 JPEGs (3 per vehicle), uploaded together as one multipart request.
+The standalone `dealer-ingestion-csv-zip-volume.js` was removed on 2026-10-01; CSV
+plus images together is now covered by Levels 2-4 of the end-to-end load (§4.3). Its
+single recorded run is kept here because the number is still the only large-image
+data point: a 600-row CSV with a paired ZIP of 1,800 synthetic 800×600 JPEGs (3 per
+vehicle), uploaded together, **COMPLETED in 244.5s (4m 4.5s)**.
 
-- Job reached **COMPLETED in 244.5s (4m 4.5s)**.
 - Contrast with the CSV-only volume test's ~13–15s extrapolated time for 600 rows:
   image processing (Sharp resize to 1600×1200 main / 400×300 thumbnail, per-image
   object-store write) is roughly **16× slower** than row processing alone — the
@@ -560,7 +622,7 @@ inaccurate and worth correcting or reconciling with the real values.
 
 ### 5.14 In-flight ETL jobs are silently orphaned on an ingestion-service restart
 
-**Symptom:** the large-ZIP stress test's accepted 230MB job (§4.5e) never left
+**Symptom:** the large-ZIP stress test's accepted 245MB job (§4.5e) never left
 `PROCESSING`. Investigated directly rather than assumed: the raw `images-230mb.zip`
 and `inventory.csv` are still sitting, untouched, under
 `ingestion-service/.storage/raw/<jobId>/`; no `images/<jobId>/` output directory was
@@ -681,6 +743,81 @@ unverified in the one scenario it specifically exists for, and is worth a target
 test (e.g. a `setImageProcessorForTest` double that never resolves) rather than relying
 on another k6 run to reproduce a hang on demand.
 
+### 5.17 End-to-end dealer VUs crashed: `__VU` is numbered across all scenarios
+
+**Symptom:** after the level rework, Levels 1 and 2 logged `Cannot read property
+'regPrefix' of undefined` for the dealer scenario. Level 0 passed by coincidence.
+
+**Cause:** `dealerIngestion` picked its dealer and fixture with `__VU - 1`. k6 numbers
+VUs across every scenario in the test, so dealer VUs carry ids after (or among) the
+buyer VUs, and `data.dealers[__VU - 1]` read past the end of the array.
+
+**Fix:** the dealer scenario now uses `shared-iterations` with `iterations == vus`, and
+each dealer takes its index from `exec.scenario.iterationInTest`, which is unique and
+starts at 0 within the scenario.
+
+### 5.18 Three buyers driven by two VUs each: a false 1% failure rate, and a real race
+
+**Symptom:** Level 1 failed its `http_req_failed < 1%` threshold (1.01%) with all
+failures on `save_favourite`: HTTP 500 (`QueryFailedError`) and 409 ("already in
+favourites"). Postgres logged about 250 `duplicate key ... uq_favourites_buyer_vehicle`
+errors, all for the same three buyer accounts.
+
+**Cause (test):** the script registered exactly `NUM_BUYERS` accounts and mapped VU to
+account with `(__VU - 1) % NUM_BUYERS`. Because buyer VU ids run past `NUM_BUYERS`
+(the dealer VUs share the id space), VUs 51-53 wrapped onto accounts 1-3, so those
+three buyers had two VUs each saving and deleting the same favourite at once.
+
+**Fix:** register `NUM_BUYERS + NUM_DEALERS` buyer accounts, one per possible VU id.
+After the fix Level 1 had 0 failed requests and no duplicate-key errors.
+
+**Real finding for the application:** `FavouritesService.addFavourite` does a
+check-then-insert. Two simultaneous requests for the same buyer and vehicle both pass
+the check, and the second hits the unique constraint and returns **500 instead of
+409**. This needs two concurrent requests from one buyer so it is rare in practice, but
+catching the unique violation and returning 409 would close it.
+
+### 5.19 Buyer logins timed out at 200 buyers: `bcryptjs` caps login throughput
+
+**Symptom:** the first Level 3 run printed passing thresholds, but 188 of 200 buyer
+logins had timed out at k6's 60s limit, so only about 12 buyers generated traffic. The
+rest looped through an early return. Its dealer jobs finished in 26s, flattering the
+result.
+
+**Cause:** auth-user-service hashes with `bcryptjs`, which is pure JavaScript and runs on
+the Node event loop. A single login measured **350-500ms of main-thread CPU**, so one
+process serves roughly **2-3 logins per second**. 200 buyers logging in during a 20s
+ramp queue far past 60s.
+
+**Fix (test):** buyers now log in during `setup()` and the VUs receive their tokens, so
+the measured window is browse/search/favourite traffic. Tokens last 15 minutes
+(`JWT_ACCESS_EXPIRES_IN`), so every level's ramp-up plus hold is kept under that.
+After the change all 200 buyers were active (87,160 requests) and Level 3 produced the
+valid result in §4.3.
+
+**Real finding:** a burst of hundreds of simultaneous logins will queue on a single
+auth process. On AWS each Lambda handles one request at a time, so this matters less
+there, but switching to native `bcrypt` (hashing off the main thread) would raise the
+per-process ceiling and stop login bursts blocking other auth requests on the same
+process.
+
+### 5.20 Out-of-memory crashes on Levels 3 and 4 were two overlapping runs
+
+**Symptom:** Levels 3 and 4 crashed k6 with `fatal error: out of memory` /
+`VirtualAlloc ... errno=1455`, with logs showing two `exit` lines and interleaved
+output.
+
+**Cause:** a first background run loop had been stopped, but it kept running its
+remaining levels while a second loop started. Two k6 processes and two fixture
+generators ran together, writing the same fixture folder and log files, and exhausted
+memory on a 15.7GB machine that already had four services and Docker running.
+
+**Fix:** confirmed no k6 or generator processes were running before each level, and ran
+levels strictly one at a time. Level 3 then completed. Level 4 was not re-run.
+
+**Lesson:** stopping a background shell task does not necessarily stop what it already
+started; check the process list before starting the next run.
+
 ---
 
 ## 6. What these results do and do not tell us
@@ -689,7 +826,9 @@ on another k6 run to reproduce a hang on demand.
 - The application logic, query patterns, and pipeline stages are not obviously broken
   under concurrency or volume, at the scales tested.
 - The specific risk the Test Plan names — concurrent dealer ingestion degrading buyer
-  search — was tested directly and not observed at 3 concurrent dealers + 50 buyers.
+  search — was tested directly and not observed at 3 concurrent dealers + 50 buyers
+  (Levels 1 and 2). At 200 buyers + 10 dealers (Level 3) on one laptop it was observed:
+  buyer p95 rose to 0.7-1.6s with zero errors, and dealer jobs slowed from 26s to 63s.
 - Ingestion scales close to linearly per row, at least to 15,000 rows.
 - The system did not find a breaking point even at 8× the documented concurrent-buyer
   target, locally.
@@ -697,6 +836,8 @@ on another k6 run to reproduce a hang on demand.
   with image processing confirmed as the dominant cost (~16× row-only processing).
 - Two genuinely unexercised paths — refresh-token renewal and notification delivery —
   work correctly under real concurrency, including the idempotency race in the latter.
+- One real finding on login capacity: `bcryptjs` limits one auth process to roughly 2-3
+  logins per second (Incident 5.19).
 - Two real boundary conditions (250MB ZIP cap, 5-connection DB pool under 8-way
   contention) were pushed past and degrade correctly (clean rejection; queuing, not
   errors) rather than failing badly.
@@ -708,6 +849,10 @@ on another k6 run to reproduce a hang on demand.
 - Real AWS instance sizing, RDS connection pool limits under real network latency, or
   Lambda cold-start behaviour — none of this exists in a locally-run plain Node
   process. This is the Test Plan's own stated limitation (§9.1), not an oversight here.
+- Anything about Level 4 (400 buyers, 20 dealers, 600 images each): it is built but has
+  not been run.
+- Whether Level 3's latency would hold on separate AWS compute: it was measured with all
+  services and the load generator sharing one machine.
 - The actual per-job ceiling for ingestion (25MB / ~290,000 rows theoretical, 15,000
   rows actually tested).
 - Behaviour under sustained (multi-hour) load — no soak test has been run.
@@ -759,7 +904,10 @@ first is the responsible order of operations, not an afterthought.
    per-request cost before scaling anything up.
 2. The remaining three baselines, individually.
 3. `login-favourites-load.js` — 50 concurrent buyers, ~3.5 minutes.
-4. `end-to-end-load.js` and `dealer-ingestion-volume.js`.
+4. `end-to-end-load.js` Level 0, then Levels 1-3 in order, then `dealer-ingestion-volume.js`.
+   Staging needs `AUTH_RETURN_VERIFICATION_TOKEN` enabled (the scripts read verification
+   tokens from the register response), raised per-IP rate limits, and the gateway's
+   path routing and 25MB upload cap in mind (Incident 5.12).
 5. `buyer-traffic-stress.js` — last, deliberately: this is the most expensive script
    (400 concurrent VUs) and the one most likely to trigger autoscaling or throttling
    behaviour worth observing specifically once the smaller runs have established a
