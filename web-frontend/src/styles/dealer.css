@@ -865,12 +865,29 @@
   margin: 0;
 }
 
-.review-banner__toggle {
+.listing-toolbar {
   align-items: center;
   display: flex;
-  gap: 0.4rem;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  justify-content: space-between;
+}
+
+.listing-toolbar__sort {
+  align-items: center;
+  color: var(--text-muted);
+  display: flex;
   font-size: 0.85rem;
-  white-space: nowrap;
+  gap: 0.5rem;
+}
+
+.listing-toolbar__sort select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-h);
+  font: inherit;
+  padding: 0.4rem 0.6rem;
 }
 
 /* Inline, next to the make/model text in the table's leftmost column. */
@@ -906,8 +923,16 @@
   padding: 0;
 }
 
+/* Both toggles share one left edge and rhythm: field details on top, specs &
+   photos below, each panel opening directly under its own toggle. */
+.listing-table__details {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.4rem 1rem 0.6rem;
+}
+
 .normalization-details {
-  padding: 0.5rem 1rem;
+  padding: 0;
 }
 
 .normalization-details__toggle {
@@ -917,7 +942,7 @@
   cursor: pointer;
   font-size: 0.82rem;
   font-weight: 600;
-  padding: 0.35rem 0;
+  padding: 0.2rem 0;
 }
 
 .normalization-details__toggle:hover {
@@ -983,7 +1008,7 @@
 /* ── Listing details: specs + photos (Enrich/FR-35.2) ───────────────────── */
 
 .listing-details {
-  margin-top: 0.5rem;
+  margin: 0;
 }
 
 .listing-details__toggle {
@@ -993,10 +1018,10 @@
   color: var(--accent);
   cursor: pointer;
   display: inline-flex;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 600;
   gap: 0.4rem;
-  padding: 0;
+  padding: 0.2rem 0;
 }
 
 .listing-details__toggle:hover {

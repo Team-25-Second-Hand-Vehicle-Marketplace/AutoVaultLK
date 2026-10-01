@@ -55,6 +55,18 @@ export class ListingController {
     return this.listingService.getMyListings(actor, query.sort);
   }
 
+  /**
+   * Approves every pending listing the dealer owns. Declared before the
+   * `:id` routes so "approve-all" is not parsed as an id (and then rejected by
+   * ParseUUIDPipe).
+   */
+  @Patch('approve-all')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('DEALER')
+  approveAllPending(@CurrentUser() actor: AuthenticatedUser) {
+    return this.listingService.approveAllPending(actor);
+  }
+
   @Get(':id')
   getListingById(@Param('id', ParseUUIDPipe) id: string) {
     return this.listingService.getListingById(id);

@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useState } from 'react'
 import { toast } from 'sonner'
 import {
+  approveAllListings,
   approveListing,
   createListing,
   deactivateListing,
@@ -14,6 +15,7 @@ import {
 import type {
   CreateListingInput,
   DealerListing,
+  ListingSortOption,
   ListingStatus,
 } from '../../api/listings.types'
 import { isNoResponseError, toErrorMessage } from '../../api/client'
@@ -71,15 +73,17 @@ export function DealerListingsPage() {
   const [deleting, setDeleting] = useState<string | null>(null)
   const confirm = useConfirm()
 
+  const [approvingAll, setApprovingAll] = useState(false)
+
   // FR-42.1's default: a dealer opening this page with rows awaiting review
   // sees the ones most likely to need a correction first, not buried under
-  // whatever bulk upload happened to load last. Toggleable, because a dealer
+  // whatever bulk upload happened to load last. Switchable, because a dealer
   // checking on a specific recent listing wants newest-first instead.
-  const [reviewOrder, setReviewOrder] = useState(true)
+  const [sort, setSort] = useState<ListingSortOption>('confidence_asc')
 
   const fetchListings = useCallback(
-    (signal: AbortSignal) => getMyListings(reviewOrder ? 'confidence_asc' : undefined, signal),
-    [reviewOrder],
+    (signal: AbortSignal) => getMyListings(sort === 'confidence_asc' ? sort : undefined, signal),
+    [sort],
   )
   const listings = useAsyncData<DealerListing[]>(fetchListings, listingsError)
   const dealer = useDealerProfile().data
@@ -257,6 +261,33 @@ export function DealerListingsPage() {
     }
   }
 
+  const onApproveAll = async () => {
+    if (
+      !confirm(
+        `Approve and publish all ${pendingReviewCount} pending listing${pendingReviewCount === 1 ? '' : 's'}? They will appear in search straight away, including any whose fields you have not checked.`,
+      )
+    ) {
+      return
+    }
+
+    setApprovingAll(true)
+    try {
+      const approved = await approveAllListings()
+      toast.success(
+        approved === 0
+          ? 'Nothing was waiting for approval'
+          : `${approved} listing${approved === 1 ? '' : 's'} published`,
+      )
+      // A full re-fetch rather than patching rows in place: the server decides
+      // which ones were still pending, which may differ from this stale view.
+      listings.reload()
+    } catch (error) {
+      toast.error(toErrorMessage(error, 'Could not approve the listings.'))
+    } finally {
+      setApprovingAll(false)
+    }
+  }
+
   /**
    * Edit is always offered; Archive/Unarchive/Delete only when the backend
    * would actually accept them for this listing's current status — so the
@@ -337,8 +368,16 @@ export function DealerListingsPage() {
         <p>Every vehicle you have listed, however it was added.</p>
       </header>
 
-      <div className="dealer-page__actions">
+      <div className="dealer-page__actions listing-toolbar">
         <Button onClick={() => setMode({ kind: 'create' })}>New listing</Button>
+
+        <label className="listing-toolbar__sort">
+          <span>Sort by</span>
+          <select value={sort} onChange={(e) => setSort(e.target.value as ListingSortOption)}>
+            <option value="confidence_asc">Lowest confidence first</option>
+            <option value="createdAt">Most recent</option>
+          </select>
+        </label>
       </div>
 
       {pendingReviewCount > 0 && (
@@ -347,14 +386,9 @@ export function DealerListingsPage() {
             {pendingReviewCount} listing{pendingReviewCount === 1 ? '' : 's'} awaiting your
             review. Check the fields marked below, then approve to publish.
           </p>
-          <label className="review-banner__toggle">
-            <input
-              type="checkbox"
-              checked={reviewOrder}
-              onChange={(e) => setReviewOrder(e.target.checked)}
-            />
-            Show lowest-confidence rows first
-          </label>
+          <Button size="sm" disabled={approvingAll} onClick={() => void onApproveAll()}>
+            {approvingAll ? 'Approving…' : `Approve all (${pendingReviewCount})`}
+          </Button>
         </div>
       )}
 
@@ -434,8 +468,10 @@ export function DealerListingsPage() {
                     listing.images.length > 0) && (
                     <tr className="listing-table__details-row">
                       <td colSpan={6}>
-                        <NormalizationDetails normalization={listing.normalization} />
-                        <ListingDetails listing={listing} />
+                        <div className="listing-table__details">
+                          <NormalizationDetails normalization={listing.normalization} />
+                          <ListingDetails listing={listing} />
+                        </div>
                       </td>
                     </tr>
                   )}

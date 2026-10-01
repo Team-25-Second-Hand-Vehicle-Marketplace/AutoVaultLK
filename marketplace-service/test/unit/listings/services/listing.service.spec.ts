@@ -18,6 +18,7 @@ describe('ListingService', () => {
     update: jest.fn(),
     deactivate: jest.fn(),
     approve: jest.fn(),
+    approveAllPending: jest.fn(),
     unarchive: jest.fn(),
     remove: jest.fn(),
   };
@@ -388,6 +389,35 @@ describe('ListingService', () => {
       await expect(
         service.deactivateListing('v-1', ADMIN),
       ).resolves.toBeDefined();
+    });
+  });
+
+  describe('approveAllPending', () => {
+    it("approves only the calling dealer's own pending listings", async () => {
+      listingRepository.approveAllPending.mockResolvedValue(99);
+
+      const result = await service.approveAllPending(DEALER);
+
+      // Scoped by the JWT's id, never by anything the client sent.
+      expect(listingRepository.approveAllPending).toHaveBeenCalledWith('dealer-1');
+      expect(result.data).toEqual({ approved: 99 });
+      expect(result.message).toBe('99 listings approved and published');
+    });
+
+    it('uses the singular for one listing', async () => {
+      listingRepository.approveAllPending.mockResolvedValue(1);
+
+      const result = await service.approveAllPending(DEALER);
+
+      expect(result.message).toBe('1 listing approved and published');
+    });
+
+    it('answers approved: 0 rather than erroring when nothing is pending', async () => {
+      listingRepository.approveAllPending.mockResolvedValue(0);
+
+      const result = await service.approveAllPending(DEALER);
+
+      expect(result.data).toEqual({ approved: 0 });
     });
   });
 

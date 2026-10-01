@@ -126,6 +126,20 @@ export async function approveListing(
 }
 
 /**
+ * PATCH /marketplace/listings/approve-all — approves every PENDING_REVIEW
+ * listing the signed-in dealer owns in one request and returns how many moved
+ * to LIVE (0 when none were pending).
+ */
+export async function approveAllListings(signal?: AbortSignal): Promise<number> {
+  const { data } = await apiClient.patch<{ message: string; data: { approved: number } }>(
+    '/marketplace/listings/approve-all',
+    undefined,
+    { signal },
+  )
+  return data.data.approved
+}
+
+/**
  * DELETE /marketplace/listings/:id — permanently removes the listing.
  * Distinct from `deactivateListing`, which only hides it: the backend 409s
  * unless the listing is DRAFT, PENDING_REVIEW or REJECTED — a LIVE, SOLD or

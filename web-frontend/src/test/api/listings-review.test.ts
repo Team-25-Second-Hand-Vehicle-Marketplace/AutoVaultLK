@@ -7,7 +7,7 @@ vi.mock('../../api/client', () => ({
   toErrorMessage: (_e: unknown, fallback: string) => fallback,
 }))
 
-const { approveListing, getMyListings } = await import('../../api/listings.api')
+const { approveAllListings, approveListing, getMyListings } = await import('../../api/listings.api')
 
 const ENVELOPE = { message: 'ok', data: { id: 'v-1' } }
 
@@ -106,5 +106,18 @@ describe('approveListing', () => {
     patch.mockResolvedValue({ data: { message: 'ok', data: listing } })
 
     await expect(approveListing('v-1')).resolves.toEqual(listing)
+  })
+})
+
+describe('approveAllListings', () => {
+  it('calls the bulk route and returns how many were approved', async () => {
+    patch.mockResolvedValue({ data: { message: 'ok', data: { approved: 7 } } })
+
+    await expect(approveAllListings()).resolves.toBe(7)
+    expect(patch).toHaveBeenCalledWith(
+      '/marketplace/listings/approve-all',
+      undefined,
+      expect.anything(),
+    )
   })
 })
