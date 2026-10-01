@@ -3,7 +3,6 @@ import { toast } from 'sonner'
 import {
   approveAllListings,
   approveListing,
-  createListing,
   deactivateListing,
   deleteListing,
   deleteListingImage,
@@ -18,9 +17,10 @@ import type {
   ListingSortOption,
   ListingStatus,
 } from '../../api/listings.types'
-import { isNoResponseError, toErrorMessage } from '../../api/client'
+import { toErrorMessage } from '../../api/client'
 import { useAsyncData } from '../../hooks/useAsyncData'
 import { ListingForm } from '../../components/dealers/ListingForm'
+import { NewListingMenu } from '../../components/dealers/NewListingMenu'
 import { ListingDetails } from '../../components/dealers/ListingDetails'
 import {
   NormalizationDetails,
@@ -40,7 +40,7 @@ import { formatMileage, formatPrice } from '../../components/search/vehicle-form
  * The three CRUD routes behind this have existed and been guarded since the
  * listings module landed; until now nothing in the UI called them, so a
  * dealer could only add stock through bulk upload. Approval had a status
- * (PENDING_REVIEW) describing the wait but no action ending it — a bulk
+ * (PENDING_REVIEW) describing the wait but no action ending it - a bulk
  * upload landed every row here and nothing let a dealer move one forward.
  */
 
@@ -52,7 +52,7 @@ function useConfirm() {
 }
 
 /**
- * Statuses the backend allows a hard delete on — mirrors
+ * Statuses the backend allows a hard delete on - mirrors
  * ListingService.DELETABLE_STATUSES. A LIVE, SOLD or ARCHIVED listing may
  * already be referenced by a favourite or a recommendation, so those only
  * ever offer Archive; keeping this list here means the button never appears
@@ -60,10 +60,7 @@ function useConfirm() {
  */
 const DELETABLE_STATUSES: ListingStatus[] = ['DRAFT', 'PENDING_REVIEW', 'REJECTED']
 
-type Mode =
-  | { kind: 'list' }
-  | { kind: 'create' }
-  | { kind: 'edit'; listing: DealerListing }
+type Mode = { kind: 'list' } | { kind: 'edit'; listing: DealerListing }
 
 export function DealerListingsPage() {
   const [mode, setMode] = useState<Mode>({ kind: 'list' })
@@ -93,51 +90,13 @@ export function DealerListingsPage() {
 
   const backToList = () => setMode({ kind: 'list' })
 
-  const onCreate = async (input: CreateListingInput, images: File[]) => {
-    try {
-      const listing = await createListing(input)
-      // A photo upload failing here is a different, lesser problem than the
-      // listing itself failing to create: the listing exists either way, so
-      // this gets its own try/catch and its own message rather than
-      // aborting the whole flow or reporting the wrong failure.
-      if (images.length > 0) {
-        try {
-          await uploadListingImages(listing.id, images)
-        } catch (error) {
-          toast.error(
-            toErrorMessage(error, 'Listing created, but the photos could not be uploaded.'),
-          )
-          backToList()
-          listings.reload()
-          return
-        }
-      }
-      toast.success('Listing created and sent for review')
-      backToList()
-      listings.reload()
-    } catch (error) {
-      if (isNoResponseError(error)) {
-        // No answer is not the same as "failed": the server may have created
-        // the listing anyway. Leaving the form open invites a second submit
-        // and a duplicate, so go back to the list and let the dealer check.
-        toast.error(
-          'The server took too long to respond. Your listing may still have been created — check My listings before adding it again.',
-        )
-        backToList()
-        listings.reload()
-        return
-      }
-      toast.error(toErrorMessage(error, 'Could not create the listing.'))
-    }
-  }
-
   const onUpdate = async (id: string, input: CreateListingInput, images: File[]) => {
     try {
       // PATCH takes a partial; sending the whole form is simplest and the
       // backend ignores nothing it was given.
       await updateListing(id, input)
 
-      // Empty images means "leave the existing photos alone" — the form
+      // Empty images means "leave the existing photos alone" - the form
       // only asks for new files when the dealer actually wants to replace
       // them (see the "Replace photos" label in edit mode), and calling the
       // upload endpoint here regardless would delete every existing photo
@@ -220,7 +179,7 @@ export function DealerListingsPage() {
   const onDelete = async (listing: DealerListing) => {
     if (
       !confirm(
-        `Permanently delete ${listing.make} ${listing.model}? This cannot be undone — the listing and its photos are removed entirely, not just hidden.`,
+        `Permanently delete ${listing.make} ${listing.model}? This cannot be undone - the listing and its photos are removed entirely, not just hidden.`,
       )
     ) {
       return
@@ -245,7 +204,7 @@ export function DealerListingsPage() {
     try {
       await approveListing(listing.id)
       toast.success(`${listing.make} ${listing.model} is now live`)
-      // Updates this one row in place rather than reload()'s full re-fetch —
+      // Updates this one row in place rather than reload()'s full re-fetch -
       // the approve response already tells us the only thing that changed.
       listings.setData(
         (data) => data?.map((l) => (l.id === listing.id ? { ...l, status: 'LIVE' } : l)) ?? data,
@@ -290,7 +249,7 @@ export function DealerListingsPage() {
 
   /**
    * Edit is always offered; Archive/Unarchive/Delete only when the backend
-   * would actually accept them for this listing's current status — so the
+   * would actually accept them for this listing's current status - so the
    * menu never offers something that just 409s on click.
    */
   const rowActions = (listing: DealerListing): ActionMenuItem[] => {
@@ -314,7 +273,7 @@ export function DealerListingsPage() {
     }
 
     // Never went live: nothing external can reference it, so a permanent
-    // delete is safe — see ListingService.DELETABLE_STATUSES.
+    // delete is safe - see ListingService.DELETABLE_STATUSES.
     if (DELETABLE_STATUSES.includes(listing.status)) {
       items.push({
         label: deleting === listing.id ? 'Deleting…' : 'Delete',
@@ -325,19 +284,6 @@ export function DealerListingsPage() {
     }
 
     return items
-  }
-
-  if (mode.kind === 'create') {
-    return (
-      <div className="dealer-page">
-        <header className="dealer-page__header">
-          <h1>New listing</h1>
-          <p>It goes for review before appearing in search.</p>
-        </header>
-
-        <ListingForm onSubmit={onCreate} onCancel={backToList} submitLabel="Create listing" />
-      </div>
-    )
   }
 
   if (mode.kind === 'edit') {
@@ -369,7 +315,7 @@ export function DealerListingsPage() {
       </header>
 
       <div className="dealer-page__actions listing-toolbar">
-        <Button onClick={() => setMode({ kind: 'create' })}>New listing</Button>
+        <NewListingMenu canBulkUpload={dealer?.dealerType === 'business'} />
 
         <label className="listing-toolbar__sort">
           <span>Sort by</span>

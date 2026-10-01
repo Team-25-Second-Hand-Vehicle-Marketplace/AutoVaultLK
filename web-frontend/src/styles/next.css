@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────
-   AutoVaultLK — redesign layer.
+   AutoVaultLK - redesign layer.
    Loaded last. It (1) redefines the design tokens, so every
    existing page re-themes at once, and (2) styles the new `nx-*` components.
    Light theme only.
@@ -1973,7 +1973,7 @@ h4 {
   color: var(--accent-bright);
 }
 
-/* ── Palette pass 2: black / white / dark blue throughout — no second
+/* ── Palette pass 2: black / white / dark blue throughout - no second
    accent colour. Photos keep their warm light; every overlay and dark
    surface above is a navy-black so the pictures and the page read as one. */
 
@@ -2010,7 +2010,7 @@ h4 {
   color: var(--accent);
 }
 
-/* Links and outlines on the light pages read as navy — the one accent colour, used everywhere. */
+/* Links and outlines on the light pages read as navy - the one accent colour, used everywhere. */
 .nx-hero__beam {
   background: linear-gradient(100deg, transparent, rgba(190, 215, 255, 0.12), transparent);
 }
@@ -2105,4 +2105,95 @@ img.is-loaded {
 
 .action-menu__item--danger {
   color: var(--danger);
+}
+
+/* New listing: a button that opens a two-way choice (manual / bulk upload). */
+.new-listing-menu {
+  position: relative;
+  display: inline-block;
+}
+
+.new-listing-menu .button {
+  gap: 8px;
+}
+
+.new-listing-menu__chevron {
+  transition: transform 0.2s ease;
+}
+
+.new-listing-menu__chevron--open {
+  transform: rotate(180deg);
+}
+
+.new-listing-menu__panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 40;
+  min-width: 320px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--surface, var(--bg));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg, var(--shadow-md, var(--shadow)));
+  animation: new-listing-menu-in 0.16s ease-out;
+}
+
+.new-listing-menu__option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 12px;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: calc(var(--radius) - 2px);
+  color: var(--text-h);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.new-listing-menu__option:hover,
+.new-listing-menu__option:focus-visible {
+  background: var(--accent-bg);
+  outline: none;
+}
+
+.new-listing-menu__option svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--accent);
+}
+
+.new-listing-menu__option strong {
+  display: block;
+  font-size: 0.95rem;
+}
+
+.new-listing-menu__option small {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.8rem;
+  color: var(--text-muted, var(--text));
+}
+
+@keyframes new-listing-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .new-listing-menu__panel {
+    animation: none;
+  }
 }

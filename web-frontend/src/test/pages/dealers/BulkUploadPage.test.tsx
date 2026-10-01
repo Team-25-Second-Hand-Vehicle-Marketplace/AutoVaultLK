@@ -24,7 +24,7 @@ function renderPage() {
   )
 }
 
-describe('BulkUploadPage — resuming an in-progress upload', () => {
+describe('BulkUploadPage - resuming an in-progress upload', () => {
   it('redirects straight to the active job instead of showing the form', async () => {
     activeJob.mockResolvedValue({ id: 'job-1' })
 

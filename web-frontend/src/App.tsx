@@ -2,6 +2,8 @@ import { Routes, Route, useLocation } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { MotionConfig } from 'motion/react'
 import { SmoothScroll } from './components/layout/SmoothScroll'
+import { PageTransition } from './components/layout/PageTransition'
+import { sectionKey } from './components/layout/section-key'
 import { AuthProvider } from './auth/AuthContext'
 import { RequireAuth } from './auth/RequireAuth'
 import { RequireRole } from './auth/RequireRole'
@@ -22,6 +24,7 @@ import { DealerRegisterPage } from './pages/dealers/DealerRegisterPage'
 import { DealerLayout } from './pages/dealers/DealerLayout'
 import { DealerDashboardPage } from './pages/dealers/DealerDashboardPage'
 import { DealerListingsPage } from './pages/dealers/DealerListingsPage'
+import { ManualListingPage } from './pages/dealers/ManualListingPage'
 import { DealerProfilePage } from './pages/dealers/DealerProfilePage'
 import { BulkUploadPage } from './pages/dealers/BulkUploadPage'
 import { UploadStatusPage } from './pages/dealers/UploadStatusPage'
@@ -40,13 +43,14 @@ import { AdminDictionaryPage } from './pages/admin/AdminDictionaryPage'
 import { AdminDashboardPreviewPage } from './pages/admin/AdminDashboardPreviewPage'
 
 /**
- * Full-bleed layouts that carry their own chrome — marketplace header/footer
+ * Full-bleed layouts that carry their own chrome - marketplace header/footer
  * would fight these screens.
  */
 const BARE_ROUTES = ['/dealer/login', '/dealer/register', '/admin/login']
 
 function App() {
-  const { pathname } = useLocation()
+  const location = useLocation()
+  const { pathname } = location
   const bare =
     BARE_ROUTES.includes(pathname) ||
     pathname.startsWith('/admin') ||
@@ -61,7 +65,10 @@ function App() {
         <main className="app-shell__main">
           {/* Inside the router so a crash keeps the header and nav usable. */}
           <ErrorBoundary>
-            <Routes>
+            <PageTransition id={sectionKey(pathname)}>
+            {/* location is passed explicitly so the page that is animating out
+                keeps rendering its own route instead of jumping to the next. */}
+            <Routes location={location}>
               <Route path="/" element={<HomePage />} />
               <Route path="/search" element={<SearchPage />} />
               <Route path="/vehicles/:id" element={<VehicleDetailPage />} />
@@ -86,6 +93,14 @@ function App() {
                   element={
                     <RequireVerifiedDealer>
                       <DealerListingsPage />
+                    </RequireVerifiedDealer>
+                  }
+                />
+                <Route
+                  path="listings/new"
+                  element={
+                    <RequireVerifiedDealer>
+                      <ManualListingPage />
                     </RequireVerifiedDealer>
                   }
                 />
@@ -131,7 +146,7 @@ function App() {
               />
               <Route path="/admin/login" element={<AdminLoginPage />} />
               {/* Dev-only: renders the real dashboard against fixed mock
-                  data, no login needed — a way to check a local dashboard
+                  data, no login needed - a way to check a local dashboard
                   change in the browser before pushing it. Stripped out of
                   a production build by this env check; not linked from
                   anywhere in the app. Safe to delete once you're done. */}
@@ -157,6 +172,7 @@ function App() {
               </Route>
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
+            </PageTransition>
           </ErrorBoundary>
         </main>
         {!bare && <Footer />}

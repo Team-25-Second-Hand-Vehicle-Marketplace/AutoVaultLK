@@ -73,7 +73,7 @@ function renderPage() {
   )
 }
 
-describe('DealerDashboardPage — inventory summary', () => {
+describe('DealerDashboardPage - inventory summary', () => {
   beforeEach(() => {
     mockGetListings.mockReset()
   })

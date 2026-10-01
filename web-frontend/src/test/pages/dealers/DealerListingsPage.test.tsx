@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { DealerProfileContext } from '../../../pages/dealers/dealer-profile-context'
 import { DealerListingsPage } from '../../../pages/dealers/DealerListingsPage'
 import {
@@ -82,15 +83,17 @@ const DEALER_PROFILE: DealerProfile = {
 
 function renderPage() {
   return render(
-    <DealerProfileContext.Provider
-      value={{ data: DEALER_PROFILE, error: null, loading: false, reload: vi.fn(), setData: vi.fn() }}
-    >
-      <DealerListingsPage />
-    </DealerProfileContext.Provider>,
+    <MemoryRouter>
+      <DealerProfileContext.Provider
+        value={{ data: DEALER_PROFILE, error: null, loading: false, reload: vi.fn(), setData: vi.fn() }}
+      >
+        <DealerListingsPage />
+      </DealerProfileContext.Provider>
+    </MemoryRouter>,
   )
 }
 
-describe('DealerListingsPage — row actions menu', () => {
+describe('DealerListingsPage - row actions menu', () => {
   beforeEach(() => {
     getListings.mockReset()
     approve.mockReset()
