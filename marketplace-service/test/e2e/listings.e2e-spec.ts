@@ -36,6 +36,7 @@ const user = (role: UserRole): AuthenticatedUser => ({
 });
 
 const VALID_LISTING = {
+  vehicleType: 'CAR',
   make: 'Toyota',
   model: 'Vitz',
   manufactureYear: 2015,
@@ -215,6 +216,18 @@ describe('listings (e2e)', () => {
         .post('/listings')
         .send(VALID_LISTING)
         .expect(403);
+    });
+
+    it('400s a listing with no vehicleType, which is never defaulted', async () => {
+      const { vehicleType: _omitted, ...withoutType } = VALID_LISTING;
+
+      const response = await request(app.getHttpServer())
+        .post('/listings')
+        .send(withoutType)
+        .expect(400);
+
+      expect(JSON.stringify(response.body.message)).toMatch(/vehicleType/);
+      expect(listingService.createListing).not.toHaveBeenCalled();
     });
 
     it('400s an unknown field', async () => {
