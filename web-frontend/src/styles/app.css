@@ -573,6 +573,8 @@ h3 {
 
 .app-shell__main {
   flex: 1;
+  /* Keeps the footer below the fold while a page is still loading. */
+  min-height: 100vh;
 }
 
 /* --- Header --- */

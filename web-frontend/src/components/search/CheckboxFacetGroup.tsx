@@ -1,4 +1,5 @@
 import type { FacetBucket } from '../../api/search.types'
+import { humanizeEnum } from './vehicle-format'
 
 interface Props {
   label: string
@@ -33,7 +34,7 @@ export function CheckboxFacetGroup({ label, options, facets, selected, onChange 
               disabled={disabled}
               onChange={() => toggle(option)}
             />
-            {option}
+            {humanizeEnum(option)}
             {count !== undefined && <span className="facet-count"> ({count})</span>}
           </label>
         )
