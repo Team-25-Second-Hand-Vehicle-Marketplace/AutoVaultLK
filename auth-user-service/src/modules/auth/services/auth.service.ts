@@ -19,6 +19,7 @@ import {
 } from '../config/jwt.config';
 import {
   AUTH_SECURITY_MESSAGES,
+  REFRESH_TOKEN_REUSE_GRACE_MS,
   SecurityEventType,
 } from '../constants/auth-security.constants';
 import { LoginDto } from '../dto/login.dto';
@@ -333,6 +334,21 @@ export class AuthService {
       }
 
       if (storedToken.revokedAt) {
+        if (this.isWithinReuseGraceWindow(storedToken.revokedAt)) {
+          const user = await this.usersRepository.findById(storedToken.userId);
+          if (!user || !user.isActive || !user.emailVerifiedAt) {
+            throw new UnauthorizedException(AUTH_SECURITY_MESSAGES.INVALID_REFRESH_TOKEN);
+          }
+
+          const tokens = await this.issueFamilySibling(user, storedToken.familyId, {
+            ...session,
+            deviceLabel: data.deviceLabel ?? session.deviceLabel ?? null,
+          });
+
+          await this.authAbuseProtection.recordRefreshSuccess(user.id, user.email, session);
+          return tokens;
+        }
+
         await this.refreshTokensRepository.revokeFamily(storedToken.familyId);
         throw new UnauthorizedException(AUTH_SECURITY_MESSAGES.INVALID_REFRESH_TOKEN);
       }
@@ -461,19 +477,8 @@ export class AuthService {
     await this.enforceSessionLimit(user.id);
 
     const accessToken = await this.signAccessToken(user);
-    const refreshToken = randomBytes(32).toString('base64url');
-    const now = new Date();
-
-    await this.refreshTokensRepository.create({
-      userId: user.id,
-      familyId: randomUUID(),
-      tokenHash: this.hashRefreshToken(refreshToken),
-      expiresAt: new Date(Date.now() + this.getRefreshTokenTtlMs()),
-      userAgent: session.userAgent ?? null,
-      ipAddress: session.ipAddress ?? null,
-      deviceLabel: session.deviceLabel ?? null,
-      lastUsedAt: now,
-    });
+    const { refreshToken, row } = this.buildRefreshTokenRow(user, randomUUID(), session);
+    await this.refreshTokensRepository.create(row);
 
     return {
       accessToken,
@@ -498,6 +503,25 @@ export class AuthService {
       }
 
       if (locked.revokedAt) {
+        // Lost the race to another request rotating this same token (two
+        // tabs sharing one refresh cookie refreshing at once, most often).
+        // Only treat it as theft if that rotation wasn't just now.
+        if (this.isWithinReuseGraceWindow(locked.revokedAt)) {
+          const { refreshToken, row } = this.buildRefreshTokenRow(
+            user,
+            locked.familyId,
+            session,
+            locked,
+          );
+          await manager.save(manager.create(RefreshToken, row));
+
+          return {
+            accessToken: await this.signAccessToken(user),
+            refreshToken,
+            user: this.toSafeUser(user),
+          };
+        }
+
         await this.revokeFamilyInTransaction(manager, locked.familyId);
         throw new UnauthorizedException(AUTH_SECURITY_MESSAGES.INVALID_REFRESH_TOKEN);
       }
@@ -508,23 +532,17 @@ export class AuthService {
         throw new UnauthorizedException(AUTH_SECURITY_MESSAGES.INVALID_REFRESH_TOKEN);
       }
 
-      const refreshToken = randomBytes(32).toString('base64url');
-      const now = new Date();
-      const newToken = manager.create(RefreshToken, {
-        userId: user.id,
-        familyId: locked.familyId,
-        tokenHash: this.hashRefreshToken(refreshToken),
-        expiresAt: new Date(Date.now() + this.getRefreshTokenTtlMs()),
-        userAgent: session.userAgent ?? locked.userAgent,
-        ipAddress: session.ipAddress ?? locked.ipAddress,
-        deviceLabel: session.deviceLabel ?? locked.deviceLabel,
-        lastUsedAt: now,
-      });
-      const saved = await manager.save(newToken);
+      const { refreshToken, row } = this.buildRefreshTokenRow(
+        user,
+        locked.familyId,
+        session,
+        locked,
+      );
+      const saved = await manager.save(manager.create(RefreshToken, row));
 
-      locked.revokedAt = now;
+      locked.revokedAt = row.lastUsedAt;
       locked.replacedById = saved.id;
-      locked.lastUsedAt = now;
+      locked.lastUsedAt = row.lastUsedAt;
       await manager.save(locked);
 
       return {
@@ -533,6 +551,49 @@ export class AuthService {
         user: this.toSafeUser(user),
       };
     });
+  }
+
+  /** Grace-window sibling issued outside a rotation transaction (see refresh()). */
+  private async issueFamilySibling(
+    user: User,
+    familyId: string,
+    session: SessionMetadata,
+  ) {
+    const { refreshToken, row } = this.buildRefreshTokenRow(user, familyId, session);
+    await this.refreshTokensRepository.create(row);
+
+    return {
+      accessToken: await this.signAccessToken(user),
+      refreshToken,
+      user: this.toSafeUser(user),
+    };
+  }
+
+  private buildRefreshTokenRow(
+    user: User,
+    familyId: string,
+    session: SessionMetadata,
+    previous?: Pick<RefreshToken, 'userAgent' | 'ipAddress' | 'deviceLabel'>,
+  ) {
+    const refreshToken = randomBytes(32).toString('base64url');
+    const now = new Date();
+    return {
+      refreshToken,
+      row: {
+        userId: user.id,
+        familyId,
+        tokenHash: this.hashRefreshToken(refreshToken),
+        expiresAt: new Date(Date.now() + this.getRefreshTokenTtlMs()),
+        userAgent: session.userAgent ?? previous?.userAgent ?? null,
+        ipAddress: session.ipAddress ?? previous?.ipAddress ?? null,
+        deviceLabel: session.deviceLabel ?? previous?.deviceLabel ?? null,
+        lastUsedAt: now,
+      },
+    };
+  }
+
+  private isWithinReuseGraceWindow(revokedAt: Date) {
+    return Date.now() - revokedAt.getTime() < REFRESH_TOKEN_REUSE_GRACE_MS;
   }
 
   private async revokeFamilyInTransaction(

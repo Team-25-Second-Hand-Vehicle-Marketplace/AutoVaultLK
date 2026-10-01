@@ -11,6 +11,15 @@ export const SecurityEventType = {
 export type SecurityEventType =
   (typeof SecurityEventType)[keyof typeof SecurityEventType];
 
+/**
+ * Two tabs/devices sharing one refresh-token cookie can both race to refresh
+ * it at the same moment. The loser sees an already-rotated token and would
+ * normally be treated as token-theft (whole session family revoked). If the
+ * rotation it's reacting to happened this recently, it's almost certainly
+ * that race, not theft, so it gets a sibling token instead of a logout.
+ */
+export const REFRESH_TOKEN_REUSE_GRACE_MS = 10_000;
+
 export const AUTH_SECURITY_MESSAGES = {
   INVALID_CREDENTIALS: 'Invalid email or password',
   TOO_MANY_ATTEMPTS:

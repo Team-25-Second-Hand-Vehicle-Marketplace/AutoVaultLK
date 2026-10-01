@@ -136,6 +136,67 @@ describe('AuthService refresh token rotation', () => {
     expect(authAbuseProtection.recordRefreshFailure).toHaveBeenCalled();
   });
 
+  it('issues a sibling token instead of revoking the family when a just-rotated token is reused within the grace window (racing tabs)', async () => {
+    const refreshToken = 'raced-refresh-token-value-1234567890';
+    refreshTokensRepository.findByHash.mockResolvedValue({
+      id: 'token-id',
+      userId: 'user-id',
+      familyId: 'family-id',
+      tokenHash: hashToken(refreshToken),
+      revokedAt: new Date(Date.now() - 2_000),
+      expiresAt: new Date(Date.now() + 60_000),
+    } as RefreshToken);
+    refreshTokensRepository.create.mockResolvedValue({ id: 'sibling-token-id' });
+
+    const result = await service.refresh({ refreshToken });
+
+    expect(result.accessToken).toBe('access-token');
+    expect(result.refreshToken).toBeDefined();
+    expect(result.refreshToken).not.toBe(refreshToken);
+    expect(refreshTokensRepository.revokeFamily).not.toHaveBeenCalled();
+    expect(refreshTokensRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'user-id', familyId: 'family-id' }),
+    );
+    expect(authAbuseProtection.recordRefreshFailure).not.toHaveBeenCalled();
+  });
+
+  it('still revokes the family when the losing side of the race is detected inside the rotation transaction', async () => {
+    const refreshToken = 'active-refresh-token-value-1234567890';
+    const storedToken = {
+      id: 'token-id',
+      userId: 'user-id',
+      familyId: 'family-id',
+      tokenHash: hashToken(refreshToken),
+      revokedAt: null,
+      expiresAt: new Date(Date.now() + 60_000),
+    } as RefreshToken;
+
+    refreshTokensRepository.findByHash.mockResolvedValue(storedToken);
+
+    const lockedWithinGrace = {
+      ...storedToken,
+      revokedAt: new Date(Date.now() - 2_000),
+      replacedById: 'other-tab-token-id',
+    };
+    const manager = {
+      findOne: jest.fn().mockResolvedValue(lockedWithinGrace),
+      create: jest.fn((_entity, data) => data),
+      save: jest.fn().mockImplementation(async (token) => ({ ...token, id: 'sibling-token-id' })),
+      update: jest.fn(),
+    };
+    dataSource.transaction.mockImplementation(async (callback) => callback(manager));
+
+    const result = await service.refresh({ refreshToken });
+
+    expect(result.accessToken).toBe('access-token');
+    expect(result.refreshToken).not.toBe(refreshToken);
+    expect(refreshTokensRepository.revokeFamily).not.toHaveBeenCalled();
+    expect(manager.create).toHaveBeenCalledWith(
+      RefreshToken,
+      expect.objectContaining({ familyId: 'family-id' }),
+    );
+  });
+
   it('rotates refresh tokens atomically inside a transaction', async () => {
     const refreshToken = 'active-refresh-token-value-1234567890';
     const storedToken = {
