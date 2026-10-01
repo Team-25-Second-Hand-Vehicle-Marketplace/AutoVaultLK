@@ -26,6 +26,8 @@ const SEARCHABLE_FIELDS = [
   'transmissionType',
   'price',
   'mileage',
+  'locationCity',
+  'locationDistrict',
   'specs',
   'description',
 ] as const satisfies readonly (keyof CreateListingDto)[];
@@ -51,6 +53,14 @@ export class ListingRepository {
       mileage: dto.mileage,
       fuelType: dto.fuelType,
       transmissionType: dto.transmissionType,
+      color: dto.color,
+      engineCapacityCc: dto.engineCapacityCc,
+      ownersCount: dto.ownersCount,
+      locationDistrict: dto.locationDistrict,
+      locationCity: dto.locationCity ?? null,
+      registrationNumber: dto.registrationNumber ?? null,
+      chassisNumber: dto.chassisNumber ?? null,
+      isNegotiable: dto.isNegotiable ?? false,
       description: dto.description ?? null,
       status,
       specs: dto.specs ?? {},
@@ -159,6 +169,20 @@ export class ListingRepository {
     if (data.fuelType !== undefined) vehicle.fuelType = data.fuelType;
     if (data.transmissionType !== undefined)
       vehicle.transmissionType = data.transmissionType;
+    if (data.color !== undefined) vehicle.color = data.color;
+    if (data.engineCapacityCc !== undefined)
+      vehicle.engineCapacityCc = data.engineCapacityCc;
+    if (data.ownersCount !== undefined) vehicle.ownersCount = data.ownersCount;
+    if (data.locationDistrict !== undefined)
+      vehicle.locationDistrict = data.locationDistrict;
+    if (data.locationCity !== undefined)
+      vehicle.locationCity = data.locationCity ?? null;
+    if (data.registrationNumber !== undefined)
+      vehicle.registrationNumber = data.registrationNumber ?? null;
+    if (data.chassisNumber !== undefined)
+      vehicle.chassisNumber = data.chassisNumber ?? null;
+    if (data.isNegotiable !== undefined)
+      vehicle.isNegotiable = data.isNegotiable;
     if (data.description !== undefined)
       vehicle.description = data.description ?? null;
     if (data.specs !== undefined) vehicle.specs = data.specs;

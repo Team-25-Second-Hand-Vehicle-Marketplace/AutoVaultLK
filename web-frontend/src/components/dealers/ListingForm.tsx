@@ -1,12 +1,21 @@
 import { useRef, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import {
+  BODY_TYPES,
+  CARGO_BED_TYPES,
   CONDITIONS,
+  COOLING_SYSTEMS,
+  DOOR_CONFIGURATIONS,
+  DRIVE_TYPES,
   FUEL_TYPES,
   LISTABLE_VEHICLE_TYPES,
+  ROOF_TYPES,
+  START_TYPES,
+  STROKE_TYPES,
   TRANSMISSION_TYPES,
+  WHEELBASES,
   type CreateListingInput,
   type DealerListing,
   type DealerListingImage,
@@ -15,16 +24,35 @@ import { humanizeEnum } from '../search/vehicle-format'
 import { Button } from '../ui/Button'
 import { FormField } from '../ui/FormField'
 import { SelectField } from '../ui/SelectField'
+import {
+  BIKE_TYPES,
+  CAR_SUV_TYPES,
+  DISTRICTS,
+  EQUIPMENT,
+  MANAGED_SPEC_KEYS,
+  TRUCK_TYPES,
+  VAN_BUS_TYPES,
+  buildSpecs,
+  specFlag,
+  specText,
+} from './listing-form.specs'
 
 /**
  * The manual listing form, used for both create and edit.
  *
- * **This schema must track `CreateListingDto`.** Every rule below mirrors a
+ * **This form must track the dealer CSV.** It collects the same 43 columns as
+ * the bulk-upload template (`TEMPLATE_HEADER` in `api/ingestion.template.ts`),
+ * so a listing entered by hand is as complete as one uploaded. The mapping from
+ * each column to the field that carries it is `CSV_COLUMN_TO_FIELD` in
+ * `listing-form.specs.ts`, and `listing-form.contract.test.ts` fails the build if a template column has no
+ * field here.
+ *
+ * **This schema must also track `CreateListingDto`.** Every rule below mirrors a
  * decorator in
- * `marketplace-service/src/modules/listings/dto/create-listing.dto.ts`; if the
- * two drift, the dealer gets a 400 with no field to attach it to. The option
- * lists come from `listings.types.ts`, which documents why the vehicle types
- * are narrower here than elsewhere in the app.
+ * `marketplace-service/src/modules/listings/dto/create-listing.dto.ts`, and the
+ * spec ranges mirror ingestion-service's enrich stage; if they drift, the
+ * dealer gets a 400 with no field to attach it to, or a spec the search facets
+ * cannot read. The option lists come from `listings.types.ts`.
  */
 
 const MIN_YEAR = 1980
@@ -36,6 +64,22 @@ const optionalText = z
   .trim()
   .optional()
   .transform((value) => (value ? value : undefined))
+
+/** Blank is "not given"; anything else must be a whole number in range. */
+const optionalInt = (min: number, max: number) =>
+  z.preprocess(
+    (v) => (v === '' || v == null ? undefined : v),
+    z.coerce
+      .number({ message: 'Enter a number' })
+      .int('Enter a whole number')
+      .min(min, `Must be ${min} or more`)
+      .max(max, `Must be ${max} or fewer`)
+      .optional(),
+  )
+
+/** A select that starts on a "Not specified" placeholder. */
+const optionalEnum = <T extends readonly [string, ...string[]]>(values: T) =>
+  z.enum(values).optional().or(z.literal(''))
 
 const schema = z
   .object({
@@ -72,6 +116,25 @@ const schema = z
         'Select a transmission',
       ),
 
+    // The CSV's other required columns (REQUIRED_COLUMNS) — same limits as
+    // CreateListingDto.
+    color: z.string().trim().min(1, 'Color is required').max(50, 'At most 50 characters'),
+    engineCapacityCc: z.coerce
+      .number({ message: 'Enter the engine size in cc' })
+      .int('Enter a whole number')
+      .min(50, 'Engine size must be 50 cc or more')
+      .max(20_000, 'Engine size must be 20,000 cc or less'),
+    ownersCount: z.coerce
+      .number({ message: 'Enter the number of owners' })
+      .int('Enter a whole number')
+      .min(0, 'Cannot be negative')
+      .max(20, 'At most 20'),
+    locationDistrict: z
+      .string()
+      .trim()
+      .min(1, 'District is required')
+      .max(100, 'At most 100 characters'),
+
     vehicleType: z.enum(LISTABLE_VEHICLE_TYPES).optional().or(z.literal('')),
     condition: z.enum(CONDITIONS).optional().or(z.literal('')),
 
@@ -79,7 +142,37 @@ const schema = z
       .union([z.literal(''), z.coerce.number().int().min(MIN_YEAR).max(MAX_YEAR)])
       .optional(),
 
+    locationCity: optionalText,
+    registrationNumber: optionalText,
+    chassisNumber: optionalText,
+    isNegotiable: z.boolean().optional(),
     description: optionalText,
+
+    // Specs. Ranges and vocabularies match ingestion-service's enrich stage.
+    bodyType: optionalEnum(BODY_TYPES),
+    seats: optionalInt(2, 60),
+    doors: optionalInt(2, 6),
+    airbags: optionalInt(0, 12),
+    driveType: optionalEnum(DRIVE_TYPES),
+    strokeType: optionalEnum(STROKE_TYPES),
+    coolingSystem: optionalEnum(COOLING_SYSTEMS),
+    startType: optionalEnum(START_TYPES),
+    absEquipped: z.boolean().optional(),
+    seatingCapacity: optionalInt(2, 60),
+    roofType: optionalEnum(ROOF_TYPES),
+    wheelbase: optionalEnum(WHEELBASES),
+    doorConfiguration: optionalEnum(DOOR_CONFIGURATIONS),
+    loadCapacityKg: optionalInt(500, 20_000),
+    payloadCapacityKg: optionalInt(100, 50_000),
+    axleCount: optionalInt(2, 6),
+    cargoBedType: optionalEnum(CARGO_BED_TYPES),
+    sunroof: z.boolean().optional(),
+    fullOption: z.boolean().optional(),
+    alloyWheels: z.boolean().optional(),
+    reverseCamera: z.boolean().optional(),
+    leatherSeats: z.boolean().optional(),
+    powerSteering: z.boolean().optional(),
+    airConditioning: z.boolean().optional(),
   })
   .refine(
     (v) =>
@@ -106,7 +199,10 @@ function pick<T extends string>(value: string | null, options: readonly T[]): T 
 }
 
 /** Strips the empty strings the form uses for "not chosen". */
-function toInput(values: ListingFormValues): CreateListingInput {
+function toInput(
+  values: ListingFormValues,
+  extraSpecs: Record<string, unknown>,
+): CreateListingInput {
   return {
     make: values.make,
     model: values.model,
@@ -115,12 +211,23 @@ function toInput(values: ListingFormValues): CreateListingInput {
     mileage: values.mileage,
     fuelType: values.fuelType,
     transmissionType: values.transmissionType,
+    color: values.color,
+    engineCapacityCc: values.engineCapacityCc,
+    ownersCount: values.ownersCount,
+    locationDistrict: values.locationDistrict,
     ...(values.vehicleType ? { vehicleType: values.vehicleType } : {}),
     ...(values.condition ? { condition: values.condition } : {}),
     ...(typeof values.registrationYear === 'number'
       ? { registrationYear: values.registrationYear }
       : {}),
+    ...(values.locationCity ? { locationCity: values.locationCity } : {}),
+    ...(values.registrationNumber ? { registrationNumber: values.registrationNumber } : {}),
+    ...(values.chassisNumber ? { chassisNumber: values.chassisNumber } : {}),
+    isNegotiable: values.isNegotiable ?? false,
     ...(values.description ? { description: values.description } : {}),
+    // Always sent, even when empty, so an edit that clears every spec clears
+    // them rather than leaving the old ones in place.
+    specs: buildSpecs(values, extraSpecs),
   }
 }
 
@@ -168,9 +275,16 @@ export function ListingForm({
   const [deletingImageId, setDeletingImageId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Spec keys on an edited listing that this form does not manage (carried
+  // over from a bulk upload); sent back unchanged so an edit cannot drop them.
+  const extraSpecs = Object.fromEntries(
+    Object.entries(listing?.specs ?? {}).filter(([key]) => !MANAGED_SPEC_KEYS.has(key)),
+  )
+
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<ListingFormInput, unknown, ListingFormValues>({
     resolver: zodResolver(schema),
@@ -191,10 +305,48 @@ export function ListingForm({
           transmissionType: pick(listing.transmissionType, TRANSMISSION_TYPES),
           vehicleType: pick(listing.vehicleType, LISTABLE_VEHICLE_TYPES),
           condition: pick(listing.condition, CONDITIONS),
+          color: listing.color ?? '',
+          engineCapacityCc: listing.engineCapacityCc ?? '',
+          ownersCount: listing.ownersCount ?? '',
+          locationDistrict: listing.locationDistrict ?? '',
+          locationCity: listing.locationCity ?? '',
+          registrationNumber: listing.registrationNumber ?? '',
+          chassisNumber: listing.chassisNumber ?? '',
+          isNegotiable: listing.isNegotiable ?? false,
           description: listing.description ?? '',
+          bodyType: pick(specText(listing.specs, 'body_type') || null, BODY_TYPES),
+          seats: specText(listing.specs, 'seats'),
+          doors: specText(listing.specs, 'doors'),
+          airbags: specText(listing.specs, 'airbags'),
+          driveType: pick(specText(listing.specs, 'drive_type') || null, DRIVE_TYPES),
+          strokeType: pick(specText(listing.specs, 'stroke_type') || null, STROKE_TYPES),
+          coolingSystem: pick(specText(listing.specs, 'cooling_system') || null, COOLING_SYSTEMS),
+          startType: pick(specText(listing.specs, 'start_type') || null, START_TYPES),
+          absEquipped: specFlag(listing.specs, 'abs_equipped'),
+          seatingCapacity: specText(listing.specs, 'seating_capacity'),
+          roofType: pick(specText(listing.specs, 'roof_type') || null, ROOF_TYPES),
+          wheelbase: pick(specText(listing.specs, 'wheelbase') || null, WHEELBASES),
+          doorConfiguration: pick(
+            specText(listing.specs, 'door_configuration') || null,
+            DOOR_CONFIGURATIONS,
+          ),
+          loadCapacityKg: specText(listing.specs, 'load_capacity_kg'),
+          payloadCapacityKg: specText(listing.specs, 'payload_capacity_kg'),
+          axleCount: specText(listing.specs, 'axle_count'),
+          cargoBedType: pick(specText(listing.specs, 'cargo_bed_type') || null, CARGO_BED_TYPES),
+          sunroof: specFlag(listing.specs, 'sunroof'),
+          fullOption: specFlag(listing.specs, 'full_option'),
+          alloyWheels: specFlag(listing.specs, 'alloy_wheels'),
+          reverseCamera: specFlag(listing.specs, 'reverse_camera'),
+          leatherSeats: specFlag(listing.specs, 'leather_seats'),
+          powerSteering: specFlag(listing.specs, 'power_steering'),
+          airConditioning: specFlag(listing.specs, 'air_conditioning'),
         }
       : undefined,
   })
+
+  // A blank vehicle type is stored as CAR, so it shows the car fields.
+  const effectiveType = useWatch({ control, name: 'vehicleType' }) || 'CAR'
 
   const onFilesSelected = (fileList: FileList | null) => {
     setImageError(null)
@@ -245,7 +397,7 @@ export function ListingForm({
     <form
       className="listing-form"
       onSubmit={handleSubmit(async (values) => {
-        await onSubmit(toInput(values), images)
+        await onSubmit(toInput(values, extraSpecs), images)
       })}
       noValidate
     >
@@ -329,7 +481,234 @@ export function ListingForm({
           error={errors.condition?.message}
           {...register('condition')}
         />
+
+        <FormField
+          label="Color"
+          placeholder="Pearl White"
+          error={errors.color?.message}
+          {...register('color')}
+        />
+        <FormField
+          label="Engine capacity (cc)"
+          type="number"
+          inputMode="numeric"
+          placeholder="1500"
+          error={errors.engineCapacityCc?.message}
+          {...register('engineCapacityCc')}
+        />
+        <FormField
+          label="Previous owners"
+          type="number"
+          inputMode="numeric"
+          placeholder="1"
+          error={errors.ownersCount?.message}
+          {...register('ownersCount')}
+        />
+
+        <FormField
+          label="District"
+          list="listing-form-districts"
+          placeholder="Colombo"
+          error={errors.locationDistrict?.message}
+          {...register('locationDistrict')}
+        />
+        <FormField
+          label="City (optional)"
+          placeholder="Nugegoda"
+          error={errors.locationCity?.message}
+          {...register('locationCity')}
+        />
+        <SelectField
+          label="Body type (optional)"
+          options={BODY_TYPES}
+          placeholder="Not specified"
+          format={humanizeEnum}
+          error={errors.bodyType?.message}
+          {...register('bodyType')}
+        />
+
+        <FormField
+          label="Registration number (optional)"
+          placeholder="CAB-1234"
+          error={errors.registrationNumber?.message}
+          {...register('registrationNumber')}
+        />
+        <FormField
+          label="Chassis number (optional)"
+          error={errors.chassisNumber?.message}
+          {...register('chassisNumber')}
+        />
       </div>
+      <datalist id="listing-form-districts">
+        {DISTRICTS.map((d) => (
+          <option key={d} value={d} />
+        ))}
+      </datalist>
+
+      <label className="toggle-filter">
+        <input type="checkbox" {...register('isNegotiable')} />
+        Price is negotiable
+      </label>
+
+      {CAR_SUV_TYPES.includes(effectiveType) && (
+        <fieldset className="listing-form__section">
+          <legend>Car &amp; SUV details</legend>
+          <div className="listing-form__grid">
+            <FormField
+              label="Seats (optional)"
+              type="number"
+              inputMode="numeric"
+              error={errors.seats?.message}
+              {...register('seats')}
+            />
+            <FormField
+              label="Doors (optional)"
+              type="number"
+              inputMode="numeric"
+              error={errors.doors?.message}
+              {...register('doors')}
+            />
+            <FormField
+              label="Airbags (optional)"
+              type="number"
+              inputMode="numeric"
+              error={errors.airbags?.message}
+              {...register('airbags')}
+            />
+            <SelectField
+              label="Drive type (optional)"
+              options={DRIVE_TYPES}
+              placeholder="Not specified"
+              error={errors.driveType?.message}
+              {...register('driveType')}
+            />
+          </div>
+        </fieldset>
+      )}
+
+      {BIKE_TYPES.includes(effectiveType) && (
+        <fieldset className="listing-form__section">
+          <legend>Bike details</legend>
+          <div className="listing-form__grid">
+            <SelectField
+              label="Stroke type (optional)"
+              options={STROKE_TYPES}
+              placeholder="Not specified"
+              format={humanizeEnum}
+              error={errors.strokeType?.message}
+              {...register('strokeType')}
+            />
+            <SelectField
+              label="Cooling system (optional)"
+              options={COOLING_SYSTEMS}
+              placeholder="Not specified"
+              format={humanizeEnum}
+              error={errors.coolingSystem?.message}
+              {...register('coolingSystem')}
+            />
+            <SelectField
+              label="Start type (optional)"
+              options={START_TYPES}
+              placeholder="Not specified"
+              format={humanizeEnum}
+              error={errors.startType?.message}
+              {...register('startType')}
+            />
+          </div>
+          <label className="toggle-filter">
+            <input type="checkbox" {...register('absEquipped')} />
+            ABS equipped
+          </label>
+        </fieldset>
+      )}
+
+      {VAN_BUS_TYPES.includes(effectiveType) && (
+        <fieldset className="listing-form__section">
+          <legend>Van &amp; bus details</legend>
+          <div className="listing-form__grid">
+            <FormField
+              label="Seating capacity (optional)"
+              type="number"
+              inputMode="numeric"
+              error={errors.seatingCapacity?.message}
+              {...register('seatingCapacity')}
+            />
+            <SelectField
+              label="Roof type (optional)"
+              options={ROOF_TYPES}
+              placeholder="Not specified"
+              format={humanizeEnum}
+              error={errors.roofType?.message}
+              {...register('roofType')}
+            />
+            <SelectField
+              label="Wheelbase (optional)"
+              options={WHEELBASES}
+              placeholder="Not specified"
+              format={humanizeEnum}
+              error={errors.wheelbase?.message}
+              {...register('wheelbase')}
+            />
+            <SelectField
+              label="Door configuration (optional)"
+              options={DOOR_CONFIGURATIONS}
+              placeholder="Not specified"
+              format={humanizeEnum}
+              error={errors.doorConfiguration?.message}
+              {...register('doorConfiguration')}
+            />
+          </div>
+        </fieldset>
+      )}
+
+      {TRUCK_TYPES.includes(effectiveType) && (
+        <fieldset className="listing-form__section">
+          <legend>Truck, lorry &amp; pickup details</legend>
+          <div className="listing-form__grid">
+            <FormField
+              label="Load capacity, kg (optional)"
+              type="number"
+              inputMode="numeric"
+              error={errors.loadCapacityKg?.message}
+              {...register('loadCapacityKg')}
+            />
+            <FormField
+              label="Payload capacity, kg (optional)"
+              type="number"
+              inputMode="numeric"
+              error={errors.payloadCapacityKg?.message}
+              {...register('payloadCapacityKg')}
+            />
+            <FormField
+              label="Axle count (optional)"
+              type="number"
+              inputMode="numeric"
+              error={errors.axleCount?.message}
+              {...register('axleCount')}
+            />
+            <SelectField
+              label="Cargo bed type (optional)"
+              options={CARGO_BED_TYPES}
+              placeholder="Not specified"
+              format={humanizeEnum}
+              error={errors.cargoBedType?.message}
+              {...register('cargoBedType')}
+            />
+          </div>
+        </fieldset>
+      )}
+
+      <fieldset className="listing-form__section">
+        <legend>Equipment</legend>
+        <div className="listing-form__checks">
+          {EQUIPMENT.map(({ field, label }) => (
+            <label key={field} className="toggle-filter">
+              <input type="checkbox" {...register(field)} />
+              {label}
+            </label>
+          ))}
+        </div>
+      </fieldset>
 
       <label className="form-field">
         <span>Description (optional)</span>

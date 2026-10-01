@@ -19,6 +19,18 @@ const jpeg = (name: string, sizeBytes = 1024) => {
   return file
 }
 
+/** The CSV-parity columns a DealerListing now carries. */
+const COLUMN_DEFAULTS = {
+  color: 'White',
+  engineCapacityCc: 1500,
+  ownersCount: 1,
+  locationDistrict: 'Colombo',
+  locationCity: null,
+  registrationNumber: null,
+  chassisNumber: null,
+  isNegotiable: false,
+}
+
 const validFields = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.type(screen.getByLabelText('Make'), 'Toyota')
   await user.type(screen.getByLabelText('Model'), 'Vitz')
@@ -27,7 +39,66 @@ const validFields = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.type(screen.getByLabelText('Mileage (km)'), '45000')
   await user.selectOptions(screen.getByLabelText('Fuel type'), 'PETROL')
   await user.selectOptions(screen.getByLabelText('Transmission'), 'AUTOMATIC')
+  await user.type(screen.getByLabelText('Color'), 'White')
+  await user.type(screen.getByLabelText('Engine capacity (cc)'), '1500')
+  await user.type(screen.getByLabelText('Previous owners'), '1')
+  await user.type(screen.getByLabelText('District'), 'Colombo')
 }
+
+describe('ListingForm CSV-parity fields', () => {
+  it('requires the same columns the CSV requires before submitting', async () => {
+    const onSubmit = vi.fn()
+    const user = userEvent.setup()
+    render(<ListingForm onSubmit={onSubmit} onCancel={vi.fn()} submitLabel="Create listing" />)
+
+    await user.click(screen.getByRole('button', { name: 'Create listing' }))
+
+    expect(await screen.findByText('Color is required')).toBeInTheDocument()
+    expect(screen.getByText('District is required')).toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('sends the extra columns and a specs object', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    render(<ListingForm onSubmit={onSubmit} onCancel={vi.fn()} submitLabel="Create listing" />)
+
+    await validFields(user)
+    await user.type(screen.getByLabelText('City (optional)'), 'Nugegoda')
+    await user.selectOptions(screen.getByLabelText('Body type (optional)'), 'HATCHBACK')
+    await user.type(screen.getByLabelText('Seats (optional)'), '5')
+    await user.click(screen.getByLabelText('Sunroof'))
+    await user.click(screen.getByLabelText('Price is negotiable'))
+    await user.click(screen.getByRole('button', { name: 'Create listing' }))
+
+    const [input] = onSubmit.mock.calls[0] as [Record<string, unknown>]
+    expect(input).toMatchObject({
+      color: 'White',
+      engineCapacityCc: 1500,
+      ownersCount: 1,
+      locationDistrict: 'Colombo',
+      locationCity: 'Nugegoda',
+      isNegotiable: true,
+      specs: { body_type: 'HATCHBACK', seats: 5, sunroof: true },
+    })
+  })
+
+  it('swaps the category fields with the vehicle type', async () => {
+    const user = userEvent.setup()
+    render(<ListingForm onSubmit={vi.fn()} onCancel={vi.fn()} submitLabel="Create listing" />)
+
+    // Blank type is stored as CAR, so the car fields show by default.
+    expect(screen.getByLabelText('Seats (optional)')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Stroke type (optional)')).not.toBeInTheDocument()
+
+    await user.selectOptions(screen.getByLabelText('Vehicle type (optional)'), 'BIKE')
+    expect(screen.getByLabelText('Stroke type (optional)')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Seats (optional)')).not.toBeInTheDocument()
+
+    await user.selectOptions(screen.getByLabelText('Vehicle type (optional)'), 'LORRY')
+    expect(screen.getByLabelText('Axle count (optional)')).toBeInTheDocument()
+  })
+})
 
 describe('ListingForm image field', () => {
   it('submits with an empty images array when nothing is selected', async () => {
@@ -125,6 +196,7 @@ describe('ListingForm image field', () => {
           vehicleType: 'CAR',
           condition: 'USED',
           description: null,
+          ...COLUMN_DEFAULTS,
           normalization: null,
           specs: null,
           needsManualReview: false,
@@ -156,6 +228,7 @@ describe('ListingForm image field', () => {
     vehicleType: 'CAR',
     condition: 'USED',
     description: null,
+    ...COLUMN_DEFAULTS,
     normalization: null,
     specs: null,
     needsManualReview: false,

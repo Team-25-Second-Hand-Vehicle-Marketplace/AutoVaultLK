@@ -43,6 +43,10 @@ const VALID_LISTING = {
   mileage: 45_000,
   fuelType: 'PETROL',
   transmissionType: 'AUTOMATIC',
+  color: 'White',
+  engineCapacityCc: 1500,
+  ownersCount: 1,
+  locationDistrict: 'Colombo',
 };
 
 describe('listings (e2e)', () => {

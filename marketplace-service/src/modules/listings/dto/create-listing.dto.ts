@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsEnum,
   IsInt,
   IsNotEmpty,
@@ -9,6 +10,7 @@ import {
   IsString,
   IsUUID,
   Max,
+  MaxLength,
   Min,
 } from 'class-validator';
 
@@ -110,6 +112,55 @@ export class CreateListingDto {
 
   @IsEnum(TransmissionTypeDto)
   transmissionType: TransmissionTypeDto;
+
+  /*
+   * The four fields below are required because the bulk-upload CSV requires
+   * them (`REQUIRED_COLUMNS` in ingestion-service's csv-contract.ts: color,
+   * engine_capacity_cc, owners_count, location_district). A manual listing
+   * that could omit them would be thinner than a bulk one and would silently
+   * drop out of the colour / district / owners search filters.
+   */
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(50)
+  color: string;
+
+  @IsInt()
+  @Min(50)
+  @Max(20_000)
+  engineCapacityCc: number;
+
+  @IsInt()
+  @Min(0)
+  @Max(20)
+  ownersCount: number;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  locationDistrict: string;
+
+  // Optional CSV columns (KNOWN_COLUMNS minus REQUIRED_COLUMNS). Spec columns
+  // (seats, sunroof, stroke_type, ...) travel in `specs` below, exactly as the
+  // ETL's enrich stage writes them.
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  locationCity?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  registrationNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  chassisNumber?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isNegotiable?: boolean;
 
   @IsOptional()
   @IsString()

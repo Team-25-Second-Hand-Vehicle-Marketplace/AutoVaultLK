@@ -28,6 +28,10 @@ const VALID_LISTING = {
   mileage: 45_000,
   fuelType: 'HYBRID',
   transmissionType: 'AUTOMATIC',
+  color: 'White',
+  engineCapacityCc: 1500,
+  ownersCount: 1,
+  locationDistrict: 'Colombo',
 };
 
 describe('CreateListingDto', () => {
@@ -53,7 +57,38 @@ describe('CreateListingDto', () => {
         'mileage',
         'fuelType',
         'transmissionType',
+        // The CSV's REQUIRED_COLUMNS beyond the basics — manual listings must
+        // be as complete as bulk ones.
+        'color',
+        'engineCapacityCc',
+        'ownersCount',
+        'locationDistrict',
       ]),
+    );
+  });
+
+  it('accepts every optional CSV column alongside the required ones', () => {
+    expect(
+      validateCreate({
+        ...VALID_LISTING,
+        locationCity: 'Colombo 07',
+        registrationNumber: 'CAB-1234',
+        chassisNumber: 'NZE141-1234567',
+        isNegotiable: true,
+        specs: { body_type: 'HATCHBACK', seats: 5, sunroof: true },
+      }),
+    ).toHaveLength(0);
+  });
+
+  it('rejects out-of-range engine capacity and owners count', () => {
+    const errors = validateCreate({
+      ...VALID_LISTING,
+      engineCapacityCc: 5,
+      ownersCount: 99,
+    });
+    const properties = errors.map((e) => e.property);
+    expect(properties).toEqual(
+      expect.arrayContaining(['engineCapacityCc', 'ownersCount']),
     );
   });
 

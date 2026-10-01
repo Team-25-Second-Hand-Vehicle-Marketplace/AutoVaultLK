@@ -9,16 +9,24 @@ import { DealerProfileContext } from './dealer-profile-context'
 import { BrandMark } from '../../components/layout/BrandMark'
 import { Button } from '../../components/ui/Button'
 
-const NAV = [
-  { to: '/dealer', end: true, label: 'Dashboard' },
-  { to: '/dealer/listings', end: false, label: 'My listings' },
-  { to: '/dealer/profile', end: false, label: 'Business details' },
-] as const
+const DASHBOARD_NAV = { to: '/dealer', end: true, label: 'Dashboard' } as const
+const LISTINGS_NAV = { to: '/dealer/listings', end: false, label: 'My listings' } as const
+const PROFILE_NAV = { to: '/dealer/profile', end: false, label: 'Business details' } as const
 
 // Bulk upload (and its history) is for business dealers only (the API
 // rejects individuals), so both are added below only once the profile says so.
 const BULK_UPLOAD_NAV = { to: '/dealer/upload', end: false, label: 'Bulk upload' } as const
 const UPLOAD_HISTORY_NAV = { to: '/dealer/uploads', end: false, label: 'Upload history' } as const
+
+// Business details sits last for both dealer types.
+const INDIVIDUAL_NAV = [DASHBOARD_NAV, LISTINGS_NAV, PROFILE_NAV] as const
+const BUSINESS_NAV = [
+  DASHBOARD_NAV,
+  LISTINGS_NAV,
+  BULK_UPLOAD_NAV,
+  UPLOAD_HISTORY_NAV,
+  PROFILE_NAV,
+] as const
 
 const profileError = (err: unknown) => toErrorMessage(err, 'Could not load your dealer profile.')
 
@@ -38,8 +46,8 @@ export function DealerLayout() {
   const navItems = !verified
     ? []
     : profile.data?.dealerType === 'business'
-      ? [...NAV, BULK_UPLOAD_NAV, UPLOAD_HISTORY_NAV]
-      : NAV
+      ? BUSINESS_NAV
+      : INDIVIDUAL_NAV
 
   const onSignOut = async () => {
     await logout()
