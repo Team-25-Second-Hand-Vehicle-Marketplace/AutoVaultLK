@@ -1,0 +1,71 @@
+name: Terraform Validate
+
+# Runs on every push/PR touching Terraform code. Deliberately scoped to
+# validate + fmt -check only — both are pure static analysis
+# (terraform init -backend=false needs no AWS credentials, no S3 backend,
+# no network calls to AWS) and catch syntax/reference errors and style
+# drift before a human ever runs a real `terraform plan`/`apply` against
+# live infrastructure. `plan`/`apply` need real AWS credentials and are
+# deliberately NOT run here - that stays a manual, human-gated step against
+# staging/production (Test Plan's own Phase D), not an automatic PR trigger.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'cloud-infrastructure/terraform/**'
+      - '.github/workflows/terraform-validate.yml'
+  pull_request:
+    paths:
+      - 'cloud-infrastructure/terraform/**'
+      - '.github/workflows/terraform-validate.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment: [dev, staging, production]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.16.4'
+
+      # staging and production's main.tf read
+      # ingestion-service/dist-lambda/function-config.json via
+      # file()/jsondecode() at plan time (stage_lambda_zip module +
+      # state-machine ASL placeholders) - this file doesn't exist until
+      # emit-function-config.ts runs, so `terraform init` fails without it.
+      # Confirmed locally: dev has no such dependency and doesn't need this
+      # step, but running it unconditionally is harmless and keeps this job
+      # simple rather than branching per environment.
+      - name: Set up Node.js
+        if: matrix.environment != 'dev'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ingestion-service/package-lock.json
+
+      - name: Generate ingestion-service Lambda function config
+        if: matrix.environment != 'dev'
+        working-directory: ingestion-service
+        run: |
+          npm ci
+          npm run build:lambda-config
+
+      - name: Terraform fmt check
+        working-directory: cloud-infrastructure/terraform/environments/${{ matrix.environment }}
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init (no backend)
+        working-directory: cloud-infrastructure/terraform/environments/${{ matrix.environment }}
+        run: terraform init -backend=false -input=false
+
+      - name: Terraform validate
+        working-directory: cloud-infrastructure/terraform/environments/${{ matrix.environment }}
+        run: terraform validate
