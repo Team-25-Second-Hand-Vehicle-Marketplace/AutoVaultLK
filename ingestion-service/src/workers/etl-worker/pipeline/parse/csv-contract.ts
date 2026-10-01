@@ -32,6 +32,14 @@
  * exist; a blank cell in it is still defaulted to USED by the enrich stage
  * rather than rejecting the row, the same way a blank is treated everywhere
  * else the pipeline can infer a value.
+ *
+ * `vehicle_type` is the latest addition, for the same reason: leaving it to a
+ * silent default listed a bike or a lorry as a car, and the category-specific
+ * columns (stroke type, axle count, ...) are only read for the matching type,
+ * so a wrong type also lost those values. The column must exist. A blank cell
+ * is still filled from the matched make/model where that is unambiguous (a
+ * Hilux is a pickup), and a row whose type cannot be worked out either way is
+ * rejected by validateRows, with the reason, rather than guessed.
  */
 export const REQUIRED_COLUMNS = [
   'make',
@@ -46,6 +54,7 @@ export const REQUIRED_COLUMNS = [
   'owners_count',
   'location_district',
   'condition',
+  'vehicle_type',
 ] as const;
 
 /**
@@ -58,16 +67,9 @@ export const REQUIRED_COLUMNS = [
  */
 export const KNOWN_COLUMNS = [
   ...REQUIRED_COLUMNS,
-  // Not in REQUIRED_COLUMNS: an absent/unrecognised value leaves
-  // Vehicle.vehicleType at its schema default ('CAR') via deriveVehicleType's
-  // dictionary fallback (parse-normalize.stage.ts) rather than failing the
-  // row - the SRS/SAD Appendix A table lists this as a required relational
-  // column, but making it a hard CSV requirement would reject every dealer
-  // file that predates this column for no benefit over the existing default.
-  'vehicle_type',
   'registration_number',
   // fuel_type, transmission, color, engine_capacity_cc, owners_count,
-  // location_district and condition already arrive via the REQUIRED_COLUMNS spread above -
+  // location_district, condition and vehicle_type already arrive via the REQUIRED_COLUMNS spread above -
   // repeating them here would duplicate the column in every downloadable
   // template and in TEMPLATE_HEADER, which is exactly the header a dealer's
   // upload gets checked against.

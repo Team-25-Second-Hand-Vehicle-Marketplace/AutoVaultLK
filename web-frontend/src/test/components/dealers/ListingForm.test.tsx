@@ -32,6 +32,7 @@ const COLUMN_DEFAULTS = {
 }
 
 const validFields = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.selectOptions(screen.getByLabelText('Vehicle type'), 'CAR')
   await user.type(screen.getByLabelText('Make'), 'Toyota')
   await user.type(screen.getByLabelText('Model'), 'Vitz')
   await user.type(screen.getByLabelText('Manufacture year'), '2015')
@@ -55,6 +56,7 @@ describe('ListingForm CSV-parity fields', () => {
 
     expect(await screen.findByText('Color is required')).toBeInTheDocument()
     expect(screen.getByText('District is required')).toBeInTheDocument()
+    expect(screen.getByLabelText(/^Vehicle type/)).toHaveAttribute('aria-invalid', 'true')
     expect(onSubmit).not.toHaveBeenCalled()
   })
 
@@ -87,16 +89,93 @@ describe('ListingForm CSV-parity fields', () => {
     const user = userEvent.setup()
     render(<ListingForm onSubmit={vi.fn()} onCancel={vi.fn()} submitLabel="Create listing" />)
 
-    // Blank type is stored as CAR, so the car fields show by default.
-    expect(screen.getByLabelText('Seats (optional)')).toBeInTheDocument()
+    // Nothing is assumed: no category fields until a type is chosen.
+    expect(screen.queryByLabelText('Seats (optional)')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Stroke type (optional)')).not.toBeInTheDocument()
 
-    await user.selectOptions(screen.getByLabelText('Vehicle type (optional)'), 'BIKE')
+    await user.selectOptions(screen.getByLabelText('Vehicle type'), 'CAR')
+    expect(screen.getByLabelText('Seats (optional)')).toBeInTheDocument()
+
+    await user.selectOptions(screen.getByLabelText('Vehicle type'), 'BIKE')
     expect(screen.getByLabelText('Stroke type (optional)')).toBeInTheDocument()
     expect(screen.queryByLabelText('Seats (optional)')).not.toBeInTheDocument()
 
-    await user.selectOptions(screen.getByLabelText('Vehicle type (optional)'), 'LORRY')
+    await user.selectOptions(screen.getByLabelText('Vehicle type'), 'LORRY')
     expect(screen.getByLabelText('Axle count (optional)')).toBeInTheDocument()
+  })
+})
+
+describe('ListingForm vehicle type', () => {
+  it('is required, and not defaulted to Car', async () => {
+    const onSubmit = vi.fn()
+    const user = userEvent.setup()
+    render(<ListingForm onSubmit={onSubmit} onCancel={vi.fn()} submitLabel="Create listing" />)
+
+    expect(screen.getByLabelText('Vehicle type')).toHaveValue('')
+    await user.click(screen.getByRole('button', { name: 'Create listing' }))
+
+    await waitFor(() =>
+      expect(screen.getByLabelText(/^Vehicle type/)).toHaveAttribute('aria-invalid', 'true'),
+    )
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('locks the dependent fields until a type is chosen, then unlocks them', async () => {
+    const user = userEvent.setup()
+    render(<ListingForm onSubmit={vi.fn()} onCancel={vi.fn()} submitLabel="Create listing" />)
+
+    expect(screen.getByLabelText('Body type (optional)')).toBeDisabled()
+    expect(screen.getByLabelText('Sunroof')).toBeDisabled()
+    expect(screen.getByRole('status')).toHaveTextContent('Choose a vehicle type')
+
+    await user.selectOptions(screen.getByLabelText('Vehicle type'), 'CAR')
+
+    expect(screen.getByLabelText('Body type (optional)')).toBeEnabled()
+    expect(screen.getByLabelText('Sunroof')).toBeEnabled()
+    expect(screen.queryByText(/to unlock the details/)).not.toBeInTheDocument()
+  })
+
+  it('locks cabin comfort equipment on a bike but leaves alloy wheels', async () => {
+    const user = userEvent.setup()
+    render(<ListingForm onSubmit={vi.fn()} onCancel={vi.fn()} submitLabel="Create listing" />)
+
+    await user.selectOptions(screen.getByLabelText('Vehicle type'), 'BIKE')
+
+    expect(screen.getByLabelText('Sunroof')).toBeDisabled()
+    expect(screen.getByLabelText('Leather seats')).toBeDisabled()
+    expect(screen.getByLabelText('Air conditioning')).toBeDisabled()
+    expect(screen.getByLabelText('Alloy wheels')).toBeEnabled()
+
+    await user.selectOptions(screen.getByLabelText('Vehicle type'), 'CAR')
+    expect(screen.getByLabelText('Sunroof')).toBeEnabled()
+  })
+
+  it('drops a ticked comfort item when the type changes to a bike', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    render(<ListingForm onSubmit={onSubmit} onCancel={vi.fn()} submitLabel="Create listing" />)
+
+    await validFields(user)
+    await user.click(screen.getByLabelText('Sunroof'))
+    await user.selectOptions(screen.getByLabelText('Vehicle type'), 'BIKE')
+    await user.click(screen.getByRole('button', { name: 'Create listing' }))
+
+    const [input] = onSubmit.mock.calls[0] as [{ vehicleType: string; specs: Record<string, unknown> }]
+    expect(input.vehicleType).toBe('BIKE')
+    expect(input.specs).not.toHaveProperty('sunroof')
+  })
+
+  it('clears a category value when its fields are hidden, so it cannot block the submit unseen', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    render(<ListingForm onSubmit={onSubmit} onCancel={vi.fn()} submitLabel="Create listing" />)
+
+    await validFields(user)
+    await user.type(screen.getByLabelText('Seats (optional)'), '99')
+    await user.selectOptions(screen.getByLabelText('Vehicle type'), 'BIKE')
+    await user.click(screen.getByRole('button', { name: 'Create listing' }))
+
+    expect(onSubmit).toHaveBeenCalledTimes(1)
   })
 })
 

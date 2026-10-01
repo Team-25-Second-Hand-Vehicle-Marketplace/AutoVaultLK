@@ -161,7 +161,7 @@ export const options = {
 const DOCUMENT_PNG_BASE64 =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
 const CSV_HEADER =
-  'registration_number,make,model,year,price,mileage,fuel_type,transmission,color,engine_capacity_cc,owners_count,location_district,condition';
+  'registration_number,make,model,year,price,mileage,fuel_type,transmission,color,engine_capacity_cc,owners_count,location_district,condition,vehicle_type';
 
 // Only make/model combinations already known to pass validation.
 const MAKES = [
@@ -177,7 +177,7 @@ function buildInlineCsv(regPrefix, rows) {
     const [make, model, fuel, trans, cc] = MAKES[n % MAKES.length];
     lines.push(
       [`${regPrefix}-${n}`, make, model, 2012 + (n % 12), 3000000 + n * 50000, 20000 + n * 1500,
-        fuel, trans, 'White', cc, 1 + (n % 3), DISTRICTS[n % DISTRICTS.length], 'Used'].join(','),
+        fuel, trans, 'White', cc, 1 + (n % 3), DISTRICTS[n % DISTRICTS.length], 'Used', 'Car'].join(','),
     );
   }
   return lines.join('\n') + '\n';

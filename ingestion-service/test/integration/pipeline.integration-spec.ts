@@ -23,14 +23,14 @@ import {
 } from './test-database';
 
 const HEADER =
-  'registration_number,make,model,year,price,mileage,fuel_type,transmission,body_type,color,engine_capacity_cc,owners_count,location_district,condition';
+  'registration_number,make,model,year,price,mileage,fuel_type,transmission,body_type,color,engine_capacity_cc,owners_count,location_district,condition,vehicle_type';
 
 /** Unique per run so a crashed test cannot collide with the next. */
 const run = String(Date.now()).slice(-6);
 const plate = (n: number): string => `PL${run}-${n}`;
 
 const good = (n: number): string =>
-  `${plate(n)},Toyota,Vitz,2015,3500000,45000,Petrol,Automatic,Hatchback,White,1000,1,Colombo,Used`;
+  `${plate(n)},Toyota,Vitz,2015,3500000,45000,Petrol,Automatic,Hatchback,White,1000,1,Colombo,Used,Car`;
 
 describeWithDatabase('LocalOrchestrator (integration)', () => {
   let ds: DataSource;
@@ -133,7 +133,7 @@ describeWithDatabase('LocalOrchestrator (integration)', () => {
     const jobId = await upload(
       [
         HEADER,
-        `${plate(10)},toyata,vits,2015,Rs. 3500000,45000 km,Petrol,Auto,Saloon,White,1000,1,Colombo,Used`,
+        `${plate(10)},toyata,vits,2015,Rs. 3500000,45000 km,Petrol,Auto,Saloon,White,1000,1,Colombo,Used,Car`,
       ].join('\n'),
     );
 
@@ -163,8 +163,8 @@ describeWithDatabase('LocalOrchestrator (integration)', () => {
       [
         HEADER,
         good(20),
-        `${plate(21)},Toyota,Vitz,1850,3500000,45000,Petrol,Automatic,Hatchback,White,1000,1,Colombo,Used`,
-        `${plate(22)},Lamborghini,Aventador,2015,3500000,45000,Petrol,Automatic,Coupe,White,1000,1,Colombo,Used`,
+        `${plate(21)},Toyota,Vitz,1850,3500000,45000,Petrol,Automatic,Hatchback,White,1000,1,Colombo,Used,Car`,
+        `${plate(22)},Lamborghini,Aventador,2015,3500000,45000,Petrol,Automatic,Coupe,White,1000,1,Colombo,Used,Car`,
       ].join('\n'),
     );
 
@@ -192,7 +192,7 @@ describeWithDatabase('LocalOrchestrator (integration)', () => {
     const jobId = await upload(
       [
         HEADER,
-        `${plate(30)},Toyota,Vitz,2015,-1,45000,Petrol,Automatic,Hatchback,White,1000,1,Colombo,Used`,
+        `${plate(30)},Toyota,Vitz,2015,-1,45000,Petrol,Automatic,Hatchback,White,1000,1,Colombo,Used,Car`,
       ].join('\n'),
     );
 
@@ -347,7 +347,7 @@ describeWithDatabase('LocalOrchestrator (integration)', () => {
     const firstJob = await upload(
       [
         HEADER,
-        `${duplicate},Toyota,Vitz,2015,3500000,45000,Petrol,Automatic,Hatchback,White,1000,1,Colombo,Used`,
+        `${duplicate},Toyota,Vitz,2015,3500000,45000,Petrol,Automatic,Hatchback,White,1000,1,Colombo,Used,Car`,
       ].join('\n'),
     );
     await orchestrator.run(firstJob);
@@ -355,7 +355,7 @@ describeWithDatabase('LocalOrchestrator (integration)', () => {
     const secondJob = await upload(
       [
         HEADER,
-        `${duplicate},Toyota,Vitz,2015,3500000,45000,Petrol,Automatic,Hatchback,White,1000,1,Colombo,Used`,
+        `${duplicate},Toyota,Vitz,2015,3500000,45000,Petrol,Automatic,Hatchback,White,1000,1,Colombo,Used,Car`,
       ].join('\n'),
     );
     await orchestrator.run(secondJob);
@@ -380,8 +380,8 @@ describeWithDatabase('LocalOrchestrator (integration)', () => {
     const jobId = await upload(
       [
         HEADER,
-        `${duplicate},Toyota,Vitz,2015,3500000,45000,Petrol,Automatic,Hatchback,White,1000,1,Colombo,Used`,
-        `${duplicate},Toyota,Vitz,2016,3600000,40000,Petrol,Automatic,Hatchback,White,1000,1,Colombo,Used`,
+        `${duplicate},Toyota,Vitz,2015,3500000,45000,Petrol,Automatic,Hatchback,White,1000,1,Colombo,Used,Car`,
+        `${duplicate},Toyota,Vitz,2016,3600000,40000,Petrol,Automatic,Hatchback,White,1000,1,Colombo,Used,Car`,
       ].join('\n'),
     );
 

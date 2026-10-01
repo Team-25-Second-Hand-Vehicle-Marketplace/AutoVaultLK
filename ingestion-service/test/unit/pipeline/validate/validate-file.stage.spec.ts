@@ -13,7 +13,7 @@ import {
 import type { StageContext } from '../../../../src/workers/etl-worker/pipeline/types';
 
 const HEADER =
-  'registration_number,make,model,year,price,mileage,fuel_type,transmission,color,engine_capacity_cc,owners_count,location_district,condition';
+  'registration_number,make,model,year,price,mileage,fuel_type,transmission,color,engine_capacity_cc,owners_count,location_district,condition,vehicle_type';
 
 const zipEntry = (path: string, uncompressedSize = 1024) => ({
   type: 'File',
@@ -104,13 +104,14 @@ describe('validateFileStage', () => {
       'owners_count',
       'location_district',
       'condition',
+      'vehicle_type',
     ]);
     expect(result.byteLength).toBeGreaterThan(0);
   });
 
   it('folds header aliases, casing and spacing to canonical names', async () => {
     const result = await run(
-      'Manufacturer, Variant ,YOM,Asking Price,Odometer,Fuel,Gear,Color,Engine,Owners,District,Condition\n',
+      'Manufacturer, Variant ,YOM,Asking Price,Odometer,Fuel,Gear,Color,Engine,Owners,District,Condition,Vehicle Type\n',
     );
 
     expect(result.headers).toEqual([
@@ -126,6 +127,7 @@ describe('validateFileStage', () => {
       'owners_count',
       'location_district',
       'condition',
+      'vehicle_type',
     ]);
   });
 
@@ -136,6 +138,15 @@ describe('validateFileStage', () => {
 
     await expect(run(`${withoutCondition}\n`)).rejects.toThrow(
       /Missing required columns: condition/,
+    );
+  });
+
+  it('rejects a file with no vehicle_type column, naming it', async () => {
+    // A silent default listed bikes and lorries as cars, and dropped their
+    // category-specific columns, so the column must be present.
+    const withoutType = HEADER.replace(',vehicle_type', '');
+    await expect(run(`${withoutType}\n`)).rejects.toThrow(
+      /Missing required columns: vehicle_type/,
     );
   });
 

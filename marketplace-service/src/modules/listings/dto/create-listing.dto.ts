@@ -72,9 +72,11 @@ export class CreateListingDto {
   @IsUUID()
   dealerId?: string;
 
-  @IsOptional()
+  // Required: it decides which category-specific specs apply, so it is never
+  // defaulted. (UpdateListingDto makes every field optional, so a PATCH can
+  // still leave it alone.)
   @IsEnum(VehicleTypeDto)
-  vehicleType?: VehicleTypeDto;
+  vehicleType: VehicleTypeDto;
 
   @IsString()
   @IsNotEmpty()

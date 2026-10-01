@@ -1,0 +1,5 @@
+make,model,year,price,mileage,fuel_type,transmission,color,engine_capacity_cc,owners_count,location_district,condition,vehicle_type,registration_number,body_type,location_city,chassis_number,description,is_negotiable,registration_year,seats,doors,airbags,load_capacity_kg,drive_type,sunroof,full_option,alloy_wheels,reverse_camera,leather_seats,power_steering,air_conditioning,stroke_type,cooling_system,start_type,abs_equipped,seating_capacity,roof_type,wheelbase,door_configuration,payload_capacity_kg,axle_count,cargo_bed_type
+Toyota,Aqua,2018,6500000,45000,Hybrid,Automatic,White,1500,1,Colombo,Used,Car,VTCHECK-1,Hatchback,Nugegoda,,"Single owner, full service history.",true,,5,5,2,,FWD,yes,,yes,,,,yes,,,,,,,,,,,
+Toyota,Hilux,2016,9800000,88000,Diesel,Manual,Silver,2400,2,Kandy,Used,Pickup,VTCHECK-2,,Peradeniya,,,false,,,,,1000,,,,,,,,yes,,,,,,,,,1000,2,Flatbed
+Honda,Civic,2019,8200000,30000,Petrol,Automatic,Black,1800,1,Gampaha,Used,Hoverboard,VTCHECK-3,Sedan,Negombo,,,true,,5,4,,,,,,,,,,,,,,,,,,,,,
+Bajaj,Pulsar,2021,640000,12000,Petrol,Manual,Red,150,1,Galle,Used,Bike,VTCHECK-4,,Karapitiya,,,true,,,,,,,yes,,yes,,yes,,yes,4-Stroke,Air,Electric,yes,,,,,,,

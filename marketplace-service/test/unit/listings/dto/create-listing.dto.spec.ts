@@ -21,6 +21,7 @@ function validateCreate(body: Record<string, unknown>) {
 }
 
 const VALID_LISTING = {
+  vehicleType: 'CAR',
   make: 'Toyota',
   model: 'Aqua',
   manufactureYear: 2018,
@@ -37,6 +38,14 @@ const VALID_LISTING = {
 describe('CreateListingDto', () => {
   it('accepts a minimal valid payload', () => {
     expect(validateCreate(VALID_LISTING)).toHaveLength(0);
+  });
+
+  it('requires a vehicleType: it decides which category specs apply, so it is never defaulted', () => {
+    const { vehicleType: _omitted, ...withoutType } = VALID_LISTING;
+
+    const errors = validateCreate(withoutType);
+
+    expect(errors.map((e) => e.property)).toContain('vehicleType');
   });
 
   it('accepts (but does not require) a client-supplied dealerId - the service ignores it anyway', () => {

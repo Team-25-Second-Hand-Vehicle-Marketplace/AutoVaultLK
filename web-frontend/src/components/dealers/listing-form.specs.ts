@@ -67,7 +67,27 @@ export const BIKE_TYPES = ['BIKE']
 export const VAN_BUS_TYPES = ['VAN', 'BUS']
 export const TRUCK_TYPES = ['TRUCK', 'LORRY', 'PICKUP']
 
-/** Equipment that applies to every vehicle type. */
+/**
+ * Comfort equipment that makes no sense on these types (a sunroof on a motor
+ * bike). Mirrors the ETL's rule in ingestion-service's enrich stage, so a
+ * listing entered by hand and one uploaded in a CSV end up the same.
+ */
+export const NO_COMFORT_EQUIPMENT_TYPES = ['BIKE', 'THREE_WHEELER']
+const COMFORT_EQUIPMENT_KEYS = new Set([
+  'sunroof',
+  'full_option',
+  'reverse_camera',
+  'leather_seats',
+  'power_steering',
+  'air_conditioning',
+])
+
+/** Whether an equipment item can exist on this vehicle type. */
+export function equipmentAvailable(vehicleType: string, key: string): boolean {
+  return !(NO_COMFORT_EQUIPMENT_TYPES.includes(vehicleType) && COMFORT_EQUIPMENT_KEYS.has(key))
+}
+
+/** Equipment: every type has it, except the comfort items above on bikes and three-wheelers. */
 export const EQUIPMENT = [
   { field: 'sunroof', key: 'sunroof', label: 'Sunroof' },
   { field: 'fullOption', key: 'full_option', label: 'Full option' },
@@ -162,7 +182,9 @@ export function buildSpecs(
     put('axle_count', values.axleCount)
     put('cargo_bed_type', values.cargoBedType)
   }
-  for (const { field, key } of EQUIPMENT) put(key, values[field])
+  for (const { field, key } of EQUIPMENT) {
+    if (equipmentAvailable(type, key)) put(key, values[field])
+  }
 
   return specs
 }

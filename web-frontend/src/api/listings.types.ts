@@ -216,7 +216,7 @@ export interface CreateListingInput {
   engineCapacityCc: number
   ownersCount: number
   locationDistrict: string
-  vehicleType?: ListableVehicleType
+  vehicleType: ListableVehicleType
   condition?: Condition
   registrationYear?: number
   locationCity?: string

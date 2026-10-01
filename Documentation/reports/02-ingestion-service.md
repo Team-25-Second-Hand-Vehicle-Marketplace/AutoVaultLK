@@ -232,8 +232,16 @@ dealer-facing downloadable template.
   listing missing any was judged too thin for a buyer to evaluate.
 - **`registration_number` is *not* required** - unregistered imports are legitimate
   stock - but it is the key the image matcher uses.
-- **`vehicle_type` is not required** either; it falls back to dictionary derivation,
-  then the schema default `CAR`.
+- **`vehicle_type` is required** (the column must exist). A blank cell is filled from
+  the matched make and model where that is unambiguous (a Hilux is a pickup); a row
+  whose type still cannot be determined is rejected with that reason, not silently
+  listed as a `CAR`. A silent default dropped the category-specific columns of every
+  bike, van and truck.
+- **Columns that do not apply to the row's vehicle type** (a sunroof on a bike, an
+  axle count on a car) are not stored. `ENRICH` records them in the listing's
+  normalization provenance at low confidence, so the row sorts to the top of the
+  dealer's review queue with a note naming the ignored columns. Blank cells and a plain
+  "no" are not reported.
 - **`KNOWN_COLUMNS`** adds spec columns and category-gated columns (bike stroke type,
   van roof type, truck axle count…). An **unknown column is not an error** - dealers
   export from their own DMS - it is appended to the description by `ENRICH` rather

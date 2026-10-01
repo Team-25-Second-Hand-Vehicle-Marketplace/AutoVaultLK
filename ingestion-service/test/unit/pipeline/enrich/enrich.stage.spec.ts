@@ -360,3 +360,117 @@ describe('enrichStage', () => {
     expect(enrichStage.stage).toBe('ENRICH');
   });
 });
+
+describe('values that do not apply to the vehicle type', () => {
+  const type = (vehicleType: VehicleFields['vehicleType']) => ({ vehicleType });
+
+  it('does not store a sunroof on a bike, and flags the row for review', async () => {
+    const out = await enrich(row(type('BIKE'), { sunroof: 'Yes' }));
+
+    expect(out.normalized.specs?.sunroof).toBeUndefined();
+    expect(out.provenance?.specs?.reasoning).toMatch(/Ignored for a bike: sunroof/);
+    expect(out.provenance?.specs?.confidence).toBeLessThan(0.6);
+  });
+
+  it('lowers the row confidence so the row sorts to the top of the review queue', async () => {
+    const out = await enrich(row(type('BIKE'), { sunroof: 'yes' }));
+
+    expect(out.confidence).toBeLessThan(0.6);
+  });
+
+  it('names every ignored column in one note', async () => {
+    const out = await enrich(
+      row(type('BIKE'), { sunroof: 'yes', leather_seats: 'true', air_conditioning: 'y' }),
+    );
+
+    const note = out.provenance?.specs?.reasoning ?? '';
+    expect(note).toMatch(/sunroof/);
+    expect(note).toMatch(/leather seats/);
+    expect(note).toMatch(/air conditioning/);
+    expect(note).toMatch(/They do not apply/);
+  });
+
+  it('keeps alloy wheels on a bike, which is a real feature there', async () => {
+    const out = await enrich(row(type('BIKE'), { alloy_wheels: 'yes' }));
+
+    expect(out.normalized.specs).toMatchObject({ alloy_wheels: true });
+    expect(out.provenance?.specs).toBeUndefined();
+  });
+
+  it('does not flag a plain "no" or a blank, which are true or simply empty', async () => {
+    const out = await enrich(row(type('BIKE'), { sunroof: 'no', leather_seats: '', abs: 'yes' }));
+
+    expect(out.provenance?.specs).toBeUndefined();
+    expect(out.confidence).toBe(1);
+  });
+
+  it('still allows a sunroof on a van or truck, where a cab can have one', async () => {
+    const van = await enrich(row(type('VAN'), { sunroof: 'yes' }));
+    const truck = await enrich(row(type('TRUCK'), { air_conditioning: 'yes' }));
+
+    expect(van.normalized.specs).toMatchObject({ sunroof: true });
+    expect(truck.normalized.specs).toMatchObject({ air_conditioning: true });
+    expect(van.provenance?.specs).toBeUndefined();
+  });
+
+  it('flags a bike-only column on a car instead of dropping it silently', async () => {
+    const out = await enrich(row(type('CAR'), { stroke_type: '4-Stroke' }));
+
+    expect(out.normalized.specs?.stroke_type).toBeUndefined();
+    expect(out.provenance?.specs?.reasoning).toMatch(/Ignored for a car: stroke type/);
+  });
+
+  it('flags a truck column on a car, and uses the singular for one column', async () => {
+    const out = await enrich(row(type('CAR'), { axle_count: '3' }));
+
+    expect(out.provenance?.specs?.reasoning).toMatch(/It does not apply/);
+  });
+
+  it('leaves a correctly typed row alone', async () => {
+    const out = await enrich(row(type('BIKE'), { stroke_type: '4-Stroke', abs_equipped: 'yes' }));
+
+    expect(out.normalized.specs).toMatchObject({ stroke_type: '4_STROKE', abs_equipped: true });
+    expect(out.provenance?.specs).toBeUndefined();
+    expect(out.confidence).toBe(1);
+  });
+
+  it('keeps provenance the pipeline already recorded for other fields', async () => {
+    const r = row(type('BIKE'), { sunroof: 'yes' });
+    r.provenance = { make: { source: 'dictionary', confidence: 1 } };
+
+    const out = await enrich(r);
+
+    expect(out.provenance?.make).toEqual({ source: 'dictionary', confidence: 1 });
+    expect(out.provenance?.specs).toBeDefined();
+  });
+});
+
+describe('a vehicle type the dealer wrote that we could not read', () => {
+  it('flags it at low confidence and says which type was used instead', async () => {
+    const out = await enrich(row({ vehicleType: 'CAR' }, { vehicle_type: 'Hoverboard' }));
+
+    expect(out.provenance?.vehicleType?.confidence).toBeLessThan(0.6);
+    expect(out.provenance?.vehicleType?.reasoning).toMatch(
+      /Vehicle type "Hoverboard" was not recognised, so "car" was used/,
+    );
+    expect(out.confidence).toBeLessThan(0.6);
+  });
+
+  it('does not flag a type that was read, or a blank cell filled in from the model', async () => {
+    const read = await enrich(row({ vehicleType: 'PICKUP' }, { vehicle_type: 'Pick-up' }));
+    const blank = await enrich(row({ vehicleType: 'PICKUP' }, { vehicle_type: '' }));
+
+    expect(read.provenance?.vehicleType).toBeUndefined();
+    expect(blank.provenance?.vehicleType).toBeUndefined();
+    expect(blank.confidence).toBe(1);
+  });
+
+  it('reports both problems when the type was unreadable and a column does not apply', async () => {
+    const out = await enrich(
+      row({ vehicleType: 'CAR' }, { vehicle_type: 'Hoverboard', stroke_type: '4-Stroke' }),
+    );
+
+    expect(out.provenance?.vehicleType?.reasoning).toMatch(/not recognised/);
+    expect(out.provenance?.specs?.reasoning).toMatch(/Ignored for a car: stroke type/);
+  });
+});

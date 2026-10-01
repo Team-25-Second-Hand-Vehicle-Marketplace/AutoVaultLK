@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -33,6 +33,7 @@ import {
   TRUCK_TYPES,
   VAN_BUS_TYPES,
   buildSpecs,
+  equipmentAvailable,
   specFlag,
   specText,
 } from './listing-form.specs'
@@ -135,7 +136,15 @@ const schema = z
       .min(1, 'District is required')
       .max(100, 'At most 100 characters'),
 
-    vehicleType: z.enum(LISTABLE_VEHICLE_TYPES).optional().or(z.literal('')),
+    // Required, and it decides which of the fields below apply, so the select
+    // starts empty and the dependent fields stay locked until it is chosen.
+    vehicleType: z
+      .enum(LISTABLE_VEHICLE_TYPES)
+      .or(z.literal(''))
+      .refine(
+        (v): v is (typeof LISTABLE_VEHICLE_TYPES)[number] => v !== '',
+        'Select a vehicle type',
+      ),
     condition: z.enum(CONDITIONS).optional().or(z.literal('')),
 
     registrationYear: z
@@ -215,7 +224,7 @@ function toInput(
     engineCapacityCc: values.engineCapacityCc,
     ownersCount: values.ownersCount,
     locationDistrict: values.locationDistrict,
-    ...(values.vehicleType ? { vehicleType: values.vehicleType } : {}),
+    vehicleType: values.vehicleType,
     ...(values.condition ? { condition: values.condition } : {}),
     ...(typeof values.registrationYear === 'number'
       ? { registrationYear: values.registrationYear }
@@ -285,6 +294,7 @@ export function ListingForm({
     register,
     handleSubmit,
     control,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<ListingFormInput, unknown, ListingFormValues>({
     resolver: zodResolver(schema),
@@ -345,8 +355,34 @@ export function ListingForm({
       : undefined,
   })
 
-  // A blank vehicle type is stored as CAR, so it shows the car fields.
-  const effectiveType = useWatch({ control, name: 'vehicleType' }) || 'CAR'
+  // Nothing is assumed for a blank type: the fields that depend on it stay
+  // locked until the dealer chooses one.
+  const selectedType = useWatch({ control, name: 'vehicleType' }) || ''
+  const typeChosen = selectedType !== ''
+
+  // A value typed under one vehicle type must not linger, invisibly, once that
+  // type's fields are hidden: a stale out-of-range number would block the
+  // submit with an error on a field the dealer can no longer see.
+  useEffect(() => {
+    if (!selectedType) return
+    const clear = (fields: (keyof ListingFormInput)[], empty: '' | false) =>
+      fields.forEach((field) => setValue(field, empty as never))
+
+    if (!CAR_SUV_TYPES.includes(selectedType)) clear(['seats', 'doors', 'airbags', 'driveType'], '')
+    if (!BIKE_TYPES.includes(selectedType)) {
+      clear(['strokeType', 'coolingSystem', 'startType'], '')
+      clear(['absEquipped'], false)
+    }
+    if (!VAN_BUS_TYPES.includes(selectedType)) {
+      clear(['seatingCapacity', 'roofType', 'wheelbase', 'doorConfiguration'], '')
+    }
+    if (!TRUCK_TYPES.includes(selectedType)) {
+      clear(['loadCapacityKg', 'payloadCapacityKg', 'axleCount', 'cargoBedType'], '')
+    }
+    for (const { field, key } of EQUIPMENT) {
+      if (!equipmentAvailable(selectedType, key)) setValue(field, false)
+    }
+  }, [selectedType, setValue])
 
   const onFilesSelected = (fileList: FileList | null) => {
     setImageError(null)
@@ -402,6 +438,18 @@ export function ListingForm({
       noValidate
     >
       <div className="listing-form__grid">
+        <SelectField
+          label="Vehicle type"
+          options={LISTABLE_VEHICLE_TYPES}
+          placeholder="Select a vehicle type"
+          format={humanizeEnum}
+          error={errors.vehicleType?.message}
+          {...register('vehicleType')}
+        />
+        <p className="listing-form__hint">
+          Choose this first. It decides which of the other details apply.
+        </p>
+
         <FormField
           label="Make"
           placeholder="Toyota"
@@ -466,14 +514,6 @@ export function ListingForm({
         />
 
         <SelectField
-          label="Vehicle type (optional)"
-          options={LISTABLE_VEHICLE_TYPES}
-          placeholder="Not specified"
-          format={humanizeEnum}
-          error={errors.vehicleType?.message}
-          {...register('vehicleType')}
-        />
-        <SelectField
           label="Condition (optional)"
           options={CONDITIONS}
           placeholder="Not specified"
@@ -521,7 +561,8 @@ export function ListingForm({
         <SelectField
           label="Body type (optional)"
           options={BODY_TYPES}
-          placeholder="Not specified"
+          placeholder={typeChosen ? 'Not specified' : 'Choose a vehicle type first'}
+          disabled={!typeChosen}
           format={humanizeEnum}
           error={errors.bodyType?.message}
           {...register('bodyType')}
@@ -550,7 +591,7 @@ export function ListingForm({
         Price is negotiable
       </label>
 
-      {CAR_SUV_TYPES.includes(effectiveType) && (
+      {CAR_SUV_TYPES.includes(selectedType) && (
         <fieldset className="listing-form__section">
           <legend>Car &amp; SUV details</legend>
           <div className="listing-form__grid">
@@ -586,7 +627,7 @@ export function ListingForm({
         </fieldset>
       )}
 
-      {BIKE_TYPES.includes(effectiveType) && (
+      {BIKE_TYPES.includes(selectedType) && (
         <fieldset className="listing-form__section">
           <legend>Bike details</legend>
           <div className="listing-form__grid">
@@ -622,7 +663,7 @@ export function ListingForm({
         </fieldset>
       )}
 
-      {VAN_BUS_TYPES.includes(effectiveType) && (
+      {VAN_BUS_TYPES.includes(selectedType) && (
         <fieldset className="listing-form__section">
           <legend>Van &amp; bus details</legend>
           <div className="listing-form__grid">
@@ -661,7 +702,7 @@ export function ListingForm({
         </fieldset>
       )}
 
-      {TRUCK_TYPES.includes(effectiveType) && (
+      {TRUCK_TYPES.includes(selectedType) && (
         <fieldset className="listing-form__section">
           <legend>Truck, lorry &amp; pickup details</legend>
           <div className="listing-form__grid">
@@ -698,15 +739,32 @@ export function ListingForm({
         </fieldset>
       )}
 
-      <fieldset className="listing-form__section">
+      {!typeChosen && (
+        <p className="listing-form__locked" role="status">
+          Choose a vehicle type to unlock the details and equipment that apply to it.
+        </p>
+      )}
+
+      <fieldset className="listing-form__section" disabled={!typeChosen}>
         <legend>Equipment</legend>
         <div className="listing-form__checks">
-          {EQUIPMENT.map(({ field, label }) => (
-            <label key={field} className="toggle-filter">
-              <input type="checkbox" {...register(field)} />
-              {label}
-            </label>
-          ))}
+          {EQUIPMENT.map(({ field, key, label }) => {
+            const available = equipmentAvailable(selectedType, key)
+            return (
+              <label
+                key={field}
+                className="toggle-filter"
+                title={
+                  typeChosen && !available
+                    ? `Not applicable to a ${humanizeEnum(selectedType).toLowerCase()}`
+                    : undefined
+                }
+              >
+                <input type="checkbox" disabled={typeChosen && !available} {...register(field)} />
+                {label}
+              </label>
+            )
+          })}
         </div>
       </fieldset>
 

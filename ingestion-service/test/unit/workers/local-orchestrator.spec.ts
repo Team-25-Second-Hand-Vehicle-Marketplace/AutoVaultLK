@@ -5,9 +5,9 @@ import { __setEmbedder } from '../../../src/workers/etl-worker/pipeline/embed/em
 import type { DictionaryRow } from '../../../src/workers/etl-worker/pipeline/normalize/dictionary-snapshot';
 
 const HEADER =
-  'registration_number,make,model,year,price,mileage,fuel_type,transmission,color,engine_capacity_cc,owners_count,location_district,condition';
+  'registration_number,make,model,year,price,mileage,fuel_type,transmission,color,engine_capacity_cc,owners_count,location_district,condition,vehicle_type';
 const ROW = (n: number) =>
-  `CAB-${n},Toyota,Vitz,2015,3500000,45000,PETROL,AUTOMATIC,White,1000,1,Colombo,Used`;
+  `CAB-${n},Toyota,Vitz,2015,3500000,45000,PETROL,AUTOMATIC,White,1000,1,Colombo,Used,Car`;
 
 const DICTIONARY = new InMemoryDictionarySnapshot([
   {

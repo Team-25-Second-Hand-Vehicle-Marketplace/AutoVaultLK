@@ -53,7 +53,7 @@ describe('ListingRepository', () => {
   }
 
   describe('create', () => {
-    it('defaults vehicleType to CAR when the DTO omits it, and stores the required condition as given', async () => {
+    it('stores the vehicleType and condition it is given, defaulting neither', async () => {
       vehicleRepo.create.mockReturnValue(vehicle());
       vehicleRepo.save.mockResolvedValue(vehicle());
 
@@ -62,7 +62,8 @@ describe('ListingRepository', () => {
           dealerId: 'dealer-1',
           make: 'Toyota',
           model: 'Aqua',
-          // condition is required by CreateListingDto, so it is never defaulted here.
+          // vehicleType is required by CreateListingDto, so it is never defaulted here.
+          vehicleType: 'BIKE',
           condition: 'RECONDITIONED',
         } as never,
         'LIVE',
@@ -70,7 +71,7 @@ describe('ListingRepository', () => {
 
       expect(vehicleRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          vehicleType: 'CAR',
+          vehicleType: 'BIKE',
           condition: 'RECONDITIONED',
           status: 'LIVE',
         }),

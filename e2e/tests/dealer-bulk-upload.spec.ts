@@ -68,9 +68,9 @@ test('verified business dealer can bulk upload, watch job progress, and review a
   const regA = `E2E-${randomUUID().slice(0, 8).toUpperCase()}`;
   const regB = `E2E-${randomUUID().slice(0, 8).toUpperCase()}`;
   const csv = [
-    'registration_number,make,model,year,price,mileage,fuel_type,transmission,color,engine_capacity_cc,owners_count,location_district,condition',
-    `${regA},Toyota,Corolla,2020,5500000,45000,Petrol,Automatic,White,1500,1,Colombo,Used`,
-    `${regB},Honda,Civic,2018,-100,30000,Petrol,Manual,Black,1600,2,Gampaha,Used`,
+    'registration_number,make,model,year,price,mileage,fuel_type,transmission,color,engine_capacity_cc,owners_count,location_district,condition,vehicle_type',
+    `${regA},Toyota,Corolla,2020,5500000,45000,Petrol,Automatic,White,1500,1,Colombo,Used,Car`,
+    `${regB},Honda,Civic,2018,-100,30000,Petrol,Manual,Black,1600,2,Gampaha,Used,Car`,
     '',
   ].join('\n');
   const csvDir = path.join(os.tmpdir(), 'autovault-e2e');

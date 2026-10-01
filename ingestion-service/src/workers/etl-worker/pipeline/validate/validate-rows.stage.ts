@@ -128,13 +128,24 @@ function checkRow(row: NormalizedRow): string[] {
   }
   if (!f.locationDistrict) reasons.push(missing('location_district', row));
 
-  // vehicleType and condition are required by the column but supplied by
-  // derivation and defaulting rather than by the dealer, so an absent value
-  // here is not reported as a missing cell - enrich fills them. Only a value
-  // that is present and invalid is worth rejecting.
-  if (f.vehicleType !== undefined && !VEHICLE_TYPES.includes(f.vehicleType)) {
+  // vehicle_type is required. A blank cell is acceptable when parseNormalize
+  // could infer the type from the matched make/model (a Hilux is a pickup), so
+  // only a row where it is still unknown is rejected: guessing would list a
+  // bike or a lorry as a car, and drop the category-specific columns with it.
+  if (f.vehicleType === undefined) {
+    const raw = row.raw['vehicle_type']?.trim();
+    reasons.push(
+      raw
+        ? `vehicle_type "${raw}" could not be recognised`
+        : 'vehicle_type is missing and could not be worked out from the make and model',
+    );
+  } else if (!VEHICLE_TYPES.includes(f.vehicleType)) {
     reasons.push(`vehicle_type "${f.vehicleType}" is not a recognised type`);
   }
+
+  // condition is required by the column but defaulted rather than supplied by
+  // the dealer, so an absent value is not reported as a missing cell - enrich
+  // fills it. Only a value that is present and invalid is worth rejecting.
   if (f.condition !== undefined && !CONDITIONS.includes(f.condition as never)) {
     reasons.push(`condition "${f.condition}" is not one of NEW, USED, RECONDITIONED`);
   }

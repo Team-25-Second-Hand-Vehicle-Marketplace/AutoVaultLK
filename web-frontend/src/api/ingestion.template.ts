@@ -68,6 +68,7 @@ export const REQUIRED_COLUMNS = [
   'owners_count',
   'location_district',
   'condition',
+  'vehicle_type',
 ] as const
 
 export function isRequired(column: string): boolean {
@@ -83,7 +84,7 @@ export function isRequired(column: string): boolean {
  */
 export const COLUMN_HELP: Record<string, string> = {
   vehicle_type:
-    'Car, Bike, Van, Truck, SUV, Bus, Three Wheeler, Lorry, Pickup, Tractor or Heavy Machinery. Defaults to Car if left blank or unrecognised.',
+    'Car, Bike, Van, Truck, SUV, Bus, Three Wheeler, Lorry, Pickup, Tractor or Heavy Machinery. If a cell is blank we work it out from the make and model where we can (a Hilux is a pickup); a row where we cannot is rejected. Columns that do not apply to the type, such as a sunroof on a Bike, are ignored and flagged on the listing for your review.',
   registration_number:
     'Plate, e.g. CAB-1234. Leave blank for unregistered imports - but images are matched on it.',
   make: 'Manufacturer, e.g. Toyota. Misspellings are corrected where possible - see "Known makes & models" below to check spelling before uploading.',

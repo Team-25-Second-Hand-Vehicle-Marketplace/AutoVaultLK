@@ -203,13 +203,29 @@ describe('validateRowsStage', () => {
     });
   });
 
-  it('does not reject a row for an absent vehicleType or condition', async () => {
-    // Both are required columns but supplied by derivation and defaulting -
-    // enrich fills them. Reporting them as missing cells would blame the
-    // dealer for a column the contract does not require.
-    const result = await run([without('vehicleType'), without('condition')]);
+  it('does not reject a row for an absent condition', async () => {
+    // Required as a column, but a blank cell is defaulted by enrich, so
+    // reporting it as missing would blame the dealer for something we fill in.
+    const result = await run([without('condition')]);
 
-    expect(result.rows).toHaveLength(2);
+    expect(result.rows).toHaveLength(1);
+  });
+
+  it('rejects a row whose vehicle type could not be worked out, saying so', async () => {
+    // parseNormalize infers it from the make/model where it can; when it cannot,
+    // guessing would list a bike or a lorry as a car.
+    const result = await run([without('vehicleType', { raw: { vehicle_type: '' } })]);
+
+    expect(result.rows).toHaveLength(0);
+    expect(result.rejections[0].reason).toBe(
+      'vehicle_type is missing and could not be worked out from the make and model',
+    );
+  });
+
+  it('names an unrecognised vehicle type cell rather than calling it missing', async () => {
+    const result = await run([without('vehicleType', { raw: { vehicle_type: 'Spaceship' } })]);
+
+    expect(result.rejections[0].reason).toBe('vehicle_type "Spaceship" could not be recognised');
   });
 
   it('carries the raw cells into the rejection for the dealer report', async () => {

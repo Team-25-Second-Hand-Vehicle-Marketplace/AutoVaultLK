@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { MoreThanOrEqual, Repository } from 'typeorm';
+import { In, MoreThanOrEqual, Repository } from 'typeorm';
 
 import {
   Vehicle,
@@ -43,7 +43,7 @@ export class ListingRepository {
   async create(dto: CreateListingDto, status: VehicleStatus) {
     const vehicle = this.vehicleRepo.create({
       dealerId: dto.dealerId,
-      vehicleType: dto.vehicleType ?? 'CAR',
+      vehicleType: dto.vehicleType,
       make: dto.make,
       model: dto.model,
       condition: dto.condition ?? 'USED',
@@ -259,6 +259,22 @@ export class ListingRepository {
   async approveAllPending(dealerId: string): Promise<number> {
     const result = await this.vehicleRepo.update(
       { dealerId, status: 'PENDING_REVIEW' },
+      { status: 'LIVE' },
+    );
+    return result.affected ?? 0;
+  }
+
+  /**
+   * Approves only the listed ids, and only those that are the dealer's own and
+   * still PENDING_REVIEW. Anything else in `ids` (someone else's listing, one
+   * already live, one that does not exist) is skipped rather than failing the
+   * lot, because the dealer's view can be stale by the time they click. The
+   * dealer and status conditions live in the WHERE clause itself, so a crafted
+   * id list can never touch another dealer's rows.
+   */
+  async approveSelected(dealerId: string, ids: string[]): Promise<number> {
+    const result = await this.vehicleRepo.update(
+      { dealerId, status: 'PENDING_REVIEW', id: In(ids) },
       { status: 'LIVE' },
     );
     return result.affected ?? 0;
