@@ -1,9 +1,12 @@
 import { parse } from 'csv-parse';
+import type { UploadFileFormat } from '../../../../infrastructure/database/entities/upload-job.entity';
 import { normalizeHeader } from './csv-contract';
 import type { RawRow, StageContext, StageRunner } from '../types';
 
 export type SplitChunksInput = {
   key: string;
+  /** Not yet consulted: every job is parsed as CSV until JSON readers land. */
+  format?: UploadFileFormat;
   /** Canonical headers from validateFile - re-derived, not trusted blindly. */
   headers: string[];
 };

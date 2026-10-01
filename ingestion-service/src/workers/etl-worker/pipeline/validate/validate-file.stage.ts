@@ -1,5 +1,6 @@
 import { parse } from 'csv-parse/sync';
 import unzipper from 'unzipper';
+import type { UploadFileFormat } from '../../../../infrastructure/database/entities/upload-job.entity';
 import { normalizeHeader, REQUIRED_COLUMNS } from '../parse/csv-contract';
 import type { StageContext, StageRunner } from '../types';
 
@@ -26,6 +27,12 @@ export type ValidateFileInput = {
   key: string;
   fileName: string;
   /**
+   * Format the dealer declared at upload. Carried so the stage can pick its
+   * reader; every job is still read as CSV until JSON readers land, so this is
+   * not yet consulted.
+   */
+  format?: UploadFileFormat;
+  /**
    * ObjectStore key of the dealer's photo archive, `raw/{jobId}/{zipFileName}`.
    * Optional: a dealer may upload inventory with no photos at all, which is
    * legitimate (FR-35.2 covers rows with no registration match). When present,
@@ -39,6 +46,8 @@ export type ValidateFileInput = {
 
 export type ValidateFileOutput = {
   key: string;
+  /** Echoed so the next state does not have to re-read the job row. */
+  format: UploadFileFormat;
   /** Canonical column names in file order, for splitChunks to reuse. */
   headers: string[];
   byteLength: number;
@@ -127,7 +136,12 @@ export const validateFileStage: StageRunner<
       await assertValidZip(ctx, input.zipKey);
     }
 
-    return { key: input.key, headers, byteLength: head.byteLength };
+    return {
+      key: input.key,
+      format: input.format ?? 'csv',
+      headers,
+      byteLength: head.byteLength,
+    };
   },
 };
 

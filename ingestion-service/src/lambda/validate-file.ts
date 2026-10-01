@@ -1,3 +1,4 @@
+import type { UploadFileFormat } from '../infrastructure/database/entities/upload-job.entity';
 import {
   FileValidationError,
   validateFileStage,
@@ -10,6 +11,7 @@ export type ValidateFileOutput = {
   jobId: string;
   dealerId: string;
   key: string;
+  format: UploadFileFormat;
   headers: string[];
   zipKey: string | null;
 };
@@ -43,7 +45,12 @@ export const handler = async (input: ValidateFileInput): Promise<ValidateFileOut
   try {
     const result = await validateFileStage.run(
       stageContext(ctx, { jobId: job.id, dealerId: job.dealerId, chunkId: null }),
-      { key: job.csvS3Path, fileName: job.fileName, zipKey: job.zipS3Path ?? undefined },
+      {
+        key: job.csvS3Path,
+        fileName: job.fileName,
+        format: job.fileFormat,
+        zipKey: job.zipS3Path ?? undefined,
+      },
     );
 
     await log.finish(logId, 'SUCCEEDED', { metrics: { columns: result.headers.length } });
@@ -52,6 +59,7 @@ export const handler = async (input: ValidateFileInput): Promise<ValidateFileOut
       jobId: job.id,
       dealerId: job.dealerId,
       key: result.key,
+      format: result.format,
       headers: result.headers,
       // Carried forward through SplitChunksOutput so ProcessImages (which
       // reads this off ProcessRows' input, not off the job row) receives it.

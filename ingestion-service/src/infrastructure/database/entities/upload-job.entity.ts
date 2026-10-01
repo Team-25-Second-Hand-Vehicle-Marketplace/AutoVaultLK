@@ -11,6 +11,8 @@ import { EtlStageLog } from './etl-stage-log.entity';
 
 export type UploadJobStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'PARTIAL';
 
+export type UploadFileFormat = 'csv' | 'json';
+
 @Entity({ schema: 'ingestion', name: 'upload_jobs' })
 export class UploadJob {
   @PrimaryGeneratedColumn('uuid')
@@ -27,6 +29,10 @@ export class UploadJob {
 
   @Column({ name: 'zip_s3_path', type: 'varchar', length: 500, nullable: true })
   zipS3Path: string | null;
+
+  /** Declared by the dealer at upload; selects the reader the ETL worker uses. */
+  @Column({ name: 'file_format', type: 'varchar', length: 10, default: 'csv' })
+  fileFormat: UploadFileFormat;
 
   @Column({ type: 'varchar', length: 20, default: 'PENDING' })
   status: UploadJobStatus;

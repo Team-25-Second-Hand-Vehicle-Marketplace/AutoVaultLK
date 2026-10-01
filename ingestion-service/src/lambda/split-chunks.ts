@@ -38,7 +38,7 @@ export const handler = async (input: ValidateFileOutput): Promise<SplitChunksOut
   try {
     const result = await splitChunksStage.run(
       stageContext(ctx, { jobId: input.jobId, dealerId: input.dealerId, chunkId: null }),
-      { key: input.key, headers: input.headers },
+      { key: input.key, format: input.format, headers: input.headers },
     );
 
     // Recorded before the Map fans out, so a job that dies mid-flight still
