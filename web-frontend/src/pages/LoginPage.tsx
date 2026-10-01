@@ -88,6 +88,10 @@ export function LoginPage() {
             {...register('password')}
           />
 
+          <p className="auth-card__footer">
+            <Link to="/forgot-password">Forgot password?</Link>
+          </p>
+
           <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? 'Signing in…' : 'Sign in'}
           </Button>
