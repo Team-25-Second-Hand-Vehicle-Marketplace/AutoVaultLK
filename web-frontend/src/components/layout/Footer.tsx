@@ -49,6 +49,12 @@ export function Footer() {
           <Link to="/dealer/login">Dealer login</Link>
           <Link to="/search?verifiedDealersOnly=true">Verified dealer listings</Link>
         </nav>
+
+        <nav aria-label="Support">
+          <h3>Support</h3>
+          <a href="mailto:autovaultlk@gmail.com">autovaultlk@gmail.com</a>
+          <a href="tel:+94770308165">077 030 8165</a>
+        </nav>
       </div>
 
       <div className="nx-footer__bar">
