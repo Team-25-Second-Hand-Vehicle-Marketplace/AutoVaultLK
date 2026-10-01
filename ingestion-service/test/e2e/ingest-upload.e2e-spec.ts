@@ -213,15 +213,16 @@ describe('POST /ingest/upload (e2e)', () => {
     it('400s a field the interceptor does not declare', async () => {
       // FileFieldsInterceptor declares only `csv` and `zip`. Multer rejects
       // anything else outright rather than dropping it, so a frontend using
-      // the wrong field name gets "Unexpected field" — not the friendlier
+      // the wrong field name gets "Unexpected file field" — not the friendlier
       // "csv file is required". Pinned because that message is what a
-      // developer debugging a failed upload will search for.
+      // developer debugging a failed upload will search for. (Older multer
+      // versions worded this "Unexpected field"; the regex covers both.)
       const response = await request(app.getHttpServer())
         .post('/ingest/upload')
         .attach('file', Buffer.from(CSV), 'stock.csv')
         .expect(400);
 
-      expect(response.body.message).toMatch(/unexpected field/i);
+      expect(response.body.message).toMatch(/unexpected (file )?field/i);
       expect(store.put).not.toHaveBeenCalled();
     });
   });
