@@ -1,7 +1,7 @@
 name: Load Test - End to End (manual)
 
 # Manual trigger only — same reasoning as load-test.yml: this run takes
-# 1-65 minutes depending on level (0-4), registers 2-420 real accounts, performs
+# 1-15 minutes depending on level (0-4), registers 2-420 real accounts, performs
 # real file uploads, and exercises every backend service at once. Not
 # something every push/PR should pay for.
 on:

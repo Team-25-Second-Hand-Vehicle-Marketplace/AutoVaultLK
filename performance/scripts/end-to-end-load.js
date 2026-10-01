@@ -18,7 +18,7 @@ import { textSummary } from 'https://jslib.k6.io/k6-summary/0.1.0/index.js';
  * the more realistic "everything happening together" shape of production
  * traffic, not a single isolated actor.
  *
- * Three independent k6 scenarios, run concurrently by k6's own scheduler:
+ * Two independent k6 scenarios, run concurrently by k6's own scheduler:
  *   - buyer_traffic: NUM_BUYERS concurrent buyers, each looping through
  *     filtered search -> vehicle detail -> favourite. A small fraction
  *     (NL_SEARCH_BUYER_FRACTION) also issue a natural-language search each
@@ -40,6 +40,9 @@ import { textSummary } from 'https://jslib.k6.io/k6-summary/0.1.0/index.js';
  * answers. Ingestion jobs' own completion times have no NFR to gate on
  * (same reasoning as dealer-ingestion-baseline.js) and are reported only.
  *
+ * Run size is set by LEVEL (0-4, see LEVELS below). Level 0 is the smoke
+ * level; each level up adds buyers, dealers, CSV rows and images.
+ *
  * Points at local services by default; override AUTH_BASE_URL /
  * MARKETPLACE_BASE_URL / INGESTION_BASE_URL / ADMIN_BASE_URL to run the
  * exact same script against a deployed environment — no separate
@@ -55,14 +58,15 @@ const ADMIN_PASSWORD = __ENV.ADMIN_SEED_PASSWORD;
 
 /**
  * LEVEL presets (select with -e LEVEL=0..4; NUM_BUYERS / NUM_DEALERS may
- * still override a preset's counts). Levels 2-4 use 4 images per vehicle row; level 0 is exactly 2 rows / 3 images.
+ * still override a preset's counts). Levels 2-4 use 4 images per vehicle row;
+ * level 0 is exactly 2 rows / 3 images.
  *
  *   level  buyers  dealers  csv rows  images/dealer  buyer hold  dealer ceiling
- *     0       1       1         2          3             30s         3m   (smoke)
+ *     0       1       1         2          3             30s         3m
  *     1      50       3        15          0             2m          3m
  *     2      50       3        15         60             3m          6m
- *     3     200      10        50        200            10m         20m
- *     4     400      20       150        600            20m         45m
+ *     3     200      10        50        200            4m          10m
+ *     4     400      20       150        600            8m          20m
  *
  * Levels 2-4 upload a pre-generated CSV+ZIP pair per dealer. The pairs must be
  * generated immediately before each run (registration_number is globally
@@ -79,10 +83,11 @@ const LEVELS = {
   0: { buyers: 1, dealers: 1, rows: 2, images: 3, hold: '30s', dealerMaxSec: 180, nlFraction: 0.2 },
   1: { buyers: 50, dealers: 3, rows: 15, images: 0, hold: '2m', dealerMaxSec: 180, nlFraction: 0.2 },
   2: { buyers: 50, dealers: 3, rows: 15, images: 60, hold: '3m', dealerMaxSec: 360, nlFraction: 0.2 },
-  3: { buyers: 200, dealers: 10, rows: 50, images: 200, hold: '10m', dealerMaxSec: 1200, nlFraction: 0.1 },
-  4: { buyers: 400, dealers: 20, rows: 150, images: 600, hold: '20m', dealerMaxSec: 2700, nlFraction: 0.05 },
+  3: { buyers: 200, dealers: 10, rows: 50, images: 200, hold: '4m', dealerMaxSec: 600, nlFraction: 0.1 },
+  4: { buyers: 400, dealers: 20, rows: 150, images: 600, hold: '8m', dealerMaxSec: 1200, nlFraction: 0.05 },
 };
-const LEVEL = Number(__ENV.LEVEL || 1);
+// Buyers' tokens are minted in setup() and last 15m, so keep ramp + hold under that.
+const LEVEL = Number(__ENV.LEVEL || 0);
 const PRESET = LEVELS[LEVEL];
 if (!PRESET) {
   throw new Error(`LEVEL must be one of ${Object.keys(LEVELS).join(', ')} (got "${__ENV.LEVEL}")`);
@@ -90,6 +95,10 @@ if (!PRESET) {
 
 const NUM_BUYERS = Number(__ENV.NUM_BUYERS || PRESET.buyers);
 const NUM_DEALERS = Number(__ENV.NUM_DEALERS || PRESET.dealers);
+// __VU is numbered across ALL scenarios, so buyer VUs can carry any id in
+// 1..(NUM_BUYERS + NUM_DEALERS). One account per possible id keeps each buyer VU
+// on its own account; fewer accounts would map two VUs onto one buyer.
+const NUM_BUYER_ACCOUNTS = NUM_BUYERS + NUM_DEALERS;
 const NL_SEARCH_BUYER_FRACTION = Number(__ENV.NL_SEARCH_BUYER_FRACTION || PRESET.nlFraction);
 const DEALER_UPLOAD_ROWS = PRESET.rows;
 const DEALER_UPLOAD_IMAGES = PRESET.images;
@@ -154,15 +163,14 @@ const DOCUMENT_PNG_BASE64 =
 const CSV_HEADER =
   'registration_number,make,model,year,price,mileage,fuel_type,transmission,color,engine_capacity_cc,owners_count,location_district';
 
-
-// Only combinations the original 2-row script already proved valid.
+// Only make/model combinations already known to pass validation.
 const MAKES = [
   ['Toyota', 'Corolla', 'Petrol', 'Automatic', 1500],
   ['Honda', 'Civic', 'Petrol', 'Manual', 1600],
 ];
 const DISTRICTS = ['Colombo', 'Kandy'];
 
-/** Level 1 only: CSV-only rows, built inline so no fixture files are needed. */
+/** Level 1 only (CSV, no images): rows built inline, no fixture files needed. */
 function buildInlineCsv(regPrefix, rows) {
   const lines = [CSV_HEADER];
   for (let n = 1; n <= rows; n++) {
@@ -199,8 +207,8 @@ const NL_QUERIES = [
 ];
 
 /**
- * Registers NUM_BUYERS buyer accounts and NUM_DEALERS verified business
- * dealer accounts before either scenario starts, so all registration/
+ * Registers the buyer accounts and NUM_DEALERS verified business dealer
+ * accounts before either scenario starts, so all registration/
  * verification/approval cost stays out of the measured windows.
  *
  * Uses http.batch() for the registration calls themselves (the genuinely
@@ -223,7 +231,7 @@ export function setup() {
 
   // --- Batch-register all buyers concurrently ---
   const buyerRegisterRequests = [];
-  for (let i = 0; i < NUM_BUYERS; i++) {
+  for (let i = 0; i < NUM_BUYER_ACCOUNTS; i++) {
     buyerRegisterRequests.push([
       'POST',
       `${AUTH_BASE_URL}/auth/register/buyer`,
@@ -268,6 +276,25 @@ export function setup() {
     if (res.status !== 200 && res.status !== 201) {
       throw new Error(`setup: verification failed for buyer ${i} (status ${res.status})`);
     }
+  });
+
+  // Log every buyer in here, not inside the VUs. auth-user-service hashes with
+  // bcryptjs (pure JS, on the event loop), so one process manages only ~2-3
+  // logins/s; 200-400 buyers logging in during the ramp-up queue past k6's 60s
+  // request timeout and most never start. The measured window is meant to be
+  // browse/search/favourite traffic, so login throughput is kept out of it.
+  // Tokens last 15m (JWT_ACCESS_EXPIRES_IN), which covers every level's run.
+  const buyerLoginRequests = buyers.map((b, i) => [
+    'POST',
+    `${AUTH_BASE_URL}/auth/login`,
+    JSON.stringify({ email: b.email, password: b.password }),
+    { headers: jsonHeadersFor('buyer', i), timeout: '300s' },
+  ]);
+  http.batch(buyerLoginRequests).forEach((res, i) => {
+    if (res.status !== 200 && res.status !== 201) {
+      throw new Error(`setup: login failed for buyer ${i} (status ${res.status})`);
+    }
+    buyers[i].accessToken = JSON.parse(res.body).accessToken;
   });
 
   const searchRes = http.get(`${MARKETPLACE_BASE_URL}/search/filters?limit=1`);
@@ -391,31 +418,11 @@ export function setup() {
 
 /**
  * buyer_traffic scenario: filtered search -> detail -> favourite; a
- * fraction also issue NL search. Every path ends in sleep(1), including
- * the early-return failure paths below — see buyer-traffic-stress.js for
- * why: a VU whose login fails and returns immediately with no sleep spins
- * in a near-zero-cost tight loop instead of behaving like a paced session.
+ * fraction also issue NL search. Buyers arrive already logged in (see setup()).
+ * Every iteration ends in sleep(1) so a VU behaves like a paced session.
  */
 export function buyerTraffic(data) {
   const buyer = data.buyers[(__VU - 1) % data.buyers.length];
-
-  if (__ITER === 0) {
-    const loginRes = http.post(
-      `${AUTH_BASE_URL}/auth/login`,
-      JSON.stringify({ email: buyer.email, password: buyer.password }),
-      { headers: jsonHeadersFor('buyer', __VU - 1), tags: { name: 'login' } },
-    );
-    check(loginRes, { 'login succeeded': (r) => r.status === 200 || r.status === 201 });
-    if (loginRes.status !== 200 && loginRes.status !== 201) {
-      sleep(1);
-      return;
-    }
-    buyer.accessToken = JSON.parse(loginRes.body).accessToken;
-  }
-  if (!buyer.accessToken) {
-    sleep(1);
-    return;
-  }
 
   const authHeaders = {
     headers: { Authorization: `Bearer ${buyer.accessToken}`, 'Content-Type': 'application/json' },
