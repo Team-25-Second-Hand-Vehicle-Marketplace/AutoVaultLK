@@ -109,7 +109,7 @@ export function FilterSidebar({
     selectedTypes.some((t) => ['CAR', 'SUV', 'VAN', 'BUS', 'PICKUP'].includes(t))
 
   return (
-    <aside className="filter-sidebar" aria-label="Filter results">
+    <aside className="filter-sidebar" aria-label="Filter results" data-lenis-prevent>
       <div className="filter-sidebar__header">
         <h2>Filter Results</h2>
       </div>

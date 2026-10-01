@@ -15,6 +15,7 @@ type Args = {
   fromCsv?: string;
   count: number;
   perVehicle: number;
+  totalImages?: number;
   width: number;
   height: number;
   output: string;
@@ -26,6 +27,7 @@ function parseArguments(): Args {
   let fromCsv: string | undefined;
   let count = 10;
   let perVehicle = 2;
+  let totalImages: number | undefined;
   let width = 3000;
   let height = 2000;
   let output = 'test-data/generated-images.zip';
@@ -40,6 +42,9 @@ function parseArguments(): Args {
         break;
       case '--per-vehicle':
         perVehicle = Number(args[++i]);
+        break;
+      case '--total-images':
+        totalImages = Number(args[++i]);
         break;
       case '--width':
         width = Number(args[++i]);
@@ -59,11 +64,14 @@ function parseArguments(): Args {
   if (!Number.isInteger(perVehicle) || perVehicle <= 0) {
     throw new Error('--per-vehicle must be a positive integer');
   }
+  if (totalImages !== undefined && (!Number.isInteger(totalImages) || totalImages <= 0)) {
+    throw new Error('--total-images must be a positive integer');
+  }
   if (!Number.isInteger(width) || width <= 0 || !Number.isInteger(height) || height <= 0) {
     throw new Error('--width/--height must be positive integers');
   }
 
-  return { fromCsv, count, perVehicle, width, height, output };
+  return { fromCsv, count, perVehicle, totalImages, width, height, output };
 }
 
 /** Pulls registration_number out of a generator CSV — first column, header row skipped. */
@@ -141,8 +149,12 @@ async function main() {
   let totalOriginalBytes = 0;
   let fileCount = 0;
 
+  // --total-images caps the archive's entry count (for exact fixtures like
+  // "2 vehicles, 3 images"); vehicles are filled in order until it is reached.
+  const maxImages = args.totalImages ?? Infinity;
+
   for (const registration of registrations) {
-    for (let i = 1; i <= args.perVehicle; i++) {
+    for (let i = 1; i <= args.perVehicle && fileCount < maxImages; i++) {
       const buffer = await buildImage(registration, i, args.width, args.height);
       const name = i === 1 ? `${registration}.jpg` : `${registration}_${i}.jpg`;
       archive.append(buffer, { name });

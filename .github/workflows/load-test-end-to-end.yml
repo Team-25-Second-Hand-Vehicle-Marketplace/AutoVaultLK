@@ -1,8 +1,9 @@
-name: Load Test - CSV+ZIP Volume (manual)
+name: Load Test - End to End (manual)
 
-# Manual trigger only — same reasoning as load-test.yml. This run uploads a
-# 600-row CSV with a paired ~22MB ZIP of 1,800 real images together, and
-# takes several minutes to reach COMPLETED (measured locally: ~4m).
+# Manual trigger only — same reasoning as load-test.yml: this run takes
+# 1-65 minutes depending on level (0-4), registers 2-420 real accounts, performs
+# real file uploads, and exercises every backend service at once. Not
+# something every push/PR should pay for.
 on:
   workflow_dispatch:
     inputs:
@@ -10,6 +11,10 @@ on:
         description: 'auth-user-service base URL'
         required: false
         default: 'http://localhost:3001'
+      marketplace_base_url:
+        description: 'marketplace-service base URL'
+        required: false
+        default: 'http://localhost:3002'
       ingestion_base_url:
         description: 'ingestion-service base URL'
         required: false
@@ -18,9 +23,15 @@ on:
         description: 'admin-service base URL'
         required: false
         default: 'http://localhost:3004'
+      level:
+        description: 'Load level: 0 = smoke (1 buyer/1 dealer/2 rows/3 images); 1 = 50 buyers/3 dealers/15 rows; 2 = +60 images each; 3 = 200/10/50 rows/200 images; 4 = 400/20/150 rows/600 images'
+        required: true
+        default: '0'
+        type: choice
+        options: ['0', '1', '2', '3', '4']
 
 jobs:
-  csv-zip-volume-load-test:
+  end-to-end-load:
     runs-on: ubuntu-latest
 
     steps:
@@ -37,6 +48,7 @@ jobs:
           cache: npm
           cache-dependency-path: |
             auth-user-service/package-lock.json
+            marketplace-service/package-lock.json
             ingestion-service/package-lock.json
             admin-service/package-lock.json
 
@@ -72,6 +84,10 @@ jobs:
         working-directory: auth-user-service
         run: npm ci && npm run build
 
+      - name: Install and build marketplace-service
+        working-directory: marketplace-service
+        run: npm ci && npm run build
+
       - name: Install and build ingestion-service
         working-directory: ingestion-service
         run: npm ci && npm run build
@@ -80,17 +96,17 @@ jobs:
         working-directory: admin-service
         run: npm ci && npm run build
 
-      # dealer-ingestion-csv-zip-volume.js reads these via open() at k6
-      # script-load time — the CSV and ZIP must be byte-for-byte paired
-      # (same registration numbers in both), per the script's own header.
-      - name: Generate CSV+ZIP fixtures
-        working-directory: ingestion-service
-        run: |
-          npx tsx src/tools/vehicle-generator/vehicle-generator.ts --count 600 --format csv --mode clean --output test-data/k6-csvzip-raw-600.csv
-          npx tsx src/tools/vehicle-generator/generate-unique-csv.ts --input test-data/k6-csvzip-raw-600.csv --output test-data/k6-csvzip-600.csv --prefix K6IMG
-          npx tsx src/tools/image-generator/image-generator.ts --from-csv test-data/k6-csvzip-600.csv --per-vehicle 3 --width 800 --height 600 --output test-data/k6-csvzip-600-images.zip
+      # All four services run as plain Node processes (their Dockerfiles
+      # build Lambda-handler images, not runnable via `docker run -p`),
+      # started + waited-on + used inside ONE step so none is at risk of
+      # being reaped at a GitHub Actions step boundary.
+      # Levels 2-4 upload a CSV+ZIP pair per dealer. registration_number is
+      # globally unique, so the pairs are generated fresh for every run.
+      - name: Generate dealer CSV+ZIP fixtures
+        if: ${{ inputs.level != '1' }}
+        run: bash performance/tools/generate-e2e-fixtures.sh ${{ inputs.level }}
 
-      - name: Run k6 CSV+ZIP volume test against live services
+      - name: Run k6 end-to-end load test against all four live services
         run: |
           set -e
 
@@ -108,6 +124,18 @@ jobs:
             node dist/main &
           )
           AUTH_PID=$!
+
+          (
+            cd marketplace-service
+            PORT=3002 \
+            MARKETPLACE_DATABASE_URL="postgresql://marketplace_service_role:dev_marketplace@localhost:5433/vehicle_marketplace" \
+            DATABASE_SSL=false \
+            JWT_ACCESS_SECRET=ci-load-test-secret-not-used-for-real-auth \
+            JWT_ISSUER=autovault-lk-auth \
+            JWT_AUDIENCE=autovault-lk-api \
+            node dist/main &
+          )
+          MARKETPLACE_PID=$!
 
           (
             cd ingestion-service
@@ -135,10 +163,11 @@ jobs:
           )
           ADMIN_PID=$!
 
-          trap 'kill $AUTH_PID $INGESTION_PID $ADMIN_PID 2>/dev/null || true' EXIT
+          trap 'kill $AUTH_PID $MARKETPLACE_PID $INGESTION_PID $ADMIN_PID 2>/dev/null || true' EXIT
 
           for i in $(seq 1 30); do
             if curl -sf http://localhost:3001/health > /dev/null && \
+               curl -sf http://localhost:3002/health > /dev/null && \
                curl -sf http://localhost:3003/health > /dev/null && \
                curl -sf http://localhost:3004/health > /dev/null; then break; fi
             if [ "$i" -eq 30 ]; then
@@ -149,8 +178,10 @@ jobs:
           done
 
           AUTH_BASE_URL="${{ inputs.auth_base_url }}" \
+          MARKETPLACE_BASE_URL="${{ inputs.marketplace_base_url }}" \
           INGESTION_BASE_URL="${{ inputs.ingestion_base_url }}" \
           ADMIN_BASE_URL="${{ inputs.admin_base_url }}" \
           ADMIN_SEED_EMAIL="${{ vars.ADMIN_SEED_EMAIL }}" \
           ADMIN_SEED_PASSWORD="${{ secrets.ADMIN_SEED_PASSWORD }}" \
-          k6 run performance/scripts/dealer-ingestion-csv-zip-volume.js
+          LEVEL="${{ inputs.level }}" \
+          k6 run performance/scripts/end-to-end-load.js

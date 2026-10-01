@@ -1,4 +1,17 @@
-export type ListingStatus = 'DRAFT' | 'PENDING_REVIEW' | 'LIVE' | 'SOLD' | 'ARCHIVED' | 'REJECTED'
+// Mirrors marketplace-service's VehicleStatus (vehicle.entity.ts) — every
+// status the column can hold, not just the ones a dealer may manually set
+// (that narrower set is MANUAL_STATUSES below). Kept as a const array, not a
+// hand-written union, so listings-contract.test.ts can diff it against the
+// backend's real type alias at test time rather than only at compile time.
+export const ALL_LISTING_STATUSES = [
+  'DRAFT',
+  'PENDING_REVIEW',
+  'LIVE',
+  'SOLD',
+  'ARCHIVED',
+  'REJECTED',
+] as const
+export type ListingStatus = (typeof ALL_LISTING_STATUSES)[number]
 
 /**
  * FR-42.1. Where one field's value on a bulk-uploaded listing came from, and

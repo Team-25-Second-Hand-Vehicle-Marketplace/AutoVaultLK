@@ -80,7 +80,7 @@ export function MakeModelSelect({
         <legend>Make</legend>
         {error && <p className="facet-group__note">Couldn't load makes. Try reloading.</p>}
         {!error && makes.length === 0 && <p className="facet-group__note">Loading makes…</p>}
-        <div className="facet-group__list make-select__list">
+        <div className="facet-group__list make-select__list" data-lenis-prevent>
           {makes.map((make) => (
             <label key={make.id} className="facet-option">
               <input
@@ -97,7 +97,7 @@ export function MakeModelSelect({
       {availableModels.length > 0 && (
         <fieldset className="facet-group make-select">
           <legend>Model</legend>
-          <div className="facet-group__list make-select__list">
+          <div className="facet-group__list make-select__list" data-lenis-prevent>
             {availableModels.map((model) => (
               <label key={model.id} className="facet-option">
                 <input

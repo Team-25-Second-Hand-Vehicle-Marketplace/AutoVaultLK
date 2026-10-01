@@ -24,6 +24,7 @@ import { DealerProfilesController } from '../../src/modules/dealers/controllers/
 import { InternalDealersController } from '../../src/modules/dealers/controllers/internal-dealers.controller';
 import { DealerProfilesRepository } from '../../src/modules/dealers/repositories/dealer-profiles.repository';
 import { DealerProfilesService } from '../../src/modules/dealers/services/dealer-profiles.service';
+import { InternalUsersController } from '../../src/modules/users/controllers/internal-users.controller';
 import { UsersController } from '../../src/modules/users/controllers/users.controller';
 import { UsersRepository } from '../../src/modules/users/repositories/users.repository';
 import { UsersService } from '../../src/modules/users/services/users.service';
@@ -142,6 +143,7 @@ export class AuthE2eModule {
         UsersController,
         DealerProfilesController,
         InternalDealersController,
+        InternalUsersController,
         HealthController,
       ],
       providers: coreProviders,

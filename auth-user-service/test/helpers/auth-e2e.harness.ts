@@ -102,6 +102,44 @@ export async function registerAndVerifyBuyer(
   return registerResponse.body;
 }
 
+/**
+ * individual dealerType, not business: a valid NIC is a single string field,
+ * where a business dealer's verificationDocuments would also need a real
+ * businessRegistrationNumber — individual is the minimal path to a real,
+ * fully-registered dealer for tests that only need *a* dealer identity, not
+ * to exercise dealerType-specific behavior itself.
+ */
+export async function registerAndVerifyDealer(
+  agent: Agent,
+  email: string,
+  password = STRONG_PASSWORD,
+) {
+  const registerResponse = await agent
+    .post('/auth/register/dealer')
+    .set('X-Forwarded-For', DEFAULT_IP)
+    .send({
+      email,
+      password,
+      name: 'Dealer User',
+      dealerType: 'individual',
+      businessAddress: '1 Test Road, Colombo',
+      city: 'Colombo',
+      companyName: 'Test Dealer Motors',
+      verificationDocuments: { nic: '912345678V' },
+    })
+    .expect(201);
+
+  const verificationToken = registerResponse.body.verificationToken as string;
+  expect(verificationToken).toBeTruthy();
+
+  await agent
+    .post('/auth/email/verify')
+    .send({ token: verificationToken })
+    .expect(200);
+
+  return registerResponse.body;
+}
+
 export async function login(
   agent: Agent,
   email: string,
