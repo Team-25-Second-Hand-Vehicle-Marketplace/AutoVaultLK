@@ -7,7 +7,7 @@ vi.mock('../../api/client', () => ({
   toErrorMessage: (_e: unknown, fallback: string) => fallback,
 }))
 
-const { approveAllListings, approveListing, getMyListings } = await import('../../api/listings.api')
+const { approveListing, approveSelectedListings, getMyListings } = await import('../../api/listings.api')
 
 const ENVELOPE = { message: 'ok', data: { id: 'v-1' } }
 
@@ -109,15 +109,33 @@ describe('approveListing', () => {
   })
 })
 
-describe('approveAllListings', () => {
-  it('calls the bulk route and returns how many were approved', async () => {
-    patch.mockResolvedValue({ data: { message: 'ok', data: { approved: 7 } } })
+describe('approveSelectedListings', () => {
+  beforeEach(() => patch.mockReset())
 
-    await expect(approveAllListings()).resolves.toBe(7)
+  it('sends the ids to the approve-selected route and returns the counts', async () => {
+    patch.mockResolvedValue({ data: { message: 'ok', data: { approved: 2, skipped: 1 } } })
+
+    await expect(approveSelectedListings(['a', 'b', 'c'])).resolves.toEqual({
+      approved: 2,
+      skipped: 1,
+    })
+    expect(patch).toHaveBeenCalledTimes(1)
     expect(patch).toHaveBeenCalledWith(
-      '/marketplace/listings/approve-all',
-      undefined,
+      '/marketplace/listings/approve-selected',
+      { ids: ['a', 'b', 'c'] },
       expect.anything(),
     )
+  })
+
+  it('splits a selection over the server limit into batches and sums the counts', async () => {
+    patch.mockResolvedValue({ data: { message: 'ok', data: { approved: 1000, skipped: 0 } } })
+    const ids = Array.from({ length: 2300 }, (_, i) => `id-${i}`)
+
+    const result = await approveSelectedListings(ids)
+
+    expect(patch).toHaveBeenCalledTimes(3)
+    const sizes = patch.mock.calls.map(([, body]) => (body as { ids: string[] }).ids.length)
+    expect(sizes).toEqual([1000, 1000, 300])
+    expect(result.approved).toBe(3000)
   })
 })

@@ -213,6 +213,24 @@ export class ListingService {
   }
 
   /**
+   * Approves the listings the dealer selected. Like approveAllPending it is never
+   * an error when some or all of them were no longer pending: `approved` counts
+   * what actually moved, and `skipped` is the rest, so the page can say so.
+   */
+  async approveSelected(actor: AuthenticatedUser, ids: string[]) {
+    const approved = await this.listingRepository.approveSelected(actor.id, ids);
+    const skipped = ids.length - approved;
+
+    return {
+      message:
+        approved === 0
+          ? 'None of the selected listings were awaiting approval'
+          : `${approved} listing${approved === 1 ? '' : 's'} approved and published`,
+      data: { approved, skipped },
+    };
+  }
+
+  /**
    * Reverses deactivateListing: brings an ARCHIVED listing back to LIVE for
    * the public feed. Its own action rather than a flag on the generic PATCH,
    * matching approveListing's shape - a listing that is not ARCHIVED is a

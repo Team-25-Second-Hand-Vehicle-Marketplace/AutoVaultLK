@@ -1,8 +1,8 @@
-import { Fragment, useCallback, useState } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
-  approveAllListings,
   approveListing,
+  approveSelectedListings,
   deactivateListing,
   deleteListing,
   deleteListingImage,
@@ -26,12 +26,13 @@ import {
   NormalizationDetails,
   NormalizationSummary,
 } from '../../components/dealers/NormalizationBadge'
-import { ActionMenu, type ActionMenuItem } from '../../components/ui/ActionMenu'
 import { Button } from '../../components/ui/Button'
 import { ErrorBanner } from '../../components/ui/ErrorBanner'
 import { StatusBadge } from '../../components/dealers/StatusBadge'
 import { useDealerProfile } from './useDealerProfile'
-import { formatMileage, formatPrice } from '../../components/search/vehicle-format'
+import { formatMileage, formatPrice, sentenceCase } from '../../components/search/vehicle-format'
+import { ListingColumnHeader } from '../../components/dealers/ListingColumnHeader'
+import { nextColumnSort, sortListings, type ColumnKey, type ColumnSort } from '../../components/dealers/listing-sort'
 
 /**
  * Manual listing management (FR-58), plus the bulk-upload review queue
@@ -70,13 +71,17 @@ export function DealerListingsPage() {
   const [deleting, setDeleting] = useState<string | null>(null)
   const confirm = useConfirm()
 
-  const [approvingAll, setApprovingAll] = useState(false)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [approvingSelected, setApprovingSelected] = useState(false)
 
   // FR-42.1's default: a dealer opening this page with rows awaiting review
   // sees the ones most likely to need a correction first, not buried under
   // whatever bulk upload happened to load last. Switchable, because a dealer
   // checking on a specific recent listing wants newest-first instead.
   const [sort, setSort] = useState<ListingSortOption>('confidence_asc')
+  // A column header click sorts what is already loaded; the dropdown above is
+  // the server-side order, and choosing from it hands control back to it.
+  const [columnSort, setColumnSort] = useState<ColumnSort | null>(null)
 
   const fetchListings = useCallback(
     (signal: AbortSignal) => getMyListings(sort === 'confidence_asc' ? sort : undefined, signal),
@@ -89,6 +94,65 @@ export function DealerListingsPage() {
     listings.data?.filter((l) => l.status === 'PENDING_REVIEW').length ?? 0
 
   const backToList = () => setMode({ kind: 'list' })
+
+  // The selection is only ever read through the rows currently listed, so an id
+  // left over from a deleted or reloaded-away listing is simply never counted.
+  const rows = listings.data ?? []
+  const displayRows = sortListings(rows, columnSort)
+  const selectedRows = rows.filter((l) => selected.has(l.id))
+  const allSelected = rows.length > 0 && selectedRows.length === rows.length
+  const someSelected = selectedRows.length > 0 && !allSelected
+  const selectedPending = selectedRows.filter((l) => l.status === 'PENDING_REVIEW')
+
+  const selectAllRef = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (selectAllRef.current) selectAllRef.current.indeterminate = someSelected
+  }, [someSelected])
+
+  const toggleOne = (id: string) =>
+    setSelected((current) => {
+      const next = new Set(current)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+
+  const onSortColumn = (key: ColumnKey) => setColumnSort((current) => nextColumnSort(current, key))
+
+  const toggleAll = () =>
+    setSelected(allSelected ? new Set() : new Set(rows.map((l) => l.id)))
+
+  const onApproveSelected = async () => {
+    const ids = selectedPending.map((l) => l.id)
+    if (ids.length === 0 || approvingSelected) return
+
+    if (
+      !confirm(
+        `Approve and publish ${ids.length} selected listing${ids.length === 1 ? '' : 's'}? They will appear in search straight away, including any whose fields you have not checked.`,
+      )
+    ) {
+      return
+    }
+
+    setApprovingSelected(true)
+    try {
+      const { approved, skipped } = await approveSelectedListings(ids)
+      toast.success(
+        approved === 0
+          ? 'None of the selected listings were awaiting approval'
+          : `${approved} listing${approved === 1 ? '' : 's'} published` +
+              (skipped > 0 ? `, ${skipped} skipped (no longer pending)` : ''),
+      )
+      setSelected(new Set())
+      // A full re-fetch rather than patching rows in place: the server decides
+      // which ones were still pending, which may differ from this stale view.
+      listings.reload()
+    } catch (error) {
+      toast.error(toErrorMessage(error, 'Could not approve the selected listings.'))
+    } finally {
+      setApprovingSelected(false)
+    }
+  }
 
   const onUpdate = async (id: string, input: CreateListingInput, images: File[]) => {
     try {
@@ -220,72 +284,6 @@ export function DealerListingsPage() {
     }
   }
 
-  const onApproveAll = async () => {
-    if (
-      !confirm(
-        `Approve and publish all ${pendingReviewCount} pending listing${pendingReviewCount === 1 ? '' : 's'}? They will appear in search straight away, including any whose fields you have not checked.`,
-      )
-    ) {
-      return
-    }
-
-    setApprovingAll(true)
-    try {
-      const approved = await approveAllListings()
-      toast.success(
-        approved === 0
-          ? 'Nothing was waiting for approval'
-          : `${approved} listing${approved === 1 ? '' : 's'} published`,
-      )
-      // A full re-fetch rather than patching rows in place: the server decides
-      // which ones were still pending, which may differ from this stale view.
-      listings.reload()
-    } catch (error) {
-      toast.error(toErrorMessage(error, 'Could not approve the listings.'))
-    } finally {
-      setApprovingAll(false)
-    }
-  }
-
-  /**
-   * Edit is always offered; Archive/Unarchive/Delete only when the backend
-   * would actually accept them for this listing's current status - so the
-   * menu never offers something that just 409s on click.
-   */
-  const rowActions = (listing: DealerListing): ActionMenuItem[] => {
-    const items: ActionMenuItem[] = [
-      { label: 'Edit', onClick: () => setMode({ kind: 'edit', listing }) },
-    ]
-
-    if (listing.status === 'ARCHIVED') {
-      items.push({
-        label: unarchiving === listing.id ? 'Unarchiving…' : 'Unarchive',
-        disabled: unarchiving === listing.id,
-        onClick: () => void onUnarchive(listing),
-      })
-    } else {
-      items.push({
-        label: archiving === listing.id ? 'Archiving…' : 'Archive',
-        disabled: archiving === listing.id,
-        danger: true,
-        onClick: () => void onDeactivate(listing),
-      })
-    }
-
-    // Never went live: nothing external can reference it, so a permanent
-    // delete is safe - see ListingService.DELETABLE_STATUSES.
-    if (DELETABLE_STATUSES.includes(listing.status)) {
-      items.push({
-        label: deleting === listing.id ? 'Deleting…' : 'Delete',
-        disabled: deleting === listing.id,
-        danger: true,
-        onClick: () => void onDelete(listing),
-      })
-    }
-
-    return items
-  }
-
   if (mode.kind === 'edit') {
     return (
       <div className="dealer-page">
@@ -319,7 +317,13 @@ export function DealerListingsPage() {
 
         <label className="listing-toolbar__sort">
           <span>Sort by</span>
-          <select value={sort} onChange={(e) => setSort(e.target.value as ListingSortOption)}>
+          <select
+            value={sort}
+            onChange={(e) => {
+              setSort(e.target.value as ListingSortOption)
+              setColumnSort(null)
+            }}
+          >
             <option value="confidence_asc">Lowest confidence first</option>
             <option value="createdAt">Most recent</option>
           </select>
@@ -330,11 +334,31 @@ export function DealerListingsPage() {
         <div className="review-banner" role="status">
           <p>
             {pendingReviewCount} listing{pendingReviewCount === 1 ? '' : 's'} awaiting your
-            review. Check the fields marked below, then approve to publish.
+            review. Check the fields marked below, then approve to publish. Tick several to
+            approve them together.
           </p>
-          <Button size="sm" disabled={approvingAll} onClick={() => void onApproveAll()}>
-            {approvingAll ? 'Approving…' : `Approve all (${pendingReviewCount})`}
-          </Button>
+        </div>
+      )}
+
+      {selectedRows.length > 0 && (
+        <div className="selection-bar" role="status">
+          <span>
+            {selectedRows.length} selected
+            {selectedPending.length !== selectedRows.length &&
+              ` (${selectedPending.length} awaiting review)`}
+          </span>
+          <div className="selection-bar__actions">
+            <Button
+              size="sm"
+              disabled={selectedPending.length === 0 || approvingSelected}
+              onClick={() => void onApproveSelected()}
+            >
+              {approvingSelected ? 'Approving…' : `Approve selected (${selectedPending.length})`}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setSelected(new Set())}>
+              Clear selection
+            </Button>
+          </div>
         </div>
       )}
 
@@ -362,28 +386,49 @@ export function DealerListingsPage() {
           <table className="listing-table">
             <thead>
               <tr>
-                <th scope="col">Vehicle</th>
-                <th scope="col">Year</th>
-                <th scope="col">Price</th>
-                <th scope="col">Mileage</th>
-                <th scope="col">Status</th>
+                <th scope="col" className="listing-table__select">
+                  <input
+                    ref={selectAllRef}
+                    type="checkbox"
+                    aria-label="Select all listings"
+                    checked={allSelected}
+                    onChange={toggleAll}
+                  />
+                </th>
+                <ListingColumnHeader label="Vehicle" columnKey="vehicle" sort={columnSort} onSort={onSortColumn} className="listing-table__vehicle" />
+                <ListingColumnHeader label="Type" columnKey="type" sort={columnSort} onSort={onSortColumn} className="listing-table__compact" />
+                <ListingColumnHeader label="Condition" columnKey="condition" sort={columnSort} onSort={onSortColumn} className="listing-table__compact" />
+                <ListingColumnHeader label="Year" columnKey="year" sort={columnSort} onSort={onSortColumn} className="listing-table__compact" />
+                <ListingColumnHeader label="Price" columnKey="price" sort={columnSort} onSort={onSortColumn} className="listing-table__compact" />
+                <ListingColumnHeader label="Mileage" columnKey="mileage" sort={columnSort} onSort={onSortColumn} className="listing-table__compact" />
+                <ListingColumnHeader label="Status" columnKey="status" sort={columnSort} onSort={onSortColumn} className="listing-table__compact" />
                 <th scope="col">
                   <span className="visually-hidden">Actions</span>
                 </th>
               </tr>
             </thead>
             <tbody>
-              {listings.data?.map((listing) => (
+              {displayRows.map((listing) => (
                 <Fragment key={listing.id}>
-                  <tr>
-                    <th scope="row">
+                  <tr className={selected.has(listing.id) ? 'listing-table__row--selected' : undefined}>
+                    <td className="listing-table__select">
+                      <input
+                        type="checkbox"
+                        aria-label={`Select ${listing.make} ${listing.model}`}
+                        checked={selected.has(listing.id)}
+                        onChange={() => toggleOne(listing.id)}
+                      />
+                    </td>
+                    <th scope="row" className="listing-table__vehicle">
                       {listing.make} {listing.model}
                       <NormalizationSummary normalization={listing.normalization} />
                     </th>
-                    <td>{listing.manufactureYear}</td>
-                    <td>{formatPrice(listing.price)}</td>
-                    <td>{formatMileage(listing.mileage)}</td>
-                    <td>
+                    <td className="listing-table__compact">{sentenceCase(listing.vehicleType)}</td>
+                    <td className="listing-table__compact">{sentenceCase(listing.condition)}</td>
+                    <td className="listing-table__compact">{listing.manufactureYear}</td>
+                    <td className="listing-table__compact">{formatPrice(listing.price)}</td>
+                    <td className="listing-table__compact">{formatMileage(listing.mileage)}</td>
+                    <td className="listing-table__compact">
                       <StatusBadge status={listing.status} />
                       {listing.needsManualReview && (
                         <span className="listing-status listing-status--review">
@@ -392,20 +437,68 @@ export function DealerListingsPage() {
                       )}
                     </td>
                     <td className="listing-table__actions">
-                      {listing.status === 'PENDING_REVIEW' && (
+                      <div className="listing-actions">
+                        {listing.status === 'PENDING_REVIEW' && (
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            disabled={approving === listing.id}
+                            onClick={() => void onApprove(listing)}
+                          >
+                            {approving === listing.id ? 'Approving…' : 'Approve'}
+                          </Button>
+                        )}
+
+                        {/* Edit is always offered. Archive, Unarchive and Delete appear
+                            only when the backend would accept them for this status, so a
+                            button never shows up just to 409 on click. */}
                         <Button
-                          variant="primary"
+                          variant="ghost"
                           size="sm"
-                          disabled={approving === listing.id}
-                          onClick={() => void onApprove(listing)}
+                          aria-label={`Edit ${listing.make} ${listing.model}`}
+                          onClick={() => setMode({ kind: 'edit', listing })}
                         >
-                          {approving === listing.id ? 'Approving…' : 'Approve'}
+                          Edit
                         </Button>
-                      )}
-                      <ActionMenu
-                        label={`More actions for ${listing.make} ${listing.model}`}
-                        items={rowActions(listing)}
-                      />
+
+                        {listing.status === 'ARCHIVED' ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-label={`Unarchive ${listing.make} ${listing.model}`}
+                            disabled={unarchiving === listing.id}
+                            onClick={() => void onUnarchive(listing)}
+                          >
+                            {unarchiving === listing.id ? 'Unarchiving…' : 'Unarchive'}
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="listing-action--danger"
+                            aria-label={`Archive ${listing.make} ${listing.model}`}
+                            disabled={archiving === listing.id}
+                            onClick={() => void onDeactivate(listing)}
+                          >
+                            {archiving === listing.id ? 'Archiving…' : 'Archive'}
+                          </Button>
+                        )}
+
+                        {/* Never went live: nothing external can reference it, so a
+                            permanent delete is safe - see ListingService.DELETABLE_STATUSES. */}
+                        {DELETABLE_STATUSES.includes(listing.status) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="listing-action--danger"
+                            aria-label={`Delete ${listing.make} ${listing.model}`}
+                            disabled={deleting === listing.id}
+                            onClick={() => void onDelete(listing)}
+                          >
+                            {deleting === listing.id ? 'Deleting…' : 'Delete'}
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                   {(listing.normalization ||
@@ -413,7 +506,10 @@ export function DealerListingsPage() {
                     Object.keys(listing.specs ?? {}).length > 0 ||
                     listing.images.length > 0) && (
                     <tr className="listing-table__details-row">
-                      <td colSpan={6}>
+                      {/* An empty cell under the checkbox column, so the details start
+                          under the vehicle name instead of under the checkbox. */}
+                      <td />
+                      <td colSpan={8}>
                         <div className="listing-table__details">
                           <NormalizationDetails normalization={listing.normalization} />
                           <ListingDetails listing={listing} />

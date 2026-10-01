@@ -125,18 +125,36 @@ export async function approveListing(
   return data.data
 }
 
+/** The server accepts at most this many ids per approve-selected request. */
+const APPROVE_SELECTED_BATCH = 1000
+
 /**
- * PATCH /marketplace/listings/approve-all - approves every PENDING_REVIEW
- * listing the signed-in dealer owns in one request and returns how many moved
- * to LIVE (0 when none were pending).
+ * PATCH /marketplace/listings/approve-selected - approves the given listings
+ * that are the dealer's own and still PENDING_REVIEW. Anything else in the list
+ * is skipped, not an error, so `skipped` can be non-zero. A selection larger
+ * than the server's limit goes in several requests and the counts are summed.
  */
-export async function approveAllListings(signal?: AbortSignal): Promise<number> {
-  const { data } = await apiClient.patch<{ message: string; data: { approved: number } }>(
-    '/marketplace/listings/approve-all',
-    undefined,
-    { signal },
-  )
-  return data.data.approved
+export async function approveSelectedListings(
+  ids: string[],
+  signal?: AbortSignal,
+): Promise<{ approved: number; skipped: number }> {
+  let approved = 0
+  let skipped = 0
+
+  for (let i = 0; i < ids.length; i += APPROVE_SELECTED_BATCH) {
+    const { data } = await apiClient.patch<{
+      message: string
+      data: { approved: number; skipped: number }
+    }>(
+      '/marketplace/listings/approve-selected',
+      { ids: ids.slice(i, i + APPROVE_SELECTED_BATCH) },
+      { signal },
+    )
+    approved += data.data.approved
+    skipped += data.data.skipped
+  }
+
+  return { approved, skipped }
 }
 
 /**

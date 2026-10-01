@@ -156,6 +156,45 @@ paths:
           description: No or invalid bearer token.
         '403':
           description: Not a DEALER.
+  /marketplace/listings/approve-selected:
+    patch:
+      tags:
+        - marketplace
+      summary: Approve the selected PENDING_REVIEW listings (dealer)
+      description: >
+        Bulk approve for the listings a dealer ticked. Moves those of the given
+        ids that belong to the caller and are still PENDING_REVIEW to LIVE in one
+        statement. Ids that are not the caller's, or are no longer pending, are
+        skipped rather than failing the request; `data.skipped` counts them.
+        At most 1000 ids per request.
+      operationId: approveSelectedListings
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - ids
+              properties:
+                ids:
+                  type: array
+                  minItems: 1
+                  maxItems: 1000
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        '200':
+          description: Approved. `data.approved` is the number published.
+        '400':
+          description: Empty, over-long, duplicated or non-UUID id list.
+        '401':
+          description: No or invalid bearer token.
+        '403':
+          description: Not a DEALER.
   /marketplace/listings/{id}/approve:
     patch:
       tags:

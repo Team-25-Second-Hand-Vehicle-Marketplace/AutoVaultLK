@@ -19,6 +19,7 @@ describe('ListingService', () => {
     deactivate: jest.fn(),
     approve: jest.fn(),
     approveAllPending: jest.fn(),
+    approveSelected: jest.fn(),
     unarchive: jest.fn(),
     remove: jest.fn(),
   };
@@ -418,6 +419,39 @@ describe('ListingService', () => {
       const result = await service.approveAllPending(DEALER);
 
       expect(result.data).toEqual({ approved: 0 });
+    });
+  });
+
+  describe('approveSelected', () => {
+    const IDS = ['11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-222222222222'];
+
+    it("approves the selected ids for the calling dealer only", async () => {
+      listingRepository.approveSelected.mockResolvedValue(2);
+
+      const result = await service.approveSelected(DEALER, IDS);
+
+      // Scoped by the JWT's id, never by anything the client sent.
+      expect(listingRepository.approveSelected).toHaveBeenCalledWith('dealer-1', IDS);
+      expect(result.data).toEqual({ approved: 2, skipped: 0 });
+      expect(result.message).toBe('2 listings approved and published');
+    });
+
+    it('reports the ones that were skipped because they were no longer pending', async () => {
+      listingRepository.approveSelected.mockResolvedValue(1);
+
+      const result = await service.approveSelected(DEALER, IDS);
+
+      expect(result.data).toEqual({ approved: 1, skipped: 1 });
+      expect(result.message).toBe('1 listing approved and published');
+    });
+
+    it('answers approved: 0 rather than erroring when none were pending', async () => {
+      listingRepository.approveSelected.mockResolvedValue(0);
+
+      const result = await service.approveSelected(DEALER, IDS);
+
+      expect(result.data).toEqual({ approved: 0, skipped: 2 });
+      expect(result.message).toBe('None of the selected listings were awaiting approval');
     });
   });
 

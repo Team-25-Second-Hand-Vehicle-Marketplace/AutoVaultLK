@@ -21,6 +21,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import type { AuthenticatedUser } from '../../auth/types/authenticated-user.type';
 import { ListingService } from '../services/listing.service';
+import { ApproveSelectedDto } from '../dto/approve-selected.dto';
 import { CreateListingDto } from '../dto/create-listing.dto';
 import { MyListingsQueryDto } from '../dto/my-listings-query.dto';
 import { UpdateListingDto } from '../dto/update-listing.dto';
@@ -65,6 +66,17 @@ export class ListingController {
   @Roles('DEALER')
   approveAllPending(@CurrentUser() actor: AuthenticatedUser) {
     return this.listingService.approveAllPending(actor);
+  }
+
+  /**
+   * Approves the listed ids (the dealer's own, still pending). Declared before
+   * the `:id` routes for the same reason as approve-all.
+   */
+  @Patch('approve-selected')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('DEALER')
+  approveSelected(@CurrentUser() actor: AuthenticatedUser, @Body() dto: ApproveSelectedDto) {
+    return this.listingService.approveSelected(actor, dto.ids);
   }
 
   @Get(':id')
