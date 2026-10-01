@@ -1123,9 +1123,11 @@ h3 {
 /* --- Vehicle detail page --- */
 
 .detail-page {
-  max-width: 1200px;
+  /* Same width and side padding as .nx-header__inner (1400px / 28px), so the
+     breadcrumb, photos and cards line up under the logo and the nav. */
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 20px 28px;
 }
 
 .breadcrumb {
@@ -1172,19 +1174,115 @@ h3 {
   font-size: 13px;
 }
 
+.detail-gallery {
+  outline: none;
+}
+
+.detail-gallery:focus-visible .detail-gallery__stage {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.detail-gallery__stage {
+  position: relative;
+  border-radius: 12px;
+}
+
+.detail-gallery__nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  cursor: pointer;
+  opacity: 0.85;
+  transition: opacity 0.2s, background 0.2s;
+}
+
+.detail-gallery__nav:hover,
+.detail-gallery__nav:focus-visible {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.75);
+}
+
+.detail-gallery__nav--prev {
+  left: 12px;
+}
+
+.detail-gallery__nav--next {
+  right: 12px;
+}
+
+.detail-gallery__counter {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
 .detail-gallery__thumbs {
   display: flex;
   gap: 8px;
-  margin-top: 8px;
+  margin: 10px 0 0;
+  padding: 2px 2px 6px;
+  list-style: none;
   overflow-x: auto;
 }
 
+.detail-gallery__thumb-btn {
+  display: block;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  background: none;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s, border-color 0.2s;
+}
+
+.detail-gallery__thumb-btn:hover {
+  opacity: 1;
+}
+
+.detail-gallery__thumb-btn.is-active {
+  border-color: var(--accent);
+  opacity: 1;
+}
+
 .detail-gallery__thumb {
+  display: block;
   width: 88px;
   height: 66px;
   object-fit: cover;
   border-radius: 8px;
-  border: 1px solid var(--border);
+}
+
+.detail-summary__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.detail-summary__facts li + li::before {
+  content: '·';
+  margin-right: 14px;
+  color: var(--text-muted);
 }
 
 .detail-section {
