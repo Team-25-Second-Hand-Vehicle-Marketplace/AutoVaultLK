@@ -77,6 +77,8 @@ export function Modal({ open, onClose, title, children, footer, size = 'md' }: P
   return createPortal(
     <div
       className="modal-backdrop"
+      // Keeps the smooth-scroll library from scrolling the page behind the dialog.
+      data-lenis-prevent
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}

@@ -8,6 +8,7 @@ interface Props {
   onClose: (dontShowAgain: boolean) => void
   /** Opens the columns dialog; the guide closes first so the two never stack. */
   onViewFields: () => void
+  onViewKnown: () => void
   onDownloadTemplate: () => void
 }
 
@@ -16,7 +17,13 @@ interface Props {
  * dealer opts out (a dealer who uploads every week does not need it each time)
  * and reopenable from the page header at any point.
  */
-export function BulkUploadGuide({ open, onClose, onViewFields, onDownloadTemplate }: Props) {
+export function BulkUploadGuide({
+  open,
+  onClose,
+  onViewFields,
+  onViewKnown,
+  onDownloadTemplate,
+}: Props) {
   const [dontShowAgain, setDontShowAgain] = useState(false)
 
   return (
@@ -55,11 +62,11 @@ export function BulkUploadGuide({ open, onClose, onViewFields, onDownloadTemplat
             saved as .xlsx does not.
           </li>
           <li>
-            Twelve columns are required: make, model, year, price, mileage, fuel type,
-            transmission, colour, engine capacity, owners, district and condition.
+            Thirteen columns are required: make, model, year, price, mileage, fuel type,
+            transmission, colour, engine capacity, owners, district, condition and vehicle type.
           </li>
           <li>
-            Check make and model spelling against the known list at the bottom of the page. Close
+            Check make and model spelling with the Known makes &amp; models button. Close
             misspellings are corrected, but an unrecognised make or model is rejected.
           </li>
           <li>Prices and mileage are forgiving: "Rs. 3,500,000", "3.5M" and "45,000 km" all work.</li>
@@ -75,6 +82,16 @@ export function BulkUploadGuide({ open, onClose, onViewFields, onDownloadTemplat
             }}
           >
             View fields
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              onClose(dontShowAgain)
+              onViewKnown()
+            }}
+          >
+            Known makes &amp; models
           </Button>
           <Button variant="ghost" size="sm" onClick={onDownloadTemplate}>
             Download template

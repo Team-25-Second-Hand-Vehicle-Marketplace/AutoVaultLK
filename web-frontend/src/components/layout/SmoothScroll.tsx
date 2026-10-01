@@ -13,7 +13,9 @@ export function SmoothScroll() {
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
 
-    const lenis = new Lenis({ lerp: 0.1, wheelMultiplier: 1 })
+    // allowNestedScroll: without it Lenis takes every wheel event for the page, so
+    // scrollable panels inside it (dialogs, long lists) would never scroll.
+    const lenis = new Lenis({ lerp: 0.1, wheelMultiplier: 1, allowNestedScroll: true })
     let frame = requestAnimationFrame(function raf(time) {
       lenis.raf(time)
       frame = requestAnimationFrame(raf)
