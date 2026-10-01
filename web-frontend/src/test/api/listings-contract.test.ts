@@ -4,6 +4,7 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import {
+  ALL_LISTING_STATUSES,
   CONDITIONS,
   FUEL_TYPES,
   LISTABLE_VEHICLE_TYPES,
@@ -38,6 +39,11 @@ const DTO = resolve(
   '../../../../marketplace-service/src/modules/listings/dto/create-listing.dto.ts',
 )
 
+const VEHICLE_ENTITY = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  '../../../../marketplace-service/src/infrastructure/database/entities/vehicle.entity.ts',
+)
+
 /** Reads a `export const NAME = [...] as const` string array. */
 function readArray(source: string, name: string): string[] {
   const match = new RegExp(`export const ${name}\\s*=\\s*\\[([^\\]]*)\\]`, 's').exec(source)
@@ -52,6 +58,14 @@ function readEnum(source: string, name: string): string[] {
   if (!match) throw new Error(`${name} not found in create-listing.dto.ts`)
 
   return [...match[1].matchAll(/=\s*'([^']+)'/g)].map((m) => m[1])
+}
+
+/** Reads the members of a `export type Name = 'A' | 'B' | ...;` union-of-string-literals alias. */
+function readUnionType(source: string, name: string): string[] {
+  const match = new RegExp(`export type ${name}\\s*=([^;]*);`, 's').exec(source)
+  if (!match) throw new Error(`${name} not found in vehicle.entity.ts`)
+
+  return [...match[1].matchAll(/'([^']+)'/g)].map((m) => m[1])
 }
 
 const present = existsSync(CONSTANTS) && existsSync(DTO)
@@ -84,5 +98,21 @@ describeIfPresent('manual listing vocabulary parity', () => {
     // what a *dealer* may set, which is a narrower question than what the
     // status column allows.
     expect([...MANUAL_STATUSES]).toEqual(readEnum(dto, 'ManualListingStatusDto'))
+  })
+})
+
+const vehicleEntityPresent = existsSync(VEHICLE_ENTITY)
+const describeIfVehicleEntityPresent = vehicleEntityPresent ? describe : describe.skip
+
+describeIfVehicleEntityPresent('listing status vocabulary parity', () => {
+  const vehicleEntity = vehicleEntityPresent ? readFileSync(VEHICLE_ENTITY, 'utf8') : ''
+
+  it('DealerListing/ListingStatus covers every status VehicleStatus allows', () => {
+    // The two sides are hand-maintained independently (vehicle.entity.ts's
+    // VehicleStatus vs. this file's ALL_LISTING_STATUSES) — nothing stops
+    // someone adding a status to one and forgetting the other, and nothing
+    // fails until a real search/dashboard response carries a status value
+    // the frontend's switch/display logic has never seen.
+    expect([...ALL_LISTING_STATUSES]).toEqual(readUnionType(vehicleEntity, 'VehicleStatus'))
   })
 })
