@@ -494,9 +494,10 @@ paths:
                 $ref: '#/components/schemas/Error'
         '413':
           description: >
-            Body exceeds the gateway limit. nginx sets client_max_body_size on
-            this location; a file past the service's own 25 MB CSV cap returns
-            400 instead, because it reaches the handler.
+            Body exceeds the gateway limit (300 MB: the 25 MB CSV cap plus the
+            250 MB ZIP cap plus multipart overhead). A CSV past the service's
+            own 25 MB cap, or a ZIP past 250 MB, returns 400 instead, because
+            it reaches the handler.
           content:
             application/json:
               schema:
