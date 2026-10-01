@@ -4,7 +4,17 @@
 //mixed — mostly valid data with some dirty/invalid records
 import { mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
+import { TEMPLATE_HEADER } from '../../workers/etl-worker/pipeline/parse/csv-contract';
 
+/**
+ * One row of the dealer CSV — every column of `TEMPLATE_HEADER`, in the same
+ * names the parser reads, so a generated file is a valid upload by
+ * construction and carries the same 43 columns the downloadable template does.
+ *
+ * Category-gated columns (bike, van/bus, truck) are blank on the cars this
+ * generator produces: the enrich stage ignores them for any other
+ * vehicle_type, and blank is exactly what a dealer's file would hold.
+ */
 export type Vehicle = {
   registration_number: string;
   make: string;
@@ -23,6 +33,37 @@ export type Vehicle = {
   engine_capacity_cc: number | string;
   owners_count: number | string;
   location_district: string;
+
+  vehicle_type: string;
+  condition: string;
+  location_city: string;
+  chassis_number: string;
+  description: string;
+  is_negotiable: string;
+  registration_year: number | string;
+  seats: number | string;
+  doors: number | string;
+  airbags: number | string;
+  load_capacity_kg: number | string;
+  drive_type: string;
+  sunroof: string;
+  full_option: string;
+  alloy_wheels: string;
+  reverse_camera: string;
+  leather_seats: string;
+  power_steering: string;
+  air_conditioning: string;
+  stroke_type: string;
+  cooling_system: string;
+  start_type: string;
+  abs_equipped: string;
+  seating_capacity: number | string;
+  roof_type: string;
+  wheelbase: string;
+  door_configuration: string;
+  payload_capacity_kg: number | string;
+  axle_count: number | string;
+  cargo_bed_type: string;
 };
 
 export type GenerationMode = 'clean' | 'dirty' | 'invalid' | 'mixed';
@@ -66,6 +107,18 @@ const COLORS = ['White', 'Silver', 'Black', 'Pearl White', 'Grey', 'Blue', 'Red'
 
 const DISTRICTS = ['Colombo', 'Gampaha', 'Kandy', 'Galle', 'Kurunegala'];
 
+// A real city inside each district, so location_city agrees with location_district.
+const CITIES: Record<string, string[]> = {
+  Colombo: ['Nugegoda', 'Dehiwala', 'Maharagama', 'Colombo 07'],
+  Gampaha: ['Negombo', 'Kadawatha', 'Ja-Ela'],
+  Kandy: ['Peradeniya', 'Katugastota'],
+  Galle: ['Unawatuna', 'Hikkaduwa'],
+  Kurunegala: ['Kuliyapitiya', 'Narammala'],
+};
+
+const DRIVE_TYPES = ['FWD', 'RWD', 'AWD', '4WD'];
+const CHASSIS_PREFIXES = ['NZE', 'ZVW', 'GK', 'DBA', 'ZE'];
+
 function randomItem<T>(items: T[]): T {
   return items[Math.floor(Math.random() * items.length)];
 }
@@ -83,21 +136,63 @@ function generateRegistration(index: number): string {
  */
 function generateCleanVehicle(index: number): Vehicle {
   const manufacturer = randomItem(MAKES);
+  const bodyType = randomItem(BODY_TYPES);
+  const district = randomItem(DISTRICTS);
+  const year = randomNumber(2015, 2026);
+  const mileage = randomNumber(5000, 180000);
+  const isSuv = bodyType === 'SUV';
+  const flag = () => (Math.random() < 0.5 ? 'true' : 'false');
 
   return {
     registration_number: generateRegistration(index),
     make: manufacturer.make,
     model: randomItem(manufacturer.models),
-    year: randomNumber(2015, 2026),
+    year,
     price: randomNumber(3500000, 25000000),
-    mileage: randomNumber(5000, 180000),
+    mileage,
     fuel_type: randomItem(FUEL_TYPES),
     transmission: randomItem(TRANSMISSIONS),
-    body_type: randomItem(BODY_TYPES),
+    body_type: bodyType,
     color: randomItem(COLORS),
     engine_capacity_cc: randomNumber(1000, 3000),
     owners_count: randomNumber(1, 4),
-    location_district: randomItem(DISTRICTS),
+    location_district: district,
+
+    vehicle_type: isSuv ? 'SUV' : 'Car',
+    // New only makes sense for a barely driven vehicle.
+    condition:
+      mileage < 10000 ? 'New' : Math.random() < 0.2 ? 'Reconditioned' : 'Used',
+    location_city: randomItem(CITIES[district]),
+    chassis_number: `${randomItem(CHASSIS_PREFIXES)}${randomNumber(10, 99)}-${String(
+      randomNumber(0, 9999999),
+    ).padStart(7, '0')}`,
+    description: `${year} ${manufacturer.make} well maintained with full service history.`,
+    is_negotiable: flag(),
+    // Never earlier than the manufacture year.
+    registration_year: Math.min(year + randomNumber(0, 1), new Date().getFullYear()),
+    seats: isSuv ? randomItem([5, 7]) : 5,
+    doors: isSuv ? 5 : randomItem([4, 5]),
+    airbags: randomNumber(2, 8),
+    load_capacity_kg: '',
+    drive_type: randomItem(DRIVE_TYPES),
+    sunroof: flag(),
+    full_option: flag(),
+    alloy_wheels: flag(),
+    reverse_camera: flag(),
+    leather_seats: flag(),
+    power_steering: 'true',
+    air_conditioning: 'true',
+    stroke_type: '',
+    cooling_system: '',
+    start_type: '',
+    abs_equipped: '',
+    seating_capacity: '',
+    roof_type: '',
+    wheelbase: '',
+    door_configuration: '',
+    payload_capacity_kg: '',
+    axle_count: '',
+    cargo_bed_type: '',
   };
 }
 
@@ -333,21 +428,10 @@ function escapeCsv(value: string | number): string {
 }
 
 export function convertToCsv(vehicles: Vehicle[]): string {
-  const headers = [
-    'registration_number',
-    'make',
-    'model',
-    'year',
-    'price',
-    'mileage',
-    'fuel_type',
-    'transmission',
-    'body_type',
-    'color',
-    'engine_capacity_cc',
-    'owners_count',
-    'location_district',
-  ];
+  // The one definition of the dealer CSV's columns — the same list the
+  // downloadable template and the parser use — so this generator cannot drift
+  // from them.
+  const headers = [...TEMPLATE_HEADER];
 
   const rows = vehicles.map((vehicle) =>
     headers
