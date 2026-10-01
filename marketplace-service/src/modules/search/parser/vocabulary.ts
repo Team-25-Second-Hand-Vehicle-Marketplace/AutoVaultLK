@@ -76,8 +76,8 @@ export function exactSpanHit(
  * Trigram/edit-distance similarity cannot tell these apart from a genuine
  * typo on its own terms: "sporty" scores CLOSER to "Sportage" (0.625) than
  * several real typos this parser must keep correcting score against their
- * intended model — e.g. "hunday"->"hyundai" (0.400), "mistubisi"->
- * "mitsubishi" (0.381) — so no similarity threshold can admit the real
+ * intended model - e.g. "hunday"->"hyundai" (0.400), "mistubisi"->
+ * "mitsubishi" (0.381) - so no similarity threshold can admit the real
  * typos while excluding this kind of coincidental match. A plain English-
  * dictionary check does not work either: many real model names ARE common
  * English words (Swift, Move, March, Rush, Fit, Leaf, Sunny, Ace, Noah,
@@ -87,13 +87,13 @@ export function exactSpanHit(
  * This list is therefore intentionally narrow and curated: vehicle-
  * character adjectives that are never themselves the answer to a make/model
  * lookup, so blocking them can only prevent false positives, never a real
- * correction. A blocked word is not dropped — it is left unresolved and
+ * correction. A blocked word is not dropped - it is left unresolved and
  * falls through to Groq / semantic (MiniLM) ranking, exactly like any other
  * word the deterministic parser cannot place, so "sporty" still finds
  * relevant listings via their description text instead of hard-locking to
  * one wrong model.
  *
- * Extend this list only when a new false positive is found in practice —
+ * Extend this list only when a new false positive is found in practice -
  * do not attempt to make it exhaustive up front.
  */
 const VEHICLE_CHARACTER_WORDS = new Set([

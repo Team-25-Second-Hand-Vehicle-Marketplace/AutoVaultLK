@@ -93,7 +93,7 @@ describe('coerceVehicleType', () => {
   });
 
   it('covers the four types marketplace-service\'s DTO still omits', () => {
-    // CreateListingDto declares only 6 values — migration 20000 widened the
+    // CreateListingDto declares only 6 values - migration 20000 widened the
     // CHECK constraint and the entity without widening that DTO. The entity is
     // authoritative, so bulk rows may carry these.
     expect(VEHICLE_TYPES).toEqual(

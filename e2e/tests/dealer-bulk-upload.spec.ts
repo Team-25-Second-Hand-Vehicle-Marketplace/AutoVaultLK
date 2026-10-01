@@ -14,8 +14,8 @@ import { VerifyEmailPage } from '../pages/VerifyEmailPage';
  * Dealer bulk upload -> job-progress observation -> rejections review.
  *
  * Bulk upload is business-dealer-only (RequireDealerType type="business"
- * gates /dealer/upload — see App.tsx), so this registers a BUSINESS dealer
- * (with a real, tiny document upload — auth-user-service's
+ * gates /dealer/upload - see App.tsx), so this registers a BUSINESS dealer
+ * (with a real, tiny document upload - auth-user-service's
  * DocumentUploadService validates mimetype/size only, not real image
  * content, so a 68-byte 1x1 PNG fixture is sufficient) rather than reusing
  * the individual-dealer path from dealer-registration.spec.ts.
@@ -28,7 +28,7 @@ import { VerifyEmailPage } from '../pages/VerifyEmailPage';
  * listed") rather than exercising the single-row VALIDATE_ROWS rejection
  * this test is actually about.
  *
- * Row 1 is fully valid; row 2 has price=-100 — a guaranteed VALIDATE_ROWS
+ * Row 1 is fully valid; row 2 has price=-100 - a guaranteed VALIDATE_ROWS
  * rejection ("price must be greater than 0, got -100") with a single,
  * unambiguous failure reason, so the terminal status is predictably
  * PARTIAL and the rejections table has exactly one row to assert against.

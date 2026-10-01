@@ -95,7 +95,7 @@ const ROW = {
   thumbnail_path: 'vehicles/a/thumb.jpg',
 };
 
-describe('VehicleSearchRepository — search()', () => {
+describe('VehicleSearchRepository - search()', () => {
   it('always filters on LIVE status, inherited from the builder', async () => {
     const { repository, calls } = makeRepository([[ROW]]);
     const dto: FilterSearchDto = {};
@@ -159,7 +159,7 @@ describe('VehicleSearchRepository — search()', () => {
   });
 });
 
-describe('VehicleSearchRepository — vector ranking (FR-23)', () => {
+describe('VehicleSearchRepository - vector ranking (FR-23)', () => {
   /**
    * These assert the seam between the rank decision and the emitted SQL.
    *
@@ -168,7 +168,7 @@ describe('VehicleSearchRepository — vector ranking (FR-23)', () => {
    * That gap is not academic: every listing embedding was NULL and
    * @xenova/transformers was absent for the whole life of this branch, so
    * embedQuery() always returned null and semantic ranking silently never
-   * ran — while the suite stayed green, because no test reached this path.
+   * ran - while the suite stayed green, because no test reached this path.
    */
   const unitVector = () => {
     const values = new Array(EMBEDDING_DIMENSIONS).fill(0);
@@ -244,13 +244,13 @@ describe('VehicleSearchRepository — vector ranking (FR-23)', () => {
     });
 
     // Ranking cannot change a total, so paying for a vector scan here would
-    // be pure cost — and ORDER BY in a COUNT is meaningless anyway.
+    // be pure cost - and ORDER BY in a COUNT is meaningless anyway.
     expect(flat(calls[0].sql)).not.toContain('<=>');
     expect(flat(calls[0].sql)).not.toContain('ORDER BY');
   });
 });
 
-describe('VehicleSearchRepository — sort resolution', () => {
+describe('VehicleSearchRepository - sort resolution', () => {
   it('ranks by ts_rank when sorting by relevance with a keyword', async () => {
     const { repository, calls } = makeRepository([[ROW]]);
     const dto: FilterSearchDto = { q: 'hybrid', sort: 'relevance' };
@@ -296,7 +296,7 @@ describe('VehicleSearchRepository — sort resolution', () => {
     await repository.search(buildFilterQuery(dto), dto);
     const { params, sql } = calls[0];
 
-    // status, q (WHERE), q (ts_rank), limit, offset — the rank parameter is
+    // status, q (WHERE), q (ts_rank), limit, offset - the rank parameter is
     // appended before pagination, and the indexes in the SQL must match.
     expect(params[params.length - 3]).toBe('hybrid');
     expect(params[params.length - 2]).toBe(10);
@@ -335,7 +335,7 @@ describe('VehicleSearchRepository — sort resolution', () => {
   });
 });
 
-describe('VehicleSearchRepository — verifiedDealersOnly', () => {
+describe('VehicleSearchRepository - verifiedDealersOnly', () => {
   it('adds an INNER JOIN and a bound VERIFIED parameter', async () => {
     const { repository, calls } = makeRepository([[{ count: '3' }]]);
     const dto: FilterSearchDto = { verifiedDealersOnly: true };
@@ -386,7 +386,7 @@ describe('VehicleSearchRepository — verifiedDealersOnly', () => {
   });
 });
 
-describe('VehicleSearchRepository — count()', () => {
+describe('VehicleSearchRepository - count()', () => {
   it('parses the string count Postgres returns into a number', async () => {
     const { repository } = makeRepository([[{ count: '42' }]]);
 
@@ -407,7 +407,7 @@ describe('VehicleSearchRepository — count()', () => {
   });
 });
 
-describe('VehicleSearchRepository — facets()', () => {
+describe('VehicleSearchRepository - facets()', () => {
   it('runs one query per dimension', async () => {
     const { repository, dataSource } = makeRepository([[], [], [], [], []]);
 
@@ -484,7 +484,7 @@ describe('VehicleSearchRepository — facets()', () => {
   });
 });
 
-describe('VehicleSearchRepository — findById()', () => {
+describe('VehicleSearchRepository - findById()', () => {
   const DETAIL_ROW = {
     ...ROW,
     description: 'Well maintained',
@@ -542,7 +542,7 @@ describe('VehicleSearchRepository — findById()', () => {
   });
 });
 
-describe('VehicleSearchRepository — row mapping', () => {
+describe('VehicleSearchRepository - row mapping', () => {
   it('converts the numeric price string into a number', async () => {
     const { repository } = makeRepository([[ROW]]);
 
@@ -581,7 +581,7 @@ describe('VehicleSearchRepository — row mapping', () => {
     const [item] = await repository.search(buildFilterQuery({}), {});
 
     // A vehicle whose dealer has no profile row is "not verified" for badge
-    // purposes, not "unknown" — the badge must never render on null.
+    // purposes, not "unknown" - the badge must never render on null.
     expect(item.dealerVerified).toBe(false);
   });
 

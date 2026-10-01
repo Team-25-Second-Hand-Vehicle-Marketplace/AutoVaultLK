@@ -1,7 +1,7 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 /**
- * imagesFn's target entity — part of the same documented cross-schema
+ * imagesFn's target entity - part of the same documented cross-schema
  * write exception as VehicleWriteEntity. See that file's header comment.
  */
 @Entity({ schema: 'marketplace', name: 'vehicle_images', synchronize: false })

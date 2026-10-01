@@ -1,5 +1,5 @@
 /**
- * The dealer CSV contract — the single definition of what a bulk upload file
+ * The dealer CSV contract - the single definition of what a bulk upload file
  * must look like.
  *
  * This is a shared boundary, not an implementation detail: validateFile checks
@@ -13,7 +13,7 @@
 
 /**
  * Columns a file must carry to be processable at all. Their absence is a file
- * defect, not a row defect — there is no per-row rejection that could describe
+ * defect, not a row defect - there is no per-row rejection that could describe
  * "this file has no price column", so validateFile fails the whole job.
  *
  * `registration_number` is deliberately NOT required: unregistered imports are
@@ -51,7 +51,7 @@ export const REQUIRED_COLUMNS = [
 /**
  * Every column the pipeline reads as a field or a spec.
  *
- * A column outside this set is not an error — dealers export from their own
+ * A column outside this set is not an error - dealers export from their own
  * DMS and routinely carry fields we have no schema for. Those are appended to
  * the listing's description by the enrich stage rather than dropped, so they
  * stay readable and searchable without adding an unqueryable key to specs.
@@ -61,13 +61,13 @@ export const KNOWN_COLUMNS = [
   // Not in REQUIRED_COLUMNS: an absent/unrecognised value leaves
   // Vehicle.vehicleType at its schema default ('CAR') via deriveVehicleType's
   // dictionary fallback (parse-normalize.stage.ts) rather than failing the
-  // row — the SRS/SAD Appendix A table lists this as a required relational
+  // row - the SRS/SAD Appendix A table lists this as a required relational
   // column, but making it a hard CSV requirement would reject every dealer
   // file that predates this column for no benefit over the existing default.
   'vehicle_type',
   'registration_number',
   // fuel_type, transmission, color, engine_capacity_cc, owners_count,
-  // location_district and condition already arrive via the REQUIRED_COLUMNS spread above —
+  // location_district and condition already arrive via the REQUIRED_COLUMNS spread above -
   // repeating them here would duplicate the column in every downloadable
   // template and in TEMPLATE_HEADER, which is exactly the header a dealer's
   // upload gets checked against.
@@ -78,7 +78,7 @@ export const KNOWN_COLUMNS = [
   'is_negotiable',
   'registration_year',
   // Spec columns. These land in specs jsonb via the enrich stage, and each has
-  // a matching entry in marketplace-service's KNOWN_SPEC_KEYS — without one the
+  // a matching entry in marketplace-service's KNOWN_SPEC_KEYS - without one the
   // value would be unqueryable.
   'seats',
   'doors',
@@ -92,7 +92,7 @@ export const KNOWN_COLUMNS = [
   'leather_seats',
   'power_steering',
   'air_conditioning',
-  // Category-gated columns (SRS Appendix B.2) — read into specs only when
+  // Category-gated columns (SRS Appendix B.2) - read into specs only when
   // the row's vehicle_type matches the category each one describes (BIKE,
   // VAN/BUS, TRUCK/LORRY/PICKUP). See enrich.stage.ts's CAR_SUV/BIKE/
   // VAN_BUS/TRUCK tables.
@@ -161,7 +161,7 @@ const HEADER_ALIASES: Record<string, KnownColumn> = {
  * Folds a raw header cell to its canonical column name.
  *
  * Excel writes a UTF-8 BOM at the start of the first cell, which would make
- * `﻿make` miss an exact comparison against `make` — a failure that is
+ * `﻿make` miss an exact comparison against `make` - a failure that is
  * invisible in every editor and reads as "the file has no make column". Strip
  * it here, once, rather than debugging it per dealer.
  */
@@ -179,7 +179,7 @@ export function normalizeHeader(header: string): string {
 /**
  * The header row of the downloadable dealer template (§B5).
  *
- * Every KNOWN_COLUMNS entry, in the same order — the template is a complete
+ * Every KNOWN_COLUMNS entry, in the same order - the template is a complete
  * reference of what the pipeline accepts, not just the minimum to pass
  * validateFile. Only REQUIRED_COLUMNS + registration_number are mandatory;
  * everything else may be left blank, but showing dealers the full set means

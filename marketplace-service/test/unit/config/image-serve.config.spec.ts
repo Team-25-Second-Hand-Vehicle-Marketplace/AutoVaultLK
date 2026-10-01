@@ -10,7 +10,7 @@ const configWith = (values: Record<string, string>): ConfigService =>
 
 /**
  * NFR-19: images are served via signed URLs, never a public bucket. This is
- * the toggle behind that — s3 for production, local/demo so a fresh
+ * the toggle behind that - s3 for production, local/demo so a fresh
  * checkout with no AWS credentials and an empty vehicle_images table still
  * runs, per the fallback-mode requirement.
  */
@@ -21,7 +21,7 @@ describe('imageServeConfig', () => {
   });
 
   // A typo in the env var must not silently turn into "s3 mode with an
-  // empty bucket name" — that would 500 or hang on every request instead of
+  // empty bucket name" - that would 500 or hang on every request instead of
   // falling back to the safe default.
   it('falls back to demo for an unrecognised mode value', () => {
     expect(imageServeConfig(configWith({ IMAGE_SERVE_MODE: 'S3' }))).toEqual({
@@ -63,7 +63,7 @@ describe('imageServeConfig', () => {
     });
 
     // A blank bucket is a real misconfiguration, but it is the images
-    // service's job to react to that (fail the request, log a warning) —
+    // service's job to react to that (fail the request, log a warning) -
     // this function's job is only to report what was configured.
     it('returns an empty bucket name rather than throwing when unset', () => {
       expect(

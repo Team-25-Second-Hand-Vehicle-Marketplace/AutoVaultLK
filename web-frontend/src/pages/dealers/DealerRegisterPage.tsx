@@ -55,7 +55,7 @@ export function DealerRegisterPage() {
   // rather than a properly reactive value, which is exactly what
   // react-hooks/incompatible-library flags as unsafe to memoize under the
   // React Compiler. useWatch is react-hook-form's own compiler-safe
-  // subscription-based equivalent — same no-name-argument shape (the whole
+  // subscription-based equivalent - same no-name-argument shape (the whole
   // form's values), just reactive the way the compiler expects.
   const values = useWatch({ control })
 
@@ -360,7 +360,7 @@ export function DealerRegisterPage() {
             <dl className="review-list">
               <div>
                 <dt>Company</dt>
-                <dd>{values.companyName || '—'}</dd>
+                <dd>{values.companyName || '-'}</dd>
               </div>
               <div>
                 <dt>Dealer type</dt>
@@ -369,32 +369,32 @@ export function DealerRegisterPage() {
               {values.dealerType === 'business' && (
                 <div>
                   <dt>Registration no.</dt>
-                  <dd>{values.businessRegistrationNumber || '—'}</dd>
+                  <dd>{values.businessRegistrationNumber || '-'}</dd>
                 </div>
               )}
               <div>
                 <dt>Address</dt>
                 <dd>
-                  {[values.businessAddress, values.city].filter(Boolean).join(', ') || '—'}
+                  {[values.businessAddress, values.city].filter(Boolean).join(', ') || '-'}
                 </dd>
               </div>
               <div>
                 <dt>Contact</dt>
                 <dd>
-                  {values.name || '—'}
+                  {values.name || '-'}
                   {values.contactNumber ? ` · ${values.countryCode}${values.contactNumber}` : ''}
                 </dd>
               </div>
               <div>
                 <dt>Email</dt>
-                <dd>{values.email || '—'}</dd>
+                <dd>{values.email || '-'}</dd>
               </div>
               <div>
                 <dt>{values.dealerType === 'business' ? 'Registration certificate' : 'NIC'}</dt>
                 <dd>
                   {values.dealerType === 'business'
-                    ? documentName || '—'
-                    : values.nicNumber || '—'}
+                    ? documentName || '-'
+                    : values.nicNumber || '-'}
                 </dd>
               </div>
             </dl>

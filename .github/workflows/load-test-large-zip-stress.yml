@@ -1,6 +1,6 @@
 name: Load Test - Large ZIP Upload Stress (manual)
 
-# Manual trigger only — same reasoning as load-test.yml. Uploads a ~245MB
+# Manual trigger only - same reasoning as load-test.yml. Uploads a ~245MB
 # ZIP (near the real 250MB maxZipSize cap) and a ~260MB ZIP (deliberately
 # over it) directly to ingestion-service. See 04-load-testing.md Incidents
 # 5.14-5.16 for why this test took three attempts to get right locally:
@@ -86,7 +86,7 @@ jobs:
         run: npm ci && npm run build
 
       # --from-csv makes ZIP entry filenames match the CSV's real
-      # registration numbers (see Incident 5.15) — required for the job to
+      # registration numbers (see Incident 5.15) - required for the job to
       # actually reach PROCESS_IMAGES instead of exhausting the unmatched-
       # retry budget.
       - name: Generate large-ZIP fixtures

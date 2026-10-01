@@ -32,7 +32,7 @@ export type AsyncData<T> = State<T> & {
   /**
    * Applies a known server change locally instead of refetching. A caller
    * that just performed the mutation already knows the resulting shape (a
-   * row's new status, say) — reload() would re-fetch the whole list just to
+   * row's new status, say) - reload() would re-fetch the whole list just to
    * learn what it already knows, which for a page-sized list is a visible
    * loading flash for zero new information.
    */
@@ -57,14 +57,14 @@ export function useAsyncData<T>(
   // useAsyncData(...) call, instead of hoisted to module scope) gets a new
   // function identity every render; if the effect depended on it, that alone
   // would re-run the fetch every render, and every fetch's resulting dispatch
-  // triggers exactly the re-render that creates the next new identity — an
+  // triggers exactly the re-render that creates the next new identity - an
   // infinite request loop with no error and no visible sign beyond the
   // network tab (this took down KnownValuesReference.tsx's bulk-upload
   // reference panel in production: ERR_INSUFFICIENT_RESOURCES from hammering
   // GET /search/options). The ref always reads the latest `toMessage` without
   // the effect ever needing to re-run because of it.
   const toMessageRef = useRef(toMessage)
-  // Runs after render, never during it — writing to a ref while rendering is
+  // Runs after render, never during it - writing to a ref while rendering is
   // not allowed (breaks under concurrent rendering / StrictMode's double
   // invocation). No dependency array: this should update after every render.
   useEffect(() => {

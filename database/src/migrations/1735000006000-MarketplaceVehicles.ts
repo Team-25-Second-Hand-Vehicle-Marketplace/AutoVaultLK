@@ -50,7 +50,7 @@ export class MarketplaceVehicles1735000006000 implements MigrationInterface {
         specs               jsonb NOT NULL DEFAULT '{}'::jsonb,
 
         -- Built by Enrich from the columns above + description.
-        -- No band words — enrichment derivations (age/slug/price_band/
+        -- No band words - enrichment derivations (age/slug/price_band/
         -- mileage_band) were deliberately removed.
         search_text         text,
 

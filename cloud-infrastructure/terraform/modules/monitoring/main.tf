@@ -9,11 +9,11 @@ terraform {
 
 # -----------------------------------------------------------------------------
 # CloudWatch alarms + one dashboard for every deployed Lambda (the 4
-# always-on services plus however many ingestion functions are wired in —
+# always-on services plus however many ingestion functions are wired in -
 # lambda_function_names is caller-supplied), the RDS instance, and the
 # ingestion SQS queue/DLQ. The SNS topic is always created (cheap, no ongoing
 # cost) even with no subscriber yet, so alarms have somewhere to fire from
-# day one — subscribe to it later from the console if alarm_email isn't set
+# day one - subscribe to it later from the console if alarm_email isn't set
 # at apply time.
 # -----------------------------------------------------------------------------
 
@@ -88,7 +88,7 @@ resource "aws_cloudwatch_metric_alarm" "lambda_throttles" {
 
 # -----------------------------------------------------------------------------
 # Ingestion SQS: any DLQ message means a job needs manual attention (see
-# production/main.tf's redrive_policy — 3 failed deliveries land here).
+# production/main.tf's redrive_policy - 3 failed deliveries land here).
 # -----------------------------------------------------------------------------
 
 resource "aws_cloudwatch_metric_alarm" "ingestion_dlq_depth" {

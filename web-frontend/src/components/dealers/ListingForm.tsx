@@ -58,7 +58,7 @@ import {
 const MIN_YEAR = 1980
 const MAX_YEAR = new Date().getFullYear() + 1
 
-/** An empty select or number input arrives as '' — treat it as absent. */
+/** An empty select or number input arrives as '' - treat it as absent. */
 const optionalText = z
   .string()
   .trim()
@@ -101,7 +101,7 @@ const schema = z
       .int('Enter a whole number')
       .min(0, 'Mileage cannot be negative'),
 
-    // Required, but the select starts on an empty placeholder — so '' has to
+    // Required, but the select starts on an empty placeholder - so '' has to
     // be a *value* the schema rejects with a message, not a type error the
     // form cannot represent.
     fuelType: z
@@ -116,7 +116,7 @@ const schema = z
         'Select a transmission',
       ),
 
-    // The CSV's other required columns (REQUIRED_COLUMNS) — same limits as
+    // The CSV's other required columns (REQUIRED_COLUMNS) - same limits as
     // CreateListingDto.
     color: z.string().trim().min(1, 'Color is required').max(50, 'At most 50 characters'),
     engineCapacityCc: z.coerce
@@ -187,10 +187,10 @@ const schema = z
     },
   )
 
-/** After coercion — what the submit handler receives. */
+/** After coercion - what the submit handler receives. */
 export type ListingFormValues = z.infer<typeof schema>
 
-/** Before coercion — what the inputs hold, where numbers are still strings. */
+/** Before coercion - what the inputs hold, where numbers are still strings. */
 type ListingFormInput = z.input<typeof schema>
 
 /** Keeps a stored value only if the form actually offers it. */
@@ -241,7 +241,7 @@ interface ListingFormProps {
   /** Present when editing; absent when creating. */
   listing?: DealerListing
   /**
-   * `images` is empty when the dealer chose not to change photos — on edit,
+   * `images` is empty when the dealer chose not to change photos - on edit,
    * that means "leave the existing set alone" (the page does not call the
    * upload endpoint at all in that case, since FR-58's replace-not-append
    * semantics would otherwise delete every photo the moment a dealer edited
@@ -250,7 +250,7 @@ interface ListingFormProps {
   onSubmit: (input: CreateListingInput, images: File[]) => Promise<void>
   /**
    * Present only in edit mode. Removes one existing photo immediately
-   * (its own request, not deferred to Save) — replaceImages requires
+   * (its own request, not deferred to Save) - replaceImages requires
    * resending every file to keep, but the browser has no File object for a
    * photo it only knows as a stored URL, so a per-photo delete needs its own
    * call. Rejecting leaves the thumbnail in place.

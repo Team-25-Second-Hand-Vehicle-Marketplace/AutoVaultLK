@@ -20,7 +20,7 @@ import {
  * Not on the public nginx listener. Requires X-Internal-Service-Key.
  *
  * marketplace_service_role owns the only write access to
- * marketplace.vehicle_dictionaries — admin-service can only SELECT it, so an
+ * marketplace.vehicle_dictionaries - admin-service can only SELECT it, so an
  * admin's "add this make" / "add this alias" decision has to reach the
  * dictionary through here rather than a direct write from admin-service's
  * own connection, the same reason auth-user-service's internal/dealers
@@ -53,7 +53,7 @@ export class InternalDictionaryController {
     const added = await this.repository.addAlias(id, dto.alias.trim());
     if (!added) {
       throw new BadRequestException(
-        'Alias was not added — the dictionary entry may not exist, or already has this alias',
+        'Alias was not added - the dictionary entry may not exist, or already has this alias',
       );
     }
     return { added: true };

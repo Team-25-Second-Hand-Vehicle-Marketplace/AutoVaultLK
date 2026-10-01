@@ -142,7 +142,7 @@ export class VehicleSearchRepository {
     );
 
     // Presigning is a local SigV4 computation in s3 mode (no AWS round trip
-    // — see ImageUrlResolverService), so resolving a whole page of results
+    // - see ImageUrlResolverService), so resolving a whole page of results
     // in parallel here costs CPU, not N sequential network calls.
     return Promise.all(rows.map((row) => this.mapRow(row)));
   }

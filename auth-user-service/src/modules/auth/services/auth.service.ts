@@ -260,12 +260,12 @@ export class AuthService {
   }
 
   /**
-   * "Continue with Google" — the ID-token flow, not a redirect: the frontend
+   * "Continue with Google" - the ID-token flow, not a redirect: the frontend
    * gets a signed credential directly from Google Identity Services and
    * hands it here, so there is no redirect URI, no client secret, and no
    * server-side round trip to Google's authorization endpoint.
    *
-   * Deliberately excludes ADMIN, same as the password login() method does —
+   * Deliberately excludes ADMIN, same as the password login() method does -
    * admin sign-in stays on its own dedicated, more tightly controlled path.
    */
   async loginWithGoogle(data: GoogleLoginDto, session: SessionMetadata = {}) {
@@ -299,7 +299,7 @@ export class AuthService {
       });
     } else if (!user.emailVerifiedAt || !user.isActive) {
       // Google has already proven this email belongs to whoever is signing
-      // in — an existing not-yet-verified account (password registration
+      // in - an existing not-yet-verified account (password registration
       // abandoned before clicking the email link, say) can piggyback on
       // that proof instead of still needing the original verification email.
       user = await this.usersRepository.update(user.id, {
@@ -578,7 +578,7 @@ export class AuthService {
     } catch (err) {
       if (err instanceof UnauthorizedException) throw err;
       // google-auth-library throws a plain Error for an expired, malformed,
-      // or wrong-audience token — never trust the token past this point.
+      // or wrong-audience token - never trust the token past this point.
       throw new UnauthorizedException('Invalid Google credential');
     }
   }
@@ -611,7 +611,7 @@ export class AuthService {
   /**
    * Reached only pre-email-verification now: a dealer's isActive is set on
    * email verification the same as a buyer's (see EmailVerificationService),
-   * so a dealer account no longer stays inactive while PENDING or REJECTED —
+   * so a dealer account no longer stays inactive while PENDING or REJECTED -
    * that used to be the case, which meant a rejected dealer had no way to log
    * back in and resubmit. Whether a dealer may create listings is decided
    * separately by DealerProfile.verificationStatus, not isActive.

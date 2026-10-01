@@ -13,7 +13,7 @@ const ENVELOPE = { message: 'ok', data: { id: 'v-1' } }
 
 /**
  * FR-42/FR-42.1. The path is the contract with
- * api-gateway/openapi/public-api.yaml — nginx proxies `location /marketplace/`
+ * api-gateway/openapi/public-api.yaml - nginx proxies `location /marketplace/`
  * without stripping the prefix, so the URL the client builds is the URL the
  * service sees.
  */

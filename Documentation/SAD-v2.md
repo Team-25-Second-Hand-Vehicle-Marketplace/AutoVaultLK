@@ -56,12 +56,12 @@ This Software Architecture Document (SAD) ensures that developers, testers, revi
 
 This document covers the full architectural design of the Second-Hand Vehicle Marketplace platform using the 4+1 view model:
 
-- **Use-Case View** — actors, primary flows, and use-case realizations
-- **Logical View** — service decomposition, modules, and key classes
-- **Process View** — runtime communication, orchestration, and state machines
-- **Deployment View** — AWS topology, networking, and infrastructure
-- **Implementation View** — repository layout, layering, and coding conventions
-- **Data View** — persistent schema layout, isolation model, and cross-schema grants
+- **Use-Case View** - actors, primary flows, and use-case realizations
+- **Logical View** - service decomposition, modules, and key classes
+- **Process View** - runtime communication, orchestration, and state machines
+- **Deployment View** - AWS topology, networking, and infrastructure
+- **Implementation View** - repository layout, layering, and coding conventions
+- **Data View** - persistent schema layout, isolation model, and cross-schema grants
 
 Out of scope: detailed UI mockups, sprint planning, and line-by-line API specifications (see SRS and Appendix B).
 
@@ -69,38 +69,38 @@ Out of scope: detailed UI mockups, sprint planning, and line-by-line API specifi
 
 | Term | Definition |
 |---|---|
-| **ADR** | Architecture Decision Record — a documented significant design choice with context, decision, consequences, and alternatives. All ADRs in this project are recorded **inline in this SAD** (not as separate files). |
-| **DLQ** | Dead-Letter Queue — Amazon SQS queue where messages are routed after repeated processing failures. Used for upload-job orchestration, **not** for the ETL Load→Marketplace database boundary. |
-| **ETL** | Extract, Transform, Load — automated pipeline converting dealer CSV/JSON/ZIP uploads into validated, searchable listings. |
+| **ADR** | Architecture Decision Record - a documented significant design choice with context, decision, consequences, and alternatives. All ADRs in this project are recorded **inline in this SAD** (not as separate files). |
+| **DLQ** | Dead-Letter Queue - Amazon SQS queue where messages are routed after repeated processing failures. Used for upload-job orchestration, **not** for the ETL Load→Marketplace database boundary. |
+| **ETL** | Extract, Transform, Load - automated pipeline converting dealer CSV/JSON/ZIP uploads into validated, searchable listings. |
 | **Groq** | External LLM inference provider used as a fallback normalizer for low-confidence ETL rows and unresolved natural-language search tokens. |
 | **Human-in-the-loop** | Design gate requiring dealer review before AI-inferred listing data is published; ETL-loaded listings enter `pending_review` until confirmed. |
-| **IAM** | AWS Identity and Access Management — least-privilege execution roles scoped per Lambda function. |
-| **Lambda** | AWS Lambda — serverless compute running NestJS HTTP handlers and ETL stage functions. |
-| **MarketplaceVehiclesWriteAdapter** | The **sole** application class permitted to exercise the ADR-002 cross-schema write grant into `marketplace.vehicles` and `marketplace.vehicle_images`. Uses parameterized SQL and `ON CONFLICT` upsert — not shared ORM entity imports from marketplace-service. |
+| **IAM** | AWS Identity and Access Management - least-privilege execution roles scoped per Lambda function. |
+| **Lambda** | AWS Lambda - serverless compute running NestJS HTTP handlers and ETL stage functions. |
+| **MarketplaceVehiclesWriteAdapter** | The **sole** application class permitted to exercise the ADR-002 cross-schema write grant into `marketplace.vehicles` and `marketplace.vehicle_images`. Uses parameterized SQL and `ON CONFLICT` upsert - not shared ORM entity imports from marketplace-service. |
 | **Model-parity constraint** | Non-negotiable requirement that ingestion and search use the same normalization dictionaries and embedding model/library version (FR-22.1, NFR-26.1). |
 | **pending_review** | Listing status after ETL Load; not publicly searchable until the dealer explicitly confirms (FR-43). |
 | **pg_trgm** | PostgreSQL extension enabling trigram-based fuzzy text matching. |
-| **RDS** | Amazon Relational Database Service — hosts the shared PostgreSQL instance with schema-per-service isolation (ADR-001). |
+| **RDS** | Amazon Relational Database Service - hosts the shared PostgreSQL instance with schema-per-service isolation (ADR-001). |
 | **RDS Proxy** | Connection pooler between Lambda functions and RDS; bounds database connections under Step Functions Map concurrency (NFR-10). |
 | **Schema-per-service** | Logical database isolation: one RDS instance, five service-owned **schemas** (each containing **multiple tables**), each with a dedicated PostgreSQL role. *Schema-per-service does not mean one table per service.* |
-| **SQS** | Amazon Simple Queue Service — durably buffers upload-start messages between the Ingest API and Step Functions. |
+| **SQS** | Amazon Simple Queue Service - durably buffers upload-start messages between the Ingest API and Step Functions. |
 | **Step Functions** | AWS orchestration service coordinating ETL Lambda stages per upload with declarative Retry/Catch (ADR-003). |
 | **vehicle_dictionaries** | Marketplace-owned reference tables (`makes`, `models`, `aliases`) backing pg_trgm fuzzy matching; read by Ingestion via scoped SELECT grant and in-memory cache. |
 
 ### 1.4 References
 
-1. Group 25 (PID 11), *Project Proposal — Second-Hand Vehicle Marketplace*, University of Moratuwa, 2026.
-2. Group 25 (PID 11), *Feasibility Study — Second-Hand Vehicle Marketplace*, University of Moratuwa, 2026.
-3. Group 25 (PID 11), *Software Requirements Specification v2.0 — Second-Hand Vehicle Marketplace*, University of Moratuwa, 2026.
+1. Group 25 (PID 11), *Project Proposal - Second-Hand Vehicle Marketplace*, University of Moratuwa, 2026.
+2. Group 25 (PID 11), *Feasibility Study - Second-Hand Vehicle Marketplace*, University of Moratuwa, 2026.
+3. Group 25 (PID 11), *Software Requirements Specification v2.0 - Second-Hand Vehicle Marketplace*, University of Moratuwa, 2026.
 4. Group 25 (PID 11), *ETL Pipeline Design: Dealer vehicle-upload ingestion (Step Functions)*, internal design document, 2026.
-5. `Documentation/plan-b-reads-cross-schemas.md` — database grants implementation reference.
-6. `Documentation/database-implementation-log.md` — verification log for schema isolation tests.
+5. `Documentation/plan-b-reads-cross-schemas.md` - database grants implementation reference.
+6. `Documentation/database-implementation-log.md` - verification log for schema isolation tests.
 
 ### 1.5 Overview
 
 The system is a cloud-native vehicle marketplace deployed on AWS. Five backend services (Auth & User, Marketplace, Ingestion & ETL, Admin, Notification) plus a React web frontend communicate through a public API Gateway (north-south) and an internal API Gateway (east-west). Bulk inventory processing is orchestrated by AWS Step Functions with per-stage Lambda functions.
 
-Data lives in a single Amazon RDS PostgreSQL instance (with `pgvector` and `pg_trgm` extensions), logically partitioned into five schemas with five least-privilege database roles. This document records one deliberate, narrow exception to strict write isolation at the ETL Load boundary — see ADR-002.
+Data lives in a single Amazon RDS PostgreSQL instance (with `pgvector` and `pg_trgm` extensions), logically partitioned into five schemas with five least-privilege database roles. This document records one deliberate, narrow exception to strict write isolation at the ETL Load boundary - see ADR-002.
 
 ---
 
@@ -122,7 +122,7 @@ This SAD follows the **4+1 Architectural View Model** (Kruchten). Each view addr
   - Within the shared RDS instance, each service **exclusively owns its schema** (multiple tables per schema).
   - **Reads** may cross service schemas via scoped, FK-justified, least-privilege `SELECT` grants (e.g., `marketplace_service_role` reads `auth.users` for dealer display names; `admin_service_role` reads all schemas for dashboards).
   - **Writes** are owned per service, with **exactly one** documented, database-enforced exception: the Ingestion ETL Load stage writes into `marketplace.vehicles` and `marketplace.vehicle_images` via `MarketplaceVehiclesWriteAdapter` (ADR-002). No other cross-schema `INSERT`/`UPDATE`/`DELETE` is permitted.
-- **East-west service communication:** Browser-to-service traffic uses the public API Gateway. Service-to-service mutations (e.g., Admin approving a dealer) use synchronous internal HTTP through a private API Gateway / ALB (ADR-005) — never direct cross-schema writes from Admin.
+- **East-west service communication:** Browser-to-service traffic uses the public API Gateway. Service-to-service mutations (e.g., Admin approving a dealer) use synchronous internal HTTP through a private API Gateway / ALB (ADR-005) - never direct cross-schema writes from Admin.
 - **Shared reference data for fuzzy matching:** `vehicle_dictionaries` (makes, models, aliases) are owned by marketplace-service; ingestion-service holds read-only access and caches a snapshot at container init.
 
 ### 3.2 Constraints
@@ -181,7 +181,7 @@ A strict interpretation of microservice write isolation would require Marketplac
 
 2. **The single exception:** `ingestion_service_role` is granted `SELECT`, `INSERT`, and `UPDATE` (never `DELETE`) on `marketplace.vehicles` and `marketplace.vehicle_images` only. This grant exists solely for the ETL Load stage.
 
-3. **Code confinement:** All exercise of this grant is confined to one class — `MarketplaceVehiclesWriteAdapter` in `ingestion-service` (`src/workers/etl-worker/pipeline/persistence/`). The adapter:
+3. **Code confinement:** All exercise of this grant is confined to one class - `MarketplaceVehiclesWriteAdapter` in `ingestion-service` (`src/workers/etl-worker/pipeline/persistence/`). The adapter:
    - uses parameterized SQL (not imported marketplace ORM entities),
    - performs bulk upsert via `ON CONFLICT (upload_job_id, registration_number) DO UPDATE` (or equivalent composite unique key),
    - sets `status = 'pending_review'` on insert,
@@ -194,7 +194,7 @@ A strict interpretation of microservice write isolation would require Marketplac
 **Consequences:**
 
 - *Positive:* Preserves the ETL design's connection-pool and `MaxConcurrency: 10` sizing argument; avoids partial-success HTTP semantics and payload-size concerns of a bulk REST endpoint; no consumer lag, ordering, or duplicate-delivery problems from an intermediate queue; one clear adapter class auditable in code review.
-- *Negative:* One service can mutate another service's tables — a deliberate departure from strict microservice purity; Marketplace-service must treat ETL-written rows as externally originated.
+- *Negative:* One service can mutate another service's tables - a deliberate departure from strict microservice purity; Marketplace-service must treat ETL-written rows as externally originated.
 - *Mitigation:* Database grant scoped to two tables and two verbs; code confined to one adapter; idempotent upsert; `pending_review` gate before public visibility; documented inline with reopen conditions below.
 
 **Alternatives considered:**
@@ -203,7 +203,7 @@ A strict interpretation of microservice write isolation would require Marketplac
 |---|---|
 | **Event-driven boundary** (SQS `VehicleChunkProcessed` → Marketplace consumer + DLQ + idempotency keys) | Rejected v2.0. One producer (Load) and one consumer (`vehicles` table) with no independent scaling need. Adds failure surface (ordering, consumer lag, duplicate delivery, DLQ monitoring) without solving a real problem. Step Functions already provides retry and dead-lettering at the pipeline level. Estimated 1–1.5 weeks implementation cost unacceptable with 2 developers / 6 weeks remaining. |
 | Synchronous HTTP bulk API per chunk (`POST /internal/vehicles/bulk`) | Moves connection-pool pressure to marketplace-service (shared with live search traffic); requires partial-success (207 Multi-Status) semantics and idempotency under Step Functions retries; network latency under Map concurrency. |
-| Cross-schema write with no adapter discipline | Unacceptable — grant without code confinement would violate reviewability. |
+| Cross-schema write with no adapter discipline | Unacceptable - grant without code confinement would violate reviewability. |
 
 **Reopen conditions (do not revisit unless both are true):**
 
@@ -214,7 +214,7 @@ Do not reopen under time pressure or generic "microservices should be event-driv
 
 **Viva / interview standing answer:**
 
-> "Five schemas, five least-privilege database roles, one shared RDS instance. Reads cross schemas only through explicitly granted, scoped SELECT permissions. Writes stay owned by each service, with exactly one narrow, database-enforced exception: the ETL pipeline's Load stage writes into Marketplace's vehicles tables under a column-scoped grant, confined in code to a single adapter class, and made safe to retry via an idempotent upsert. We evaluated an event-driven boundary and deliberately chose against it — there's a 1:1 producer-consumer relationship with no independent scaling need, so a queue would add failure surface without solving a real problem. Step Functions already gives us retry and dead-lettering at the pipeline level."
+> "Five schemas, five least-privilege database roles, one shared RDS instance. Reads cross schemas only through explicitly granted, scoped SELECT permissions. Writes stay owned by each service, with exactly one narrow, database-enforced exception: the ETL pipeline's Load stage writes into Marketplace's vehicles tables under a column-scoped grant, confined in code to a single adapter class, and made safe to retry via an idempotent upsert. We evaluated an event-driven boundary and deliberately chose against it - there's a 1:1 producer-consumer relationship with no independent scaling need, so a queue would add failure surface without solving a real problem. Step Functions already gives us retry and dead-lettering at the pipeline level."
 
 ---
 
@@ -308,7 +308,7 @@ Groq API key stored in Secrets Manager. Groq is invoked only from designated Lam
 | Admin | Auth | `POST /internal/dealers/{id}/reject` | Dealer rejection |
 | Admin | Auth | `POST /internal/users/{id}/deactivate` | Account deactivation |
 
-Internal routes require Administrator JWT or service-to-service credential (mTLS or signed service token — document chosen approach at implementation).
+Internal routes require Administrator JWT or service-to-service credential (mTLS or signed service token - document chosen approach at implementation).
 
 #### 3.5.3 Asynchronous Interfaces
 
@@ -334,7 +334,7 @@ Internal routes require Administrator JWT or service-to-service credential (mTLS
 | Transient Lambda / network failure | Step Functions Retry with exponential backoff | FR-42, NFR-06 |
 | Repeated SQS orchestration failure | Route to Dead-Letter Queue | FR-42.3 |
 | Duplicate SQS delivery (job start) | Idempotent job creation keyed on upload identity | FR-41 |
-| **Load write fails mid-chunk** | **Step Functions retries the Load Task state; `MarketplaceVehiclesWriteAdapter` upsert on `(upload_job_id, registration_number)` makes retry safe — no duplicate listings, no partial duplicate rows within a chunk** | **§11.1, ADR-002** |
+| **Load write fails mid-chunk** | **Step Functions retries the Load Task state; `MarketplaceVehiclesWriteAdapter` upsert on `(upload_job_id, registration_number)` makes retry safe - no duplicate listings, no partial duplicate rows within a chunk** | **§11.1, ADR-002** |
 | Entire chunk failure | Other chunks continue independently (Map state isolation) | §6.6 |
 
 #### 3.6.2 Search Resilience
@@ -373,7 +373,7 @@ Per-service workflows: lint → unit tests → Docker build → push to ECR → 
 
 #### 3.7.3 Environments
 
-`dev` (local Docker Compose + optional AWS dev), `staging`, `production` — composed via Terraform environment modules.
+`dev` (local Docker Compose + optional AWS dev), `staging`, `production` - composed via Terraform environment modules.
 
 ---
 
@@ -424,7 +424,7 @@ Test containers or dedicated test schema; LocalStack for S3/SQS where feasible. 
 | 4.1.4 | Hybrid natural-language search | Marketplace | ADR-004, §6.7 |
 | 4.1.5 | Monitor platform activity & audit logs | Admin | §9 (admin read-only grants) |
 
-*(Use-case diagrams: Guest, Buyer, Dealer, Administrator — see v1.0 figures; unchanged in v2.0.)*
+*(Use-case diagrams: Guest, Buyer, Dealer, Administrator - see v1.0 figures; unchanged in v2.0.)*
 
 ---
 
@@ -436,26 +436,26 @@ The architecture comprises five independently deployable backend services and on
 
 ### 5.2 Architecturally Significant Design Packages
 
-#### 5.2.1 Auth & User — `auth` module
+#### 5.2.1 Auth & User - `auth` module
 
-- `AuthController` — login, refresh, logout, dealer registration
-- `AuthService` — credential verification, JWT issuance
-- `RefreshTokenService` — hashed refresh token lifecycle
-- `JwtStrategy` / `RolesGuard` — RBAC enforcement
-- `DealerProfilesRepository` — tier, verification state, document references
+- `AuthController` - login, refresh, logout, dealer registration
+- `AuthService` - credential verification, JWT issuance
+- `RefreshTokenService` - hashed refresh token lifecycle
+- `JwtStrategy` / `RolesGuard` - RBAC enforcement
+- `DealerProfilesRepository` - tier, verification state, document references
 
 **Owned schema tables:** `auth.users`, `auth.dealer_profiles`, `auth.refresh_tokens`
 
-#### 5.2.2 Marketplace — `listings`, `search`, `favourites` modules
+#### 5.2.2 Marketplace - `listings`, `search`, `favourites` modules
 
-- `ListingsController` / `ListingsService` — CRUD, lifecycle, dealer review confirmation
-- `SearchService` — merges filter, vector, and trigram results
-- `DeterministicParser`, `PgVectorSearch`, `TrigramSearch` — search submodules
-- `VehicleDictionariesRepository` — owns `makes`, `models`, `aliases`
+- `ListingsController` / `ListingsService` - CRUD, lifecycle, dealer review confirmation
+- `SearchService` - merges filter, vector, and trigram results
+- `DeterministicParser`, `PgVectorSearch`, `TrigramSearch` - search submodules
+- `VehicleDictionariesRepository` - owns `makes`, `models`, `aliases`
 
 **Owned schema tables:** `marketplace.vehicles`, `marketplace.vehicle_images`, `marketplace.favourites`, `marketplace.search_queries`, `marketplace.makes`, `marketplace.models`, `marketplace.aliases`
 
-#### 5.2.3 Ingestion & ETL — pipeline package (`src/workers/etl-worker/pipeline/`)
+#### 5.2.3 Ingestion & ETL - pipeline package (`src/workers/etl-worker/pipeline/`)
 
 | Stage directory | Handler | Responsibility |
 |---|---|---|
@@ -468,18 +468,18 @@ The architecture comprises five independently deployable backend services and on
 
 **Owned schema tables:** `ingestion.upload_jobs`, `ingestion.rejected_records`, `ingestion.etl_stage_logs`
 
-#### 5.2.4 Admin — `users`, `uploads`, `reports`, `audit`, `dashboard` modules
+#### 5.2.4 Admin - `users`, `uploads`, `reports`, `audit`, `dashboard` modules
 
-- `AdminService` — orchestrates cross-service reads and internal HTTP mutations
+- `AdminService` - orchestrates cross-service reads and internal HTTP mutations
 - Read-only view-entities across `auth`, `marketplace`, `ingestion`, `notification` schemas
 - All admin **mutations** go through owning service APIs (ADR-005)
 
 **Owned schema tables:** `admin.audit_logs`
 
-#### 5.2.5 Notification — `notifications` module
+#### 5.2.5 Notification - `notifications` module
 
 - Event-driven SES email dispatch
-- `SesAdapter` — infrastructure isolation
+- `SesAdapter` - infrastructure isolation
 
 **Owned schema tables:** `notification.notifications`
 
@@ -546,13 +546,13 @@ Manual listings: `draft` → `live` → `inactive`
 - **API Gateway** (public + internal)
 - **Lambda** functions per service and ETL stage (container images via ECR)
 - **RDS PostgreSQL** (single instance) + **RDS Proxy**
-- **S3** — `raw/` (immutable uploads), `staging/` (~7-day lifecycle for inter-stage JSON)
-- **SQS** — upload job buffer (Ingest API → Step Functions only)
-- **Step Functions** — ETL state machine
-- **SES** — outbound email
-- **CloudWatch** — logs and metrics
-- **Secrets Manager / SSM** — DB credentials, Groq API key
-- **IAM** — least-privilege per Lambda
+- **S3** - `raw/` (immutable uploads), `staging/` (~7-day lifecycle for inter-stage JSON)
+- **SQS** - upload job buffer (Ingest API → Step Functions only)
+- **Step Functions** - ETL state machine
+- **SES** - outbound email
+- **CloudWatch** - logs and metrics
+- **Secrets Manager / SSM** - DB credentials, Groq API key
+- **IAM** - least-privilege per Lambda
 
 ### Connection pooling
 
@@ -604,7 +604,7 @@ Extensions: `vector` (384-dim embeddings), `pg_trgm` (fuzzy matching).
 
 ### 9.3 Cross-schema grant model
 
-**Reads** — permitted only where a foreign key already links the tables:
+**Reads** - permitted only where a foreign key already links the tables:
 
 | Consumer role | Grant | FK justification |
 |---|---|---|
@@ -615,7 +615,7 @@ Extensions: `vector` (384-dim embeddings), `pg_trgm` (fuzzy matching).
 | `marketplace_service_role` | `SELECT` on `ingestion.upload_jobs` | Dealer upload status display |
 | `admin_service_role` | `SELECT` on all non-admin schemas | Dashboard reporting (read-only) |
 
-**Writes** — default rule: each role has full CRUD on its own schema only.
+**Writes** - default rule: each role has full CRUD on its own schema only.
 
 **The single write exception (ADR-002):**
 
@@ -635,7 +635,7 @@ If the Load stage fails mid-chunk (transient DB error, Lambda timeout, connectio
 1. **Step Functions** catches the Task failure and applies the configured Retry policy (exponential backoff) on the Load state.
 2. **`MarketplaceVehiclesWriteAdapter`** uses an idempotent upsert keyed on `(upload_job_id, registration_number)` via `ON CONFLICT … DO UPDATE`. Re-executing the same chunk does not create duplicate listings.
 3. Rows successfully upserted before the failure remain correct; the retry completes or updates remaining rows in the chunk.
-4. No separate SQS consumer, DLQ, or idempotency-key table is required for this boundary — Step Functions retry plus SQL upsert is the reliability mechanism.
+4. No separate SQS consumer, DLQ, or idempotency-key table is required for this boundary - Step Functions retry plus SQL upsert is the reliability mechanism.
 5. If all Load retries are exhausted, the chunk is marked failed in `etl_stage_logs`; other Map branches continue independently.
 
 **Action item (implementation verification):** Confirm upsert key `(upload_job_id, registration_number)` remains valid after any schema migration. Partial unique index on `registration_number` (where not null) prevents duplicate registrations across jobs.
@@ -679,7 +679,7 @@ A 1,000-row upload at 100 rows/chunk produces ~61 Lambda invocations per Step Fu
 
 - **ETL Groq degradation:** Step Functions Retry/Catch on the Groq step; ~95% success on rules-only during outage.
 - **Row-level idempotency:** Upsert on `(upload_job_id, registration_number)` in `MarketplaceVehiclesWriteAdapter` prevents duplicate listings on Step Functions Task retry or duplicate SQS job-start delivery.
-- **Load mid-chunk failure (explicit):** If the Load write fails partway through a chunk, Step Functions retries the Load Task state. The upsert semantics make that retry safe: already-persisted rows are updated in place, not duplicated. This is the sole reliability layer for the ETL→Marketplace persistence boundary — a second queue-based retry/DLQ layer would duplicate Step Functions' responsibility without adding independent scaling benefit (ADR-002).
+- **Load mid-chunk failure (explicit):** If the Load write fails partway through a chunk, Step Functions retries the Load Task state. The upsert semantics make that retry safe: already-persisted rows are updated in place, not duplicated. This is the sole reliability layer for the ETL→Marketplace persistence boundary - a second queue-based retry/DLQ layer would duplicate Step Functions' responsibility without adding independent scaling benefit (ADR-002).
 - **Orchestration DLQ:** Upload-start SQS messages route to DLQ after repeated failures (FR-42.3). This applies to job **initiation**, not to the Load→Marketplace write path.
 
 ### 11.2 Security
@@ -735,21 +735,21 @@ JSONB `specs` column allows new vehicle types without schema migration. Unmapped
 ## Appendix B: Public API Route Catalogue (Illustrative)
 
 ### Marketplace Service
-- `GET /marketplace/vehicles` — search/list
-- `GET /marketplace/vehicles/:id` — detail
-- `POST /marketplace/vehicles` — create (dealer)
-- `PATCH /marketplace/vehicles/:id` — update
-- `POST /marketplace/vehicles/:id/confirm` — dealer confirms pending_review listing
-- `GET /marketplace/favourites` — buyer favourites
+- `GET /marketplace/vehicles` - search/list
+- `GET /marketplace/vehicles/:id` - detail
+- `POST /marketplace/vehicles` - create (dealer)
+- `PATCH /marketplace/vehicles/:id` - update
+- `POST /marketplace/vehicles/:id/confirm` - dealer confirms pending_review listing
+- `GET /marketplace/favourites` - buyer favourites
 
 ### Ingestion & ETL Service
-- `POST /ingest/upload` — bulk upload intake
-- `GET /jobs/:jobId` — upload job status
+- `POST /ingest/upload` - bulk upload intake
+- `GET /jobs/:jobId` - upload job status
 
 ### Admin Service
-- `GET /admin/users` — list users
-- `POST /admin/dealers/:id/approve` — triggers internal Auth API call
-- `GET /admin/audit-logs` — audit trail
+- `GET /admin/users` - list users
+- `POST /admin/dealers/:id/approve` - triggers internal Auth API call
+- `GET /admin/audit-logs` - audit trail
 
 *(Full catalogue: see v1.0 Appendix B.)*
 

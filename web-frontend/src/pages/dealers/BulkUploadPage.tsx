@@ -60,7 +60,7 @@ export function BulkUploadPage() {
 
   // A dealer who submitted, then navigated away while it was still
   // PENDING/PROCESSING, otherwise has no way back to that job's status short
-  // of the URL they were on — this sends them straight there instead of a
+  // of the URL they were on - this sends them straight there instead of a
   // blank form they could resubmit into.
   useEffect(() => {
     const controller = new AbortController()
@@ -76,7 +76,7 @@ export function BulkUploadPage() {
         setCheckingActive(false)
       },
       () => {
-        // A failed check should not block uploading a new file — worst case
+        // A failed check should not block uploading a new file - worst case
         // the dealer double-submits, which the pipeline already tolerates.
         if (!cancelled) setCheckingActive(false)
       },
@@ -137,7 +137,7 @@ export function BulkUploadPage() {
     try {
       const accepted = await uploadInventory(csv, zip, setProgress)
       // The pipeline runs asynchronously, so there is nothing to wait for here
-      // — the status page polls from this point.
+      // - the status page polls from this point.
       navigate(`/dealer/uploads/${accepted.jobId}`, { replace: true })
     } catch (err) {
       setError(toErrorMessage(err, 'Upload failed. Please try again.'))

@@ -7,7 +7,7 @@ import { VerifyEmailPage } from '../pages/VerifyEmailPage';
 /**
  * Session expiry -> re-authentication.
  *
- * The real access-token TTL is 15 minutes (JWT_ACCESS_EXPIRES_IN) — far too
+ * The real access-token TTL is 15 minutes (JWT_ACCESS_EXPIRES_IN) - far too
  * long to wait out in a test. Instead this corrupts BOTH stored tokens
  * in-browser after a real login (see helpers/session.ts for why both, not
  * just the access token) and triggers a real authenticated request by
@@ -65,7 +65,7 @@ test('an expired, unrecoverable session redirects to login and returns the buyer
   await corruptStoredSession(page, context);
 
   // /saved is RequireAuth-gated and calls GET /marketplace/favourites on
-  // mount — the trigger for the interceptor's expiry path.
+  // mount - the trigger for the interceptor's expiry path.
   await page.goto('/saved');
 
   await page.waitForURL(/\/login$/, { timeout: 15_000 });

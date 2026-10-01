@@ -3,7 +3,7 @@ import type { TEMPLATE_HEADER } from '../../api/ingestion.template'
 /**
  * Which form field carries each dealer-CSV column. Typed against
  * `TEMPLATE_HEADER`, so adding a column to the template without a field here is
- * a compile error — the manual form and the bulk template cannot silently drift
+ * a compile error - the manual form and the bulk template cannot silently drift
  * apart. `listing-form.contract.test.ts` checks the same at run time.
  */
 export const CSV_COLUMN_TO_FIELD: Record<(typeof TEMPLATE_HEADER)[number], string> = {
@@ -52,7 +52,7 @@ export const CSV_COLUMN_TO_FIELD: Record<(typeof TEMPLATE_HEADER)[number], strin
   cargo_bed_type: 'cargoBedType',
 }
 
-/** Sri Lanka's 25 districts — suggestions only; the field stays free text like the CSV's. */
+/** Sri Lanka's 25 districts - suggestions only; the field stays free text like the CSV's. */
 export const DISTRICTS = [
   'Ampara', 'Anuradhapura', 'Badulla', 'Batticaloa', 'Colombo', 'Galle', 'Gampaha',
   'Hambantota', 'Jaffna', 'Kalutara', 'Kandy', 'Kegalle', 'Kilinochchi', 'Kurunegala',
@@ -120,7 +120,7 @@ export interface SpecValues {
  * The `specs` object for a submit. Mirrors the enrich stage: a category's
  * columns are stored only for that category (a bike's stroke type on a car is
  * dropped), the equipment flags apply to every type, and an unticked flag is
- * left out rather than stored as false — the same as a blank CSV cell.
+ * left out rather than stored as false - the same as a blank CSV cell.
  *
  * `extras` are keys on an edited listing that the form does not own (a bulk
  * upload's carried-over DMS columns); they pass through so an edit never

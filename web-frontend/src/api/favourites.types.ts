@@ -5,7 +5,7 @@ import type { VehicleCardResult } from '../components/search/VehicleCard'
  *
  * The backend requests `relations: { vehicle: true }` and orders
  * `createdAt DESC`, so the list arrives newest-first with the vehicle attached
- * — one request rather than one per saved id.
+ * - one request rather than one per saved id.
  *
  * `vehicle` is the raw `Vehicle` entity rather than the search-result shape, so
  * it carries no `imageUrl`, `thumbnailUrl` or `dealerVerified`. `VehicleCard`

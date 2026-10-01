@@ -9,11 +9,11 @@ terraform {
 
 # -----------------------------------------------------------------------------
 # web-frontend hosting: private S3 bucket, readable only through CloudFront
-# via Origin Access Control. No custom domain / ACM certificate this pass —
+# via Origin Access Control. No custom domain / ACM certificate this pass -
 # CloudFront's own *.cloudfront.net domain is what VITE_API_BASE_URL's
 # counterpart (the SPA's own URL) resolves to.
 #
-# ingestion-service's raw/staging upload buckets are NOT created here —
+# ingestion-service's raw/staging upload buckets are NOT created here -
 # ingestion isn't deployed in this pass, so this module's only job is
 # frontend hosting.
 # -----------------------------------------------------------------------------
@@ -50,7 +50,7 @@ resource "aws_cloudfront_origin_access_control" "frontend" {
   signing_protocol                  = "sigv4"
 }
 
-# AWS-managed "CachingOptimized" policy — long cache, gzip/brotli aware. A
+# AWS-managed "CachingOptimized" policy - long cache, gzip/brotli aware. A
 # fixed id, not a resource; see AWS's managed cache policy docs.
 locals {
   caching_optimized_policy_id = "658327ea-f89d-4fab-a63d-7e88639e58f6"
@@ -77,7 +77,7 @@ resource "aws_cloudfront_distribution" "frontend" {
   }
 
   # SPA client-side routing: an unknown path is a React Router route, not a
-  # missing file — serve index.html and let the app render it.
+  # missing file - serve index.html and let the app render it.
   custom_error_response {
     error_code         = 403
     response_code      = 200

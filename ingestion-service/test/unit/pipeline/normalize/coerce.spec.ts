@@ -36,7 +36,7 @@ describe('coerceNumber', () => {
 
   it('refuses an ambiguous comma rather than guessing', () => {
     // "3,5" is European decimal notation or a typo. Stripping the comma turns
-    // 3.5 into 35 — a tenfold error in a price. Null lets the row be rejected
+    // 3.5 into 35 - a tenfold error in a price. Null lets the row be rejected
     // honestly instead.
     expect(coerceNumber('3,5')).toBeNull();
     expect(coerceNumber('1,23')).toBeNull();
@@ -88,7 +88,7 @@ describe('coerceYear', () => {
   });
 
   it('does not expand a two-digit year into the future', () => {
-    // "30" in 2026 must mean 1930, not 2030 — no dealer lists a vehicle that
+    // "30" in 2026 must mean 1930, not 2030 - no dealer lists a vehicle that
     // has not been built yet.
     expect(coerceYear('30', now)).toBe(1930);
   });
@@ -142,7 +142,7 @@ describe('coerceRegistrationNumber', () => {
     ['CAB/1234', 'CAB-1234'],
   ])('folds %s to a single canonical form', (input, expected) => {
     // These are compared against the UNIQUE partial index (FR-35.1). An
-    // inconsistent format would let the same vehicle be listed twice — the
+    // inconsistent format would let the same vehicle be listed twice - the
     // exact duplicate that index exists to prevent.
     expect(coerceRegistrationNumber(input)).toBe(expected);
   });

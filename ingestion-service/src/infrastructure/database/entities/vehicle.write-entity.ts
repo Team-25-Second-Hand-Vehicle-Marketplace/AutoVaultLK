@@ -7,14 +7,14 @@ import {
 } from 'typeorm';
 
 /**
- * loadFn's target entity — the ONE documented cross-schema write in the
+ * loadFn's target entity - the ONE documented cross-schema write in the
  * whole platform (see database/src/grants.sql and
  * Documentation/plan-b-reads-cross-schemas.md §6). ingestion_service_role
  * holds SELECT + INSERT + UPDATE on this table, never DELETE.
  *
- * synchronize: false — this service never migrates marketplace.vehicles;
+ * synchronize: false - this service never migrates marketplace.vehicles;
  * marketplace-service's migrations own the DDL. Kept in sync manually
- * with marketplace-service/src/infrastructure/database/entities/vehicle.entity.ts —
+ * with marketplace-service/src/infrastructure/database/entities/vehicle.entity.ts -
  * see the silent-drift checklist in plan-b-reads-cross-schemas.md §9A,
  * item 4.
  *
@@ -24,7 +24,7 @@ import {
 
 // Must match marketplace-service's VehicleType union and the
 // vehicles_vehicle_type_check CHECK constraint (plan-b §risk-4).
-// Nothing but grep enforces this — ingestion does not import
+// Nothing but grep enforces this - ingestion does not import
 // marketplace's entities.
 export type VehicleType =
   | 'CAR'
@@ -146,7 +146,7 @@ export class VehicleWriteEntity {
   status: string;
 
   // FR-35.2 (migration 30000). Set by Enrich when registration_number is
-  // blank — the row loads fine but has no automated image match, so the
+  // blank - the row loads fine but has no automated image match, so the
   // dealer review queue must call it out distinctly from an ordinary
   // PENDING_REVIEW row.
   @Column({ name: 'needs_manual_review', type: 'boolean', default: false })
@@ -155,14 +155,14 @@ export class VehicleWriteEntity {
   @Column({ name: 'review_reason', type: 'varchar', length: 50, nullable: true })
   reviewReason: string | null;
 
-  // Populated by Enrich — body_type, seats and every other type-specific
+  // Populated by Enrich - body_type, seats and every other type-specific
   // attribute live here, not as columns.
   @Column({ type: 'jsonb', default: () => `'{}'::jsonb` })
   specs: Record<string, unknown>;
 
   /**
    * FR-42.1 (migration 29000). Written directly via raw SQL by
-   * MarketplaceVehiclesWriteAdapter, not through this entity's repository —
+   * MarketplaceVehiclesWriteAdapter, not through this entity's repository -
    * see buildNormalizationPayload there. Declared here only so this file
    * keeps documenting every column of the table it mirrors, per the sync
    * checklist in plan-b-reads-cross-schemas.md §9A.

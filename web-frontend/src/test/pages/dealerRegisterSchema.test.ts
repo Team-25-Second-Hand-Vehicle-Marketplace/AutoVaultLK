@@ -21,7 +21,7 @@ function failedFields(input: unknown): string[] {
   return result.success ? [] : result.error.issues.map((issue) => String(issue.path[0]))
 }
 
-describe('dealerRegisterSchema — business registration number', () => {
+describe('dealerRegisterSchema - business registration number', () => {
   it('lets an individual register without one', () => {
     expect(dealerRegisterSchema.safeParse(valid).success).toBe(true)
   })
@@ -61,7 +61,7 @@ describe('dealerRegisterSchema — business registration number', () => {
   })
 })
 
-describe('dealerRegisterSchema — individual identity check is unchanged', () => {
+describe('dealerRegisterSchema - individual identity check is unchanged', () => {
   it('still requires a valid NIC for an individual', () => {
     expect(failedFields({ ...valid, nicNumber: '' })).toEqual(['nicNumber'])
     expect(failedFields({ ...valid, nicNumber: '12345' })).toEqual(['nicNumber'])

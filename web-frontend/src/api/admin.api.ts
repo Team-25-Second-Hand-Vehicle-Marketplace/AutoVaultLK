@@ -13,7 +13,7 @@ import type {
   UploadJobStatus,
 } from './admin.types'
 // Same shape as the dealer-facing endpoint (admin-service's rejections.mapper.ts
-// mirrors ingestion-service's job-status mapper field-for-field) — reusing the
+// mirrors ingestion-service's job-status mapper field-for-field) - reusing the
 // type, and RejectionsReport itself, rather than duplicating both.
 import type { RejectionsPage } from './ingestion.types'
 
@@ -149,7 +149,7 @@ export async function listDictionaryCandidates(
   return data
 }
 
-/** Creates a brand-new canonical make — the candidate names something genuinely new. */
+/** Creates a brand-new canonical make - the candidate names something genuinely new. */
 export async function addDictionaryMake(
   rawValue: string,
   canonicalValue: string,
@@ -161,7 +161,7 @@ export async function addDictionaryMake(
   return data
 }
 
-/** Records the candidate as an alias of an existing make — it was just a mangled spelling. */
+/** Records the candidate as an alias of an existing make - it was just a mangled spelling. */
 export async function addDictionaryAlias(
   rawValue: string,
   aliasText: string,
@@ -175,7 +175,7 @@ export async function addDictionaryAlias(
   return data
 }
 
-/** Noise — not worth adding, but should stop showing up either. */
+/** Noise - not worth adding, but should stop showing up either. */
 export async function dismissDictionaryCandidate(rawValue: string): Promise<unknown> {
   const { data } = await apiClient.post('/admin/dictionary-candidates/dismiss', { rawValue })
   return data

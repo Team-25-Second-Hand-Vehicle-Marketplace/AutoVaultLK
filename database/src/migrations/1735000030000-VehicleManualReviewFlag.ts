@@ -2,7 +2,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 
 /**
  * FR-35.2: a bulk row with a null or blank registration_number is loaded
- * without failure (there is nothing wrong with the row — unregistered
+ * without failure (there is nothing wrong with the row - unregistered
  * imports are legitimate stock), but it cannot receive an automated image
  * match, so it needs to surface distinctly in the dealer's review queue
  * rather than blend into the blanket PENDING_REVIEW status every bulk row

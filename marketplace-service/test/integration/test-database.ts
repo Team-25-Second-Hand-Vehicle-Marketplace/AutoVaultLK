@@ -12,10 +12,10 @@ loadEnv({ path: '.env' });
  * That catches a typo in a column name and nothing else: a `::vector` cast
  * pgvector rejects, a `word_similarity` call with its arguments the wrong way
  * round, a cross-schema join to a table whose owning service renamed a column
- * — every one of those passes the unit suite and fails on the first real
+ * - every one of those passes the unit suite and fails on the first real
  * search. Only a live Postgres can tell the difference.
  *
- * Requires a migrated, seeded database — the one docker-compose brings up:
+ * Requires a migrated, seeded database - the one docker-compose brings up:
  *
  *   docker compose up -d postgres
  *   npm --prefix database run migration:run
@@ -81,7 +81,7 @@ export async function disconnect(): Promise<void> {
  * `describe` that skips when the database is unreachable, printing why once.
  *
  * Jest needs the skip decision before any `beforeAll` runs, so this probes with
- * a synchronous child process rather than an async connect — a promise cannot
+ * a synchronous child process rather than an async connect - a promise cannot
  * be awaited at describe-registration time.
  */
 export function describeWithDatabase(name: string, body: () => void): void {

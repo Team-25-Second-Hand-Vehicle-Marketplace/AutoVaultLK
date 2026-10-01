@@ -20,7 +20,7 @@ export type TimeSeriesDto = {
 };
 
 /**
- * A GROUP BY only returns rows for days that had activity — a day with zero
+ * A GROUP BY only returns rows for days that had activity - a day with zero
  * signups would otherwise be missing from the series entirely rather than
  * showing zero, which would silently compress the x-axis (30 calendar days
  * rendered as however many actually had rows) and misrepresent quiet days

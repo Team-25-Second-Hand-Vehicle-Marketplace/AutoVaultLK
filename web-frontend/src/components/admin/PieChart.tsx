@@ -1,26 +1,26 @@
 import { useState } from 'react'
 
 /**
- * Part-to-whole at a glance — capped at 6 slices (dataviz's own rule: past
+ * Part-to-whole at a glance - capped at 6 slices (dataviz's own rule: past
  * that, adjacent segments blur and a table reads better). These are true
  * categorical identity colors, not the app's reserved --success/--accent/
  * --danger status tokens: a status color is deliberately reused across
  * unrelated statuses elsewhere in this admin (BarRow's LISTING_STATUS_COLOR
  * maps two different statuses to the same --accent, safe there because a
  * text label sits right next to every bar). A pie has no such label next to
- * each mark — color is the only thing separating one slice from its
- * neighbor — so two same-colored slices here would be genuinely ambiguous,
+ * each mark - color is the only thing separating one slice from its
+ * neighbor - so two same-colored slices here would be genuinely ambiguous,
  * not just inconsistent. This uses the dataviz skill's own validated 8-hue
  * categorical order instead, fixed order, never cycled; slots 1–6 pass every
  * adjacent-pair CVD/contrast check in light mode (this app has no dark admin
- * theme) per references/palette.md — see validate_palette.js's output for
+ * theme) per references/palette.md - see validate_palette.js's output for
  * the six-slot cut used here.
  *
- * This default is for genuinely nominal categories (statuses, makes, teams —
+ * This default is for genuinely nominal categories (statuses, makes, teams -
  * swapping their order wouldn't change what they mean). When a pie's slices
  * ARE a pass/fail polarity instead (delivered vs failed, accepted vs
  * rejected), pass `colors` with the app's own reserved status tokens
- * (var(--success), var(--danger), ...) — dataviz's collision rule: a series
+ * (var(--success), var(--danger), ...) - dataviz's collision rule: a series
  * that *means* good/bad wears status tokens, never the categorical palette.
  */
 const CATEGORICAL_SLOTS = [
@@ -47,7 +47,7 @@ export function PieChart({
 }) {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
 
-  // Folds a 7th+ category into "Other" rather than generating a 7th hue —
+  // Folds a 7th+ category into "Other" rather than generating a 7th hue -
   // a generated color is indistinguishable from an existing one under CVD.
   const capped = data.filter((d) => d.value > 0)
   const slices =

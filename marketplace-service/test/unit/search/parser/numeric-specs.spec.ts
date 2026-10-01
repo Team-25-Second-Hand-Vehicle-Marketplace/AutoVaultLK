@@ -6,8 +6,8 @@ const parse = (q: string) => parseQuery(q, FIXTURE_VOCABULARY);
 /**
  * Numeric spec phrases (FR-19 structured filters over the JSONB specs
  * column). "petrol 7 seat" previously resolved only PETROL: the bare 7 fell
- * through extractNumeric — below the 100,000 price floor, outside the
- * 1980–2100 year window — so it silently became semantic text and buyers got
+ * through extractNumeric - below the 100,000 price floor, outside the
+ * 1980–2100 year window - so it silently became semantic text and buyers got
  * 5-seaters ranked by vector similarity instead of an actual seat filter.
  */
 describe('numeric spec extraction', () => {

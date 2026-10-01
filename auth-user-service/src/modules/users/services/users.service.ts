@@ -73,7 +73,7 @@ export class UsersService {
   /**
    * Reverses deactivate. FR-11 requires deactivation to preserve historical
    * data rather than delete it, which only makes sense if the account can be
-   * restored — otherwise "not deleted" is a distinction without a difference.
+   * restored - otherwise "not deleted" is a distinction without a difference.
    */
   async reactivate(userId: string, adminId: string) {
     if (adminId === userId) {
@@ -92,7 +92,7 @@ export class UsersService {
 
   /**
    * FR-12: ADMIN accounts are never publicly registerable. They come from the
-   * database seed or from an existing administrator — this is that second
+   * database seed or from an existing administrator - this is that second
    * path, reachable only through the internal service key.
    */
   async createAdmin(input: { email: string; name: string; password: string }, adminId: string) {

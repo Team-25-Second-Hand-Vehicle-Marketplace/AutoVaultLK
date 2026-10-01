@@ -6,7 +6,7 @@ export class BulkUploadPage {
   async goto(): Promise<void> {
     await this.page.goto('/dealer/upload');
     // BulkUploadPage checks getActiveJob() on mount and redirects away if
-    // one is already in flight — this waits past that transient "Checking
+    // one is already in flight - this waits past that transient "Checking
     // for an upload already in progress…" state before interacting.
     await expect(this.page.getByText('Checking for an upload already in progress')).toHaveCount(
       0,
@@ -31,7 +31,7 @@ export class BulkUploadPage {
     await responsePromise;
 
     // BulkUploadPage navigates to /dealer/uploads/:jobId itself once the
-    // upload response resolves — reading the id back off the URL avoids
+    // upload response resolves - reading the id back off the URL avoids
     // parsing the response body a second time.
     await expect(this.page).toHaveURL(/\/dealer\/uploads\/[0-9a-f-]+$/);
     const match = this.page.url().match(/\/dealer\/uploads\/([0-9a-f-]+)$/);

@@ -39,7 +39,7 @@ describe('parseQuery', () => {
     });
 
     it('fuzzy-matches an unseen make typo via trigrams', () => {
-      // "toyoota" is not in aliases — this is the pg_trgm stand-in.
+      // "toyoota" is not in aliases - this is the pg_trgm stand-in.
       expect(trigramSimilarity('toyoota', 'toyota')).toBeGreaterThan(0.45);
       const result = parse('toyoota aqua');
       expect(result.filters.make).toEqual(['Toyota']);

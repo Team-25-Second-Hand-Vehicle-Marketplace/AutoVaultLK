@@ -119,7 +119,7 @@ describe('JobStatusController', () => {
       );
     });
 
-    // The dealer scope comes from the verified token, never the request — the
+    // The dealer scope comes from the verified token, never the request - the
     // same property GET /jobs/:id relies on.
     it('passes the authenticated user id through as the dealer scope', async () => {
       service.getRejectedRecords.mockResolvedValue({ items: [] });

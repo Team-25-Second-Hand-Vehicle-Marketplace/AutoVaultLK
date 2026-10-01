@@ -75,7 +75,7 @@ describe('CSV template', () => {
     ])
     expect(isRequired('make')).toBe(true)
     expect(isRequired('fuel_type')).toBe(true)
-    // Blank is legitimate — unregistered imports have no plate.
+    // Blank is legitimate - unregistered imports have no plate.
     expect(isRequired('registration_number')).toBe(false)
   })
 
@@ -177,7 +177,7 @@ describe('buildRejectionsCsv', () => {
 
 describe('isTerminal', () => {
   it('treats PARTIAL as terminal', () => {
-    // PARTIAL means some rows were rejected and the rest loaded — the job is
+    // PARTIAL means some rows were rejected and the rest loaded - the job is
     // finished. Polling on would be pure noise against the gateway.
     expect(isTerminal('PARTIAL')).toBe(true)
   })

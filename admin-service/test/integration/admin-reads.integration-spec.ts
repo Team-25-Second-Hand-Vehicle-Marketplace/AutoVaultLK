@@ -20,7 +20,7 @@ import {
  * ingestion, notification) for the dashboard and reports. None of that
  * cross-schema access, nor the raw DATE_TRUNC/query-builder SQL in
  * loadReports/loadDailySeries, is observable from a unit test that stubs
- * every Repository<T> — this is the level that actually connects as
+ * every Repository<T> - this is the level that actually connects as
  * admin_service_role and proves the grants and the SQL both hold.
  */
 describeWithDatabase('AdminReadsRepository (integration)', () => {
@@ -60,7 +60,7 @@ describeWithDatabase('AdminReadsRepository (integration)', () => {
 
   describe('grants', () => {
     // If any of these fail, grants.sql has not granted admin_service_role
-    // SELECT on that schema — the live dashboard would 500 on load.
+    // SELECT on that schema - the live dashboard would 500 on load.
     it.each([
       ['auth.users', () => ds.getRepository(AuthUserView).count()],
       ['auth.dealer_profiles', () => ds.getRepository(DealerProfileView).count()],
@@ -79,7 +79,7 @@ describeWithDatabase('AdminReadsRepository (integration)', () => {
     });
 
     // ADR: admin reviews and reports read everywhere but write nowhere but
-    // its own schema — every mutation goes through the owning service's API.
+    // its own schema - every mutation goes through the owning service's API.
     it('cannot write to auth.users', async () => {
       await expect(
         ds.query(`UPDATE auth.users SET name = name WHERE false`),
@@ -145,7 +145,7 @@ describeWithDatabase('AdminReadsRepository (integration)', () => {
         for (const item of items) {
           if (item.role !== 'DEALER') continue;
           // A dealer user with no profile row is a valid state (registered,
-          // profile not yet completed) — the assertion is about the join
+          // profile not yet completed) - the assertion is about the join
           // key, not that every dealer has one.
           if (item.dealer) {
             expect(item.dealer.userId).toBe(item.id);
@@ -277,7 +277,7 @@ describeWithDatabase('AdminReadsRepository (integration)', () => {
           series.uploadRows,
         ]) {
           // Each row has exactly one entry per day that had activity, never
-          // one per record — a broken GROUP BY would duplicate days instead.
+          // one per record - a broken GROUP BY would duplicate days instead.
           const days = rows.map((r) => new Date(r.day).toISOString());
           expect(new Set(days).size).toBe(days.length);
         }

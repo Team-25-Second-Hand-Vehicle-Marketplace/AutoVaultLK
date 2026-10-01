@@ -18,7 +18,7 @@ export const databaseConfig = (): TypeOrmModuleOptions => ({
   synchronize: false,
   // RDS enforces TLS via the rds.force_ssl parameter, so connections without
   // SSL are refused outright. Local Docker Postgres serves no certificate, so
-  // this has to stay opt-in rather than always-on — set DATABASE_SSL=true in
+  // this has to stay opt-in rather than always-on - set DATABASE_SSL=true in
   // the Lambda environment, leave it unset locally.
   //
   // rejectUnauthorized: false encrypts the connection but does not verify the

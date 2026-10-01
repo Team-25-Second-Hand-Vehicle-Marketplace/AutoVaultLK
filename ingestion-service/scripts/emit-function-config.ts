@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { FUNCTION_CONFIGS } from '../src/infrastructure/step-functions/function-config';
 
 /**
- * Emits ingestion-service/dist-lambda/function-config.json — the manifest
+ * Emits ingestion-service/dist-lambda/function-config.json - the manifest
  * Terraform's stage_lambda_zip module reads (jsondecode) to create the 10
  * zip-packaged stage Lambdas and their env vars, and the state machine module
  * reads to fill in the ASL's `${XxxFunctionArn}` placeholders. See
@@ -11,7 +11,7 @@ import { FUNCTION_CONFIGS } from '../src/infrastructure/step-functions/function-
  *
  * FUNCTION_CONFIGS is the single source of truth in code; this script's only
  * job is to add the one thing Terraform needs that TypeScript doesn't carry
- * at runtime — each function's ASL placeholder name.
+ * at runtime - each function's ASL placeholder name.
  */
 
 function arnPlaceholder(slug: string): string {

@@ -15,7 +15,7 @@ export const BUSINESS_REGISTRATION_DOCUMENT_KEY = 'businessRegistrationCertifica
 /**
  * The same cross-check the decorator below runs, exposed directly for
  * callers that know the dealer's actual type server-side rather than from a
- * sibling DTO field — e.g. DealerProfilesService.resubmit(), which validates
+ * sibling DTO field - e.g. DealerProfilesService.resubmit(), which validates
  * a resubmitted document against the profile's stored `dealerType` rather
  * than trusting the DTO to resend it (update-style DTOs deliberately don't;
  * see the decorator's no-op note below). Returns null when valid.

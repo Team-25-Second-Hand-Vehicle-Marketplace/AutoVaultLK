@@ -39,7 +39,7 @@ paths:
         - auth
       summary: Register dealer (public)
       description: |
-        Creates a pending dealer account (FR-02). No JWT is returned —
+        Creates a pending dealer account (FR-02). No JWT is returned -
         dealers authenticate via POST /auth/login after administrator approval (FR-03).
       operationId: registerDealer
       responses:
@@ -88,7 +88,7 @@ paths:
     get:
       tags:
         - marketplace
-      summary: Browse listings (public — LIVE only)
+      summary: Browse listings (public - LIVE only)
       operationId: listListings
       responses:
         '200':
@@ -185,14 +185,14 @@ paths:
         '404':
           description: No such listing.
         '409':
-          description: The listing exists but is not PENDING_REVIEW — nothing to approve.
+          description: The listing exists but is not PENDING_REVIEW - nothing to approve.
   /marketplace/listings/{id}/images:
     post:
       tags:
         - marketplace
       summary: Attach photos to a listing the caller owns (dealer)
       description: >
-        FR-58. Replaces the listing's whole image set — a re-upload means
+        FR-58. Replaces the listing's whole image set - a re-upload means
         "this is the current set of photos", not "add more to what's there".
         The first file becomes the primary photo (the one search/detail
         responses use for imageUrl/thumbnailUrl).
@@ -264,7 +264,7 @@ paths:
     get:
       tags:
         - marketplace
-      summary: Filter-based search over LIVE listings (public — guest browsing)
+      summary: Filter-based search over LIVE listings (public - guest browsing)
       operationId: filterSearch
       parameters:
         - name: vehicleType
@@ -349,7 +349,7 @@ paths:
     get:
       tags:
         - marketplace
-      summary: Natural-language search over LIVE listings (public — guest browsing)
+      summary: Natural-language search over LIVE listings (public - guest browsing)
       description: |
         Deterministic parser (FR-21) turns `q` into structured filters. When
         parse confidence is below 0.6, unresolved tokens are sent to Groq
@@ -403,7 +403,7 @@ paths:
     get:
       tags:
         - marketplace
-      summary: Dropdown option values — enums plus make/model dictionary (public)
+      summary: Dropdown option values - enums plus make/model dictionary (public)
       operationId: searchOptions
       parameters:
         - name: vehicleType
@@ -464,7 +464,7 @@ paths:
       responses:
         '202':
           description: >
-            Upload accepted and queued. The job has not run yet — its status is
+            Upload accepted and queued. The job has not run yet - its status is
             PENDING until the pipeline starts.
           content:
             application/json:

@@ -11,8 +11,8 @@ import { SqsJobQueue } from './sqs-job-queue';
  *
  * InProcessJobQueue is also exported as a concrete class so the ETL module can
  * call setHandler on the very same instance the JOB_QUEUE token resolves to.
- * SqsJobQueue has no setHandler — under `sqs` the queue is consumed by Step
- * Functions, not by this process — so EtlWorkerService must not register a
+ * SqsJobQueue has no setHandler - under `sqs` the queue is consumed by Step
+ * Functions, not by this process - so EtlWorkerService must not register a
  * handler in that mode. It checks the driver before wiring itself up.
  */
 @Global()

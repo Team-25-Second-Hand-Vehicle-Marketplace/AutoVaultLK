@@ -11,7 +11,7 @@ terraform {
 # VPC housing the 4 deployed service Lambdas (private subnets, for RDS access)
 # and the NAT Gateway they use to reach the public internet (Groq API, AWS
 # APIs not covered by a VPC endpoint). ingestion-service is not deployed, so
-# there is no S3/SQS traffic to route here — just RDS + outbound HTTPS.
+# there is no S3/SQS traffic to route here - just RDS + outbound HTTPS.
 # -----------------------------------------------------------------------------
 
 data "aws_availability_zones" "available" {
@@ -78,7 +78,7 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
-# Single-AZ NAT (var.single_nat_gateway) — one EIP + one gateway shared by
+# Single-AZ NAT (var.single_nat_gateway) - one EIP + one gateway shared by
 # both private subnets' route tables.
 resource "aws_eip" "nat" {
   count  = var.single_nat_gateway ? 1 : local.az_count
@@ -113,7 +113,7 @@ resource "aws_route_table_association" "private" {
   route_table_id = var.single_nat_gateway ? aws_route_table.private[0].id : aws_route_table.private[count.index].id
 }
 
-# Lambdas (auth, marketplace, admin, notification) attach this — outbound
+# Lambdas (auth, marketplace, admin, notification) attach this - outbound
 # only, since nothing calls a Lambda's ENI directly.
 resource "aws_security_group" "lambda" {
   name        = "${var.project_name}-lambda-${var.environment}"
@@ -132,7 +132,7 @@ resource "aws_security_group" "lambda" {
 
 # RDS Proxy + the RDS instance behind it. The proxy's own ENIs sit in this
 # same SG (see modules/database), so it needs a self-referencing rule to
-# reach the instance — without it, the proxy can never open a connection to
+# reach the instance - without it, the proxy can never open a connection to
 # its target at all, surfacing only as an opaque "target unavailable due to
 # an internal error" with no indication it's a security group problem.
 resource "aws_security_group" "database" {

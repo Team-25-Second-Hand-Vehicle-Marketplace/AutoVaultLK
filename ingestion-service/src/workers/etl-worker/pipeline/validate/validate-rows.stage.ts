@@ -24,7 +24,7 @@ export const MAX_PRICE = 999_999_999_999;
 /** integer mileage. A plausible ceiling, well inside the column's range. */
 export const MAX_MILEAGE = 10_000_000;
 
-/** smallint columns — manufacture_year, registration_year, owners_count. */
+/** smallint columns - manufacture_year, registration_year, owners_count. */
 const SMALLINT_MAX = 32_767;
 
 const MAX_LENGTHS: Partial<Record<keyof VehicleFields, number>> = {
@@ -39,7 +39,7 @@ const MAX_LENGTHS: Partial<Record<keyof VehicleFields, number>> = {
 
 /**
  * The gate. Every row that reaches Load has passed through here, and every
- * rejection reason in the platform originates here — parseNormalize
+ * rejection reason in the platform originates here - parseNormalize
  * deliberately rejects nothing so this stays the single list.
  *
  * Two categories of check, for different reasons:
@@ -47,7 +47,7 @@ const MAX_LENGTHS: Partial<Record<keyof VehicleFields, number>> = {
  * 1. **Business rules** mirroring the manual-listing DTO, so a dealer cannot
  *    bulk-upload a vehicle they could not have created through the UI.
  *
- * 2. **Column bounds** — smallint ranges, varchar lengths, numeric precision.
+ * 2. **Column bounds** - smallint ranges, varchar lengths, numeric precision.
  *    These are not pedantry: an over-long `make` or a year of 99999 raises at
  *    INSERT time, and because Load batches rows, one such value would fail
  *    every good row travelling with it. Catching them here turns a lost batch
@@ -72,7 +72,7 @@ export const validateRowsStage: StageRunner<
 
       // Intra-job duplicates must die here, before fan-out. Two rows sharing a
       // registration number would upsert over each other under
-      // idx_vehicles_job_registration — the second silently overwriting the
+      // idx_vehicles_job_registration - the second silently overwriting the
       // first, with no error and no rejected record. The dealer would see
       // "50 loaded" for 51 rows and never learn which vanished.
       const registration = row.normalized.registrationNumber;
@@ -113,7 +113,7 @@ function checkRow(row: NormalizedRow): string[] {
   if (f.price === undefined) reasons.push(missing('price', row));
   if (f.mileage === undefined) reasons.push(missing('mileage', row));
 
-  // Widened from optional to required per the updated SRS Appendix A — a
+  // Widened from optional to required per the updated SRS Appendix A - a
   // listing missing any of these was judged too thin for a buyer to
   // evaluate. Checked the same way as the original five: absent means
   // parseNormalize could not resolve or parse the cell.
@@ -130,7 +130,7 @@ function checkRow(row: NormalizedRow): string[] {
 
   // vehicleType and condition are required by the column but supplied by
   // derivation and defaulting rather than by the dealer, so an absent value
-  // here is not reported as a missing cell — enrich fills them. Only a value
+  // here is not reported as a missing cell - enrich fills them. Only a value
   // that is present and invalid is worth rejecting.
   if (f.vehicleType !== undefined && !VEHICLE_TYPES.includes(f.vehicleType)) {
     reasons.push(`vehicle_type "${f.vehicleType}" is not a recognised type`);
@@ -195,7 +195,7 @@ function checkRow(row: NormalizedRow): string[] {
 }
 
 /**
- * "make is missing" versus 'make "Lamborghini" could not be matched' — the
+ * "make is missing" versus 'make "Lamborghini" could not be matched' - the
  * dealer needs to know whether they left a cell blank or wrote something the
  * dictionary does not carry. Those call for different fixes.
  */

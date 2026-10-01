@@ -9,7 +9,7 @@ import { VehicleDictionaryRepository } from '../../src/modules/search/repositori
 import { VehicleImage } from '../../src/infrastructure/database/entities/vehicle-image.entity';
 import { VehicleSearchResultDto } from '../../src/modules/search/dto/filter-search-response.dto';
 
-// SearchModule has no DataSource provider of its own — it comes from
+// SearchModule has no DataSource provider of its own - it comes from
 // AppModule's TypeOrmModule.forRoot() in the real app. A module boundary
 // only sees providers it declares or imports, so a stub can't just sit in
 // the root testing module's own `providers` array; it needs its own

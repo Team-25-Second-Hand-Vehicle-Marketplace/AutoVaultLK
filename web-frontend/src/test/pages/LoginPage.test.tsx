@@ -6,7 +6,7 @@ import { LoginPage } from '../../pages/LoginPage'
 import { AuthContext, type AuthContextValue } from '../../auth/auth-context'
 
 // Google's real button loads an external script and renders through its own
-// SDK — neither works in jsdom, and isn't this test's concern. Standing in
+// SDK - neither works in jsdom, and isn't this test's concern. Standing in
 // for it with a plain button that fires the same onCredential callback tests
 // exactly what LoginPage is responsible for: what happens with the token
 // once Google hands one back.
@@ -44,7 +44,7 @@ function renderPage(auth: Partial<AuthContextValue>) {
   )
 }
 
-describe('LoginPage — Continue with Google', () => {
+describe('LoginPage - Continue with Google', () => {
   it('signs in and redirects once Google hands back a credential', async () => {
     const loginWithGoogle = vi.fn().mockResolvedValue(undefined)
     const user = userEvent.setup()

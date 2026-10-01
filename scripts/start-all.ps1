@@ -9,7 +9,7 @@
 
   The frontend talks to the services through Vite's dev proxy
   (web-frontend/vite.config.ts), which mirrors the nginx route prefixes. The
-  nginx gateway container is therefore NOT required for frontend work — start
+  nginx gateway container is therefore NOT required for frontend work - start
   it with -Gateway only when you specifically want to exercise that path.
 
 .PARAMETER Gateway
@@ -59,7 +59,7 @@ if ($Gateway) {
 # ── NestJS services ─────────────────────────────────────────────────────
 # PORT is set explicitly per service because the root .env defines a single
 # PORT=3001. marketplace/admin/notification read their own *_PORT var first,
-# but auth and ingestion read only PORT — without this, ingestion would try
+# but auth and ingestion read only PORT - without this, ingestion would try
 # to bind 3001 and collide with auth.
 $services = @(
   @{ Name = 'auth-user-service';     Port = 3001 },

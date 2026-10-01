@@ -8,7 +8,7 @@ import { DocumentUrlResolverService } from './document-url-resolver.service';
 import type { AuditLogsQueryDto } from '../dto/audit-logs-query.dto';
 import { DEFAULT_REJECTIONS_PAGE_SIZE } from '../dto/rejections-query.dto';
 
-/** Keys inside verificationDocuments the resolver knows how to open — see auth-user-service's verification-documents.decorator.ts. */
+/** Keys inside verificationDocuments the resolver knows how to open - see auth-user-service's verification-documents.decorator.ts. */
 const DOCUMENT_KEYS = ['businessRegistrationCertificate'] as const;
 
 @Injectable()
@@ -53,7 +53,7 @@ export class AdminReadsService {
 
   /**
    * NIC (individual dealers) is stored as the plain identifier string, not a
-   * document key — nothing to resolve. Only the business-cert key points at
+   * document key - nothing to resolve. Only the business-cert key points at
    * a stored file.
    */
   private resolveDocumentUrl(
@@ -94,7 +94,7 @@ export class AdminReadsService {
   }
 
   // Not async, like reports() above: the guard must throw synchronously, not
-  // reject a promise — an async function that throws before its first await
+  // reject a promise - an async function that throws before its first await
   // turns that throw into a rejected promise instead, which the "from after
   // to" test below caught as an unhandled rejection that crashed the worker.
   timeSeries(from: Date, to: Date) {

@@ -3,7 +3,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 // The repo-root .env carries ADMIN_SEED_EMAIL/ADMIN_SEED_PASSWORD, used by
 // helpers/admin-api.ts to approve a dealer via a direct API call in the
-// dealer-registration journey — the same credentials that seeded the local
+// dealer-registration journey - the same credentials that seeded the local
 // admin user via database/src/seeds/admin-user.seed.ts.
 loadEnv({ path: '../.env' });
 
@@ -22,7 +22,7 @@ export default defineConfig({
   testDir: './tests',
   // Auth-heavy journeys (registration, login, resend) all originate from the
   // same loopback IP under a local/CI run, and auth-user-service's
-  // AuthAbuseProtectionService rate-limits by IP — a real safeguard, not a
+  // AuthAbuseProtectionService rate-limits by IP - a real safeguard, not a
   // bug. Running fully parallel intermittently trips it when several
   // journeys' auth calls land in the same window (observed under Firefox at
   // 2 workers), so this suite runs serially rather than treating that as

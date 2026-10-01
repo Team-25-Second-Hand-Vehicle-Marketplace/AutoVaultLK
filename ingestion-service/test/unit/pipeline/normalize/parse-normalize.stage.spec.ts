@@ -16,7 +16,7 @@ const row = (
   ...o,
 });
 
-/** Toyota carries five types, so its array is ambiguous — deliberately. */
+/** Toyota carries five types, so its array is ambiguous - deliberately. */
 const DICTIONARY = new InMemoryDictionarySnapshot([
   row({
     id: 'mk-toyota',
@@ -134,7 +134,7 @@ describe('parseNormalizeStage', () => {
   });
 
   it('scopes the model to its make', async () => {
-    // A Civic under Toyota is not Honda's Civic — the dealer typed something
+    // A Civic under Toyota is not Honda's Civic - the dealer typed something
     // wrong, and resolving it anyway would write a vehicle that does not exist.
     const result = await normalize({
       ...VALID,
@@ -179,7 +179,7 @@ describe('parseNormalizeStage', () => {
 
   it('never rejects a row, even one with nothing resolvable', async () => {
     // validateRows is the single gate, so every rejection reason lives in one
-    // place — and Groq still gets a chance at rows this stage could not read.
+    // place - and Groq still gets a chance at rows this stage could not read.
     const result = await parseNormalizeStage.run(ctx, [
       raw({
         make: 'Lamborghini',
@@ -218,7 +218,7 @@ describe('parseNormalizeStage', () => {
     expect(result.normalized.registrationNumber).toBeUndefined();
   });
 
-  it('does not default condition — enrich owns that', async () => {
+  it('does not default condition - enrich owns that', async () => {
     // Defaulting in two places would make the default impossible to find.
     const result = await normalize(VALID);
 
@@ -296,7 +296,7 @@ describe('parseNormalizeStage', () => {
     });
 
     // Same rule the row-level score already follows: an absent optional field
-    // is not evidence of anything, so it gets no provenance entry either — the
+    // is not evidence of anything, so it gets no provenance entry either - the
     // review UI has nothing to say about a column the dealer never touched.
     it('records no provenance for a field the dealer left blank', async () => {
       const result = await normalize({ ...VALID, fuel_type: '' });
@@ -305,7 +305,7 @@ describe('parseNormalizeStage', () => {
     });
 
     // A field the dealer filled in that resolved to nothing still gets a
-    // provenance entry — CONFIDENCE_UNRESOLVED, not absence — because "the
+    // provenance entry - CONFIDENCE_UNRESOLVED, not absence - because "the
     // dealer wrote something and it did not resolve" is exactly what the
     // review UI needs to flag, and is different from "the dealer wrote
     // nothing".
@@ -332,7 +332,7 @@ describe('parseNormalizeStage', () => {
     });
 
     // Free-text fields were never part of the confidence score before this
-    // change and stay that way — there is nothing for a rule-based method to
+    // change and stay that way - there is nothing for a rule-based method to
     // vouch for in an unconstrained string.
     it('records no provenance for free-text fields', async () => {
       const result = await normalize({

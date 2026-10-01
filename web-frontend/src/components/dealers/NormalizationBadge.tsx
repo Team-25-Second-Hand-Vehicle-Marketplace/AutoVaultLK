@@ -5,7 +5,7 @@ import type { VehicleNormalization } from '../../api/listings.types'
  * FR-42.1: which fields on a PENDING_REVIEW listing the pipeline inferred,
  * and why, so the dealer can spot-check the ones most likely to be wrong
  * before approving. Renders nothing for a manually-created listing or one
- * that predates migration 29000 — both arrive as `normalization: null`, and
+ * that predates migration 29000 - both arrive as `normalization: null`, and
  * there is nothing to review either way.
  */
 
@@ -40,7 +40,7 @@ const SOURCE_LABELS: Record<string, string> = {
 
 /**
  * Below this, a field is flagged for attention even without an AI correction
- * — a dictionary/rule match this weak is one the dealer should double-check
+ * - a dictionary/rule match this weak is one the dealer should double-check
  * regardless of source. Matches the pipeline's fuzzy-match floor
  * (CONFIDENCE_FUZZY in dictionary-snapshot.ts) so "low confidence" means the
  * same thing here that it means in the pipeline that produced it.
@@ -92,14 +92,14 @@ export function NormalizationDetails({
     .filter(
       (entry): entry is [string, NonNullable<(typeof entry)[1]>] => entry[1] !== undefined,
     )
-    // Weakest first — the ones worth checking first belong at the top of an
+    // Weakest first - the ones worth checking first belong at the top of an
     // already-open panel, not buried under a screenful of confident ones.
     .sort((a, b) => a[1].confidence - b[1].confidence)
 
   if (entries.length === 0) return null
 
   // Groq repairs multiple fields in one call and writes the SAME reasoning
-  // sentence onto each field it touched — the model explains the row, not
+  // sentence onto each field it touched - the model explains the row, not
   // the field. Rendering one <dd> per field would print that sentence twice
   // ("Corrected make to Suzuki, model to Wagon R..." under both Make and
   // Model). Grouping by the reasoning text collapses those back into one

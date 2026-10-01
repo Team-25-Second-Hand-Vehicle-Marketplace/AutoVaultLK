@@ -9,7 +9,7 @@ import {
 
 /**
  * Turns a stored verification-document key into something an admin's
- * browser can actually fetch — or null when there is nothing honest to
+ * browser can actually fetch - or null when there is nothing honest to
  * return. Mirrors marketplace-service's ImageUrlResolverService, but the
  * `local` route this points at must be admin-authenticated (see
  * documents.controller.ts): unlike vehicle images, these are sensitive KYC

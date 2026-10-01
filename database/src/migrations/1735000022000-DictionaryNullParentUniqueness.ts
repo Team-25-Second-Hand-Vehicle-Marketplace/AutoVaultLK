@@ -5,14 +5,14 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * UNIQUE(dictionary_type, parent_id, canonical_value), but Postgres never
  * treats two NULLs as equal in a unique constraint. MAKE and BODY_TYPE rows
  * always have parent_id = NULL, so ON CONFLICT on that constraint silently
- * never fired for them — running the dictionary seed twice duplicated every
+ * never fired for them - running the dictionary seed twice duplicated every
  * make and body type (30 -> 60, 10 -> 20) with no error. MODEL rows were
  * unaffected because their parent_id is a real (non-null) value.
  *
  * A partial unique index scoped to `WHERE parent_id IS NULL` closes the
  * gap: Postgres partial indexes DO enforce uniqueness among matching rows
  * regardless of NULL comparison semantics, because the index key here is
- * just (dictionary_type, canonical_value) — parent_id isn't part of it at
+ * just (dictionary_type, canonical_value) - parent_id isn't part of it at
  * all, it's only the filter that selects which rows the index covers.
  */
 export class DictionaryNullParentUniqueness1735000022000 implements MigrationInterface {

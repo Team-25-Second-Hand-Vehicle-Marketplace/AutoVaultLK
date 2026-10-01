@@ -25,7 +25,7 @@ export function getJwtAlgorithm(configService: ConfigService): JwtAlgorithm {
   return algorithm;
 }
 
-/** Same verify options as auth-user-service — admin validates locally (SAD 3.5.1). */
+/** Same verify options as auth-user-service - admin validates locally (SAD 3.5.1). */
 export function getAccessTokenVerifyOptions(
   configService: ConfigService,
 ): JwtVerifyOptions {

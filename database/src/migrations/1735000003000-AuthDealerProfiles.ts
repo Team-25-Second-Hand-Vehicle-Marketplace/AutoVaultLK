@@ -2,7 +2,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AuthDealerProfiles1735000003000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // user_id is both PK and FK — one profile per user (ERD: "has (if dealer)")
+    // user_id is both PK and FK - one profile per user (ERD: "has (if dealer)")
     await queryRunner.query(`
       CREATE TABLE auth.dealer_profiles (
         user_id        uuid PRIMARY KEY

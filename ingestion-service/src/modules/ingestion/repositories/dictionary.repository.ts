@@ -10,7 +10,7 @@ import {
 /**
  * Loads marketplace.vehicle_dictionaries into an in-memory snapshot.
  *
- * One query per pipeline run, never per row — that is what keeps the
+ * One query per pipeline run, never per row - that is what keeps the
  * `extra: { max: 5 }` connection-pool sizing in config/database.config.ts
  * valid under MaxConcurrency: 10.
  *

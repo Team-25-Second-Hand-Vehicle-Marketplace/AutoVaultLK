@@ -31,10 +31,10 @@ NestJS services use `CORS_ORIGINS` in `.env` for direct-to-service dev traffic; 
 | `/users/*` | auth-user-service | 3001 | `/users/*` (preserved) | User profile & account routes |
 | `/dealer-profiles/*` | auth-user-service | 3001 | `/dealer-profiles/*` (preserved) | Dealer profile management |
 | `/marketplace/*` | marketplace-service | 3002 | `/*` (**prefix stripped**) | Listings & marketplace dealer views |
-| `/ingest/*` | ingestion-service | 3003 | `/ingest/*` (preserved) | Stub — controllers not implemented yet |
-| `/jobs/*` | ingestion-service | 3003 | `/jobs/*` (preserved) | Stub — controllers not implemented yet |
-| `/admin/*` | admin-service | 3004 | `/admin/*` (preserved) | Stub — controllers not implemented yet |
-| `/notifications/*` | notification-service | 3005 | `/notifications/*` (preserved) | Stub — controllers not implemented yet |
+| `/ingest/*` | ingestion-service | 3003 | `/ingest/*` (preserved) | Stub - controllers not implemented yet |
+| `/jobs/*` | ingestion-service | 3003 | `/jobs/*` (preserved) | Stub - controllers not implemented yet |
+| `/admin/*` | admin-service | 3004 | `/admin/*` (preserved) | Stub - controllers not implemented yet |
+| `/notifications/*` | notification-service | 3005 | `/notifications/*` (preserved) | Stub - controllers not implemented yet |
 
 ### Prefix rewrite rules (`local/nginx.conf`)
 
@@ -63,7 +63,7 @@ Set `AUTH_SERVICE_INTERNAL_URL=http://localhost:3001` when running services on t
 
 ## Local quick start
 
-Run from the **repo root** (two compose files — do not confuse them):
+Run from the **repo root** (two compose files - do not confuse them):
 
 1. Copy `.env.example` to `.env` and fill secrets.
 2. Start Postgres (`docker-compose.yml`):
@@ -87,14 +87,14 @@ docker compose -f docker-compose.dev.yml up gateway -d
 
 | How you run the gateway | Linux setup |
 |---|---|
-| **`docker compose -f docker-compose.dev.yml up gateway`** (recommended) | **No extra steps** — `docker-compose.dev.yml` already sets `extra_hosts: host.docker.internal:host-gateway`. |
+| **`docker compose -f docker-compose.dev.yml up gateway`** (recommended) | **No extra steps** - `docker-compose.dev.yml` already sets `extra_hosts: host.docker.internal:host-gateway`. |
 | **Manual `docker run`** | Pass `--add-host=host.docker.internal:host-gateway` (same flag `scripts/validate-nginx.js` uses for CI). |
 | **nginx on the host** (not in Docker) | Replace upstream `host.docker.internal` with `127.0.0.1` in a local override, or run services in containers on the Docker network instead. |
 
 **Checklist for Linux:**
 
 1. Start NestJS services on the host (`npm run start:dev`) on ports **3001–3005**.
-2. Start the gateway via Compose (step 4 above) — do not omit `extra_hosts`.
+2. Start the gateway via Compose (step 4 above) - do not omit `extra_hosts`.
 3. Smoke test: `curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/health` should return `200`.
 4. If upstreams return **502**, verify services listen on the host and that the gateway container resolves the hostname:
 
@@ -102,14 +102,14 @@ docker compose -f docker-compose.dev.yml up gateway -d
 docker compose -f docker-compose.dev.yml exec gateway getent hosts host.docker.internal
 ```
 
-You should see an IP (typically the Docker bridge gateway). If the name does not resolve, recreate the container with the compose file above — do not run a bare `docker run` without `--add-host`.
+You should see an IP (typically the Docker bridge gateway). If the name does not resolve, recreate the container with the compose file above - do not run a bare `docker run` without `--add-host`.
 
-**API Gateway tests on Linux:** use `npm run test:nginx` (runs `validate-nginx.js` with `--add-host=host.docker.internal:host-gateway`). Avoid `npm run test:nginx:unix` on Linux — that script omits the host mapping.
+**API Gateway tests on Linux:** use `npm run test:nginx` (runs `validate-nginx.js` with `--add-host=host.docker.internal:host-gateway`). Avoid `npm run test:nginx:unix` on Linux - that script omits the host mapping.
 
 ## OpenAPI specs
 
-- `openapi/public-api.yaml` — browser-facing routes (import into AWS API Gateway)
-- `openapi/internal-api.yaml` — service-to-service routes (private API Gateway)
+- `openapi/public-api.yaml` - browser-facing routes (import into AWS API Gateway)
+- `openapi/internal-api.yaml` - service-to-service routes (private API Gateway)
 
 ## Tests
 
@@ -133,7 +133,7 @@ $env:RUN_GATEWAY_E2E="true"; npm test -- gateway-health
 
 Terraform module: `cloud-infrastructure/terraform/modules/api-gateway/`
 
-> **Traffic does not work in AWS after `terraform apply`.** The module intentionally provisions only HTTP APIs and stages (public + internal). Routes and backend integrations are **not** created yet — invoke URLs exist but return API Gateway **404** until wired.
+> **Traffic does not work in AWS after `terraform apply`.** The module intentionally provisions only HTTP APIs and stages (public + internal). Routes and backend integrations are **not** created yet - invoke URLs exist but return API Gateway **404** until wired.
 
 | What works | Where |
 |---|---|
@@ -143,4 +143,4 @@ Terraform module: `cloud-infrastructure/terraform/modules/api-gateway/`
 
 Next steps for AWS: deploy service backends, add `aws_apigatewayv2_route` / `aws_apigatewayv2_integration` resources (see commented example in `main.tf`), or import from OpenAPI. Module README: `cloud-infrastructure/terraform/modules/api-gateway/README.md`.
 
-`terraform validate` in CI checks HCL structure only — not live routing.
+`terraform validate` in CI checks HCL structure only - not live routing.

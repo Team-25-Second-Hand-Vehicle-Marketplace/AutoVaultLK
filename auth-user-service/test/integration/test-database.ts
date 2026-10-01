@@ -15,7 +15,7 @@ loadEnv({ path: '.env' });
 /**
  * Shared setup for the auth-user-service integration suite.
  *
- * auth-user-service owns its schema outright — no cross-schema reads — so
+ * auth-user-service owns its schema outright - no cross-schema reads - so
  * unlike marketplace/admin/notification the risk here is not a missing
  * GRANT. It is the real constraints and cascade actions a stubbed
  * Repository<T> unit test cannot see: users.email and *_tokens.token_hash
@@ -23,11 +23,11 @@ loadEnv({ path: '.env' });
  * same secret fails loudly instead of silently colliding), and
  * refresh_tokens/dealer_profiles/password_history all CASCADE on user
  * deletion while refresh_tokens.replaced_by_id and security_events.user_id
- * SET NULL instead — the difference between "this history disappears" and
+ * SET NULL instead - the difference between "this history disappears" and
  * "this history survives, orphaned" is a migration detail no unit test
  * exercises.
  *
- * Requires a migrated, seeded database — the one docker-compose brings up:
+ * Requires a migrated, seeded database - the one docker-compose brings up:
  *
  *   docker compose up -d postgres
  *   npm --prefix database run migration:run
@@ -102,7 +102,7 @@ export function repositoryFor<T extends object>(
  * `describe` that skips when the database is unreachable, printing why once.
  *
  * Jest needs the skip decision before any `beforeAll` runs, so this probes with
- * a synchronous child process rather than an async connect — a promise cannot
+ * a synchronous child process rather than an async connect - a promise cannot
  * be awaited at describe-registration time.
  */
 export function describeWithDatabase(name: string, body: () => void): void {
@@ -162,7 +162,7 @@ export function fixtureEmail(label = 'integration'): string {
  * Creates and persists a throwaway user for a test to hang fixtures off,
  * with its id tracked by the caller for cleanup. Deleting the user cascades
  * to every row created against it in refresh_tokens, dealer_profiles and
- * password_history, and SETs NULL on security_events.user_id — exactly the
+ * password_history, and SETs NULL on security_events.user_id - exactly the
  * behaviour these suites exist to prove, so cleanup itself becomes part of
  * the coverage rather than working around it.
  */

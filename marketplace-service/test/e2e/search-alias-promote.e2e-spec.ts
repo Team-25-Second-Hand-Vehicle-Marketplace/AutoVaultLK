@@ -24,14 +24,14 @@ class StubDataSourceModule {}
 
 /**
  * POST /search/aliases/promote is the only write route in SearchModule, and it
- * writes to marketplace.vehicle_dictionaries — reference data every search
+ * writes to marketplace.vehicle_dictionaries - reference data every search
  * facet filters against and the ingestion ETL loads a snapshot of on every run.
  * An unguarded version would let anyone who can reach /search make a junk token
  * a permanent alias.
  *
  * This exercises the guard through HTTP rather than trusting the decorator:
  * RolesGuard is left REAL so @Roles('ADMIN') is genuinely evaluated, and only
- * JwtAuthGuard is stubbed — the real one needs a live auth.users lookup.
+ * JwtAuthGuard is stubbed - the real one needs a live auth.users lookup.
  * JwtStrategy is overridden for the same reason: it reads JWT config at
  * construction time, which CI does not supply.
  */
@@ -121,8 +121,8 @@ describe('POST /search/aliases/promote (e2e)', () => {
   });
 
   it('refuses a DEALER', async () => {
-    // DEALER is privileged elsewhere in this service — it can create and edit
-    // listings — so proving it is *not* privileged here is the meaningful case.
+    // DEALER is privileged elsewhere in this service - it can create and edit
+    // listings - so proving it is *not* privileged here is the meaningful case.
     currentUser = user('DEALER');
 
     await request(app.getHttpServer()).post('/search/aliases/promote').expect(403);

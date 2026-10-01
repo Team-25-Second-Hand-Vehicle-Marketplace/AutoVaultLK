@@ -460,8 +460,8 @@ describe('Auth secure token transport (e2e)', () => {
       // Not asserted distinct from the login access token: HS256 signing is
       // deterministic and both are minted within the same one-second `iat`
       // window here, so they can legitimately be byte-identical. What
-      // matters — that the refresh *token* rotated and the access token
-      // this call returns actually works — is asserted below.
+      // matters - that the refresh *token* rotated and the access token
+      // this call returns actually works - is asserted below.
       expect(refreshResponse.body.accessToken).toBeTruthy();
       expect(refreshResponse.body).not.toHaveProperty('refreshToken');
 
@@ -476,7 +476,7 @@ describe('Auth secure token transport (e2e)', () => {
         .set(bearer(refreshResponse.body.accessToken))
         .expect(200);
 
-      // The rotated-out cookie is dead — replaying it (a stolen cookie used
+      // The rotated-out cookie is dead - replaying it (a stolen cookie used
       // after the legitimate client already refreshed) is rejected, same
       // reuse-detection the body-token flow already covers above.
       const replay = await context.agent

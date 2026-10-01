@@ -42,7 +42,7 @@ jobs:
       # cross-schema SELECT grants (auth, marketplace, ingestion,
       # notification) actually hold, and that the raw DATE_TRUNC/
       # query-builder SQL in AdminReadsRepository executes against a real
-      # Postgres — neither is observable from a unit test that stubs every
+      # Postgres - neither is observable from a unit test that stubs every
       # Repository<T>. The suite skips itself when no database is reachable,
       # so a developer without Docker gets a green local build; here the
       # service container opts in explicitly.

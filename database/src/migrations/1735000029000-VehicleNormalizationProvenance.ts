@@ -8,7 +8,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  *
  * None of that is currently derivable. The pipeline computes a per-field
  * confidence during parseNormalize (FR-33.1) and collapses it into a single
- * row-level `confidence: number` (FR-33.2) that never leaves NormalizedRow —
+ * row-level `confidence: number` (FR-33.2) that never leaves NormalizedRow -
  * nothing persists which fields were touched, by what method, or why. This
  * column is where that gets to survive past the pipeline run.
  *

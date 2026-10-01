@@ -3,7 +3,7 @@ import { Notification } from '../../../../src/infrastructure/database/entities/n
 
 /**
  * The query builder is stubbed, so what these assert is the *shape* of the
- * claim — above all that it locks with SKIP LOCKED. That is the property which
+ * claim - above all that it locks with SKIP LOCKED. That is the property which
  * keeps two replicas from claiming, and then sending, the same notification.
  */
 describe('NotificationsRepository', () => {

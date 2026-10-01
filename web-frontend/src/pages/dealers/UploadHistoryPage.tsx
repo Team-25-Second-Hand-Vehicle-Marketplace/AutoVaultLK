@@ -7,7 +7,7 @@ import { useAsyncData } from '../../hooks/useAsyncData'
 import { ErrorBanner } from '../../components/ui/ErrorBanner'
 
 /**
- * Every bulk upload the dealer has ever submitted, newest first — the page
+ * Every bulk upload the dealer has ever submitted, newest first - the page
  * that lets a dealer find their way back to a past job's rejection report.
  * Before this existed, that report was only reachable from the URL right
  * after the upload finished: navigate away, and it was gone for good even

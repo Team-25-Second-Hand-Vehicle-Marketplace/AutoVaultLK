@@ -39,7 +39,7 @@ describe('CreateListingDto', () => {
     expect(validateCreate(VALID_LISTING)).toHaveLength(0);
   });
 
-  it('accepts (but does not require) a client-supplied dealerId — the service ignores it anyway', () => {
+  it('accepts (but does not require) a client-supplied dealerId - the service ignores it anyway', () => {
     expect(
       validateCreate({ ...VALID_LISTING, dealerId: '11111111-1111-4111-8111-111111111111' }),
     ).toHaveLength(0);
@@ -57,7 +57,7 @@ describe('CreateListingDto', () => {
         'mileage',
         'fuelType',
         'transmissionType',
-        // The CSV's REQUIRED_COLUMNS beyond the basics — manual listings must
+        // The CSV's REQUIRED_COLUMNS beyond the basics - manual listings must
         // be as complete as bulk ones.
         'color',
         'engineCapacityCc',
@@ -132,7 +132,7 @@ describe('UpdateListingDto', () => {
     return validateSync(dto, { whitelist: true, forbidNonWhitelisted: true });
   }
 
-  it('accepts an empty body — every inherited field becomes optional via PartialType', () => {
+  it('accepts an empty body - every inherited field becomes optional via PartialType', () => {
     expect(validateUpdate({})).toHaveLength(0);
   });
 
@@ -140,7 +140,7 @@ describe('UpdateListingDto', () => {
     expect(validateUpdate({ price: 6_000_000 })).toHaveLength(0);
   });
 
-  it('rejects status — OmitType strips it, so the manual/ETL status split cannot be bypassed via PATCH', () => {
+  it('rejects status - OmitType strips it, so the manual/ETL status split cannot be bypassed via PATCH', () => {
     const errors = validateUpdate({ status: 'LIVE' });
     expect(errors.some((e) => e.property === 'status')).toBe(true);
   });
@@ -161,7 +161,7 @@ describe('CreateListingDto vocabularies', () => {
   });
 
   it.each(['THREE_WHEELER', 'LORRY', 'PICKUP', 'TRACTOR', 'HEAVY_MACHINERY'])(
-    'accepts %s — a type the database allows and the ETL writes daily',
+    'accepts %s - a type the database allows and the ETL writes daily',
     (vehicleType) => {
       // The five the DTO used to reject. Named individually rather than left
       // to the loop above so a regression says which values broke.

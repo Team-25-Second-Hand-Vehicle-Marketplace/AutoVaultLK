@@ -348,10 +348,10 @@ This document uses six views to describe the stakeholder concerns:
 
 > * **Use-Case View**: the functional behavior visible to Guests, Buyers, Dealers, and Administrators; ties the other views to concrete scenarios.  
 > * **Logical View**: decomposition of the system into modular packages, domain modules, and architecturally significant classes.  
-> * **Process View**: the system's runtime behavior — concurrent execution, sequencing, and process communication (HTTP, SQS, Step Functions state transitions, polling).  
+> * **Process View**: the system's runtime behavior - concurrent execution, sequencing, and process communication (HTTP, SQS, Step Functions state transitions, polling).  
 > * **Deployment View**: the physical AWS platform the software runs on, and the mapping of logical components onto it.  
-> * **Implementation View**: source-code organization — repositories, layers within each service, and layering rules.  
-> * **Data View**: the persistent data model — the shared PostgreSQL schema and the S3 object layout.
+> * **Implementation View**: source-code organization - repositories, layers within each service, and layering rules.  
+> * **Data View**: the persistent data model - the shared PostgreSQL schema and the S3 object layout.
 
 Together these views implement the 4+1 architectural view model, extended with an explicit Data View given the system's substantial persistent-data and search-indexing requirements.
 
@@ -440,7 +440,7 @@ Write isolation is the default across all five schemas: each service writes only
 
 ● Positive: avoids an unnecessary event-driven layer for a boundary with no fan-out; write path stays narrow (two verbs, one table pair), reviewable, and enforced at the database level rather than by convention alone; reliability is handled once, at the correct layer (Step Functions Retry/Catch \+ idempotent upsert), not duplicated by a second retry/DLQ mechanism.
 
-● Negative: this is a real, if narrow, exception to schema ownership — it must stay confined to the one adapter class and not be treated as precedent for other cross-schema writes.
+● Negative: this is a real, if narrow, exception to schema ownership - it must stay confined to the one adapter class and not be treated as precedent for other cross-schema writes.
 
 ● Mitigation: idempotent Load logic (FR-41, ON CONFLICT on (upload\_job\_id, registration\_number) or equivalent) makes retries safe; ETL-loaded listings enter pending\_review before becoming visible (FR-43); the grant is column-scoped, not table-wide. 
 

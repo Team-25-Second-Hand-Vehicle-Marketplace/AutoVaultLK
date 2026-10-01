@@ -9,7 +9,7 @@ import type { DealerListing } from '../../../api/listings.types'
  * What these guard is the client-side validation that mirrors
  * marketplace-service's ImageUploadService limits (so a rejection is
  * instant, not a round trip to the server) and that no files selected is
- * treated as "unchanged" on edit, not as "clear the photos" — the backend
+ * treated as "unchanged" on edit, not as "clear the photos" - the backend
  * replaces the whole image set on any upload, so calling it with zero
  * files, or calling it accidentally, would delete a listing's photos.
  */
@@ -138,7 +138,7 @@ describe('ListingForm image field', () => {
   })
 
   it('rejects an unsupported file type before submit', async () => {
-    // applyAccept: false at setup — the <input accept="image/jpeg,..."> would
+    // applyAccept: false at setup - the <input accept="image/jpeg,..."> would
     // otherwise have the browser itself refuse to attach a .gif before this
     // component's own validation ever runs. Real browsers enforce `accept`
     // too, but it is trivially bypassable (a file picker's "all files"

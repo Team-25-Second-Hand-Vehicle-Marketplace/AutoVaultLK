@@ -5,14 +5,14 @@ import type { EtlStage } from '../../../infrastructure/database/entities/etl-sta
  *
  * **Step Functions caps a state's input and output at 256 KB.** A chunk of 250
  * normalized rows carrying `search_text` is well past that, so rows never
- * travel between states — they live in the object store and only a pointer
+ * travel between states - they live in the object store and only a pointer
  * moves. This type is that pointer, and it must stay small enough that a
  * 50-chunk Map's aggregated output is nowhere near the cap.
  *
  * At roughly 200 bytes per envelope, 50 chunks is ~10 KB.
  *
  * `LocalOrchestrator` threads the identical type. The two executors differ in
- * *who calls the next stage*, not in what is passed — which is what keeps them
+ * *who calls the next stage*, not in what is passed - which is what keeps them
  * from drifting into different pipelines.
  */
 export type ChunkEnvelope = {
@@ -31,7 +31,7 @@ export type ChunkEnvelope = {
   outcome?: 'SUCCEEDED' | 'SKIPPED' | 'DEGRADED';
 
   /**
-   * Why the stage degraded — Groq unreachable, MiniLM unavailable. The chunk
+   * Why the stage degraded - Groq unreachable, MiniLM unavailable. The chunk
    * is not a failure and its rows continue; this is what the stage log's
    * error_message carries.
    */
@@ -61,7 +61,7 @@ export function stageOutputKey(jobId: string, stage: EtlStage, chunkId: number):
   return `staging/${jobId}/${slug(stage)}/chunk-${pad(chunkId)}.json`;
 }
 
-/** splitChunks' output — the raw rows, before any stage has run. */
+/** splitChunks' output - the raw rows, before any stage has run. */
 export function rawChunkKey(jobId: string, chunkId: number): string {
   return `staging/${jobId}/chunk-${pad(chunkId)}.json`;
 }
@@ -73,7 +73,7 @@ function slug(stage: EtlStage): string {
 
 /**
  * Zero-padded so keys sort in chunk order. `ObjectStore.list` sorts
- * lexicographically — unpadded, `chunk-10` precedes `chunk-2` and a retry
+ * lexicographically - unpadded, `chunk-10` precedes `chunk-2` and a retry
  * replays out of order.
  */
 function pad(chunkId: number): string {

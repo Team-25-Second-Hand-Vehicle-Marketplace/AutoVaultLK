@@ -39,7 +39,7 @@ const row = (
   confidence: 1,
 });
 
-/** Drops a key entirely — absent is distinct from present-and-invalid here. */
+/** Drops a key entirely - absent is distinct from present-and-invalid here. */
 const without = (key: keyof VehicleFields, o?: { raw?: Record<string, string> }): NormalizedRow => {
   const r = row({}, o);
   delete (r.normalized as Record<string, unknown>)[key];
@@ -113,7 +113,7 @@ describe('validateRowsStage', () => {
     });
 
     it('rejects a registration year preceding manufacture', async () => {
-      // A vehicle cannot be registered before it was built — usually the two
+      // A vehicle cannot be registered before it was built - usually the two
       // columns have been swapped.
       const result = await run([row({ manufactureYear: 2015, registrationYear: 2012 })]);
       expect(result.rejections[0].reason).toMatch(/precedes manufacture/);
@@ -204,7 +204,7 @@ describe('validateRowsStage', () => {
   });
 
   it('does not reject a row for an absent vehicleType or condition', async () => {
-    // Both are required columns but supplied by derivation and defaulting —
+    // Both are required columns but supplied by derivation and defaulting -
     // enrich fills them. Reporting them as missing cells would blame the
     // dealer for a column the contract does not require.
     const result = await run([without('vehicleType'), without('condition')]);

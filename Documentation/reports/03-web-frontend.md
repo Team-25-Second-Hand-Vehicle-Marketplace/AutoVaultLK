@@ -1,6 +1,6 @@
-# web-frontend — Architecture & Flow Report
+# web-frontend - Architecture & Flow Report
 
-**Scope:** `web-frontend/` — the React SPA serving buyers, dealers and admins.
+**Scope:** `web-frontend/` - the React SPA serving buyers, dealers and admins.
 Written from the source as of 2026-09-28 (branch `main`).
 
 ---
@@ -21,12 +21,12 @@ animation, `react-hook-form` + `zod` for forms, `sonner` for toasts, `lenis` for
 smooth scrolling, `jwt-decode` for token expiry checks. Tests are Vitest +
 Testing Library + jsdom.
 
-There is **no global state library** — no Redux, no Zustand, no React Query. State
+There is **no global state library** - no Redux, no Zustand, no React Query. State
 lives in exactly three places, deliberately:
 
-1. **The URL** — all search state (`useVehicleSearch`).
-2. **React context** — the session (`AuthProvider`).
-3. **Component-local `useAsyncData`** — everything else.
+1. **The URL** - all search state (`useVehicleSearch`).
+2. **React context** - the session (`AuthProvider`).
+3. **Component-local `useAsyncData`** - everything else.
 
 ---
 
@@ -48,7 +48,7 @@ Two subtleties worth carrying in your head:
 - **Only `/marketplace` is stripped.** That is why every marketplace controller is
   bare (`@Controller('search')`, not `@Controller('marketplace/search')`) and why
   the marketplace Lambda has to strip the prefix itself.
-- **`/admin` is ambiguous** — the SPA owns `/admin/login`, `/admin/users` etc., and
+- **`/admin` is ambiguous** - the SPA owns `/admin/login`, `/admin/users` etc., and
   so does the API. The proxy resolves it by inspecting `Accept`: `text/html`
   (a browser navigation) falls through to the SPA; anything else (XHR/fetch, which
   sends `application/json`) is proxied. In production nginx serves the SPA and the
@@ -62,12 +62,12 @@ Two subtleties worth carrying in your head:
 
 One shared Axios instance, 10s default timeout, carrying the whole session lifecycle.
 
-### Request interceptor — proactive refresh
+### Request interceptor - proactive refresh
 Before each request (except auth endpoints), if a refresh token exists and the
 access token is expired **or within a 30s skew window**, it refreshes *first*, then
 attaches the fresh token. This avoids the common pattern of always eating one 401.
 
-### Response interceptor — reactive refresh
+### Response interceptor - reactive refresh
 On a 401 that isn't already retried and isn't an auth endpoint, it refreshes once,
 marks `_retried`, and replays the original request. A second failure clears the
 session and fires `onSessionExpired`.
@@ -83,10 +83,10 @@ circular import.
 of React imports.
 
 ### Error helpers
-- `toErrorMessage()` — unwraps Nest's `{ message: string | string[] }` shape,
+- `toErrorMessage()` - unwraps Nest's `{ message: string | string[] }` shape,
   joining arrays (which is what a `ValidationPipe` failure returns), with distinct
   copy for timeouts and unreachable servers.
-- `isNoResponseError()` — **true when a request went out but no response came back.**
+- `isNoResponseError()` - **true when a request went out but no response came back.**
   For a write this is genuinely ambiguous: the server may have completed it, so
   callers must not blindly resubmit. `DealerListingsPage` uses this to avoid
   creating duplicate listings.
@@ -94,11 +94,11 @@ of React imports.
 ### Token storage (`src/api/auth.storage.ts`)
 Three `localStorage` keys (`autovault.accessToken` / `.refreshToken` / `.user`).
 `isAccessTokenExpired()` decodes the JWT client-side purely to decide *when to
-refresh* — never for authorisation, which is always the server's call. A corrupt
+refresh* - never for authorisation, which is always the server's call. A corrupt
 stored user clears the whole session rather than throwing.
 
 > **Security note:** tokens in `localStorage` are readable by any script on the
-> origin (XSS-exposed) — the conventional trade-off against `httpOnly` cookies,
+> origin (XSS-exposed) - the conventional trade-off against `httpOnly` cookies,
 > which would need CSRF handling and a same-site deployment. Worth recording as a
 > deliberate choice.
 
@@ -108,7 +108,7 @@ stored user clears the whole session rather than throwing.
 
 | File | Role |
 |---|---|
-| `AuthContext.tsx` | `AuthProvider` — session state + `login`/`loginAdmin`/`loginWithGoogle`/`register`/`logout`/`updateUser` |
+| `AuthContext.tsx` | `AuthProvider` - session state + `login`/`loginAdmin`/`loginWithGoogle`/`register`/`logout`/`updateUser` |
 | `auth-context.ts` | The context object, split out so Fast Refresh stays happy |
 | `useAuth.ts` | Consumer hook |
 | `RequireAuth.tsx` | Any authenticated user, else `/login` |
@@ -116,11 +116,11 @@ stored user clears the whole session rather than throwing.
 
 Initial state is read **synchronously** from `localStorage` in a `useState`
 initialiser, so an authenticated reload never flashes a logged-out UI. A stored user
-*without* a refresh token is treated as no session at all — it could not recover from
+*without* a refresh token is treated as no session at all - it could not recover from
 expiry, so the half-present session is cleared.
 
 Both guards preserve `location` in navigation state so a post-login redirect can
-return the user where they were. `RequireRole` checks `user?.role !== role` exactly —
+return the user where they were. `RequireRole` checks `user?.role !== role` exactly -
 an ADMIN visiting `/dealer` is redirected, not admitted.
 
 Registration is interesting: `registerBuyer` may return **either** a token response
@@ -138,24 +138,24 @@ One module per backend concern, each a thin typed wrapper with a matching `.type
 Notable decisions:
 
 - **`search.api.ts`** serialises arrays to comma-joined strings and specs to
-  `key:value,key:value` — exactly the flat format marketplace's `FilterSearchDto`
+  `key:value,key:value` - exactly the flat format marketplace's `FilterSearchDto`
   expects (the nested-DTO whitelist problem documented on the backend).
 - **`listings.api.ts`** raises the timeout to **60s** for create/update/image-upload:
   those re-embed a listing through MiniLM, and cutting the client off early does not
-  stop the server — the listing is still created, the client just never hears.
+  stop the server - the listing is still created, the client just never hears.
 - **`ingestion.api.ts`** raises it to **5 minutes** for the upload itself, and
   **deliberately does not set `Content-Type`** so the browser can add the multipart
   boundary. Field names are `csv`/`zip` because Multer rejects any other name with an
   unhelpful "Unexpected field" 400.
-- **`ingestion.template.ts`** holds `TEMPLATE_HEADER`, `COLUMN_HELP` and `isRequired`
-  — a **hand-maintained mirror** of ingestion-service's `csv-contract.ts`, used to
+- **`ingestion.template.ts`** holds `TEMPLATE_HEADER`, `COLUMN_HELP` and `isRequired` -
+  a **hand-maintained mirror** of ingestion-service's `csv-contract.ts`, used to
   generate the downloadable CSV template and the column reference.
 
 ---
 
 ## 6. Search (the buyer's main flow)
 
-### `hooks/useVehicleSearch.ts` — URL as the single source of truth
+### `hooks/useVehicleSearch.ts` - URL as the single source of truth
 
 Filters are serialised into the query string and parsed back out; there is no
 duplicate React state holding "current filters". That gives shareable/bookmarkable
@@ -178,14 +178,14 @@ const request = appliedFilters.q ? nlSearch(...) : filterSearch(...)
 
 A free-text `q` goes to `/search/nl` (parser → Groq → embeddings); structured filters
 alone go to `/search/filters`. Both come back in the same response shape, so the page
-renders them identically — the NL response merely adds a `parse` block.
+renders them identically - the NL response merely adds a `parse` block.
 
 Every request carries an `AbortSignal`; a superseded search is cancelled, and
 cancellations are swallowed rather than surfaced as errors.
 
 `logParseDiagnostics()` is **dev-only** and prints a collapsed console group showing
 which strategy fired (`rules` / `groq` / `semantic` / `trigram`), the confidence, the
-applied filters, unresolved tokens and any relaxation — a genuinely useful window into
+applied filters, unresolved tokens and any relaxation - a genuinely useful window into
 the NL pipeline.
 
 ### `pages/SearchPage.tsx`
@@ -200,9 +200,9 @@ during load; smooth scroll-to-top on page change.
 `VehicleCard`, `VehicleCardSkeleton`, `EmptyState`, `YearDisplay`, `SaveButton`,
 `RecommendationsSection`, plus two that surface backend behaviour directly:
 
-- **`RelaxationNotice`** — renders the backend's zero-result relaxation message,
+- **`RelaxationNotice`** - renders the backend's zero-result relaxation message,
   including the "results may exceed your budget" case when a `maxPrice` was set.
-- **`ParseWarning`** — surfaces low NL parse confidence / unresolved tokens.
+- **`ParseWarning`** - surfaces low NL parse confidence / unresolved tokens.
 
 `vehicle-format.ts` centralises price/mileage/year formatting so cards, detail pages
 and dealer tables agree.
@@ -215,7 +215,7 @@ and dealer tables agree.
 
 ```
 /dealer/*        RequireRole('DEALER', loginTo='/dealer/login')
-  index          DealerDashboardPage        — always renders; branches on status
+  index          DealerDashboardPage        - always renders; branches on status
   listings       RequireVerifiedDealer
   profile        (no extra guard)
   upload         RequireVerifiedDealer + RequireDealerType('business')
@@ -223,18 +223,18 @@ and dealer tables agree.
 ```
 
 `RequireVerifiedDealer` exists because **a dealer can now log in while PENDING or
-REJECTED** — approval no longer gates login in auth-user-service — so this, not login,
+REJECTED** - approval no longer gates login in auth-user-service - so this, not login,
 is what stands between an unverified dealer and the rest of the dealer area.
 
 `RequireDealerType('business')` mirrors the backend split: bulk upload is
 business-only, manual listing creation is individual-only. Both guards **fail closed**
 (no render while loading or on profile error) and both exist *only* to avoid showing
-a screen that would 403 on submit — the API enforces the same rules independently.
+a screen that would 403 on submit - the API enforces the same rules independently.
 
 `/dealer` (the index) always renders something appropriate, which is why redirecting
 there is always safe.
 
-### `DealerListingsPage.tsx` (430 lines) — manual CRUD + the review queue
+### `DealerListingsPage.tsx` (430 lines) - manual CRUD + the review queue
 
 Covers FR-58 (manual listings) and FR-42/42.1 (bulk-upload review) in one screen.
 
@@ -248,12 +248,12 @@ Covers FR-58 (manual listings) and FR-42/42.1 (bulk-upload review) in one screen
 - Per-row in-flight state (`archiving`/`approving`/`deleting`/`unarchiving`) keyed by
   id, so one row's spinner does not freeze the table.
 
-### `NormalizationBadge.tsx` — where FR-42.1 closes
+### `NormalizationBadge.tsx` - where FR-42.1 closes
 
 Renders the `normalization` JSONB that ingestion's Load stage wrote: per-field source
 (`Parsed` / `Matched` / `As entered` / `AI-corrected`), confidence, and Groq's
 reasoning where it repaired a value. Fields below **0.6** are flagged regardless of
-source — the same `CONFIDENCE_FUZZY` floor the pipeline uses, so "low confidence"
+source - the same `CONFIDENCE_FUZZY` floor the pipeline uses, so "low confidence"
 means the same thing in both halves. Renders nothing for `normalization: null`
 (manual listings, or rows predating migration 29000).
 
@@ -265,10 +265,10 @@ confidence-ordered query.
 
 - **Redirects to an active job on mount.** A dealer who submitted and navigated away
   otherwise has no route back; this sends them to the status page instead of a blank
-  form they could resubmit into. A *failed* check does not block uploading — worst
+  form they could resubmit into. A *failed* check does not block uploading - worst
   case is a double submit, which the pipeline tolerates.
 - **Client-side validation mirrors `validateFile`**: `.csv` extension, non-empty, size
-  cap — catching an `.xlsx` before a 25MB transfer.
+  cap - catching an `.xlsx` before a 25MB transfer.
 - Real upload progress via `onUploadProgress`.
 - Offers a generated CSV template and a `KnownValuesReference` (the accepted enum
   vocabularies) inline.
@@ -276,7 +276,7 @@ confidence-ordered query.
 ### `UploadStatusPage.tsx`
 
 Polls `GET /jobs/:id` with **exponential backoff**: 2s → ×1.4 → capped at 15s,
-**stopping entirely once the status is terminal**. Transient failures keep polling —
+**stopping entirely once the status is terminal**. Transient failures keep polling -
 the job is still running and a dropped request should not strand the page.
 
 Its `STATUS_COPY` table is careful about one thing in particular: **PARTIAL is
@@ -285,12 +285,12 @@ it as a failure re-uploads the whole file and creates duplicate work. The same c
 drives the backend's `PARTIAL → UPLOAD_COMPLETED` notification mapping.
 
 `RejectionsReport` renders the paginated row-level report (FR-57) once the job is
-terminal — before that the pipeline is still writing rejections and the page would be
+terminal - before that the pipeline is still writing rejections and the page would be
 a moving target.
 
 ### Other dealer files
 `DealerRegisterPage.tsx` (437 lines, `zod` schema in `dealerRegisterSchema.ts`),
-`DealerVerificationGate.tsx` (254 lines — the PENDING/REJECTED experience),
+`DealerVerificationGate.tsx` (254 lines - the PENDING/REJECTED experience),
 `DealerProfilePage.tsx`, `DealerLayout.tsx`, `DealerLoginPage.tsx`,
 `useDealerProfile.ts` + `dealer-profile-context.ts` (profile fetched once per layout
 mount and shared by both guards, not refetched per guard).
@@ -304,7 +304,7 @@ Dashboard, Users, Uploads, Reports and Audit Logs. Charts are hand-rolled
 (`BarRow`, `LineChart`, `PieChart` in `components/admin/`) rather than pulling in a
 charting dependency.
 
-`AdminDashboardPreviewPage` is **dev-only** — gated behind `import.meta.env.DEV`, so
+`AdminDashboardPreviewPage` is **dev-only** - gated behind `import.meta.env.DEV`, so
 it is stripped from production builds. It renders the real dashboard against fixed
 mock data with no login, for checking a local change in the browser. Not linked from
 anywhere.
@@ -317,7 +317,7 @@ anywhere.
 The workhorse for every non-search fetch. A reducer over
 `{data, error, loading}` plus:
 - **Previous data is kept during a refetch**, so a refreshing table does not blank.
-- **`setData(updater)`** applies a known server change locally instead of refetching —
+- **`setData(updater)`** applies a known server change locally instead of refetching -
   a caller that just performed the mutation already knows the resulting shape, and a
   reload would be a visible loading flash for zero new information.
 - **`toMessage` is deliberately excluded from the effect deps**, with a long comment
@@ -336,7 +336,7 @@ Implemented as a module-level `Map<userId, string[]>` synchronised via
 without a context provider. The cache is cleared when the signed-in user changes, so a
 second buyer on the same browser never sees the first's list.
 
-**Guests get nothing here** — `SaveButton` prompts sign-in (FR-55) rather than saving
+**Guests get nothing here** - `SaveButton` prompts sign-in (FR-55) rather than saving
 locally, because one source of truth beats an offline convenience that silently
 disagrees with the server after login.
 
@@ -344,12 +344,12 @@ disagrees with the server after login.
 
 ## 10. Layout, UI kit and landing
 
-- **`layout/`** — `Header`, `Footer`, `BrandMark`, `ErrorBoundary`, `SmoothScroll`.
+- **`layout/`** - `Header`, `Footer`, `BrandMark`, `ErrorBoundary`, `SmoothScroll`.
   The `ErrorBoundary` sits **inside** the router so a page crash keeps the header and
   navigation usable.
-- **`ui/`** — `Button`, `FormField`, `SelectField`, `ErrorBanner`, `Pill`,
+- **`ui/`** - `Button`, `FormField`, `SelectField`, `ErrorBanner`, `Pill`,
   `ActionMenu`, `AdminTable`, `SlotImage`, `VehicleTypeIcon`.
-- **`landing/`** — `Hero`, `HeroSearch`, `StatsBand` (live figures from
+- **`landing/`** - `Hero`, `HeroSearch`, `StatsBand` (live figures from
   `/search/stats`), `CategoryBento`, `FeaturedRail`, `BrandMarquee`, `StoryScroll`,
   `DealerCta`, `CountUp`, `Reveal`.
 
@@ -359,7 +359,7 @@ respects `prefers-reduced-motion` without per-component handling.
 `BARE_ROUTES` plus prefix checks hide the marketplace header/footer on dealer and
 admin screens, which carry their own chrome.
 
-`assets/image-slots.ts` supplies deterministic placeholder photos — which is exactly
+`assets/image-slots.ts` supplies deterministic placeholder photos - which is exactly
 what makes marketplace's `IMAGE_SERVE_MODE=demo` (resolving images to `null`) a
 working default rather than a broken-image experience.
 
@@ -372,7 +372,7 @@ hooks, auth guards, dealer pages, admin pages, and UI components. Vitest + jsdom
 Testing Library.
 
 The `*-contract.test.ts` files (`ingestion-contract`, `listings-contract`) are the
-notable ones — they pin the request/response shapes the frontend assumes, which is the
+notable ones - they pin the request/response shapes the frontend assumes, which is the
 cheapest available guard against silent backend drift given the services share no
 generated client.
 
@@ -442,12 +442,12 @@ any request → interceptor sees token expired (30s skew) → refresh first
    `csv-contract.ts`. Nothing enforces parity, so a new required column added on the
    backend would silently leave the downloadable template stale.
 3. **`AuthProvider.initializing` is permanently `false`** (`useState(false)` with no
-   setter used). Both guards branch on it, so that branch is dead code — harmless
+   setter used). Both guards branch on it, so that branch is dead code - harmless
    today because the initial session read is synchronous, but misleading.
-4. **Tokens live in `localStorage`** — XSS-exposed by design; see §3.
-5. **`window.confirm` for destructive actions** in `DealerListingsPage` — functional,
+4. **Tokens live in `localStorage`** - XSS-exposed by design; see §3.
+5. **`window.confirm` for destructive actions** in `DealerListingsPage` - functional,
    but inconsistent with the app's own modal/toast vocabulary.
-6. **`logParseDiagnostics` is dev-gated**, so NL diagnostics vanish in production —
+6. **`logParseDiagnostics` is dev-gated**, so NL diagnostics vanish in production -
    worth knowing when debugging a live search complaint.
 7. **The `/admin` proxy `Accept`-header trick is dev-only.** It works, but it means a
    dev-mode API call that fails to send a JSON `Accept` header will silently receive
@@ -474,5 +474,5 @@ FR-42.1:
 
 The second thread is the embedding parity requirement: `shared/normalize-embed/` is
 byte-identical in marketplace-service and ingestion-service, and a listing created
-manually must land in the same vector space as one bulk-uploaded — enforced by a
+manually must land in the same vector space as one bulk-uploaded - enforced by a
 parity test, and invisible if it ever breaks.

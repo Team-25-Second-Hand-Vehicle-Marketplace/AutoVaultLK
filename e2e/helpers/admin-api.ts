@@ -3,13 +3,13 @@ import { type APIRequestContext } from '@playwright/test';
 /**
  * Approves a dealer directly via admin-service's real API, bypassing the
  * admin UI. This journey's point is proving a dealer can register, verify,
- * sign in pre-approval, and use their profile once verified — not proving
+ * sign in pre-approval, and use their profile once verified - not proving
  * the admin console's own click-through, which is a separate journey. A
  * direct API call keeps this test from depending on a second UI surface
  * that isn't the one under test here.
  *
  * Requires ADMIN_SEED_EMAIL/ADMIN_SEED_PASSWORD to match a real seeded
- * admin (database/src/seeds/admin-user.seed.ts) — no default exists, since
+ * admin (database/src/seeds/admin-user.seed.ts) - no default exists, since
  * the seed script itself refuses to run without an explicit password.
  */
 export async function approveDealer(
@@ -21,7 +21,7 @@ export async function approveDealer(
   const adminPassword = process.env.ADMIN_SEED_PASSWORD;
   if (!adminEmail || !adminPassword) {
     throw new Error(
-      'ADMIN_SEED_EMAIL / ADMIN_SEED_PASSWORD are not set in the environment running this test — ' +
+      'ADMIN_SEED_EMAIL / ADMIN_SEED_PASSWORD are not set in the environment running this test - ' +
         'set them to the same values used to seed the local admin user.',
     );
   }
@@ -31,7 +31,7 @@ export async function approveDealer(
   });
   if (!loginResponse.ok()) {
     throw new Error(
-      `Admin login failed (${loginResponse.status()}) — is the seeded admin user present in the local database?`,
+      `Admin login failed (${loginResponse.status()}) - is the seeded admin user present in the local database?`,
     );
   }
   const { accessToken } = (await loginResponse.json()) as { accessToken: string };

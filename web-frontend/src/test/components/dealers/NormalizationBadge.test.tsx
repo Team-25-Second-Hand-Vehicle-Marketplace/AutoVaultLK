@@ -105,7 +105,7 @@ describe('NormalizationDetails', () => {
 
     await user.click(screen.getByRole('button'))
 
-    // make has no reasoning — dictionary matches have nothing to explain.
+    // make has no reasoning - dictionary matches have nothing to explain.
     const makeRow = screen.getByText('Make').closest('div')
     expect(makeRow?.textContent).not.toMatch(/undefined|null/)
   })
@@ -200,7 +200,7 @@ describe('NormalizationDetails', () => {
   })
 
   // Groq repairs a row, not a single field, and writes the same sentence onto
-  // every field it touched — "Corrected make to Suzuki, model to Wagon R..."
+  // every field it touched - "Corrected make to Suzuki, model to Wagon R..."
   // lands on both `make` and `model`. One <dd> per field printed that
   // sentence twice; fields sharing a reasoning string must collapse into one
   // explanation, labelled with every field it covers.

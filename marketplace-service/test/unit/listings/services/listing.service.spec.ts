@@ -165,7 +165,7 @@ describe('ListingService', () => {
     });
 
     // A dealer can now log in while PENDING or REJECTED (approval no longer
-    // gates login — see auth-user-service). This is the check that stands
+    // gates login - see auth-user-service). This is the check that stands
     // between that and a real LIVE listing. Applies regardless of dealer
     // type, since manual listing is no longer restricted by dealerType.
     it('forbids a dealer of any type who is not yet VERIFIED', async () => {
@@ -718,7 +718,7 @@ describe('ListingService', () => {
     });
 
     // Ownership must be checked before the (possibly expensive, possibly
-    // billed) upload work starts — a non-owner's request should never reach
+    // billed) upload work starts - a non-owner's request should never reach
     // S3 or the local filesystem.
     it('checks ownership before calling the upload service', async () => {
       listingRepository.findById.mockResolvedValue(

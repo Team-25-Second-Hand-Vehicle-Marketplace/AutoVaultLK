@@ -2,13 +2,13 @@ import { useId, useMemo, useState } from 'react'
 import type { TimeSeriesPoint } from '../../api/admin.types'
 
 /**
- * A daily count over time — one line, one hue (`colorVar`, one of the app's
+ * A daily count over time - one line, one hue (`colorVar`, one of the app's
  * own reserved tokens, same convention as BarRow). Straight segments, not a
  * smoothed curve: a curve between two real daily counts implies values that
  * were never measured, which is dishonest for a count that can only ever be
  * a whole number on a whole day.
  *
- * No axis library, no dependency — this is a handful of SVG paths, matching
+ * No axis library, no dependency - this is a handful of SVG paths, matching
  * BarRow/PieChart's own hand-rolled approach elsewhere in this admin surface.
  */
 
@@ -70,7 +70,7 @@ export function LineChart({
 
   const hovered = hoverIndex !== null ? points[hoverIndex] : null
   const last = points[points.length - 1]
-  // Sparse ticks: first, middle, last — 30 daily labels on one axis would be
+  // Sparse ticks: first, middle, last - 30 daily labels on one axis would be
   // unreadable clutter, and the tooltip already gives an exact date on hover.
   const tickIndexes = Array.from(
     new Set([0, Math.floor((points.length - 1) / 2), points.length - 1]),
@@ -101,7 +101,7 @@ export function LineChart({
           </linearGradient>
         </defs>
 
-        {/* Baseline only — a full grid would compete with a 30-point line for attention. */}
+        {/* Baseline only - a full grid would compete with a 30-point line for attention. */}
         <line
           x1={PAD_X}
           y1={PAD_TOP + plotHeight}

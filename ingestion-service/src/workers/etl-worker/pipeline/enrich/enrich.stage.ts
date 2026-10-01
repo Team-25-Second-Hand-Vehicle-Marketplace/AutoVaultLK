@@ -13,7 +13,7 @@ import { coerceInteger, coerceText } from '../normalize/coerce';
  * database/src/seeds/vehicle-dictionaries.seed.ts.
  *
  * A value outside this set is invisible to the search facet that reads
- * specs.body_type, so it is dropped rather than stored — a spec key nothing
+ * specs.body_type, so it is dropped rather than stored - a spec key nothing
  * can filter on is worse than an absent one, because it looks like data.
  */
 const BODY_TYPES = [
@@ -32,12 +32,12 @@ const BODY_TYPES = [
 /**
  * Category-specific attribute schemas (SRS Appendix B.2), gated by
  * vehicle_type. A column here is only ever read into `specs` for a row whose
- * vehicle_type matches its category — a TRUCK's `axle_count` column on a CAR
+ * vehicle_type matches its category - a TRUCK's `axle_count` column on a CAR
  * row is ignored, not stored, the same way an out-of-range int spec is
  * dropped rather than stored under a misleading key.
  *
  * The universal equipment keys (sunroof, full_option, alloy_wheels,
- * reverse_camera, leather_seats, power_steering, air_conditioning — see
+ * reverse_camera, leather_seats, power_steering, air_conditioning - see
  * BOOL_SPECS below) are the deliberate exception: a van or truck can have a
  * sunroof too, so those apply to every vehicle_type rather than being gated
  * here.
@@ -183,7 +183,7 @@ export const DEFAULT_CONDITION = 'USED';
 /**
  * marketplace.vehicles.review_reason (migration 30000). A short machine code
  * rather than a sentence, so the review UI can branch on it without parsing
- * text — see the migration's own comment for why this is a separate column
+ * text - see the migration's own comment for why this is a separate column
  * from `status`.
  */
 export const REVIEW_REASON_NO_REGISTRATION_NUMBER = 'NO_REGISTRATION_NUMBER';
@@ -195,14 +195,14 @@ export const REVIEW_REASON_NO_REGISTRATION_NUMBER = 'NO_REGISTRATION_NUMBER';
  * stage does can make one invalid. It only adds.
  *
  * **`specs.body_type` must be set before embed runs.** buildSearchText reads
- * it (shared/normalize-embed/search-text.ts) — a bulk row without it produces
+ * it (shared/normalize-embed/search-text.ts) - a bulk row without it produces
  * a shorter search text than the equivalent manual listing, and a different
  * text embeds to a different vector. That is FR-22.1 drift arriving through
  * the side door, so body type is resolved here and not left to Load.
  *
  * Known spec keys (body_type, seats, sunroof, etc.) are validated and typed
  * before being written, because search facets query them against
- * KNOWN_SPEC_KEYS — a malformed or out-of-range value there would be
+ * KNOWN_SPEC_KEYS - a malformed or out-of-range value there would be
  * unqueryable weight, or worse, a facet that silently returns nothing.
  *
  * Everything else the dealer's CSV carries is NOT discarded (FR-15 /
@@ -210,7 +210,7 @@ export const REVIEW_REASON_NO_REGISTRATION_NUMBER = 'NO_REGISTRATION_NUMBER';
  * under its own header name, preserving the dealer's data even though no
  * facet can filter on it yet, AND appended to `description` so it still
  * reaches the embedding through buildSearchText. A dealer writing
- * "Warranty: 2 years" is describing the vehicle either way — specs keeps the
+ * "Warranty: 2 years" is describing the vehicle either way - specs keeps the
  * structured fact, description keeps it readable and searchable.
  */
 export const enrichStage: StageRunner<ValidatedRow[], StageResult<EnrichedRow>> = {
@@ -228,7 +228,7 @@ function enrichRow(ctx: StageContext, row: ValidatedRow): EnrichedRow {
   const normalized = { ...row.normalized };
 
   // parseNormalize deliberately leaves condition absent when unrecognised so
-  // the default lives in exactly one place — here.
+  // the default lives in exactly one place - here.
   if (!normalized.condition) normalized.condition = DEFAULT_CONDITION;
   if (normalized.isNegotiable === undefined) normalized.isNegotiable = false;
 
@@ -339,13 +339,13 @@ function applyEnumSpec(
  *
  * Deliberately separate from the known-key blocks above: those validate type
  * and range because a search facet queries them, while this preserves
- * whatever the dealer's own DMS export happened to carry — a raw string, not
+ * whatever the dealer's own DMS export happened to carry - a raw string, not
  * a typed/bounded value; no facet queries these keys, so there is nothing to
  * protect them from except unbounded size (MAX_DYNAMIC_SPEC_KEYS/VALUE).
  *
  * A column already written by the known-key blocks (specs.body_type,
  * specs.sunroof, ...) is skipped here via CONSUMED_COLUMNS, which lists
- * every column those blocks read from — so a value never gets written twice
+ * every column those blocks read from - so a value never gets written twice
  * under two different keys for the same column.
  */
 function addDynamicSpecs(row: ValidatedRow, specs: Record<string, unknown>): void {
@@ -414,7 +414,7 @@ function truncate(value: string): string {
 
 /**
  * Resolves body type through the BODY_TYPE dictionary first, so the seed's
- * aliases apply — "saloon" is SEDAN and "jeep" is SUV in Sri Lankan usage, and
+ * aliases apply - "saloon" is SEDAN and "jeep" is SUV in Sri Lankan usage, and
  * both are already in the seed. Falls back to a direct match on the canonical
  * list so the stage still works against a snapshot with no BODY_TYPE rows.
  */

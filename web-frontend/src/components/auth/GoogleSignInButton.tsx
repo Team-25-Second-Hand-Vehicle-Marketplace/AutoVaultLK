@@ -54,7 +54,7 @@ export function GoogleSignInButton({
 
   // Refs, not dependencies: a caller passing `(token) => login(token)` inline
   // gets a new function identity every render, and the load-and-render effect
-  // below must not re-run because of that — the exact bug class useAsyncData
+  // below must not re-run because of that - the exact bug class useAsyncData
   // was hardened against (see its own comment). This keeps the callbacks
   // fresh without the effect depending on them.
   const onCredentialRef = useRef(onCredential)
@@ -94,7 +94,7 @@ export function GoogleSignInButton({
     }
   }, [clientId])
 
-  // No client ID configured (e.g. a local dev checkout without one set) —
+  // No client ID configured (e.g. a local dev checkout without one set) -
   // omit the button entirely rather than rendering something that can never
   // work.
   if (!clientId) return null

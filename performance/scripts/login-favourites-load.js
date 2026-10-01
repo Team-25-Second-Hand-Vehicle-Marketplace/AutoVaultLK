@@ -3,10 +3,10 @@ import { check, sleep } from 'k6';
 import { textSummary } from 'https://jslib.k6.io/k6-summary/0.1.0/index.js';
 
 /**
- * Concurrent LOAD test (not a baseline): authenticated buyer traffic —
+ * Concurrent LOAD test (not a baseline): authenticated buyer traffic -
  * login once, then repeatedly call GET /favourites under real concurrency.
  * NFR-10 (SRS): the system shall support at least 50 concurrent buyer
- * sessions without degraded response times — this ramps to exactly that.
+ * sessions without degraded response times - this ramps to exactly that.
  *
  * Login itself is deliberately NOT the repeated action under load. Each VU
  * logs in exactly ONCE, in its own setup, then reuses that access token for
@@ -14,22 +14,22 @@ import { textSummary } from 'https://jslib.k6.io/k6-summary/0.1.0/index.js';
  *
  * 1. auth-user-service's AuthAbuseProtectionService rate-limits an IP after
  *    repeated FAILED login attempts (assertIpRateLimit ->
- *    countRecentByIp(..., success=false) — see auth-abuse-protection.service.ts).
+ *    countRecentByIp(..., success=false) - see auth-abuse-protection.service.ts).
  *    All 50 VUs originate from k6's own IP; a script that logged in on every
  *    iteration would still be safe from that specific limiter as long as
  *    every attempt succeeds, but re-authenticating every iteration would
  *    measure login-endpoint throughput, not "50 concurrent buyer sessions
- *    browsing" — a different transaction than what NFR-10 describes.
+ *    browsing" - a different transaction than what NFR-10 describes.
  * 2. A single shared test account across 50 VUs would still be safe against
  *    the per-account lockout (successes don't count toward it either), but
- *    it would serialise nothing meaningful — it's not what "50 concurrent
+ *    it would serialise nothing meaningful - it's not what "50 concurrent
  *    buyer SESSIONS" means. Each VU gets its OWN distinct, real,
  *    pre-registered and pre-verified buyer account instead.
  *
  * setup() runs once, before any VU/iteration, and pre-registers NUM_VUS
  * real buyer accounts via the same AUTH_RETURN_VERIFICATION_TOKEN
  * mechanism the Playwright suite (e2e/tests/buyer-registration.spec.ts)
- * and auth-user-service's own e2e harness both rely on — no new backend
+ * and auth-user-service's own e2e harness both rely on - no new backend
  * affordance added for this script.
  */
 
@@ -52,7 +52,7 @@ export const options = {
   },
   thresholds: {
     // NFR-09: average API response time under 500ms for CRUD/browse APIs.
-    // p(95) is the stricter, more representative bar — see config.js.
+    // p(95) is the stricter, more representative bar - see config.js.
     http_req_duration: ['p(95)<500'],
     http_req_failed: ['rate<0.01'],
   },
@@ -79,7 +79,7 @@ function registerVerifiedBuyer(index) {
   const body = JSON.parse(registerRes.body);
   if (!body.verificationToken) {
     throw new Error(
-      'setup: POST /auth/register/buyer did not return verificationToken — ' +
+      'setup: POST /auth/register/buyer did not return verificationToken - ' +
         'is AUTH_RETURN_VERIFICATION_TOKEN=true set on the running auth-user-service?',
     );
   }
@@ -100,8 +100,8 @@ function registerVerifiedBuyer(index) {
 
 /**
  * Runs once before any VU starts iterating. Pre-registering here rather
- * than in each VU's first iteration keeps registration — which is itself
- * rate-limited and has its own cost — out of the measured load window
+ * than in each VU's first iteration keeps registration - which is itself
+ * rate-limited and has its own cost - out of the measured load window
  * entirely; only the authenticated GET /favourites calls below are timed
  * against the NFR-09 threshold.
  */
@@ -119,7 +119,7 @@ export function setup() {
   }
   const items = JSON.parse(searchRes.body).items;
   if (!items || items.length === 0) {
-    throw new Error('setup: local catalogue is empty — is it seeded (database/ seed:vehicles)?');
+    throw new Error('setup: local catalogue is empty - is it seeded (database/ seed:vehicles)?');
   }
 
   return { buyers, vehicleId: items[0].id };
@@ -128,7 +128,7 @@ export function setup() {
 /**
  * Each VU calls this once per iteration during the ramp/hold/ramp-down
  * stages. __VU is k6's 1-indexed virtual user number; buyers[] is 0-indexed
- * and sized to NUM_VUS, so this assumes VU count never exceeds NUM_VUS —
+ * and sized to NUM_VUS, so this assumes VU count never exceeds NUM_VUS -
  * true here since the executor's target is NUM_VUS itself.
  */
 export default function (data) {
@@ -146,7 +146,7 @@ export default function (data) {
 
     check(loginRes, { 'login succeeded': (r) => r.status === 200 || r.status === 201 });
     if (loginRes.status !== 200 && loginRes.status !== 201) {
-      // A failed login means nothing else this VU does is authenticated —
+      // A failed login means nothing else this VU does is authenticated -
       // no point continuing this iteration. sleep(1) still runs first: an
       // early return with no sleep lets this VU spin in a near-zero-cost
       // tight loop instead of behaving like a paced session (confirmed by
@@ -203,7 +203,7 @@ export function handleSummary(data) {
   const totalRequests = data.metrics.http_reqs ? data.metrics.http_reqs.values.count : 0;
   if (totalRequests === 0) {
     throw new Error(
-      'login-favourites-load made zero HTTP requests — every iteration threw before any ' +
+      'login-favourites-load made zero HTTP requests - every iteration threw before any ' +
         'request fired (check the k6 error log above and setup()), which the default summary ' +
         'reports as a false-positive pass.',
     );

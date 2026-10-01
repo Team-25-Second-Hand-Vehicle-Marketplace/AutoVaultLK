@@ -22,7 +22,7 @@ export type ValidateFileOutput = {
  * chunk id and no rows to write.
  *
  * Reads the job row rather than trusting the message, exactly as the JobQueue
- * port documents — a redelivered or replayed SQS message must not be able to
+ * port documents - a redelivered or replayed SQS message must not be able to
  * resurrect stale field values.
  */
 export const handler = async (input: ValidateFileInput): Promise<ValidateFileOutput> => {
@@ -30,7 +30,7 @@ export const handler = async (input: ValidateFileInput): Promise<ValidateFileOut
   const job = await ctx.uploadJobs.findById(input.jobId);
 
   if (!job) {
-    // Nothing to mark FAILED — the row the status would live on is the one
+    // Nothing to mark FAILED - the row the status would live on is the one
     // that is missing. Throwing lets ASL's top-level Catch record it.
     throw new Error(`Upload job ${input.jobId} not found`);
   }

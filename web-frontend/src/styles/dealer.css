@@ -8,7 +8,7 @@
 }
 
 .dealer-shell__sidebar {
-  /* var(--surface) (white) against the shell's var(--bg-alt) (light grey) —
+  /* var(--surface) (white) against the shell's var(--bg-alt) (light grey) -
      using var(--bg) here made the sidebar the same tone as the page
      background it sits on, so the two panels had almost no visible seam. */
   background: var(--surface);
@@ -21,7 +21,7 @@
   top: 0;
   height: 100vh;
   z-index: 1;
-  /* A grid item's default min-width is auto, not 0 — without this, content
+  /* A grid item's default min-width is auto, not 0 - without this, content
      that doesn't fit (see .dealer-shell__brand below) can force this box
      wider than its 240px grid track and spill into the main column instead
      of wrapping, which is exactly what made the "Dealer" badge run into the
@@ -221,7 +221,7 @@
 
 /* This class is shared by pages with different tile counts (6 on the
    dashboard, 3 on the upload status page), so the column count can't be
-   hardcoded — a fixed repeat(6, ...) leaves a 3-tile row cornered on the
+   hardcoded - a fixed repeat(6, ...) leaves a 3-tile row cornered on the
    left with empty space on the right. auto-fit collapses columns that have
    no tile to fill instead of leaving them blank, so a shorter row still
    stretches to the full width; a longer row still wraps only when the
@@ -318,7 +318,7 @@
    No max-width: the listings table (.listing-table-wrap) and the columns
    reference below (.upload-columns) both already run edge to edge across
    .dealer-shell__main, and this page previously read as an outlier next to
-   them — a narrow card with a wide table sitting under it. Filling the same
+   them - a narrow card with a wide table sitting under it. Filling the same
    width keeps every dealer page at one consistent fill level. */
 
 .dealer-page__actions {
@@ -736,7 +736,7 @@
 }
 
 /* FR-35.2: a bulk row with no registration number, so no image could be
-   matched automatically — distinct from the status badge, which only says
+   matched automatically - distinct from the status badge, which only says
    where the listing is in the publish flow. */
 .listing-status--review {
   background: rgba(217, 45, 32, 0.1);
@@ -744,7 +744,7 @@
   margin-left: 6px;
 }
 
-/* Labels a screen reader needs but sighted users read from context — here, the
+/* Labels a screen reader needs but sighted users read from context - here, the
    actions column header above two clearly-labelled buttons. */
 .visually-hidden {
   clip: rect(0 0 0 0);

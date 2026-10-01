@@ -12,14 +12,14 @@ import { BASE_URL, THRESHOLDS_NFR09 } from '../config.js';
  * concurrent-load results (Phase C2) can be attributed to contention
  * rather than merely observed.
  *
- * 1 virtual user, no ramp — a real baseline is a single caller with
+ * 1 virtual user, no ramp - a real baseline is a single caller with
  * nothing else competing for the same connection pool, cache, or CPU.
  *
  * Query mix: an unfiltered browse (the emptiest, most common request),
  * a narrow filter combination that exercises multiple WHERE clauses and
  * the verifiedDealersOnly join (see marketplace-service's
  * dealer-join.integration-spec.ts for why that join is expensive to get
- * wrong), and a sorted, paginated page 2 request — three distinct query
+ * wrong), and a sorted, paginated page 2 request - three distinct query
  * plans, not the same request repeated.
  */
 
@@ -46,7 +46,7 @@ const QUERIES = [
   { sort: 'price_asc', page: 2, limit: 20 },
 ];
 
-/** k6's JS runtime (goja) has no URLSearchParams — build the query string by hand. */
+/** k6's JS runtime (goja) has no URLSearchParams - build the query string by hand. */
 function toQueryString(query) {
   return Object.entries(query)
     .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
@@ -79,7 +79,7 @@ export default function () {
 
 /**
  * A script whose every iteration throws (e.g. a goja API k6 doesn't
- * support — URLSearchParams did exactly this here during development)
+ * support - URLSearchParams did exactly this here during development)
  * produces zero real HTTP requests, so http_req_failed's 0/0 rate reads as
  * a pass. handleSummary fails the run explicitly on that condition rather
  * than trusting the default text summary, which reports the same
@@ -89,12 +89,12 @@ export function handleSummary(data) {
   const totalRequests = data.metrics.http_reqs ? data.metrics.http_reqs.values.count : 0;
   if (totalRequests === 0) {
     throw new Error(
-      'search-filters-baseline made zero HTTP requests — every iteration threw before the ' +
+      'search-filters-baseline made zero HTTP requests - every iteration threw before the ' +
         'request fired (check the k6 error log above), which the default summary reports as a ' +
         'false-positive pass.',
     );
   }
-  // Reproduces k6's own default text summary — handleSummary(), once
+  // Reproduces k6's own default text summary - handleSummary(), once
   // defined, REPLACES the default stdout output rather than supplementing
   // it, so this has to be provided explicitly or the run prints nothing.
   return { stdout: textSummary(data, { indent: ' ', enableColors: true }) };

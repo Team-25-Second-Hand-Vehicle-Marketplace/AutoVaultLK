@@ -10,7 +10,7 @@ export type MarkJobFailedInput = {
  * Step Functions state: MarkJobFailed. The terminal failure path.
  *
  * Reached only when a whole-file state fails or Aggregate cannot record the
- * outcome — never for a bad row or a failed chunk, both of which produce
+ * outcome - never for a bad row or a failed chunk, both of which produce
  * PARTIAL through Aggregate instead.
  *
  * Without this state a dealer polls GET /jobs/{id} forever on a job stuck at
@@ -49,7 +49,7 @@ function describe(error: MarkJobFailedInput['error']): string {
       const parsed = JSON.parse(error.Cause) as { errorMessage?: string };
       if (parsed.errorMessage) return `${error.Error ?? 'Error'}: ${parsed.errorMessage}`;
     } catch {
-      // Not JSON — a States.* error puts a plain string here.
+      // Not JSON - a States.* error puts a plain string here.
     }
     return `${error.Error ?? 'Error'}: ${error.Cause}`;
   }

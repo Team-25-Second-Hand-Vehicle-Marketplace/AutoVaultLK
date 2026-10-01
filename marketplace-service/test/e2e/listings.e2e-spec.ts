@@ -23,7 +23,7 @@ import type {
  * the @Roles wiring, and the route ordering that makes `GET /listings/mine`
  * resolve to its own handler rather than to `GET /listings/:id`.
  *
- * ListingService is overridden wholesale — the service's own logic has its own
+ * ListingService is overridden wholesale - the service's own logic has its own
  * spec, and what is under test here is routing and authorization.
  */
 
@@ -142,7 +142,7 @@ describe('listings (e2e)', () => {
     it('resolves GET /listings/mine to its own handler, not to :id', async () => {
       // @Get('mine') is declared before @Get(':id') for exactly this reason.
       // Reordering them would make "mine" a UUID param and 400 on ParseUUIDPipe
-      // — which a status-only assertion could mistake for a pass, so this
+      // - which a status-only assertion could mistake for a pass, so this
       // asserts which service method ran.
       await request(app.getHttpServer()).get('/listings/mine').expect(200);
 
@@ -248,7 +248,7 @@ describe('listings (e2e)', () => {
     });
 
     it('refuses an ADMIN', async () => {
-      // @Roles('DEALER') only — genuinely surprising, since ADMIN is
+      // @Roles('DEALER') only - genuinely surprising, since ADMIN is
       // privileged on every other write here, so worth pinning.
       currentUser = user('ADMIN');
 
@@ -420,7 +420,7 @@ describe('listings (e2e)', () => {
       expect(listingService.uploadImages).not.toHaveBeenCalled();
     });
 
-    // The controller's own guard, ahead of ListingService.uploadImages —
+    // The controller's own guard, ahead of ListingService.uploadImages -
     // proves a request with no file attached never reaches the (mocked)
     // service at all.
     it('400s when no file is attached', async () => {

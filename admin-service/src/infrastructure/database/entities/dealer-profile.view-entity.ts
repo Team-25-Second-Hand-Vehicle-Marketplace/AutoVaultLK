@@ -5,7 +5,7 @@ import { Column, Entity, PrimaryColumn } from 'typeorm';
  * for the read-only discipline this follows.
  *
  * Includes the verification columns because approving and rejecting dealer
- * registrations is an administrator action — the dashboard needs to see the
+ * registrations is an administrator action - the dashboard needs to see the
  * dealer type, the uploaded documents, and the current verification state.
  * The *mutation* still goes through auth-user-service's API;
  * admin_service_role holds SELECT only here.

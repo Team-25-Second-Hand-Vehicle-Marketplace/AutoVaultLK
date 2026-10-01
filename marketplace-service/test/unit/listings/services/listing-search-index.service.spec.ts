@@ -6,7 +6,7 @@ import type { Vehicle } from '../../../../src/infrastructure/database/entities/v
 /**
  * The FR-22.1 parity point on the manual-listing side: whatever this produces
  * is what a bulk-uploaded row must produce too, or the two land in different
- * regions of the same vector space and rank against each other badly — with no
+ * regions of the same vector space and rank against each other badly - with no
  * error and no failing test anywhere.
  *
  * Only `createXenovaEmbedder` is mocked. `buildSearchText` and `toPgVector`
@@ -36,7 +36,7 @@ const VEHICLE = {
   // relations that build() never reads.
 } as unknown as Vehicle;
 
-/** 384 floats — the MiniLM dimension. Values are irrelevant here. */
+/** 384 floats - the MiniLM dimension. Values are irrelevant here. */
 const VECTOR = Array.from({ length: 384 }, () => 0.1);
 
 const mockedCreate = createXenovaEmbedder as jest.MockedFunction<
@@ -61,7 +61,7 @@ describe('ListingSearchIndexService', () => {
 
   it('produces exactly what buildSearchText produces for the same fields', async () => {
     // The parity assertion. If this service ever passes a different field set,
-    // the text diverges from the bulk path's — which is the failure mode that
+    // the text diverges from the bulk path's - which is the failure mode that
     // has no other symptom.
     const result = await new ListingSearchIndexService().build(VEHICLE);
 
@@ -77,8 +77,8 @@ describe('ListingSearchIndexService', () => {
   });
 
   it('returns nulls rather than embedding an empty string', async () => {
-    // Every indexable field blank. Not reachable from the database — make,
-    // model and manufacture_year are NOT NULL — but the guard exists so a
+    // Every indexable field blank. Not reachable from the database - make,
+    // model and manufacture_year are NOT NULL - but the guard exists so a
     // partially-built entity never gets a vector computed from nothing.
     //
     // Note buildSearchText does `String(manufactureYear)` unconditionally, so
@@ -123,7 +123,7 @@ describe('ListingSearchIndexService', () => {
 
     it('caches per instance, not globally', async () => {
       // Nest holds this as a singleton, so per-instance is equivalent in
-      // production — but pinning the actual semantics stops a later reader
+      // production - but pinning the actual semantics stops a later reader
       // assuming module-level state that is not there.
       await new ListingSearchIndexService().build(VEHICLE);
       await new ListingSearchIndexService().build(VEHICLE);

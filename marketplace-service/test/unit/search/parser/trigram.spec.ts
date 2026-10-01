@@ -23,7 +23,7 @@ describe('trigramSimilarity', () => {
   });
 
   it('reproduces the documented volkswagon/wagon collision score', () => {
-    // deterministic-parser.ts's own comment cites 0.4706 for this exact pair —
+    // deterministic-parser.ts's own comment cites 0.4706 for this exact pair -
     // this pins the shared trigram implementation to that number directly.
     expect(trigramSimilarity('volkswagon', 'wagon')).toBeCloseTo(0.4706, 3);
   });

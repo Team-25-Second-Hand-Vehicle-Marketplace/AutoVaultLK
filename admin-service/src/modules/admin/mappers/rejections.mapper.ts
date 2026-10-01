@@ -2,7 +2,7 @@ import type { RejectedRecordView } from '../../../infrastructure/database/entiti
 
 /**
  * Columns of the dealer's own row echoed back per rejection. Mirrors
- * ingestion-service's job-status.service.ts RAW_DATA_MAX_KEYS exactly — same
+ * ingestion-service's job-status.service.ts RAW_DATA_MAX_KEYS exactly - same
  * table, same reasoning: a 60-column export would make the response mostly
  * payload an admin never reads.
  */

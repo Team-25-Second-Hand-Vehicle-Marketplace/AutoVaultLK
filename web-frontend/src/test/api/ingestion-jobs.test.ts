@@ -9,7 +9,7 @@ vi.mock('../../api/client', () => ({
 const { getMyUploadJobs } = await import('../../api/ingestion.api')
 
 /**
- * The dealer's upload history — lets a dealer find their way back to a past
+ * The dealer's upload history - lets a dealer find their way back to a past
  * job's rejection report after navigating away.
  */
 describe('getMyUploadJobs', () => {

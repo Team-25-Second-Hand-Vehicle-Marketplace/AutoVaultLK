@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 /**
- * Adds auth.dealer_profiles.rejection_reason — FR-09.
+ * Adds auth.dealer_profiles.rejection_reason - FR-09.
  *
  * FR-09 requires a rejection to trigger an email notifying the dealer of the
  * decision. Sending the reason only in that email leaves no record: the dealer

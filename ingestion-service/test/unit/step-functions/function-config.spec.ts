@@ -79,7 +79,7 @@ describe('lambda function config', () => {
     });
 
     it('ships process-images as a container image', () => {
-      // Sharp's native binary is the same category of dependency MiniLM is —
+      // Sharp's native binary is the same category of dependency MiniLM is -
       // too heavy for a zip's layer cap comfortably.
       expect(FUNCTION_CONFIGS['process-images'].packaging).toBe('image');
     });

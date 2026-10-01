@@ -27,5 +27,5 @@ variable "lambda_function_arns_list" {
 
 variable "sqs_queue_arn" {
   type        = string
-  description = "The ingestion jobs queue — an EventBridge Pipe starts one execution per message"
+  description = "The ingestion jobs queue - an EventBridge Pipe starts one execution per message"
 }

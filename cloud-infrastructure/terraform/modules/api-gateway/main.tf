@@ -13,11 +13,11 @@ terraform {
 # mirroring api-gateway/local/nginx.conf's location blocks exactly so a
 # request path behaves the same locally and in AWS.
 #
-# ingestion-service's /ingest and /jobs prefixes are deliberately absent —
+# ingestion-service's /ingest and /jobs prefixes are deliberately absent -
 # that service isn't deployed in this pass.
 #
 # The Lambda side still needs an aws_lambda_permission granting each function
-# api-gateway invoke rights — that's created alongside the Lambda in the
+# api-gateway invoke rights - that's created alongside the Lambda in the
 # environment composition (it needs this module's execution ARN outputs
 # below, so it can't live inside this module without a dependency cycle).
 # -----------------------------------------------------------------------------
@@ -53,7 +53,7 @@ resource "aws_apigatewayv2_stage" "public" {
 
   # HTTP APIs prepend the stage name to the path forwarded to the Lambda
   # integration (event.rawPath / requestContext.http.path) for any NAMED
-  # stage — e.g. a request to /health arrives at the Lambda as /production/
+  # stage - e.g. a request to /health arrives at the Lambda as /production/
   # health, which none of the app's routes match. $default is the one stage
   # name that adds no path prefix at all.
   name        = "$default"
@@ -95,7 +95,7 @@ resource "aws_apigatewayv2_integration" "public" {
 }
 
 # Two routes per prefix: "/prefix" bare and "/prefix/{proxy+}" for
-# everything under it — matches nginx's `location /prefix/` also serving an
+# everything under it - matches nginx's `location /prefix/` also serving an
 # exact hit on `/prefix`.
 resource "aws_apigatewayv2_route" "public_proxy" {
   for_each = var.public_lambda_integrations

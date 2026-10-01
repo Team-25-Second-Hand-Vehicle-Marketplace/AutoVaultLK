@@ -730,7 +730,7 @@ architecturally
 significant
  
 classes.
- ●  Process  View :  the  system's  runtime  behavior  —  concurrent  execution,  
+ ●  Process  View :  the  system's  runtime  behavior  -  concurrent  execution,  
 sequencing,
  
 and
@@ -764,7 +764,7 @@ components
 onto
  
 it.
- ●  Implementation  View :  source-code  organization  —  repositories,  layers  within  
+ ●  Implementation  View :  source-code  organization  -  repositories,  layers  within  
 each
  
 service,
@@ -774,7 +774,7 @@ and
 layering
  
 rules.
- ●  Data  View :  the  persistent  data  model  —  the  shared  PostgreSQL  schema  and  the  
+ ●  Data  View :  the  persistent  data  model  -  the  shared  PostgreSQL  schema  and  the  
 S3
  
 object
@@ -2795,7 +2795,7 @@ second
 retry/DLQ
  
 mechanism.
- ●  Negative:  this  is  a  real,  if  narrow,  exception  to  schema  ownership  —  it  must  stay  confined  to  the  
+ ●  Negative:  this  is  a  real,  if  narrow,  exception  to  schema  ownership  -  it  must  stay  confined  to  the  
 one
  
 adapter

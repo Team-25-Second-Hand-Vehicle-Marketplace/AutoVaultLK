@@ -3,7 +3,7 @@ import { safeLocalPath } from '../../../src/modules/images/safe-local-path';
 
 /**
  * Mirrors ingestion-service's LocalObjectStore.pathFor test coverage
- * exactly (test/unit/infrastructure/storage/local-object-store.spec.ts) —
+ * exactly (test/unit/infrastructure/storage/local-object-store.spec.ts) -
  * this function is a deliberate copy of that guard, kept because
  * LocalImagesController takes an object key straight from a URL path
  * segment, and a traversal attempt here is not hypothetical: it is the
@@ -41,7 +41,7 @@ describe('safeLocalPath', () => {
   );
 
   // A key that merely contains ".." as a substring of a legitimate segment
-  // name (not a path component) must not be rejected — only ".." as its own
+  // name (not a path component) must not be rejected - only ".." as its own
   // path segment is a traversal attempt.
   it('accepts a key containing ".." as part of a filename, not a path segment', () => {
     expect(() => safeLocalPath(root, 'images/job-1/a..b.jpg')).not.toThrow();

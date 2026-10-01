@@ -3,7 +3,7 @@ import { isAbsolute, relative, resolve } from 'node:path';
 /**
  * Resolves an object key to a real filesystem path beneath `root`, throwing
  * if the key would escape it. Mirrors marketplace-service's
- * images/safe-local-path.ts exactly — same risk (a key taken from a URL
+ * images/safe-local-path.ts exactly - same risk (a key taken from a URL
  * path segment or a server-generated value must never escape the storage
  * root), same guard.
  */

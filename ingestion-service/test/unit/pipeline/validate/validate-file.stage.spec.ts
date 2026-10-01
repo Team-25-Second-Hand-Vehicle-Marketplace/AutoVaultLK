@@ -26,7 +26,7 @@ const mockZip = (files: unknown[]): void => {
 };
 
 /**
- * Plain object, not cast through ObjectStore — a test asserting on
+ * Plain object, not cast through ObjectStore - a test asserting on
  * `store.put` needs the bare jest.Mock, not a method resolved off an
  * interface with method-shorthand syntax (that trips @typescript-eslint's
  * unbound-method rule even behind an `as jest.Mock` cast at the call site).
@@ -52,7 +52,7 @@ const storeFor = (
 
 /**
  * Minimal StageContext. Only `store` is reached by this stage, so the rest is
- * cast rather than stubbed — a stage touching anything else would be a contract
+ * cast rather than stubbed - a stage touching anything else would be a contract
  * violation worth failing on.
  */
 const contextFor = (
@@ -177,7 +177,7 @@ describe('validateFileStage', () => {
     );
   });
 
-  it('accepts a file written in Windows-1252 — Excel\'s default "Save As CSV" on Windows', async () => {
+  it('accepts a file written in Windows-1252 - Excel\'s default "Save As CSV" on Windows', async () => {
     // 0x92 is the right single quotation mark in Windows-1252 (what Excel's
     // autocorrect turns a plain apostrophe into) and is not valid as a
     // standalone UTF-8 byte, so this file would fail a strict UTF-8-only
@@ -249,7 +249,7 @@ describe('validateFileStage', () => {
   });
 
   it('still rejects a file that is neither UTF-8 nor a recognisable CSV once decoded', async () => {
-    // 0xFF 0xFE is a UTF-16 BOM — a "Save as Unicode" in Excel. Windows-1252
+    // 0xFF 0xFE is a UTF-16 BOM - a "Save as Unicode" in Excel. Windows-1252
     // has a character for every byte, so this no longer fails at the decode
     // step; it is instead caught below for having none of the columns the
     // pipeline requires, same as any other unrecognisable header would be.
@@ -300,7 +300,7 @@ describe('validateFileStage', () => {
     });
 
     it('is a no-op when the dealer uploaded no photo archive', async () => {
-      // Legitimate — FR-35.2 covers rows with no automated image match.
+      // Legitimate - FR-35.2 covers rows with no automated image match.
       await expect(
         run(`${HEADER}\nCAB-1234,Toyota,Vitz,2015,3500000,45000\n`),
       ).resolves.toBeDefined();

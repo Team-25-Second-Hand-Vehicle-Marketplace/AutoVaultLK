@@ -63,8 +63,8 @@ describe('RejectedRecordRepository', () => {
       });
 
       it('replaces rather than skips, so a newer reason wins', async () => {
-        // A retry that produces a different reason — a transient dependency
-        // recovering — should show the newer one, not the stale one.
+        // A retry that produces a different reason - a transient dependency
+        // recovering - should show the newer one, not the stale one.
         await repository.insertMany('job-1', 'VALIDATE_ROWS', [make(1)]);
 
         expect(sqlOf()).toMatch(/DO UPDATE SET raw_data = EXCLUDED\.raw_data/);

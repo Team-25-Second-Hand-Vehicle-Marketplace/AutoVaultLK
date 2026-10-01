@@ -9,7 +9,7 @@ import { REQUIRED_COLUMNS, TEMPLATE_HEADER } from '../../api/ingestion.template'
  * Drift guard between the downloadable template and the parser that reads it.
  *
  * ingestion.template.ts is a deliberate copy of ingestion-service's
- * csv-contract.ts — the two services build independently, so the frontend has
+ * csv-contract.ts - the two services build independently, so the frontend has
  * no import path into it. This reads that file off disk and compares, turning
  * a silent mismatch into a red build.
  *
@@ -43,7 +43,7 @@ function readStringArray(source: string, name: string, seen = new Set<string>())
   const match = new RegExp(`export const ${name}[^=]*=\\s*\\[([^\\]]*)\\]`, 's').exec(source)
   if (!match) throw new Error(`${name} not found in csv-contract.ts`)
 
-  // Strip // line comments before tokenizing — a comment explaining a spec
+  // Strip // line comments before tokenizing - a comment explaining a spec
   // column ("marketplace-service's KNOWN_SPEC_KEYS") reads as a quoted
   // string to a naive scan otherwise, since it contains an apostrophe.
   const body = match[1].replace(/\/\/[^\n]*/g, '')

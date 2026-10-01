@@ -11,7 +11,7 @@ import {
  * The buyer's saved listings, held server-side (FR-16 / FR-17).
  *
  * This used to keep ids in `localStorage`, which meant a buyer lost their saved
- * list whenever they switched device or cleared their browser — while
+ * list whenever they switched device or cleared their browser - while
  * `marketplace.favourites` sat unused. The public shape is unchanged
  * (`savedIds`, `isSaved`, `toggle`) so callers needed almost no edits, but
  * **`toggle` is now async**.

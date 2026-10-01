@@ -10,12 +10,12 @@ const parse = (q: string) => parseQuery(q, FIXTURE_VOCABULARY);
  * query term can outscore the 0.45 make/model threshold against one of
  * them. That failure mode is worse than a miss: the token is consumed, the
  * query reports confidence 1.0, and Groq is never consulted precisely
- * because nothing looks unresolved — so a wrong filter is applied with full
+ * because nothing looks unresolved - so a wrong filter is applied with full
  * confidence and no recovery path.
  */
 describe('closed-enum fuzzy collisions', () => {
   it('does not read "volkswagon" as body_type WAGON', () => {
-    // 0.4706 vs "wagon" — over the shared 0.45 gate. Volkswagen is absent
+    // 0.4706 vs "wagon" - over the shared 0.45 gate. Volkswagen is absent
     // from the make dictionary, so nothing outscored it.
     const result = parse('volkswagon');
 

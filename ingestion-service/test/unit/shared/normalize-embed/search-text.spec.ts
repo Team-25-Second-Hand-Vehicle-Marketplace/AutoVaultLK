@@ -9,7 +9,7 @@ import {
  * they produce are not comparable.
  *
  * The parity spec proves the two copies agree; this one pins what they agree
- * ON — the field set, the ordering and the band boundaries — so a change is a
+ * ON - the field set, the ordering and the band boundaries - so a change is a
  * deliberate act with a re-embed attached, not an accident.
  */
 describe('buildSearchText', () => {
@@ -110,7 +110,7 @@ describe('buildSearchText', () => {
   });
 
   describe('age bands', () => {
-    // Buyers search in relative terms — "recent model", "old car" — while the
+    // Buyers search in relative terms - "recent model", "old car" - while the
     // year alone only matches a query naming that year.
     it.each([
       [YEAR - 1, 'brand new recent model'],
@@ -175,7 +175,7 @@ describe('buildSearchText', () => {
   });
 
   // The join is .filter(Boolean).join(' '), so an empty-string optional is
-  // dropped rather than emitting a double space — which would change the
+  // dropped rather than emitting a double space - which would change the
   // embedded text for a listing that differs only by a blank field.
   it('never emits a double space when an optional is empty', () => {
     expect(buildSearchText({ ...full, description: '' })).not.toMatch(/ {2}/);

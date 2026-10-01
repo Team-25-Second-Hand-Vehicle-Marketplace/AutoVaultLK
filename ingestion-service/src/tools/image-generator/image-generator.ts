@@ -74,7 +74,7 @@ function parseArguments(): Args {
   return { fromCsv, count, perVehicle, totalImages, width, height, output };
 }
 
-/** Pulls registration_number out of a generator CSV — first column, header row skipped. */
+/** Pulls registration_number out of a generator CSV - first column, header row skipped. */
 export async function registrationsFromCsv(path: string): Promise<string[]> {
   const content = await readFile(path, 'utf-8');
   const lines = content.split(/\r?\n/).filter((line) => line.trim().length > 0);

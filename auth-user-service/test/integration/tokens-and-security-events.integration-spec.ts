@@ -305,8 +305,8 @@ describeWithDatabase('Token and security-event repositories (integration)', () =
 
       await ds.query(`DELETE FROM auth.users WHERE id = $1`, [user.id]);
 
-      // The event row itself must still exist — SET NULL, not a cascading
-      // delete of the audit trail — but its user_id is now null rather than
+      // The event row itself must still exist - SET NULL, not a cascading
+      // delete of the audit trail - but its user_id is now null rather than
       // pointing at a deleted row.
       const [row] = await ds.query<{ id: string; user_id: string | null }[]>(
         `SELECT id, user_id FROM auth.security_events WHERE id = $1`,

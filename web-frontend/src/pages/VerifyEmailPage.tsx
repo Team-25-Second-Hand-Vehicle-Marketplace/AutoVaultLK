@@ -12,7 +12,7 @@ type State =
 
 /**
  * Landing page for the link in the verification email. The token is single
- * use, so the request is guarded against React StrictMode's double effect —
+ * use, so the request is guarded against React StrictMode's double effect -
  * a second call would burn the token and show a spurious "invalid" error.
  */
 export function VerifyEmailPage() {
@@ -61,8 +61,8 @@ export function VerifyEmailPage() {
           <h1>Email verified</h1>
           <p role="status">
             {isDealer
-              ? 'Thanks — your email is confirmed. You can sign in now; an administrator still needs to review and approve your dealer registration before you can list or upload vehicles.'
-              : 'Thanks — your email is confirmed and your account is active.'}
+              ? 'Thanks - your email is confirmed. You can sign in now; an administrator still needs to review and approve your dealer registration before you can list or upload vehicles.'
+              : 'Thanks - your email is confirmed and your account is active.'}
           </p>
           <Link className="button button--primary" to={isDealer ? '/dealer/login' : '/login'}>
             Go to sign in

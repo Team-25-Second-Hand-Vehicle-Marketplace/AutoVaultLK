@@ -89,7 +89,7 @@ describe('JobStatusService', () => {
   });
 
   // A dealer asking for someone else's job gets the same answer as one asking
-  // for a job that does not exist — the query is dealer-scoped, so a non-owner
+  // for a job that does not exist - the query is dealer-scoped, so a non-owner
   // simply matches no row.
   it('throws NotFound when no row matches', async () => {
     repository.findById.mockResolvedValue(null);
@@ -294,7 +294,7 @@ describe('JobStatusService', () => {
       expect(item.rawDataTruncated).toBe(false);
     });
 
-    // rowNumber 0 is the whole-file rejection, not a row — it must survive the
+    // rowNumber 0 is the whole-file rejection, not a row - it must survive the
     // mapping rather than be treated as falsy and dropped.
     it('preserves a whole-file rejection at row 0', async () => {
       repository.findRejectedRecords.mockResolvedValue({

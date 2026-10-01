@@ -5,7 +5,7 @@ import type { RejectedRecord } from '../../../api/ingestion.types'
 
 /**
  * FR-57. What this guards is that the dealer can identify *which* rows failed
- * and why — the page previously showed only a count and a guess at the cause.
+ * and why - the page previously showed only a count and a guess at the cause.
  */
 const row = (overrides: Partial<RejectedRecord> = {}): RejectedRecord => ({
   rowNumber: 17,

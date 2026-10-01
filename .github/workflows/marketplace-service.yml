@@ -34,7 +34,7 @@ jobs:
         run: npm ci
 
       # tsconfig.build.json excludes `test` and **/*spec.ts, so `npm run build`
-      # never compiles the suites — 36 type errors had accumulated there
+      # never compiles the suites - 36 type errors had accumulated there
       # unnoticed. This runs before the tests because tsc takes seconds and the
       # unit run takes minutes.
       - name: Typecheck
@@ -56,7 +56,7 @@ jobs:
       # a single-VU, 30s run of the structured-search baseline against NFR-09
       # (p95 < 500ms for CRUD/browse APIs) on every push/PR. Full concurrent
       # load/stress/spike/soak/volume campaigns (§3.3.5) run separately,
-      # scheduled against staging — not here, since this job has no
+      # scheduled against staging - not here, since this job has no
       # production-equivalent instance sizing or network topology to make a
       # concurrent-load result meaningful (§9.1 environment parity).
       - name: Start Postgres
@@ -94,7 +94,7 @@ jobs:
       # process started with `&` in one `run:` step is not guaranteed to
       # survive into the next step in GitHub Actions (each step is its own
       # shell invocation, and the runner may reap that step's process group
-      # on exit) — keeping the service's full lifetime inside a single step
+      # on exit) - keeping the service's full lifetime inside a single step
       # avoids depending on behaviour that was never actually verified
       # against a live GitHub Actions run.
       - name: Run k6 smoke check against a live marketplace-service (search baseline, NFR-09)
@@ -120,11 +120,11 @@ jobs:
           DATABASE_SSL: 'false'
           # JwtStrategy calls ConfigService.getOrThrow for these at boot,
           # even though the search endpoint this smoke check exercises is
-          # unauthenticated — the module graph still constructs the guard.
+          # unauthenticated - the module graph still constructs the guard.
           # No other workflow in this repo has needed these because none of
           # them boot a real, full service process; they run unit/e2e suites
           # against a Nest testing module instead. Values are dummies, not
-          # secrets — this process never issues or verifies a real token.
+          # secrets - this process never issues or verifies a real token.
           JWT_ACCESS_SECRET: ci-smoke-test-secret-not-used-for-real-auth
           JWT_ISSUER: autovault-lk-auth
           JWT_AUDIENCE: autovault-lk-api

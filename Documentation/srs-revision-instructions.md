@@ -4,21 +4,21 @@
 > SRS document ("Second-Hand Vehicle Marketplace with Intelligent Search and
 > Automated Inventory Processing"). Apply each item below directly to the
 > document. Where exact replacement text is given, use it verbatim unless it
-> conflicts with content elsewhere in the document not covered here — in that
+> conflicts with content elsewhere in the document not covered here - in that
 > case, flag the conflict rather than silently picking one side.
 >
-> Items are grouped by severity: **Fix** (objective errors — duplicate
+> Items are grouped by severity: **Fix** (objective errors - duplicate
 > numbers, factual mistakes, formatting), **Update** (content that no longer
 > matches the actual system as built), **Add** (real, implemented behavior
 > that currently has no requirement covering it), **Polish** (structural/
-> cosmetic). Do the Fix and Update groups first — they're higher-confidence
+> cosmetic). Do the Fix and Update groups first - they're higher-confidence
 > and lower-judgment than the Add group.
 
 ---
 
 ## Project Overview
 
-> Read this before applying any change below — it's the context that makes
+> Read this before applying any change below - it's the context that makes
 > the rest of this file's instructions legible without access to the
 > original design conversation.
 
@@ -43,7 +43,7 @@ every design decision in this document:
    Deterministic rules (dictionary lookups, regex, trigram fuzzy matching)
    handle the large majority of cases for free; only genuinely ambiguous
    input is escalated to the Groq AI API, and every AI output is validated
-   against a whitelist before it can affect the database — an AI-invented
+   against a whitelist before it can affect the database - an AI-invented
    filter value must never silently produce a zero-result query.
 2. **Vehicles have wildly different attributes by type.** A car has a body
    type and seat count; a motorcycle doesn't. Rather than a relational
@@ -53,14 +53,14 @@ every design decision in this document:
    dealer) remain relational for indexing and filtering.
 
 **How the backend is organized.** Five independently deployable NestJS
-services — Auth & User, Marketplace, Ingestion & ETL, Admin, Notification —
+services - Auth & User, Marketplace, Ingestion & ETL, Admin, Notification -
 each deployed as containerized AWS Lambda functions behind API Gateway.
 They share one PostgreSQL (RDS) instance for operational simplicity, but
 isolation between services is enforced at the database level: each service
 owns a separate schema and connects with its own least-privilege role.
 Cross-schema reads are allowed only where a foreign key already justifies
 the relationship (e.g. a vehicle listing referencing its dealer); writes
-never cross schema boundaries except one explicitly documented exception —
+never cross schema boundaries except one explicitly documented exception -
 see the rewritten §3.10 in Group 2 for the exact rule and its rationale.
 
 **Where AI actually sits in the system, and where it deliberately doesn't.**
@@ -69,7 +69,7 @@ spots: (a) inside the ETL pipeline, to normalize a dealer's CSV row when
 deterministic rules score it as ambiguous, and (b) inside search, to parse
 a natural-language buyer query when the rule-based parser's confidence
 score falls below threshold. In both cases the AI's output is treated as
-untrusted input — validated against a schema/whitelist before merging —
+untrusted input - validated against a schema/whitelist before merging -
 and the system is designed to keep functioning with reduced accuracy (not
 fail) if Groq is unavailable or rate-limited. This is why Group 4 below
 reframes Groq availability as a mitigated risk rather than a bare
@@ -77,7 +77,7 @@ assumption: the fallback behavior is a real, engineered part of the system,
 not a gap.
 
 **What this means for revising the SRS.** The requirements below aren't
-speculative additions — each one in Group 3 describes behavior that has
+speculative additions - each one in Group 3 describes behavior that has
 already been designed and, in most cases, implemented and verified against
 a running system (the database schema, the isolation model, the ETL
 review gate, the dealer verification flow). The goal of this revision pass
@@ -86,7 +86,7 @@ propose new scope.
 
 ---
 
-## Group 1 — Fix (objective errors)
+## Group 1 - Fix (objective errors)
 
 
 ### 1.4 NFR-33 gives an incorrect technical justification
@@ -96,7 +96,7 @@ Step Functions rather than a single monolithic Lambda worker to bypass the
 15-minute execution timeout."*
 
 This is factually wrong. AWS Step Functions does **not** bypass or extend
-the Lambda execution timeout — each individual Lambda invocation inside a
+the Lambda execution timeout - each individual Lambda invocation inside a
 Step Functions state machine is still capped at 15 minutes. What Step
 Functions actually provides, and what should replace this justification:
 
@@ -106,7 +106,7 @@ Functions actually provides, and what should replace this justification:
 > that large uploads are processed as many short-lived, independently
 > retryable Lambda invocations. This provides declarative per-stage retry
 > policies, automatic fan-in after parallel chunk processing, and
-> independent memory sizing per stage — none of which require, or provide,
+> independent memory sizing per stage - none of which require, or provide,
 > any change to the individual 15-minute Lambda execution limit.
 
 ### 1.5 NFR-12 duplicates FR-24
@@ -117,15 +117,15 @@ requirement (FR-24) as the source of truth; replace NFR-12 with a
 cross-reference:
 
 **Replace NFR-12 with:**
-> NFR-12: See FR-24 — the filter/trigram fallback is a functional
+> NFR-12: See FR-24 - the filter/trigram fallback is a functional
 > requirement of the search engine, not a separate non-functional
 > constraint.
 
 ---
 
-## Group 2 — Update (content that no longer matches the implemented system)
+## Group 2 - Update (content that no longer matches the implemented system)
 
-### 2.1 Section 3.10 Database Requirements — rewrite entirely
+### 2.1 Section 3.10 Database Requirements - rewrite entirely
 
 The current §3.10 describes a database design that does not match what has
 been built, migrated, and verified. Replace the entire section with:
@@ -142,7 +142,7 @@ been built, migrated, and verified. Replace the entire section with:
 > - **Five least-privilege PostgreSQL roles**, one per service, each holding
 >   full read/write access only to its own schema.
 > - **Cross-schema reads are permitted only where a foreign-key relationship
->   already justifies them** — for example, `marketplace.vehicles.dealer_id`
+>   already justifies them** - for example, `marketplace.vehicles.dealer_id`
 >   references `auth.users.id`, so marketplace-service holds read-only
 >   access to `auth.users`.
 > - **Cross-schema writes are forbidden with exactly one documented
@@ -154,7 +154,7 @@ been built, migrated, and verified. Replace the entire section with:
 >   marketplace tables.
 > - The Admin Service holds read-only access across all other schemas to
 >   support cross-cutting reporting and dashboards; it performs no direct
->   writes outside its own `admin` schema — administrative actions that
+>   writes outside its own `admin` schema - administrative actions that
 >   modify another service's data are performed through that service's API.
 >
 > **Core tables by schema:**
@@ -170,7 +170,7 @@ been built, migrated, and verified. Replace the entire section with:
 > `vehicles` stores universal fields (make, model, year, price, mileage,
 > dealer, status) as relational columns, and stores type-specific and
 > variable specifications (body type, seat count, and other attributes that
-> differ by vehicle category) in a `specs` JSONB column — see FR-15 for the
+> differ by vehicle category) in a `specs` JSONB column - see FR-15 for the
 > rationale. `vehicle_dictionaries` is a controlled vocabulary table
 > supporting fuzzy (trigram) correction of dealer- and buyer-supplied make
 > and model text.
@@ -179,7 +179,7 @@ been built, migrated, and verified. Replace the entire section with:
 > matching the output dimensionality of the `all-MiniLM-L6-v2` model.
 > Database backups rely on RDS automated snapshots.
 
-### 2.2 FR-15 — restore the concrete polymorphic-specs example
+### 2.2 FR-15 - restore the concrete polymorphic-specs example
 
 Current FR-15 states the JSONB approach without illustrating why it's
 necessary. Replace with:
@@ -187,14 +187,14 @@ necessary. Replace with:
 > FR-15: Each listing shall store core relational data (make, model, year,
 > price, mileage, dealer, status) as relational columns, and shall store
 > category-specific specifications in a JSONB `specs` column. This is
-> necessary because required attributes vary by vehicle type — for example,
+> necessary because required attributes vary by vehicle type - for example,
 > a car has a body type and seat count that a motorcycle does not, and a
 > motorcycle has attributes (e.g. engine displacement class) that a van does
-> not — and a fixed relational schema would otherwise require either a
+> not - and a fixed relational schema would otherwise require either a
 > sparse table with many always-null columns or a schema migration for
 > every new vehicle category.
 
-### 2.3 FR-35 — correct the image-matching mechanism
+### 2.3 FR-35 - correct the image-matching mechanism
 
 Current text ("based on filename or manifest metadata") does not reflect
 the actual matching rule. Replace with:
@@ -208,14 +208,14 @@ the actual matching rule. Replace with:
 > explicit reason, since a duplicate key makes automated image matching
 > unreliable.
 >
-> FR-35.2: Rows with a blank registration number shall not be rejected —
-> unregistered vehicles (e.g. recent imports) are a legitimate case — but
+> FR-35.2: Rows with a blank registration number shall not be rejected -
+> unregistered vehicles (e.g. recent imports) are a legitimate case - but
 > shall be accepted without an automated image match and flagged for the
 > Dealer to resolve manually during review.
 
 ---
 
-## Group 3 — Add (implemented/designed behavior with no requirement)
+## Group 3 - Add (implemented/designed behavior with no requirement)
 
 ### 3.1 Dealer review gate before a listing goes live
 
@@ -267,7 +267,7 @@ FR-02/FR-09 pair:
 > the decision.
 >
 > *(If FR-02/FR-09 already exist elsewhere in the numbering, merge these
-> into the existing requirements rather than duplicating the numbers — do
+> into the existing requirements rather than duplicating the numbers - do
 > not create a second FR-02.)*
 
 ### 3.4 Cold-start allowance for natural-language search latency
@@ -283,13 +283,13 @@ Amend NFR-09:
 
 ---
 
-## Group 4 — Reframe (not wrong, but understates what was actually designed)
+## Group 4 - Reframe (not wrong, but understates what was actually designed)
 
-### 4.1 §2.5 Assumptions — Groq AI free-tier sufficiency
+### 4.1 §2.5 Assumptions - Groq AI free-tier sufficiency
 
 Current text lists Groq's free-tier limits being sufficient as a bare
 **assumption** with no stated mitigation, which understates the actual
-design — the system has explicit, engineered fallback paths for exactly
+design - the system has explicit, engineered fallback paths for exactly
 this failure mode (both the search engine and the ETL pipeline degrade to
 rule-based-only processing if Groq is unavailable or rate-limited, per
 NFR-34 and FR-24).
@@ -297,7 +297,7 @@ NFR-34 and FR-24).
 **Action:** move this out of the Assumptions list and into a short risk
 statement, e.g.:
 
-> **Risk — Groq AI rate limits.** The hybrid search engine and ETL pipeline
+> **Risk - Groq AI rate limits.** The hybrid search engine and ETL pipeline
 > both call the Groq AI free tier for low-confidence natural-language
 > parsing and row normalization respectively. If free-tier request or token
 > limits are exhausted, both subsystems are designed to degrade gracefully:
@@ -310,7 +310,7 @@ statement, e.g.:
 
 ---
 
-## Group 5 — Polish (cosmetic / structural, low risk, do last)
+## Group 5 - Polish (cosmetic / structural, low risk, do last)
 
 - **Title page:** replace the literal placeholder text `<Subsystem or
   Feature>` with the actual system name, or remove the "For..." line
@@ -320,14 +320,14 @@ statement, e.g.:
   (what §2 covers, what §3 covers, how requirements are organized by
   service).
 - **Remove template/RUP boilerplate** at the very top of the document (the
-  blue-italics Microsoft Word instructions about customizing fields) —
+  blue-italics Microsoft Word instructions about customizing fields) -
   this should never appear in a document being submitted or reviewed.
 - **Confirm diagram placement.** An earlier draft of this document had
   bracketed diagram placeholders (`[system architecture diagram]`,
   `[hybrid search flow diagram]`, `[ETL pipeline flow diagram]`,
   `[database entity relationship diagram]`) that do not appear in the
   current version. Confirm whether these were embedded as actual images
-  (acceptable) or simply deleted without being replaced (a gap — these
+  (acceptable) or simply deleted without being replaced (a gap - these
   diagrams were called out as needed and should either be embedded or the
   document should note where they will be added).
 
@@ -338,11 +338,11 @@ statement, e.g.:
 - **Do not invent new functional requirements beyond what's listed above.**
   Everything in Group 3 reflects behavior that has actually been designed
   and, in most cases, implemented and verified against a live database in
-  this project — it is not speculative scope expansion.
+  this project - it is not speculative scope expansion.
 - **Do not renumber FR/NFR IDs beyond what Group 1 explicitly requires.**
   If applying Group 1.1's renumbering causes a cascade that would relabel
   many other requirements, list the full old-ID → new-ID mapping as a
   table so it can be reviewed before committing to it, rather than
   silently reflowing every number in the document.
-- **Do not alter §3.11 (Licensing/Legal) or §3.12 (Applicable Standards)** —
+- **Do not alter §3.11 (Licensing/Legal) or §3.12 (Applicable Standards)** -
   out of scope for this revision pass.

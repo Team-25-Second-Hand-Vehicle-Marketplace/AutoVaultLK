@@ -1,13 +1,13 @@
-//clean — current valid data
-//dirty — realistic messy values that your ETL should normalize
-//invalid — deliberately invalid records that validation should reject
-//mixed — mostly valid data with some dirty/invalid records
+//clean - current valid data
+//dirty - realistic messy values that your ETL should normalize
+//invalid - deliberately invalid records that validation should reject
+//mixed - mostly valid data with some dirty/invalid records
 import { mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { TEMPLATE_HEADER } from '../../workers/etl-worker/pipeline/parse/csv-contract';
 
 /**
- * One row of the dealer CSV — every column of `TEMPLATE_HEADER`, in the same
+ * One row of the dealer CSV - every column of `TEMPLATE_HEADER`, in the same
  * names the parser reads, so a generated file is a valid upload by
  * construction and carries the same 43 columns the downloadable template does.
  *
@@ -25,7 +25,7 @@ export type Vehicle = {
   fuel_type: string;
   transmission: string;
   body_type: string;
-  // Widened from optional to required in csv-contract.ts (SRS Appendix A) —
+  // Widened from optional to required in csv-contract.ts (SRS Appendix A) -
   // a fixture missing any of these fails validateFile's file-gate check
   // rather than reaching the row-level dirty/invalid cases these fixtures
   // exist to exercise.
@@ -428,8 +428,8 @@ function escapeCsv(value: string | number): string {
 }
 
 export function convertToCsv(vehicles: Vehicle[]): string {
-  // The one definition of the dealer CSV's columns — the same list the
-  // downloadable template and the parser use — so this generator cannot drift
+  // The one definition of the dealer CSV's columns - the same list the
+  // downloadable template and the parser use - so this generator cannot drift
   // from them.
   const headers = [...TEMPLATE_HEADER];
 

@@ -73,7 +73,7 @@ export class ListingService {
   }
 
   /**
-   * A dealer's own inventory, every status included — unlike getAllListings,
+   * A dealer's own inventory, every status included - unlike getAllListings,
    * which is the public LIVE-only feed. This is what a dealer dashboard reads
    * to show DRAFT/PENDING_REVIEW/REJECTED listings that the public feed hides.
    *
@@ -152,7 +152,7 @@ export class ListingService {
    * FR-42/FR-42.1: the dealer's explicit approval that moves a PENDING_REVIEW
    * listing to LIVE. Until this existed, FR-42's "no ETL-loaded listing shall
    * become publicly visible until the owning Dealer explicitly approves it"
-   * had a status describing the wait but no action ending it — a bulk upload
+   * had a status describing the wait but no action ending it - a bulk upload
    * landed every row in PENDING_REVIEW and nothing in the API could move one
    * forward.
    *
@@ -173,7 +173,7 @@ export class ListingService {
 
     if (existing.status !== 'PENDING_REVIEW') {
       throw new ConflictException(
-        `Vehicle listing ${id} is ${existing.status}, not PENDING_REVIEW — nothing to approve`,
+        `Vehicle listing ${id} is ${existing.status}, not PENDING_REVIEW - nothing to approve`,
       );
     }
 
@@ -196,7 +196,7 @@ export class ListingService {
 
   /**
    * Approves every PENDING_REVIEW listing the calling dealer owns. Never an
-   * error when there is nothing to approve — `approved: 0` — because the page
+   * error when there is nothing to approve - `approved: 0` - because the page
    * can be stale (the last row may have been approved from another tab) and
    * "nothing left to do" is the answer the dealer wanted anyway.
    */
@@ -215,7 +215,7 @@ export class ListingService {
   /**
    * Reverses deactivateListing: brings an ARCHIVED listing back to LIVE for
    * the public feed. Its own action rather than a flag on the generic PATCH,
-   * matching approveListing's shape — a listing that is not ARCHIVED is a
+   * matching approveListing's shape - a listing that is not ARCHIVED is a
    * 409, not a 404: the id is real and the dealer may own it, but there is
    * nothing to unarchive on a LIVE, DRAFT, PENDING_REVIEW, SOLD or REJECTED
    * listing.
@@ -231,7 +231,7 @@ export class ListingService {
 
     if (existing.status !== 'ARCHIVED') {
       throw new ConflictException(
-        `Vehicle listing ${id} is ${existing.status}, not ARCHIVED — nothing to unarchive`,
+        `Vehicle listing ${id} is ${existing.status}, not ARCHIVED - nothing to unarchive`,
       );
     }
 
@@ -251,12 +251,12 @@ export class ListingService {
   }
 
   /**
-   * Permanently removes a listing — distinct from `deactivateListing`, which
+   * Permanently removes a listing - distinct from `deactivateListing`, which
    * only hides it from the public feed and keeps the row. Restricted to
    * DRAFT, PENDING_REVIEW and REJECTED: those never went live, so nothing
    * external (a buyer's favourite, a recommendation, search history) should
    * reasonably reference one. LIVE, SOLD and ARCHIVED listings can only be
-   * archived, never hard-deleted, because they may already be referenced —
+   * archived, never hard-deleted, because they may already be referenced -
    * ON DELETE CASCADE on vehicle_images/favourites would remove those
    * references cleanly, but a buyer who favourited a listing that then
    * vanishes without a trace is a worse experience than one that stays
@@ -293,7 +293,7 @@ export class ListingService {
 
   /**
    * FR-58: attaches photos to a listing the dealer owns. The manual listing
-   * form never had an image field before this — a dealer creating one
+   * form never had an image field before this - a dealer creating one
    * vehicle at a time had no way to attach a photo at all, unlike bulk
    * upload's ZIP-of-images path.
    *
@@ -348,11 +348,11 @@ export class ListingService {
    * type. Business dealers additionally have the bulk upload pipeline for
    * their stock (ingestion-service's DealerProfileRepository.
    * isVerifiedBusinessDealer still restricts that to verified business
-   * dealers only) — the two paths aren't mutually exclusive, a business
+   * dealers only) - the two paths aren't mutually exclusive, a business
    * dealer may also list a single vehicle manually here.
    *
    * Verification is still checked here: a dealer can log in while PENDING
-   * or REJECTED (see auth-user-service's DealerProfilesService — approval
+   * or REJECTED (see auth-user-service's DealerProfilesService - approval
    * no longer gates login, only whether the account may create listings),
    * so this is the only thing standing between an unverified dealer of any
    * type and a real LIVE listing.
@@ -382,7 +382,7 @@ export class ListingService {
   /**
    * Turns each image's stored key into a URL the dealer's own browser can
    * fetch, the same way vehicle-search.repository.ts does for public search
-   * results (NFR-19 — images are never publicly writable, so the raw key is
+   * results (NFR-19 - images are never publicly writable, so the raw key is
    * not itself fetchable). "My listings" had never resolved this before: the
    * raw entity's images carried s3Path straight through, which an <img src>
    * cannot use.

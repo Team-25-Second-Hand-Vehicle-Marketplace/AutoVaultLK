@@ -10,18 +10,18 @@ import { rejection } from '../types';
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * ingestion_service_role holds SELECT + INSERT + UPDATE on marketplace.vehicles
- * and marketplace.vehicle_images — and DELETE on neither. That grant is the
+ * and marketplace.vehicle_images - and DELETE on neither. That grant is the
  * single documented exception to schema ownership (database/src/grants.sql,
  * Documentation/plan-b-reads-cross-schemas.md §6), and the exception is only
  * defensible while it is confined to one class.
  *
  * **No other file in ingestion-service may write marketplace.\*.** If you need
- * a new cross-schema write — images, spec backfill, anything — add a method
+ * a new cross-schema write - images, spec backfill, anything - add a method
  * here. A second writer does not break a test; it dissolves the architectural
  * claim the whole design rests on, silently.
  *
  * NEVER emit DELETE. The role lacks the grant, so it fails at runtime rather
- * than review — but the reason it lacks the grant is that ETL must not be able
+ * than review - but the reason it lacks the grant is that ETL must not be able
  * to destroy a dealer's manually created listings.
  */
 @Injectable()
@@ -64,8 +64,8 @@ export class MarketplaceVehiclesWriteAdapter {
    * How many vehicles this job has actually landed.
    *
    * The orchestrator counts from here rather than tallying its own outcomes,
-   * because a resumed run loads nothing new — the rows belong to the previous
-   * run — and tallying this run alone would report zero and downgrade a
+   * because a resumed run loads nothing new - the rows belong to the previous
+   * run - and tallying this run alone would report zero and downgrade a
    * finished job to FAILED.
    */
   async countForJob(jobId: string): Promise<number> {
@@ -119,7 +119,7 @@ export class MarketplaceVehiclesWriteAdapter {
         if (!isUniqueViolation(err)) throw err;
 
         // The GLOBAL partial unique on registration_number (FR-35.1, migration
-        // 6000) — not the composite upsert key. It fires when a dealer
+        // 6000) - not the composite upsert key. It fires when a dealer
         // re-uploads a vehicle already listed under a DIFFERENT job, which the
         // ON CONFLICT target cannot catch because the job ids differ.
         rejections.push(
@@ -178,7 +178,7 @@ export class MarketplaceVehiclesWriteAdapter {
 
 /**
  * FR-42.1: the JSONB blob the dealer review UI reads to show which fields were
- * inferred and why. null — not `{}` — when the row carries no provenance at
+ * inferred and why. null - not `{}` - when the row carries no provenance at
  * all, so a manually-created listing and a bulk-uploaded one with nothing to
  * report both read the same "no normalization data" absence the migration's
  * nullable column already expresses for pre-migration rows.
@@ -208,7 +208,7 @@ export type UpsertResult = {
  * status is always PENDING_REVIEW: bulk stock is reviewed before going live
  * (FR-33), and a dealer CSV must not be able to publish listings directly.
  *
- * search_vector is absent by design — trg_vehicles_search_vector fills it
+ * search_vector is absent by design - trg_vehicles_search_vector fills it
  * BEFORE INSERT OR UPDATE OF search_text (migration 14000). Writing the column
  * here would either be overwritten by the trigger or, worse, drift from
  * search_text if the trigger were ever dropped.
@@ -225,7 +225,7 @@ const INSERT_SQL = `
 
 /**
  * The upsert key is the composite partial index from migration 19000, so the
- * conflict target must repeat its WHERE clause — a partial index only matches
+ * conflict target must repeat its WHERE clause - a partial index only matches
  * an ON CONFLICT that names the same predicate.
  *
  * DO UPDATE, never DO NOTHING: a dealer re-uploading a corrected file expects
@@ -269,7 +269,7 @@ const COLUMN_COUNT = 27;
 
 /**
  * $1..$27 for one row, offset into the batch. The embedding is text on the way
- * in and cast here — pgvector accepts '[0.1,0.2,...]'::vector, and passing it
+ * in and cast here - pgvector accepts '[0.1,0.2,...]'::vector, and passing it
  * as a bare parameter would be rejected as an unknown type. normalization is
  * jsonb for the same reason specs is: a bare parameter is untyped text to
  * Postgres until cast.

@@ -2,5 +2,5 @@
 CREATE EXTENSION IF NOT EXISTS vector;
 
 -- pg_trgm: trigram matching for make/model typo correction.
--- Only make/model need this — small enums use hardcoded typo maps instead.
+-- Only make/model need this - small enums use hardcoded typo maps instead.
 CREATE EXTENSION IF NOT EXISTS pg_trgm;

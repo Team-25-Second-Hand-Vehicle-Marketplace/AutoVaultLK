@@ -5,7 +5,7 @@ import {
   PERSON_NAME_MIN,
 } from '../../../common/validation/validation.constants';
 
-/** Profile updates only — role, isActive, and passwordHash are never accepted. */
+/** Profile updates only - role, isActive, and passwordHash are never accepted. */
 export class UpdateUserDto {
   @IsOptional()
   @NormalizeEmail()

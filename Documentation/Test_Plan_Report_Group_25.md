@@ -1,4 +1,4 @@
-# AutoVaultLK — Second-Hand Vehicle Marketplace
+# AutoVaultLK - Second-Hand Vehicle Marketplace
 
 ## Test Plan
 
@@ -41,13 +41,13 @@
 
 ## 1. Evaluation Mission and Test Motivation
 
-AutoVaultLK is a cloud-native, services-based second-hand vehicle marketplace that connects buyers, dealers, and administrators around the buying and selling of used vehicles. The platform is built from a set of five independently deployable services — an authentication/user service, a marketplace service, an ingestion service, an admin service, and a notification service — fronted by a local API gateway for development, and AWS API Gateway in production, and backed by PostgreSQL (with pgvector for semantic search), S3-style object storage, an SQS-style queue, and SES for email delivery.
+AutoVaultLK is a cloud-native, services-based second-hand vehicle marketplace that connects buyers, dealers, and administrators around the buying and selling of used vehicles. The platform is built from a set of five independently deployable services - an authentication/user service, a marketplace service, an ingestion service, an admin service, and a notification service - fronted by a local API gateway for development, and AWS API Gateway in production, and backed by PostgreSQL (with pgvector for semantic search), S3-style object storage, an SQS-style queue, and SES for email delivery.
 
 The problem AutoVaultLK solves is the manual, error-prone, and slow process of listing large used-vehicle inventories one at a time. Dealers upload an entire inventory in one batch (CSV metadata plus a ZIP of images); the ingestion service parses, validates, normalises, and enriches that data, generates vector embeddings, and processes images, so that the marketplace service can expose the resulting catalogue to buyers through keyword, trigram, and vector-based semantic search.
 
 **Evaluation mission:** verify the core marketplace flows end to end, find defects early in the authentication, search, ingestion, admin, and notification paths, and reduce release risk across all services and their integrations (S3, SQS, SES, JWT, and pgvector/search) before deployment.
 
-Because the platform spans several independently deployable services, an asynchronous ingestion pipeline, external managed integrations, and machine-learning-derived search, defects can surface at many different layers — a schema mismatch in a dealer's CSV, a malformed ZIP, a broken service-to-service or gateway contract, an authorization gap between user roles, configuration drift between environments, or a performance bottleneck during bulk ingestion. Testing at the unit, integration, contract, and end-to-end levels is therefore essential to catch these issues before they reach production.
+Because the platform spans several independently deployable services, an asynchronous ingestion pipeline, external managed integrations, and machine-learning-derived search, defects can surface at many different layers - a schema mismatch in a dealer's CSV, a malformed ZIP, a broken service-to-service or gateway contract, an authorization gap between user roles, configuration drift between environments, or a performance bottleneck during bulk ingestion. Testing at the unit, integration, contract, and end-to-end levels is therefore essential to catch these issues before they reach production.
 
 ### 1.1 Testing objectives
 
@@ -55,7 +55,7 @@ Because the platform spans several independently deployable services, an asynchr
 - Verify CSV inventory upload and processing, including validation of well-formed and malformed files.
 - Verify ZIP image extraction and processing, including matching images to the correct vehicle records.
 - Verify vehicle validation logic and correct persistence of vehicle data to the database.
-- Verify embedding generation and the accuracy/availability of search — keyword, trigram, and pgvector-based semantic search, including ranking and fallback behaviour.
+- Verify embedding generation and the accuracy/availability of search - keyword, trigram, and pgvector-based semantic search, including ranking and fallback behaviour.
 - Verify authentication and authorization across buyer, dealer, and administrator roles.
 - Verify API Gateway routing, CORS, contract alignment, and security enforcement.
 - Verify notification functionality triggered by system events (e.g. job completion, failures).
@@ -91,23 +91,23 @@ The listing below reflects AutoVaultLK's actual service architecture. These are 
 
 ## 3. Test Approach
 
-The test approach for AutoVaultLK is organised around the system's actual failure profile rather than a single uniform test style. The platform consists of five independently deployable services, a React single-page frontend, a schema-partitioned PostgreSQL database with vector search indexes, and Terraform-managed AWS infrastructure — and each of these fails in a different way. A schema-level defect (a bad migration, a missing grant) is invisible to a UI test; an authorisation gap is invisible to a database test; a Lambda cold-start or Step Functions wiring defect is invisible to both. The eight techniques in Section 3.3 are therefore each scoped to the layer at which their target class of defect is cheapest and most reliably detected, and together they cover data integrity, business-rule correctness, interface behaviour, performance under bulk ingestion and search load, security and access control, resilience to dependency failure, and configuration consistency across environments and browsers.
+The test approach for AutoVaultLK is organised around the system's actual failure profile rather than a single uniform test style. The platform consists of five independently deployable services, a React single-page frontend, a schema-partitioned PostgreSQL database with vector search indexes, and Terraform-managed AWS infrastructure - and each of these fails in a different way. A schema-level defect (a bad migration, a missing grant) is invisible to a UI test; an authorisation gap is invisible to a database test; a Lambda cold-start or Step Functions wiring defect is invisible to both. The eight techniques in Section 3.3 are therefore each scoped to the layer at which their target class of defect is cheapest and most reliably detected, and together they cover data integrity, business-rule correctness, interface behaviour, performance under bulk ingestion and search load, security and access control, resilience to dependency failure, and configuration consistency across environments and browsers.
 
-Both manual and automated implementations are used: automated suites (Jest/Vitest unit and integration tests, Supertest API journeys, k6 load scripts, and — once introduced — Playwright browser journeys) carry the regression burden and gate every change in CI; manual technique is reserved for exploratory and usability assessment, dynamic security scanning triage, and the disaster-recovery and rollback rehearsals that are impractical to automate fully. A technique is judged useful and successful when it demonstrably locates defects at its intended layer, its oracle can be justified independently of the implementation under test, and it runs repeatedly without producing a misleading result when its required environment is unavailable.
+Both manual and automated implementations are used: automated suites (Jest/Vitest unit and integration tests, Supertest API journeys, k6 load scripts, and - once introduced - Playwright browser journeys) carry the regression burden and gate every change in CI; manual technique is reserved for exploratory and usability assessment, dynamic security scanning triage, and the disaster-recovery and rollback rehearsals that are impractical to automate fully. A technique is judged useful and successful when it demonstrably locates defects at its intended layer, its oracle can be justified independently of the implementation under test, and it runs repeatedly without producing a misleading result when its required environment is unavailable.
 
 The principal fault and failure models addressed are: functional/logical defects in business rules (incorrect pricing or eligibility logic); data-integrity failures (silent corruption, duplication or loss of vehicle records during ingestion); contract drift between the gateway, services and frontend; authentication and authorisation bypass; performance degradation under bulk-ingestion or search load; and failure to recover cleanly when a dependency such as PostgreSQL, S3, SQS, SES or the LLM provider becomes unavailable. Section 8 (Responsibilities, Staffing and Training Needs) is updated as each technique below is adopted, to record the environment and resourcing it requires.
 
 ### 3.1 Organization of Test Approach
 
-The test approach is organised along two independent axes, and the distinction between them is load-bearing rather than presentational. The first axis is the **test level** — where in the stack a test executes and what it is allowed to touch: unit, integration, contract, or end-to-end.
+The test approach is organised along two independent axes, and the distinction between them is load-bearing rather than presentational. The first axis is the **test level** - where in the stack a test executes and what it is allowed to touch: unit, integration, contract, or end-to-end.
 
-The second axis is the **test technique or type** — which property of the system is being verified: data integrity, functional correctness, user-interface behaviour, performance, load tolerance, security, recoverability, or configuration consistency. Section 3.2 defines the levels; Section 3.3 defines the eight techniques; Section 3.4 shows where the two axes cross.
+The second axis is the **test technique or type** - which property of the system is being verified: data integrity, functional correctness, user-interface behaviour, performance, load tolerance, security, recoverability, or configuration consistency. Section 3.2 defines the levels; Section 3.3 defines the eight techniques; Section 3.4 shows where the two axes cross.
 
 Separating the axes is necessary because in AutoVaultLK they genuinely do cross rather than nest. A single technique is routinely exercised at several levels, and a single level carries several techniques. Security and access control, for example, is verified at the unit level (a roles guard in isolation), at the integration level (per-service database privileges), at the contract level (CORS alignment and internal-endpoint exposure at the gateway), and at the end-to-end level (a dealer attempting to read another dealer's upload job over HTTP). A plan that treated technique as a subdivision of level would have to describe that one technique four times over, and would obscure the fact that all four checks share a single oracle: the defined role permissions for buyer, dealer and administrator.
 
-The system's architecture forces this separation. Because AutoVaultLK is a set of five independently deployable services rather than a monolith, an entire class of defect exists only in the space between services — a gateway route pointing at a path a service no longer exposes, a CORS origin permitted at the gateway but refused at the service, an internal endpoint reachable without internal credentials. No unit suite can observe these, and reaching for an end-to-end test to catch them is both slow and imprecise. The contract level exists specifically to occupy that gap. Equally, because bulk inventory ingestion is asynchronous — a dealer's upload returns a job identifier immediately, and the CSV/ZIP is then parsed, validated, normalised, embedded and persisted by queue-driven workers — the correctness of an upload is simply not observable in the HTTP response that accepted it. Verifying it means asserting terminal job state, persisted rows, rejected record attribution and stage logs after the fact. Levels must therefore be defined by what each is able to observe, not merely by how much code each happens to cover.
+The system's architecture forces this separation. Because AutoVaultLK is a set of five independently deployable services rather than a monolith, an entire class of defect exists only in the space between services - a gateway route pointing at a path a service no longer exposes, a CORS origin permitted at the gateway but refused at the service, an internal endpoint reachable without internal credentials. No unit suite can observe these, and reaching for an end-to-end test to catch them is both slow and imprecise. The contract level exists specifically to occupy that gap. Equally, because bulk inventory ingestion is asynchronous - a dealer's upload returns a job identifier immediately, and the CSV/ZIP is then parsed, validated, normalised, embedded and persisted by queue-driven workers - the correctness of an upload is simply not observable in the HTTP response that accepted it. Verifying it means asserting terminal job state, persisted rows, rejected record attribution and stage logs after the fact. Levels must therefore be defined by what each is able to observe, not merely by how much code each happens to cover.
 
-Each level below states what it deliberately does *not* cover. Those exclusions are as much part of the plan as the inclusions: they are what prevents the levels from silently duplicating one another, what keeps the fast suites fast, and what makes it clear — when a defect does escape to production — which level should have caught it and must be strengthened.
+Each level below states what it deliberately does *not* cover. Those exclusions are as much part of the plan as the inclusions: they are what prevents the levels from silently duplicating one another, what keeps the fast suites fast, and what makes it clear - when a defect does escape to production - which level should have caught it and must be strengthened.
 
 ### 3.2 Test Levels
 
@@ -115,12 +115,12 @@ Four levels are defined. Each is characterised below by its scope, the AutoVault
 
 #### 3.2.1 Unit Testing
 
-Unit testing verifies a single class, function, component or pipeline stage in isolation, with every process-boundary collaborator — database, HTTP client, S3, SQS, SES, LLM provider — replaced by a test double. Suites mirror each service's source tree, so the test for any given source file is locatable by path. This is the level at which branch coverage, boundary values and error paths are pursued exhaustively, because it is the only level cheap enough to afford that thoroughness.
+Unit testing verifies a single class, function, component or pipeline stage in isolation, with every process-boundary collaborator - database, HTTP client, S3, SQS, SES, LLM provider - replaced by a test double. Suites mirror each service's source tree, so the test for any given source file is locatable by path. This is the level at which branch coverage, boundary values and error paths are pursued exhaustively, because it is the only level cheap enough to afford that thoroughness.
 
 **Applied to**
 
 - All five NestJS services and the gateway: controllers, services, repositories, guards, strategies, mappers and DTO validators.
-- In ingestion-service, each pipeline stage individually: file validation, row validation, parsing, chunk splitting, coercion and normalisation, enum vocabulary and dictionary snapshots, enrichment, embedding, image extraction and processing, persistence — plus the stage graph and the concurrency controller that sequence them.
+- In ingestion-service, each pipeline stage individually: file validation, row validation, parsing, chunk splitting, coercion and normalisation, enum vocabulary and dictionary snapshots, enrichment, embedding, image extraction and processing, persistence - plus the stage graph and the concurrency controller that sequence them.
 - In marketplace-service, the deterministic search parser (tokenisation, numerics, trigram matching, vocabulary, collision handling), ranking and sort-clause construction, and vector arithmetic.
 - In web-frontend, React components, hooks, route guards and formatting utilities.
 
@@ -145,14 +145,14 @@ Integration testing verifies that units compose correctly across module, process
 
 - Repository and query layers across all five schemas (auth, marketplace, ingestion, notification, admin), including cross-schema reads such as the marketplace listing-to-dealer join against `auth.users` and `auth.dealer_profiles`.
 - The TypeORM migration set: forward application from an empty database, idempotency on re-run, and reversibility of the down-migrations.
-- The ingestion pipeline composed across stage boundaries, and its persistence adapters for marketplace vehicles and vehicle images — in particular upsert idempotency, so that re-processing an identical dealer source file produces no duplicate listings.
+- The ingestion pipeline composed across stage boundaries, and its persistence adapters for marketplace vehicles and vehicle images - in particular upsert idempotency, so that re-processing an identical dealer source file produces no duplicate listings.
 - Search behaviour that only a real database exhibits: pgvector similarity casts and operators, trigram and text-search index selection, and ranking over genuinely stored embeddings.
 
 **Tools**
 
 - Jest with the dedicated integration configuration (extended timeout, single worker) in marketplace-service and ingestion-service.
 - TypeORM DataSource and migration runner; the shared test-database bootstrap helper.
-- PostgreSQL with the pgvector and text-search extensions — Docker Compose locally, a service container in CI.
+- PostgreSQL with the pgvector and text-search extensions - Docker Compose locally, a service container in CI.
 - Deterministic seed and fixture generators (vehicles, images, embeddings); psql and EXPLAIN ANALYZE for catalogue and query-plan inspection.
 
 **Deliberately does not cover**
@@ -167,11 +167,11 @@ Contract testing verifies that the published interfaces between independently de
 
 **Applied to**
 
-- The api-gateway public and internal OpenAPI documents — structural validity, and agreement between declared routes and the service paths they proxy to.
+- The api-gateway public and internal OpenAPI documents - structural validity, and agreement between declared routes and the service paths they proxy to.
 - CORS configuration alignment between the gateway and each backend service, since an origin permitted at one layer and refused at the other fails only in a real browser.
 - The NGINX routing configuration, validated by the real NGINX parser rather than by inspection.
 - web-frontend typed API client modules against the payload shapes the services actually emit (listings, ingestion, listing images, listing review, rejections).
-- The ingestion/search normalisation and embedding parity check — logic necessarily implemented on both sides of the pipeline, where silent divergence would degrade search quality with no other suite failing anywhere in the system.
+- The ingestion/search normalisation and embedding parity check - logic necessarily implemented on both sides of the pipeline, where silent divergence would degrade search quality with no other suite failing anywhere in the system.
 - Emitted Lambda function configuration and the Step Functions state-machine definition, against the handlers and Terraform modules that consume them.
 
 **Tools**
@@ -179,7 +179,7 @@ Contract testing verifies that the published interfaces between independently de
 - Jest, with @apidevtools/swagger-parser and js-yaml for OpenAPI validation.
 - The CORS synchronisation and NGINX validation scripts; containerised NGINX for configuration verification.
 - Stryker Mutator, scoped specifically to the `shared/normalize-embed` module, to guarantee the normalisation parity tests actually fail when implementations diverge.
-- The TypeScript compiler (`tsc --noEmit`) as a structural contract check across the frontend client and, for each service, across source and test code together — necessary because the production build configuration excludes the test directories.
+- The TypeScript compiler (`tsc --noEmit`) as a structural contract check across the frontend client and, for each service, across source and test code together - necessary because the production build configuration excludes the test directories.
 
 **Deliberately does not cover**
 
@@ -193,9 +193,9 @@ End-to-end testing verifies complete user journeys across the assembled system. 
 
 **Applied to**
 
-- *API level:* per-service journey suites — auth security and email-verification flows; marketplace listings, dealers, favourites, recommendations and search alias promotion; ingestion upload intake and job status; notification dispatch; admin protected endpoints.
-- For the asynchronous ingestion path, journeys assert terminal job state, persisted vehicle and image rows, and rejected-record attribution after completion — never the HTTP response that merely accepted the upload.
-- *Browser level (planned):* the priority journeys — buyer registration through email verification to first login; natural-language and filtered search through to vehicle detail and saving a favourite; dealer registration and profile completion; dealer bulk upload through real file selection, job-progress observation and rejections review; administrator login through dashboard, user management and audit-log review; and session expiry with re-authentication.
+- *API level:* per-service journey suites - auth security and email-verification flows; marketplace listings, dealers, favourites, recommendations and search alias promotion; ingestion upload intake and job status; notification dispatch; admin protected endpoints.
+- For the asynchronous ingestion path, journeys assert terminal job state, persisted vehicle and image rows, and rejected-record attribution after completion - never the HTTP response that merely accepted the upload.
+- *Browser level (planned):* the priority journeys - buyer registration through email verification to first login; natural-language and filtered search through to vehicle detail and saving a favourite; dealer registration and profile completion; dealer bulk upload through real file selection, job-progress observation and rejections review; administrator login through dashboard, user management and audit-log review; and session expiry with re-authentication.
 
 **Tools**
 
@@ -205,30 +205,30 @@ End-to-end testing verifies complete user journeys across the assembled system. 
 **Deliberately does not cover**
 
 - Logic, validation rules and boundary conditions already proven at the unit and integration levels; re-verifying them here is slow, and a failure at this level is far harder to localise.
-- Exhaustive permutation of any kind — this level covers journeys, not combinations. Sustained concurrent load, which the Load Testing technique addresses against staging.
+- Exhaustive permutation of any kind - this level covers journeys, not combinations. Sustained concurrent load, which the Load Testing technique addresses against staging.
 - Infrastructure and configuration drift, which the contract level addresses more directly and far earlier.
 
 ### 3.3 Testing Techniques and Types
 
 #### 3.3.1 Data and Database Integrity Testing
 
-AutoVaultLK's commercial value is its inventory, and that inventory reaches the database almost entirely through an automated pipeline rather than through human data entry. A dealer uploads a CSV and a ZIP once; everything thereafter — parsing, normalisation, enrichment, embedding, image association, persistence — happens without anyone looking at the rows. A defect that duplicates a listing on re-upload, drops a record silently, or writes a vehicle against the wrong dealer is therefore invisible at every other layer: the upload still returns success, the job still reports completion, and the catalogue still renders. This technique exists because the database is the only place those failures are observable, and because five services share one instance across five schemas, where a missing cross-schema grant is a production outage waiting for its first request.
+AutoVaultLK's commercial value is its inventory, and that inventory reaches the database almost entirely through an automated pipeline rather than through human data entry. A dealer uploads a CSV and a ZIP once; everything thereafter - parsing, normalisation, enrichment, embedding, image association, persistence - happens without anyone looking at the rows. A defect that duplicates a listing on re-upload, drops a record silently, or writes a vehicle against the wrong dealer is therefore invisible at every other layer: the upload still returns success, the job still reports completion, and the catalogue still renders. This technique exists because the database is the only place those failures are observable, and because five services share one instance across five schemas, where a missing cross-schema grant is a production outage waiting for its first request.
 
 **Technique Objective**
 
-Exercise AutoVaultLK's database layer — schema, migrations, constraints, indexes and repository queries across the auth, marketplace, ingestion, notification and admin schemas — independently of the UI, so that data corruption, incorrect persistence, or unauthorized cross-schema access is observed and logged directly rather than inferred from application behaviour.
+Exercise AutoVaultLK's database layer - schema, migrations, constraints, indexes and repository queries across the auth, marketplace, ingestion, notification and admin schemas - independently of the UI, so that data corruption, incorrect persistence, or unauthorized cross-schema access is observed and logged directly rather than inferred from application behaviour.
 
 **Technique**
 
 - Run the full TypeORM migration set against an empty PostgreSQL instance and assert the resulting catalogue (tables, columns, types, constraints, foreign keys, enum vocabularies, and indexes, including the pgvector similarity index and the trigram/text-search indexes); re-run against an already-migrated database to confirm idempotency, then revert and re-apply to confirm the down-migrations are honest.
-- Execute each service's repository queries (listings, favourites, search, upload jobs, rejected records, notifications, audit logs) against a seeded, migrated database, connecting as the owning service's own database role — never as the database owner — so that a missing GRANT across schema boundaries is caught by the test rather than by a deployment.
+- Execute each service's repository queries (listings, favourites, search, upload jobs, rejected records, notifications, audit logs) against a seeded, migrated database, connecting as the owning service's own database role - never as the database owner - so that a missing GRANT across schema boundaries is caught by the test rather than by a deployment.
 - Exercise the ingestion pipeline's persistence adapters end-to-end: re-process an identical CSV/ZIP source to confirm upsert idempotency (no duplicate vehicle listings), verify rejected-record capture with stage attribution, verify image-to-vehicle association, and verify provenance is recorded for LLM-normalised fields.
-- Seed deliberately invalid data — duplicate VINs, out-of-range year/mileage/price values, malformed enum values, orphaned foreign keys — to confirm each constraint and unique/partial-unique index rejects what it is meant to reject.
+- Seed deliberately invalid data - duplicate VINs, out-of-range year/mileage/price values, malformed enum values, orphaned foreign keys - to confirm each constraint and unique/partial-unique index rejects what it is meant to reject.
 
 **Oracles**
 
 - Direct catalogue inspection (via psql / `information_schema`) checked against the migration set as the declared source of truth for schema state.
-- Row-level assertions on data actually returned or persisted — never assertions on the SQL string emitted.
+- Row-level assertions on data actually returned or persisted - never assertions on the SQL string emitted.
 - Invariant checks that must hold regardless of path: no orphan rows, no duplicate listings after re-ingestion, every rejection attributed to a pipeline stage, every normalised field carrying provenance.
 - EXPLAIN ANALYZE output confirming that search and listing queries use their intended index rather than a sequential scan.
 
@@ -247,7 +247,7 @@ Every schema (auth, marketplace, ingestion, notification, admin) has its migrati
 
 - Integration suites run single-worker and skip rather than fail when no local PostgreSQL instance is reachable, so a missing local dependency never produces a misleading red build.
 - Suites own and clean up their own fixtures so they remain order-independent and repeatable.
-- Constraint-negative seeding is performed through the ORM/SQL layer only, never through the application UI, so the database itself — not the frontend's validation — is what is being proven.
+- Constraint-negative seeding is performed through the ORM/SQL layer only, never through the application UI, so the database itself - not the frontend's validation - is what is being proven.
 
 #### 3.3.2 Function Testing
 
@@ -255,12 +255,12 @@ Dealer verification gates listing creation; upload validation must reject a malf
 
 **Technique Objective**
 
-Exercise the functional behaviour of each AutoVaultLK service — auth-user, marketplace, ingestion, admin, notification and api-gateway — against the SRS use cases, verifying correct processing and persistence for valid input and correct error/warning behaviour for invalid input.
+Exercise the functional behaviour of each AutoVaultLK service - auth-user, marketplace, ingestion, admin, notification and api-gateway - against the SRS use cases, verifying correct processing and persistence for valid input and correct error/warning behaviour for invalid input.
 
 **Technique**
 
 - Unit suites (Jest/ts-jest, @nestjs/testing) mirror each service's source tree, replacing the database, S3, SQS, SES and LLM collaborators with test doubles; cases are derived by equivalence partitioning and boundary-value analysis, e.g. CSV row-validation limits, price/year/mileage bounds, and enum/vocabulary edges.
-- API-level end-to-end suites (Supertest) boot each service's real application module and drive full journeys over HTTP — dealer registration through verification, login and bulk upload to job-status; buyer search through to saving a favourite; administrator review through to an audit-log entry — asserting response codes/bodies and the resulting database state.
+- API-level end-to-end suites (Supertest) boot each service's real application module and drive full journeys over HTTP - dealer registration through verification, login and bulk upload to job-status; buyer search through to saving a favourite; administrator review through to an audit-log entry - asserting response codes/bodies and the resulting database state.
 - Business-rule cases are executed with both valid and deliberately invalid data (malformed CSV rows, mismatched or oversized ZIP contents, out-of-range price/mileage) to confirm the correct error or warning is returned and no partial record is left behind.
 - Natural-language search parsing, trigram matching and vector ranking are each tested against independently derived expected output not derived from the implementation, including the deterministic-parser fallback path exercised with the LLM path forced unavailable.
 
@@ -289,17 +289,17 @@ Every functional requirement is exercised by at least one passing test; every us
 
 #### 3.3.3 User Interface Testing
 
-AutoVaultLK presents three quite different interfaces from one React application: a public buyer surface that must be usable by anyone arriving from a search engine, a dealer console whose bulk-upload and rejections-review screens are the primary workflow for the platform's paying users, and an administrative surface whose actions are audited. Each carries state the others do not: a dealer awaiting verification, an upload job mid-progress, an empty saved-vehicles list — and those intermediate states are where interface defects concentrate. This technique verifies each surface across its full state space rather than on the populated happy path alone, and asserts through the accessibility tree so that what is verified is what a user can actually perceive and operate.
+AutoVaultLK presents three quite different interfaces from one React application: a public buyer surface that must be usable by anyone arriving from a search engine, a dealer console whose bulk-upload and rejections-review screens are the primary workflow for the platform's paying users, and an administrative surface whose actions are audited. Each carries state the others do not: a dealer awaiting verification, an upload job mid-progress, an empty saved-vehicles list - and those intermediate states are where interface defects concentrate. This technique verifies each surface across its full state space rather than on the populated happy path alone, and asserts through the accessibility tree so that what is verified is what a user can actually perceive and operate.
 
 **Technique Objective**
 
-Exercise navigation, forms and interactive objects across the web-frontend's buyer, dealer and administrator surfaces to observe and log standards conformance — accessible roles/labels, keyboard operability, focus order — and correct target behaviour of each window/component and its states.
+Exercise navigation, forms and interactive objects across the web-frontend's buyer, dealer and administrator surfaces to observe and log standards conformance - accessible roles/labels, keyboard operability, focus order - and correct target behaviour of each window/component and its states.
 
 **Technique**
 
-- Component tests (Vitest with jsdom and React Testing Library) render each page, component and hook across its state space — initial, loading, populated, empty, error, unauthorised — locating elements by accessible role, label and text, and driving them through @testing-library/user-event sequences (tab order, keyboard activation, form entry) rather than through internal state.
+- Component tests (Vitest with jsdom and React Testing Library) render each page, component and hook across its state space - initial, loading, populated, empty, error, unauthorised - locating elements by accessible role, label and text, and driving them through @testing-library/user-event sequences (tab order, keyboard activation, form entry) rather than through internal state.
 - Route-guard tests verify navigation and redirect behaviour for RequireAuth and dealer-type/verification-state gating across authenticated, unauthenticated and wrong-role states.
-- A planned Playwright suite, structured on the Page Object Model, drives the priority journeys — registration through verification and first login; search through vehicle detail to saving a favourite; dealer bulk upload through job-progress observation to rejections review; administrator login through dashboard and audit-log review — in real browsers, observing rendering, real file-upload dialogs and session persistence that a simulated DOM cannot.
+- A planned Playwright suite, structured on the Page Object Model, drives the priority journeys - registration through verification and first login; search through vehicle detail to saving a favourite; dealer bulk upload through job-progress observation to rejections review; administrator login through dashboard and audit-log review - in real browsers, observing rendering, real file-upload dialogs and session persistence that a simulated DOM cannot.
 
 **Oracles**
 
@@ -328,7 +328,7 @@ Two operations in AutoVaultLK have cost profiles that cannot be reasoned about f
 
 **Technique Objective**
 
-Exercise AutoVaultLK's critical transactions — structured and natural-language search, listing retrieval, favourites, dealer bulk ingestion and notification delivery — under normal anticipated workload and single-user conditions to establish quantified response-time and resource-usage baselines against the non-functional requirements.
+Exercise AutoVaultLK's critical transactions - structured and natural-language search, listing retrieval, favourites, dealer bulk ingestion and notification delivery - under normal anticipated workload and single-user conditions to establish quantified response-time and resource-usage baselines against the non-functional requirements.
 
 **Technique**
 
@@ -356,29 +356,29 @@ A documented baseline exists for structured search, natural-language search, lis
 **Special Considerations**
 
 - Profiling and baseline runs are performed against the staging (AWS) environment at representative data volume, since instance sizing, network topology and managed-service limits are not reproducible on a developer laptop.
-- A background workload is deliberately not simulated at this stage — sustained concurrent load is the concern of Load Testing (Section 3.3.5).
+- A background workload is deliberately not simulated at this stage - sustained concurrent load is the concern of Load Testing (Section 3.3.5).
 
 #### 3.3.5 Load Testing
 
-The load profile of this platform is asymmetric in a way that shapes the whole technique. Buyer search is high-frequency, low-cost and latency-sensitive; dealer bulk ingestion is infrequent, extremely expensive per invocation, and tolerant of seconds or minutes — but the two share a database, a Lambda concurrency budget and a connection pool. The risk is therefore not that either fails alone, but that one dealer uploading a large inventory degrades search for every concurrent buyer. This technique deliberately includes volume testing of progressively larger CSV/ZIP batches alongside conventional load, stress, spike and soak profiles, in order to locate that interaction and document the practical per-job ceiling.
+The load profile of this platform is asymmetric in a way that shapes the whole technique. Buyer search is high-frequency, low-cost and latency-sensitive; dealer bulk ingestion is infrequent, extremely expensive per invocation, and tolerant of seconds or minutes - but the two share a database, a Lambda concurrency budget and a connection pool. The risk is therefore not that either fails alone, but that one dealer uploading a large inventory degrades search for every concurrent buyer. This technique deliberately includes volume testing of progressively larger CSV/ZIP batches alongside conventional load, stress, spike and soak profiles, in order to locate that interaction and document the practical per-job ceiling.
 
 **Technique Objective**
 
-Subject AutoVaultLK's key transactions — buyer search, listing retrieval, and especially dealer bulk-inventory ingestion — to varying workload conditions, from expected average load up through and beyond anticipated peak, to determine that the system continues to function correctly and to evaluate its performance characteristics under each condition.
+Subject AutoVaultLK's key transactions - buyer search, listing retrieval, and especially dealer bulk-inventory ingestion - to varying workload conditions, from expected average load up through and beyond anticipated peak, to determine that the system continues to function correctly and to evaluate its performance characteristics under each condition.
 
 **Technique**
 
-- **Load** — expected concurrency sustained over a defined period, asserting that percentile latency thresholds hold throughout.
-- **Stress** — concurrency ramped past expected peak to locate the saturation point and confirm the system degrades via queueing, throttling or clear errors rather than opaque failure.
-- **Spike** — abrupt bursts of arrival traffic, representative of a marketing push, to validate autoscaling and Lambda cold-start behaviour under sudden load.
-- **Soak** — extended moderate load to expose memory growth, connection-pool exhaustion or unbounded caches.
-- **Volume** — ingestion of progressively larger CSV/ZIP source files and record counts to establish the practical per-job ceiling and confirm chunking and concurrency control hold at scale.
+- **Load** - expected concurrency sustained over a defined period, asserting that percentile latency thresholds hold throughout.
+- **Stress** - concurrency ramped past expected peak to locate the saturation point and confirm the system degrades via queueing, throttling or clear errors rather than opaque failure.
+- **Spike** - abrupt bursts of arrival traffic, representative of a marketing push, to validate autoscaling and Lambda cold-start behaviour under sudden load.
+- **Soak** - extended moderate load to expose memory growth, connection-pool exhaustion or unbounded caches.
+- **Volume** - ingestion of progressively larger CSV/ZIP source files and record counts to establish the practical per-job ceiling and confirm chunking and concurrency control hold at scale.
 - Workloads are built from the transaction scripts developed for Function Testing (with unnecessary interaction delay removed) and executed against the staging environment, sized to mirror the production topology.
 
 **Oracles**
 
 - Percentile latency and error-rate thresholds asserted by the load generator itself, so a run passes or fails without manual interpretation.
-- Resource metrics — CPU, memory, database connection-pool utilisation, SQS queue depth, Lambda concurrency — checked against configured limits.
+- Resource metrics - CPU, memory, database connection-pool utilisation, SQS queue depth, Lambda concurrency - checked against configured limits.
 - A documented saturation point beyond which degradation is expected and predictable, rather than treated as an anomaly.
 
 **Required Tools**
@@ -405,7 +405,7 @@ Exercise AutoVaultLK's authentication, role-based access control, internal servi
 
 **Technique**
 
-- **Application-level security:** for every protected endpoint, list each role (buyer, dealer, administrator, unauthenticated) and its intended permissions; create an explicit permitted case and an explicit denied case for each, then re-run the same transaction as a different role/user to confirm access is correctly granted or denied. Object-level authorisation is verified directly by identifier substitution — e.g. one dealer attempting to read or mutate another dealer's listings or upload jobs.
+- **Application-level security:** for every protected endpoint, list each role (buyer, dealer, administrator, unauthenticated) and its intended permissions; create an explicit permitted case and an explicit denied case for each, then re-run the same transaction as a different role/user to confirm access is correctly granted or denied. Object-level authorisation is verified directly by identifier substitution - e.g. one dealer attempting to read or mutate another dealer's listings or upload jobs.
 - **System-level security:** verify JWT issuance, signature, expiry and claim validation; verify rejection of absent, malformed, expired, wrongly-signed and algorithm-substituted tokens; verify refresh-token rotation including reuse detection and family invalidation on replay; verify that internal service-to-service endpoints reject calls lacking valid internal credentials.
 - **Input-handling checks:** DTO validation fuzzed with over-long, wrongly-typed, missing and malformed fields and with SQL/script metacharacters; uploaded CSV/ZIP files tested for type, size and content-mismatch validation and for path-traversal/archive-abuse resistance during extraction.
 - **Abuse protection:** rate-limit and lockout behaviour on login, registration, verification-resend and password-reset endpoints, including correct counter reset after the lockout window.
@@ -435,18 +435,18 @@ Every protected endpoint is covered for every role (buyer, dealer, administrator
 
 #### 3.3.7 Failover and Recovery Testing
 
-The ingestion pipeline depends on five external services — PostgreSQL, S3, SQS, SES and a third-party LLM provider — any of which can time out, throttle or fail mid-batch, and it runs under Lambda where a timeout can terminate a worker part-way through a chunk. The unacceptable outcome is not a failed job, which is recoverable, but a job that reports success over a partially written batch, which is not: the dealer believes their inventory is live and no alarm fires. This technique therefore concentrates on proving that every failure path leaves the database in a defined state, that replaying any upload or queue message has exactly-once effect, and that natural-language search degrades to its deterministic parser rather than failing outright when the LLM path is unavailable.
+The ingestion pipeline depends on five external services - PostgreSQL, S3, SQS, SES and a third-party LLM provider - any of which can time out, throttle or fail mid-batch, and it runs under Lambda where a timeout can terminate a worker part-way through a chunk. The unacceptable outcome is not a failed job, which is recoverable, but a job that reports success over a partially written batch, which is not: the dealer believes their inventory is live and no alarm fires. This technique therefore concentrates on proving that every failure path leaves the database in a defined state, that replaying any upload or queue message has exactly-once effect, and that natural-language search degrades to its deterministic parser rather than failing outright when the LLM path is unavailable.
 
 **Technique Objective**
 
-Simulate failure of AutoVaultLK's dependencies — PostgreSQL, S3, SQS, SES, the LLM provider, and peer services — and exercise the recovery processes, so that the system is shown to degrade predictably, recover completely once the dependency returns, and never report success for a partially processed ingestion batch.
+Simulate failure of AutoVaultLK's dependencies - PostgreSQL, S3, SQS, SES, the LLM provider, and peer services - and exercise the recovery processes, so that the system is shown to degrade predictably, recover completely once the dependency returns, and never report success for a partially processed ingestion batch.
 
 **Technique**
 
-- **Dependency-failure injection:** deliberately fail each external dependency — database connection exhaustion, S3 read/write rejection, SQS unavailability, SES delivery rejection, LLM timeout/rate-limit/error, peer-service 5xx or timeout — via failing test doubles at the unit layer, and via Docker Compose container start/stop/pause at the environment layer.
+- **Dependency-failure injection:** deliberately fail each external dependency - database connection exhaustion, S3 read/write rejection, SQS unavailability, SES delivery rejection, LLM timeout/rate-limit/error, peer-service 5xx or timeout - via failing test doubles at the unit layer, and via Docker Compose container start/stop/pause at the environment layer.
 - **Graceful-degradation testing:** confirm natural-language search falls back to the deterministic parser when the LLM path is unavailable, and that the fallback ranking remains useful rather than failing the page.
 - **Retry and idempotency testing:** replay the same upload, queue message, or notification event and assert exactly-once effect; confirm bounded retry with backoff and correct dead-letter routing for exhausted messages, with the original payload preserved for reprocessing.
-- **Pipeline-interruption testing:** interrupt an ingestion job at each stage boundary — including a simulated Lambda timeout and a Step Functions state transition — and confirm the job resumes or fails cleanly with accurate stage logs and job status.
+- **Pipeline-interruption testing:** interrupt an ingestion job at each stage boundary - including a simulated Lambda timeout and a Step Functions state transition - and confirm the job resumes or fails cleanly with accurate stage logs and job status.
 - SQS/S3 visibility timeouts, redeliveries, and edge cases are simulated locally using LocalStack fault injection.
 - **Infrastructure recovery:** rehearse service restart, database connection-pool recovery after a PostgreSQL restart, and backup/point-in-time restoration against a non-production environment, measuring recovery time and data loss against the stated RPO/RTO; rehearse a migration-bearing deployment rollback.
 
@@ -454,7 +454,7 @@ Simulate failure of AutoVaultLK's dependencies — PostgreSQL, S3, SQS, SES, the
 
 - The stated RPO and RTO as the authority for acceptable data loss and downtime.
 - Post-failure database state asserted to contain no partial write and no lost committed record.
-- Job and stage-log state asserted to reflect reality — never reporting success for a partially processed batch.
+- Job and stage-log state asserted to reflect reality - never reporting success for a partially processed batch.
 - Dead-letter contents are asserted to preserve the original payload for reprocessing, and CloudWatch alarm-state transitions are asserted to occur when the corresponding fault is injected.
 
 **Required Tools**
@@ -475,11 +475,11 @@ Every external dependency has a failure test asserting a clear error, a diagnost
 
 #### 3.3.8 Configuration Testing
 
-AutoVaultLK's routing and access rules are declared in four places that must agree but have no shared source of truth: the NGINX configuration, the public and internal OpenAPI documents, each service's own CORS configuration, and the Terraform definitions for three environments. Drift between any two of them produces a defect that is invisible locally and appears only after deployment — a route proxying to a path that no longer exists, an origin the gateway permits and the service refuses. This technique exists to catch that drift before deployment rather than after, and it additionally covers the supported browser matrix, since the buyer surface is the one part of the system whose behaviour genuinely differs between rendering engines.
+AutoVaultLK's routing and access rules are declared in four places that must agree but have no shared source of truth: the NGINX configuration, the public and internal OpenAPI documents, each service's own CORS configuration, and the Terraform definitions for three environments. Drift between any two of them produces a defect that is invisible locally and appears only after deployment - a route proxying to a path that no longer exists, an origin the gateway permits and the service refuses. This technique exists to catch that drift before deployment rather than after, and it additionally covers the supported browser matrix, since the buyer surface is the one part of the system whose behaviour genuinely differs between rendering engines.
 
 **Technique Objective**
 
-Exercise AutoVaultLK across its supported deployment and client configurations — the dev, staging and production Terraform environments, the Node.js runtime version, and the Chromium, Firefox, and WebKit matrix — to observe target behaviour under each configuration and to detect drift between the configuration layers (gateway, service, and infrastructure) that must otherwise agree.
+Exercise AutoVaultLK across its supported deployment and client configurations - the dev, staging and production Terraform environments, the Node.js runtime version, and the Chromium, Firefox, and WebKit matrix - to observe target behaviour under each configuration and to detect drift between the configuration layers (gateway, service, and infrastructure) that must otherwise agree.
 
 **Technique**
 
@@ -528,7 +528,7 @@ The matrix below shows where each of the eight techniques defined in Section 3.3
 | 3.3.7 Failover and Recovery | S | S | – | P |
 | 3.3.8 Configuration | – | S | P | S |
 
-Three features of the matrix drive the rest of this plan. First, no technique is confined to a single level except one, which is the substantive justification for separating the two axes rather than nesting them. Second, that exception is Load Testing: it is meaningless below the assembled system, and it is therefore run against staging at representative data volume rather than in CI. Third, Data and Database Integrity is primary at the integration level rather than the unit level, because a unit test of a query builder asserts the SQL string and so cannot observe the failures that matter most here — a pgvector cast the database rejects, a similarity function with transposed arguments, or a cross-schema join to a renamed column.
+Three features of the matrix drive the rest of this plan. First, no technique is confined to a single level except one, which is the substantive justification for separating the two axes rather than nesting them. Second, that exception is Load Testing: it is meaningless below the assembled system, and it is therefore run against staging at representative data volume rather than in CI. Third, Data and Database Integrity is primary at the integration level rather than the unit level, because a unit test of a query builder asserts the SQL string and so cannot observe the failures that matter most here - a pgvector cast the database rejects, a similarity function with transposed arguments, or a cross-schema join to a renamed column.
 
 ---
 
@@ -689,20 +689,20 @@ The following risks have been identified as potentially affecting the successful
 
 ## 7. References
 
-- Jest Documentation — <https://jestjs.io/docs/getting-started> (Accessed 2026)
-- NestJS Testing Documentation — <https://docs.nestjs.com/fundamentals/testing> (Accessed 2026)
-- PostgreSQL Documentation — <https://www.postgresql.org/docs/> (Accessed 2026)
-- pgvector Documentation — <https://github.com/pgvector/pgvector> (Accessed 2026)
-- TypeORM Documentation — <https://typeorm.io/> (Accessed 2026)
-- Sharp (Image Processing) Documentation — <https://sharp.pixelplumbing.com/> (Accessed 2026)
-- React Testing Library Documentation — <https://testing-library.com/docs/react-testing-library/intro/> (Accessed 2026)
-- AWS Documentation (S3, SQS, SES) — <https://docs.aws.amazon.com/> (Accessed 2026)
-- OpenAPI Specification — <https://spec.openapis.org/oas/latest.html> (Accessed 2026)
-- Terraform Documentation — <https://developer.hashicorp.com/terraform/docs> (Accessed 2026)
-- OWASP Testing Guide — <https://owasp.org/www-project-web-security-testing-guide/> (Accessed 2026)
-- AutoVaultLK Software Requirements Specification (SRS) — project document
-- AutoVaultLK Software Architecture Document (SAD) — project document
-- AutoVaultLK API Documentation — project document
+- Jest Documentation - <https://jestjs.io/docs/getting-started> (Accessed 2026)
+- NestJS Testing Documentation - <https://docs.nestjs.com/fundamentals/testing> (Accessed 2026)
+- PostgreSQL Documentation - <https://www.postgresql.org/docs/> (Accessed 2026)
+- pgvector Documentation - <https://github.com/pgvector/pgvector> (Accessed 2026)
+- TypeORM Documentation - <https://typeorm.io/> (Accessed 2026)
+- Sharp (Image Processing) Documentation - <https://sharp.pixelplumbing.com/> (Accessed 2026)
+- React Testing Library Documentation - <https://testing-library.com/docs/react-testing-library/intro/> (Accessed 2026)
+- AWS Documentation (S3, SQS, SES) - <https://docs.aws.amazon.com/> (Accessed 2026)
+- OpenAPI Specification - <https://spec.openapis.org/oas/latest.html> (Accessed 2026)
+- Terraform Documentation - <https://developer.hashicorp.com/terraform/docs> (Accessed 2026)
+- OWASP Testing Guide - <https://owasp.org/www-project-web-security-testing-guide/> (Accessed 2026)
+- AutoVaultLK Software Requirements Specification (SRS) - project document
+- AutoVaultLK Software Architecture Document (SAD) - project document
+- AutoVaultLK API Documentation - project document
 
 ---
 
@@ -764,13 +764,13 @@ This section consolidates the environment requirements that the Special Consider
 | Environment | Purpose and techniques hosted | Composition | Constraints |
 |---|---|---|---|
 | **Developer local** | Unit and component suites (all levels' fast feedback); integration suites against a live database; contract suites. Dependency-failure injection at the container level for Section 3.3.7. | Node.js 22. Docker Compose brings up PostgreSQL with the pgvector and text-search extensions on a mapped port, with the migration set, grants and deterministic seed data applied. LocalStack providing high-fidelity emulation of S3, SQS, and SES; mail transport stubbed. | Not representative for performance work: instance sizing, network topology and managed-service limits differ from AWS. Integration suites skip rather than fail when no database is reachable, so an unprovisioned laptop never produces a misleading red build. |
-| **Continuous integration** | Gating every change: typecheck, lint, unit, contract and API-level end-to-end suites, service build and container image build. Integration suites where a database service container is provisioned. The reduced smoke-load gate — once introduced. | GitHub Actions on Ubuntu runners, Node.js 22 with dependency caching, per-service workflows filtered to the paths they protect. PostgreSQL service container for integration suites. Docker for image builds. OIDC-based AWS credentials for the deployment workflow. | Ephemeral and non-interactive; no manual intervention or exploratory work. Not sized for load testing. Runtime budget is a real constraint, which is part of why the browser suite is kept to journeys only. |
-| **Staging (AWS)** | Performance profiling (Section 3.3.4) and all load, stress, spike, soak and volume testing (Section 3.3.5). Authenticated dynamic security scanning (Section 3.3.6). Fault injection, backup restoration, point-in-time recovery and rollback rehearsal (Section 3.3.7). Cross-environment and browser-matrix configuration testing (Section 3.3.8). | Terraform-provisioned mirror of the production topology at reduced scale: RDS PostgreSQL with pgvector, S3 buckets, SQS queues, SES in sandbox or a capture inbox, Lambda and Step Functions for the ingestion pipeline, API Gateway and the gateway/NGINX layer, CloudWatch metrics and alarms. Seeded to representative production inventory volume. | Requires exclusive booking for load, scanning and recovery exercises, which must not overlap one another — concurrent runs invalidate each other's measurements. Destructive testing is permitted here and only here. |
+| **Continuous integration** | Gating every change: typecheck, lint, unit, contract and API-level end-to-end suites, service build and container image build. Integration suites where a database service container is provisioned. The reduced smoke-load gate - once introduced. | GitHub Actions on Ubuntu runners, Node.js 22 with dependency caching, per-service workflows filtered to the paths they protect. PostgreSQL service container for integration suites. Docker for image builds. OIDC-based AWS credentials for the deployment workflow. | Ephemeral and non-interactive; no manual intervention or exploratory work. Not sized for load testing. Runtime budget is a real constraint, which is part of why the browser suite is kept to journeys only. |
+| **Staging (AWS)** | Performance profiling (Section 3.3.4) and all load, stress, spike, soak and volume testing (Section 3.3.5). Authenticated dynamic security scanning (Section 3.3.6). Fault injection, backup restoration, point-in-time recovery and rollback rehearsal (Section 3.3.7). Cross-environment and browser-matrix configuration testing (Section 3.3.8). | Terraform-provisioned mirror of the production topology at reduced scale: RDS PostgreSQL with pgvector, S3 buckets, SQS queues, SES in sandbox or a capture inbox, Lambda and Step Functions for the ingestion pipeline, API Gateway and the gateway/NGINX layer, CloudWatch metrics and alarms. Seeded to representative production inventory volume. | Requires exclusive booking for load, scanning and recovery exercises, which must not overlap one another - concurrent runs invalidate each other's measurements. Destructive testing is permitted here and only here. |
 | **Production (AWS)** | Post-deployment smoke verification and continuous monitoring only. | Terraform-provisioned from the same modules as staging, at production sizing. | No destructive testing, no load generation, no active security scanning, under any circumstances. Verification is limited to health checks and read-only smoke requests. Any defect found here is reproduced in staging before a fix is validated. |
 
 ### 9.1 Environment Parity and Known Divergence
 
-Because LocalStack is now used, local/CI runs do provide early confidence in SQS delivery semantics and S3 behavior. Reserve the warning only for AWS IAM permissions and Lambda cold-starts, which still require Staging. Local and CI environments substitute local implementations for S3 and SQS and stub the mail transport. This divergence is deliberate — it keeps the fast suites hermetic and offline-capable — but it means that no local or CI run constitutes evidence about IAM permissions, S3 consistency behaviour, SQS delivery semantics, SES deliverability, or Lambda cold-start and memory behaviour. Those properties are verified only against staging, and the corresponding risk is recorded in Section 6 (test environment differs from production) with repetition of key tests in the deployment environment as its contingency.
+Because LocalStack is now used, local/CI runs do provide early confidence in SQS delivery semantics and S3 behavior. Reserve the warning only for AWS IAM permissions and Lambda cold-starts, which still require Staging. Local and CI environments substitute local implementations for S3 and SQS and stub the mail transport. This divergence is deliberate - it keeps the fast suites hermetic and offline-capable - but it means that no local or CI run constitutes evidence about IAM permissions, S3 consistency behaviour, SQS delivery semantics, SES deliverability, or Lambda cold-start and memory behaviour. Those properties are verified only against staging, and the corresponding risk is recorded in Section 6 (test environment differs from production) with repetition of key tests in the deployment environment as its contingency.
 
 ---
 
@@ -782,11 +782,11 @@ Criteria are stated per test level, since the levels are entered at different ti
 
 | Level | Testing at this level may begin when |
 |---|---|
-| **Unit** | The code under test compiles and passes typecheck and lint. The unit of behaviour has a stated specification — an SRS clause, an FR entry, or an agreed acceptance criterion — that can serve as an oracle independently of the implementation. |
+| **Unit** | The code under test compiles and passes typecheck and lint. The unit of behaviour has a stated specification - an SRS clause, an FR entry, or an agreed acceptance criterion - that can serve as an oracle independently of the implementation. |
 | **Integration** | The relevant unit suites pass. A PostgreSQL instance with the required extensions is reachable, the full migration set applies cleanly, grants are applied, and deterministic seed data is loaded. The service roles used by the suites exist with their intended privileges. |
 | **Contract** | The OpenAPI documents, NGINX configuration and CORS configuration under test are present and parseable. The consuming client or Terraform module that the contract is asserted against is available in the same revision. |
 | **End-to-end (API)** | Unit, integration and contract suites for the participating services pass. The service boots against a seeded test database with its external dependencies stubbed or emulated. Authentication fixtures permitting each role under test are available. |
-| **End-to-end (browser)** | The Playwright test env. and the fixture/seed API are available; a deployed staging build is reachable at a known version; the page objects for the journey under test exist; and the API-level journey for the same flow already passes — so a browser failure implicates the interface rather than the backend. |
+| **End-to-end (browser)** | The Playwright test env. and the fixture/seed API are available; a deployed staging build is reachable at a known version; the page objects for the journey under test exist; and the API-level journey for the same flow already passes - so a browser failure implicates the interface rather than the backend. |
 | **Performance and load** | Functional correctness at the API level is established, since measuring a broken path is meaningless. Staging is provisioned at representative data volume, booked exclusively for the window, and baselines (for load) or non-functional targets (for profiling) are documented in advance. |
 | **Security** | The role permissions for buyer, dealer and administrator are current and agreed. For scanning, staging is reachable, authenticated scan credentials exist, and the scan window does not overlap a load or recovery exercise. |
 | **Failover and recovery** | The system is functionally correct under normal conditions. A restorable backup or snapshot exists. The exercise is scheduled, and the infrastructure and database owners are available for the window. |
@@ -819,12 +819,12 @@ Across every level, exit additionally requires that all defects at critical and 
 
 ### 10.4 Suspension Criteria and Resumption Requirements
 
-Testing at a level is suspended when continuing would produce results that cannot be trusted or acted upon. Suspension is a decision of the QA lead, recorded in the defect log with the triggering condition, and it applies to the affected level only — other levels continue unless they share the blocking cause.
+Testing at a level is suspended when continuing would produce results that cannot be trusted or acted upon. Suspension is a decision of the QA lead, recorded in the defect log with the triggering condition, and it applies to the affected level only - other levels continue unless they share the blocking cause.
 
 | Suspension trigger | Resumption requires |
 |---|---|
 | The build is broken, or typecheck or lint fails on the branch under test. | A green build on the branch; the failing gate passing again. |
-| A blocking defect prevents meaningful further execution at the level — for example an authentication failure that makes every downstream journey unreachable. | The blocking defect was fixed and verified, and the suites that were unreachable re-executed from the start rather than resumed mid-run. |
+| A blocking defect prevents meaningful further execution at the level - for example an authentication failure that makes every downstream journey unreachable. | The blocking defect was fixed and verified, and the suites that were unreachable re-executed from the start rather than resumed mid-run. |
 | The required environment is unavailable or unrepresentative: no reachable database for integration suites, staging unprovisioned or mis-sized, Grid unavailable for browser suites. | The environment provisioned and verified against Section 9, including migrations, grants and seed data where applicable. |
 | Requirement instability leaves the level without a usable oracle; the specification under test is being actively rewritten. | The affected requirements are stable and re-baselined, and the affected tests and traceability entries updated to match. |
 | Defect arrival rate at a level is high enough that further execution is producing duplicates of one underlying cause rather than new information. | The underlying cause was diagnosed and fixed, then the level re-entered under its Section 10.1 entry criteria. |
@@ -835,7 +835,7 @@ Testing at a level is suspended when continuing would produce results that canno
 
 ## 11. Test Schedule and Phasing
 
-Testing is phased so that each technique is introduced when its prerequisites — functional stability, environment availability, and the training recorded in Section 8.3 — are in place. Phases overlap: once a technique is introduced it continues for the remainder of the project as part of the regression burden, so the table records the iteration in which each technique is *established* rather than a window in which it is finished. **Phase 1 is in progress.**
+Testing is phased so that each technique is introduced when its prerequisites - functional stability, environment availability, and the training recorded in Section 8.3 - are in place. Phases overlap: once a technique is introduced it continues for the remainder of the project as part of the regression burden, so the table records the iteration in which each technique is *established* rather than a window in which it is finished. **Phase 1 is in progress.**
 
 | Phase | Focus | Techniques established | Levels active | Environment | Exit gate |
 |---|---|---|---|---|---|
@@ -887,7 +887,7 @@ All test data used at every level and in every environment is synthetic. No real
 
 ### 13.1 Principles
 
-- **Synthetic only.** Vehicle records, dealer profiles, buyer accounts, images and credentials are generated, never extracted. Where a realistic distribution matters — make and model frequency, price and mileage spread, image count per vehicle — the generators are parameterised to approximate the real distribution without reproducing any real record.
+- **Synthetic only.** Vehicle records, dealer profiles, buyer accounts, images and credentials are generated, never extracted. Where a realistic distribution matters - make and model frequency, price and mileage spread, image count per vehicle - the generators are parameterised to approximate the real distribution without reproducing any real record.
 - **Deterministic.** Generators are seeded so that the same inputs produce the same dataset on every run and on every machine. A test that passes locally and fails in CI must not be explicable by different data. Randomness without a fixed seed is treated as a defect in the fixture.
 - **Version controlled.** Fixtures and generator scripts live in the repository alongside the suites that consume them, so a dataset change is reviewable and attributable in the same way as a code change, and any revision can be reproduced exactly.
 - **Owned by the suite.** Each suite establishes the data it needs and cleans up or scopes it afterwards, so suites remain order-independent and repeatable. No suite depends on data left behind by another.
@@ -897,10 +897,10 @@ All test data used at every level and in every environment is synthetic. No real
 
 | Environment | Data provision | Volume |
 |---|---|---|
-| **Developer local** | Docker Compose PostgreSQL, migrated and seeded by the deterministic vehicle, image and embedding generators. Uploads exercised with generated CSV and ZIP fixtures, including deliberately malformed variants. | Small — sized for fast feedback, not for realism. |
+| **Developer local** | Docker Compose PostgreSQL, migrated and seeded by the deterministic vehicle, image and embedding generators. Uploads exercised with generated CSV and ZIP fixtures, including deliberately malformed variants. | Small - sized for fast feedback, not for realism. |
 | **Continuous integration** | Provisioned fresh per run from the same migrations, grants and generators; discarded afterwards. | Small and fixed, so runtime is predictable. |
 | **Staging (AWS)** | Generated to approximate anticipated production inventory scale, so that performance and load results are representative rather than optimistic. Refreshed by regeneration, never by copying from production. SES is directed at a capture inbox or sandbox rather than real recipients. | Representative of anticipated production volume. |
-| **Production (AWS)** | Real data. No test data is introduced, and no test account is created. | Not applicable — read-only smoke verification only. |
+| **Production (AWS)** | Real data. No test data is introduced, and no test account is created. | Not applicable - read-only smoke verification only. |
 
 ### 13.3 Adversarial and Negative Data
 

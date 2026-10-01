@@ -6,7 +6,7 @@ import type { Rejection, StageContext, StageResult, StageRunner } from './types'
  * Persists the rejections a stage produced.
  *
  * An interface rather than the repository itself so stages stay free of
- * TypeORM — the same reason StageLogger exists.
+ * TypeORM - the same reason StageLogger exists.
  * `RejectedRecordRepository.insertMany` satisfies it, and is idempotent by
  * (job, stage, row) so a retried stage replaces its own rejections rather than
  * duplicating them.
@@ -18,7 +18,7 @@ export interface RejectionSink {
 /**
  * A stage as Step Functions sees it: envelope in, envelope out.
  *
- * The rows themselves never cross a state boundary — they are read from the
+ * The rows themselves never cross a state boundary - they are read from the
  * object store at the start and written back at the end. See envelope.ts for
  * why (the 256 KB state-payload cap).
  */
@@ -44,7 +44,7 @@ export type StageOutcome = 'SUCCEEDED' | 'SKIPPED' | 'DEGRADED';
  *
  * **The inner stage is not modified.** It still takes rows and returns
  * `{ rows, rejections }`; this adds only the four things a Lambda boundary
- * requires — read input, persist rejections, write output, return a pointer.
+ * requires - read input, persist rejections, write output, return a pointer.
  * That is deliberate: every stage's unit tests exercise the inner function, and
  * they must keep passing untouched or the wrapper has changed behaviour it had
  * no business changing.
@@ -54,7 +54,7 @@ export type StageOutcome = 'SUCCEEDED' | 'SKIPPED' | 'DEGRADED';
  * write once; across Lambdas that accumulator cannot exist, and a stage that
  * fails after rejecting rows would otherwise lose them.
  *
- * A stage reporting `outcome: 'DEGRADED'` — Groq unreachable, MiniLM missing —
+ * A stage reporting `outcome: 'DEGRADED'` - Groq unreachable, MiniLM missing -
  * has that carried on the envelope. Without it the stage log would show a
  * successful run and nobody would learn the embeddings are absent.
  */
@@ -98,7 +98,7 @@ export function asChunkStage<TIn, TOut>(
 /**
  * Reads a stage's input rows.
  *
- * A null key means the previous stage produced nothing to carry forward — Load
+ * A null key means the previous stage produced nothing to carry forward - Load
  * is the only stage that does this, and nothing runs after it. Treated as an
  * empty batch rather than an error so the shape stays total.
  */

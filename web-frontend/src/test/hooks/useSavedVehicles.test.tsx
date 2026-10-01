@@ -10,7 +10,7 @@ import { useAuth } from '../../auth/useAuth'
 import type { Favourite } from '../../api/favourites.types'
 
 vi.mock('../../api/favourites.api', async () => {
-  // isAlreadyInDesiredState stays real — it is the 409/404 rule under test.
+  // isAlreadyInDesiredState stays real - it is the 409/404 rule under test.
   const actual = await vi.importActual<typeof import('../../api/favourites.api')>(
     '../../api/favourites.api',
   )
@@ -235,8 +235,8 @@ describe('useSavedVehicles', () => {
   })
 
   it('keeps two hook instances in step', async () => {
-    // Two SaveButtons for the same vehicle — a search card and the detail page
-    // — must not disagree.
+    // Two SaveButtons for the same vehicle - a search card and the detail page
+    // - must not disagree.
     const a = renderHook(() => useSavedVehicles())
     const b = renderHook(() => useSavedVehicles())
     await waitFor(() => expect(getMyFavourites).toHaveBeenCalled())

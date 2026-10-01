@@ -21,7 +21,7 @@ type AuthenticatedRequest = Request & {
 };
 
 // No `marketplace/` prefix. nginx proxies `location /marketplace/` to
-// `http://marketplace_service/` — the trailing slash strips the prefix, so a
+// `http://marketplace_service/` - the trailing slash strips the prefix, so a
 // controller carrying it is never reached and every route 404s behind the
 // gateway. Every other controller in this service is bare for the same reason.
 @Controller('favourites')

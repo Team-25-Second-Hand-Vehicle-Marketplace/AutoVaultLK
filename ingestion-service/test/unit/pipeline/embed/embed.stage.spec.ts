@@ -71,7 +71,7 @@ describe('embedStage', () => {
       // THE regression guard. ListingSearchIndexService passes these 10 fields
       // for a manually created listing; if this stage ever passes a different
       // set, bulk listings embed from different text into a different region
-      // of vector space and rank badly forever — with no error, no failing
+      // of vector space and rank badly forever - with no error, no failing
       // test and no log line (plan-b §9A, silent drift).
       const vehicle = {
         make: 'Toyota',

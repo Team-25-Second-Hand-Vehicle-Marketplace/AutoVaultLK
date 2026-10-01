@@ -10,7 +10,7 @@ const LAMBDA_DIR = resolve(__dirname, '../../../src/lambda');
 
 /**
  * Every stage the pipeline declares must have a handler, or the state machine
- * references a Lambda that does not exist — and the failure appears at deploy
+ * references a Lambda that does not exist - and the failure appears at deploy
  * time, or worse at run time, rather than here.
  *
  * The reverse direction matters too: a handler with no stage is dead code that
@@ -43,7 +43,7 @@ describe('lambda handlers', () => {
   });
 
   it('has an aggregate handler, which closes the Map', () => {
-    // Not in CHUNK_STAGES — it runs once after the fan-out, so it is checked
+    // Not in CHUNK_STAGES - it runs once after the fan-out, so it is checked
     // separately rather than by the loop above.
     expect(existsSync(resolve(LAMBDA_DIR, 'aggregate-results.ts'))).toBe(true);
   });
@@ -51,7 +51,7 @@ describe('lambda handlers', () => {
   it('keeps handlers thin', () => {
     // A handler should add packaging, not behaviour. Anything that belongs to
     // the pipeline lives in the stage or in asChunkStage, so LocalOrchestrator
-    // and Step Functions run identical code — the moment logic leaks in here,
+    // and Step Functions run identical code - the moment logic leaks in here,
     // the two executors have started to drift.
     for (const stage of CHUNK_STAGES) {
       if (stage === 'LOAD') continue; // terminates the chain, needs its own body

@@ -10,7 +10,7 @@ import {
 /**
  * These lists drive the manual listing form's selects, and each must match what
  * `CreateListingDto` validates against. A value offered here that the DTO
- * rejects produces a 400 with no field to attach it to — a failure the dealer
+ * rejects produces a 400 with no field to attach it to - a failure the dealer
  * cannot act on.
  *
  * `listings-contract.test.ts` checks the same lists against the backend source

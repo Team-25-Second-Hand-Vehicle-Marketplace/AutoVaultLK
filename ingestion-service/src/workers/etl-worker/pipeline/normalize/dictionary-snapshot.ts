@@ -35,7 +35,7 @@ export const TRIGRAM_THRESHOLD = 0.45;
 /**
  * How far the best fuzzy candidate must beat the runner-up. Without this,
  * "Corola" scoring 0.72 against Corolla and 0.71 against Corsa would silently
- * pick one — a coin flip written into a dealer's inventory. Below the margin
+ * pick one - a coin flip written into a dealer's inventory. Below the margin
  * the value is left unresolved and the row falls to the Groq stage instead.
  */
 export const AMBIGUITY_MARGIN = 0.05;

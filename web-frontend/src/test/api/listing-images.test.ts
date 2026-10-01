@@ -12,7 +12,7 @@ const file = (name = 'front.jpg') => new File(['bytes'], name, { type: 'image/jp
 
 /**
  * FR-58. The path and multipart shape are the contract with
- * api-gateway/openapi/public-api.yaml's uploadListingImages operation —
+ * api-gateway/openapi/public-api.yaml's uploadListingImages operation -
  * nginx proxies `location /marketplace/` without stripping the prefix, so
  * the URL the client builds is the URL the service sees.
  */

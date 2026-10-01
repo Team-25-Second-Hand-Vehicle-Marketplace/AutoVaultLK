@@ -8,7 +8,7 @@ import { RecommendationsRepository } from '../../src/modules/recommendations/rep
 import { VehicleImage } from '../../src/infrastructure/database/entities/vehicle-image.entity';
 
 /**
- * GET /recommendations/vehicles/:vehicleId is public — no guards — so this
+ * GET /recommendations/vehicles/:vehicleId is public - no guards - so this
  * exercises the HTTP layer only: ParseIntPipe on the optional `limit`, the
  * clamp the controller applies on top of it, and the 404 the service raises for
  * an unknown vehicle.

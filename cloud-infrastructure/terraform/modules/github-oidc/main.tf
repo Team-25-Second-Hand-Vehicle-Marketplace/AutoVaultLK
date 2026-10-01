@@ -12,9 +12,9 @@ terraform {
 }
 
 # -----------------------------------------------------------------------------
-# Lets GitHub Actions assume an AWS role via OIDC — no long-lived access keys
+# Lets GitHub Actions assume an AWS role via OIDC - no long-lived access keys
 # stored in GitHub. Scoped to workflow_dispatch runs from this repo's main
-# branch only (manual deploys, not every push — see the deploy workflow's
+# branch only (manual deploys, not every push - see the deploy workflow's
 # `on:` block, which has no push/pull_request trigger at all).
 # -----------------------------------------------------------------------------
 
@@ -47,7 +47,7 @@ locals {
   #   immutable ID: repo:ORG@ORG_ID/REPO@REPO_ID:ref:refs/heads/main
   # New repos default to the immutable form, which the name-based condition
   # silently rejects ("Not authorized to perform sts:AssumeRoleWithWebIdentity").
-  # Both are exact matches for this one repo's main branch — accepting the
+  # Both are exact matches for this one repo's main branch - accepting the
   # second does not widen who can assume the role.
   main_branch_subjects = concat(
     ["repo:${var.github_org}/${var.github_repo}:ref:refs/heads/main"],

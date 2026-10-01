@@ -66,7 +66,7 @@ describe('SqsJobQueue', () => {
     });
 
     it('does not set FIFO fields on a standard queue', async () => {
-      // Ordering does not matter — each message is an independent job — and
+      // Ordering does not matter - each message is an independent job - and
       // idempotency comes from the pipeline's succeededChunks skip, not the
       // queue.
       await new SqsJobQueue(config()).publish({ jobId: 'job-1' });
@@ -76,7 +76,7 @@ describe('SqsJobQueue', () => {
     });
   });
 
-  it('has no setHandler — Step Functions consumes the queue, not this process', () => {
+  it('has no setHandler - Step Functions consumes the queue, not this process', () => {
     // A no-op setHandler would be worse than its absence: the absence is a
     // compile error, the no-op is a support ticket.
     expect((new SqsJobQueue(config()) as unknown as Record<string, unknown>).setHandler).toBeUndefined();

@@ -44,7 +44,7 @@ export class ListingController {
     return this.listingService.getAllListings();
   }
 
-  // Must stay ahead of `:id` — otherwise Nest matches "mine" as an id param.
+  // Must stay ahead of `:id` - otherwise Nest matches "mine" as an id param.
   @Get('mine')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('DEALER')
@@ -108,7 +108,7 @@ export class ListingController {
   }
 
   /**
-   * Permanently removes a listing — distinct from `deactivate`, which only
+   * Permanently removes a listing - distinct from `deactivate`, which only
    * hides it. Only DRAFT/PENDING_REVIEW/REJECTED listings qualify; see
    * ListingService.deleteListing for why LIVE/SOLD/ARCHIVED are 409s here.
    */
@@ -139,12 +139,12 @@ export class ListingController {
 
   /**
    * FR-58: attaches photos to a listing the dealer (or admin) already owns.
-   * Replaces the whole image set — see ListingService.uploadImages for why.
+   * Replaces the whole image set - see ListingService.uploadImages for why.
    *
    * Multer's memory storage, not disk: ImageUploadService decides where the
    * bytes ultimately land (S3 in s3 mode, ingestion's shared storage
    * directory in local mode), and a temp file on this Lambda/container's own
-   * disk would be one more thing to clean up for no benefit — a handful of
+   * disk would be one more thing to clean up for no benefit - a handful of
    * photos per listing comfortably fits in memory.
    */
   @Post(':id/images')
@@ -163,7 +163,7 @@ export class ListingController {
   }
 
   /**
-   * FR-58: removes one photo without touching the rest — see
+   * FR-58: removes one photo without touching the rest - see
    * ListingService.deleteImage for why this needs its own route rather than
    * reusing uploadImages' replace-whole-set semantics.
    */

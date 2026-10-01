@@ -8,7 +8,7 @@ export class SearchPage {
    * selects: bypasses the NL parser entirely (no Groq dependency, no
    * deterministic-parser confidence/relaxation logic to depend on), and
    * keeps the journey about search *results and navigation*, which is
-   * what this test exercises — filter-value coverage belongs to the
+   * what this test exercises - filter-value coverage belongs to the
    * unit/API-level suites already covering FilterSearchDto.
    */
   async gotoWithFilters(params: Record<string, string>): Promise<void> {

@@ -8,7 +8,7 @@ import type { StageContext, StageRunner } from '../types';
  * into a FAILED job with the message shown to the dealer.
  *
  * This is the deliberate exception to "a stage never throws because of
- * content". The rule exists so one bad row cannot fail a job — but a file with
+ * content". The rule exists so one bad row cannot fail a job - but a file with
  * no header row has no rows to reject, and reporting 5,000 identical per-row
  * rejections would be worse than one clear sentence. validateFile is the ONLY
  * stage permitted to fail a job on content; every stage after it works on rows
@@ -22,7 +22,7 @@ export class FileValidationError extends Error {
 }
 
 export type ValidateFileInput = {
-  /** ObjectStore key, `raw/{jobId}/{fileName}` — written by the Ingest API. */
+  /** ObjectStore key, `raw/{jobId}/{fileName}` - written by the Ingest API. */
   key: string;
   fileName: string;
   /**
@@ -30,7 +30,7 @@ export type ValidateFileInput = {
    * Optional: a dealer may upload inventory with no photos at all, which is
    * legitimate (FR-35.2 covers rows with no registration match). When present,
    * its structure is inspected here rather than only at extraction time deep
-   * in the images branch — a malformed archive should fail the whole job with
+   * in the images branch - a malformed archive should fail the whole job with
    * one clear message before any CSV row is processed, not surface as an
    * "images failed" side-note after rows are already loaded.
    */
@@ -63,7 +63,7 @@ const BOM = '﻿';
 
 /**
  * Headers can legitimately be long, but a "header line" of several hundred KB
- * means the file is not delimited the way we think it is — most often an XLSX
+ * means the file is not delimited the way we think it is - most often an XLSX
  * saved with a .csv extension, whose binary body has no newline for a long
  * while. Cheaper to detect here than to let csv-parse build a giant row.
  */
@@ -75,7 +75,7 @@ const MAX_HEADER_BYTES = 64 * 1024;
  *
  * Reads only the first MAX_HEADER_BYTES rather than the whole object. A 25 MB
  * upload buffered whole, across MaxConcurrency jobs, is a footprint worth
- * avoiding for a check that only ever looks at line one — except in the rare
+ * avoiding for a check that only ever looks at line one - except in the rare
  * case the file needs re-encoding, where the whole object is read once more;
  * see reencodeWholeFile.
  */
@@ -154,22 +154,22 @@ async function readHead(ctx: StageContext, key: string): Promise<Buffer> {
 
 type DecodedHead = {
   text: string;
-  /** True when the fallback below was needed — the file must be re-encoded. */
+  /** True when the fallback below was needed - the file must be re-encoded. */
   reencoded: boolean;
 };
 
 /**
  * Windows-1252 is identical to Latin-1 everywhere except these 32 bytes,
  * where Latin-1 has unprintable C1 control codes and Windows-1252 has the
- * typographic punctuation Word/Excel's autocorrect actually inserts — smart
+ * typographic punctuation Word/Excel's autocorrect actually inserts - smart
  * quotes, en/em dashes, an ellipsis. This is the one range a decode needs to
  * get right; every other byte (0x00-0x7F and 0xA0-0xFF) maps to itself in
  * both encodings, which is exactly what Buffer's built-in 'latin1' encoding
  * already does with no ICU dependency at all.
  *
  * Deliberately NOT `TextDecoder('windows-1252')`: on this Node build (full
- * ICU, v22.14) that silently decodes every byte as its own code point —
- * identical to Latin-1 — instead of applying this table, despite correctly
+ * ICU, v22.14) that silently decodes every byte as its own code point -
+ * identical to Latin-1 - instead of applying this table, despite correctly
  * reporting `encoding: 'windows-1252'` on introspection. A dependency this
  * silently wrong on the one range that matters is worse than not having it;
  * this table has no runtime to be wrong about.
@@ -219,8 +219,8 @@ function decodeWindows1252(buffer: Buffer): string {
  * miss on every row, rather than here as one comprehensible message. Falls
  * back to Windows-1252 rather than rejecting outright: it is what Excel's
  * default "Save As CSV" writes on Windows, which is the single most common
- * reason a dealer's otherwise-fine file fails this check, and — being a
- * single-byte encoding with a character at every value — it can never throw
+ * reason a dealer's otherwise-fine file fails this check, and - being a
+ * single-byte encoding with a character at every value - it can never throw
  * the way a wrong guess at UTF-16 or a genuinely binary file still will. A
  * file that is neither still gets caught below, just by the header/column
  * checks instead of a specific encoding complaint.
@@ -238,14 +238,14 @@ function decodeText(buffer: Buffer): DecodedHead {
 
 /**
  * Rewrites the object at `key` as UTF-8, translating from the Windows-1252
- * bytes Excel wrote. Every stage after this one — csv-parse in splitChunks
- * chief among them — reads this same key assuming UTF-8; without this, a
+ * bytes Excel wrote. Every stage after this one - csv-parse in splitChunks
+ * chief among them - reads this same key assuming UTF-8; without this, a
  * dealer's file would pass validation only to have every accented letter,
  * curly quote or dash silently turn into "�" the moment a row is actually
  * parsed, which is a worse outcome than the clean rejection this replaces.
  *
  * Only reached on the encoding-mismatch path, so the whole-object read this
- * needs — as opposed to readHead's early-stop streaming — only ever costs
+ * needs - as opposed to readHead's early-stop streaming - only ever costs
  * something for the rare file that actually needs re-encoding.
  */
 async function reencodeWholeFile(
@@ -285,7 +285,7 @@ function firstLine(text: string): string {
   // at the cap, something that is not line-delimited at all.
   if (text.length >= MAX_HEADER_BYTES) {
     throw new FileValidationError(
-      'File does not look like CSV — no row separator found. ' +
+      'File does not look like CSV - no row separator found. ' +
         'If this is an Excel workbook, export it as CSV first.',
     );
   }
@@ -312,7 +312,7 @@ function parseHeaderRow(line: string): string[] {
 }
 
 /**
- * Two columns folding to the same canonical name is ambiguous — `make` and
+ * Two columns folding to the same canonical name is ambiguous - `make` and
  * `Manufacturer` both mean `make`, and picking one would silently discard the
  * other's data for every row in the file.
  */
@@ -342,7 +342,7 @@ function assertNoDuplicates(headers: string[]): void {
  *
  * Reads only the central directory (unzipper.Open.buffer parses the
  * directory record at the end of the file; it does not decompress entry
- * bodies), so this stays cheap even for a large archive — the same
+ * bodies), so this stays cheap even for a large archive - the same
  * `unzipper.Open.buffer` call extractImagesStage makes, but without ever
  * calling `entry.buffer()`.
  *
@@ -414,8 +414,8 @@ async function assertValidZip(
     (entry) => !ALLOWED_IMAGE_EXTENSIONS.includes(imageExtensionOf(entry.path)),
   );
 
-  // Not fatal on its own — a dealer export sometimes carries a stray
-  // Thumbs.db or .DS_Store — but a majority-non-image archive usually means
+  // Not fatal on its own - a dealer export sometimes carries a stray
+  // Thumbs.db or .DS_Store - but a majority-non-image archive usually means
   // the wrong file was zipped and uploaded, which is worth failing early
   // rather than silently matching zero photos later.
   if (files.length > 0 && nonImageEntries.length === files.length) {

@@ -30,7 +30,7 @@ export class EmailTemplateService {
                   : '.')
               : 'Listings are now in pending review until you confirm them.',
             '',
-            '— AutoVault LK',
+            '- AutoVault LK',
           ].join('\n'),
         };
       case 'UPLOAD_FAILED':
@@ -42,7 +42,7 @@ export class EmailTemplateService {
             `Your inventory upload "${String(payload.fileName ?? 'file')}" did not complete.`,
             payload.reason ? `Reason: ${payload.reason}` : 'Please retry the upload from your dealer dashboard.',
             '',
-            '— AutoVault LK',
+            '- AutoVault LK',
           ].join('\n'),
         };
       case 'DEALER_VERIFIED':
@@ -53,7 +53,7 @@ export class EmailTemplateService {
             '',
             'An administrator has approved your dealer registration. You can now list vehicles on AutoVault LK.',
             '',
-            '— AutoVault LK',
+            '- AutoVault LK',
           ].join('\n'),
         };
       case 'DEALER_REJECTED':
@@ -65,7 +65,7 @@ export class EmailTemplateService {
             'An administrator was unable to verify your dealer registration.',
             payload.reason ? `Reason: ${payload.reason}` : 'You may re-register with the required documents.',
             '',
-            '— AutoVault LK',
+            '- AutoVault LK',
           ].join('\n'),
         };
     }

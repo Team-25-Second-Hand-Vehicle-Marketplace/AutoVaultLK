@@ -56,7 +56,7 @@ const SAMPLE_DETAIL: VehicleDetailDto = {
 /**
  * GET /search/vehicles/:id. findById already gates on status = 'LIVE' at the
  * repository layer (see vehicle-search.repository.ts), so a DRAFT/SOLD
- * listing and a genuinely missing id are indistinguishable here — both
+ * listing and a genuinely missing id are indistinguishable here - both
  * surface as a plain 404, by design (a direct link must not confirm a
  * non-live listing exists).
  */

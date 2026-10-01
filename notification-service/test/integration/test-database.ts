@@ -14,10 +14,10 @@ loadEnv({ path: '.env' });
  * so that more than one replica sweeping concurrently never sends the same
  * notification twice (FR-53). That concurrency semantic, the
  * auth.users cross-schema read, and the unique idempotency_key constraint
- * are all invisible to a unit test that stubs Repository<T> — this is the
+ * are all invisible to a unit test that stubs Repository<T> - this is the
  * level that proves them against a live Postgres.
  *
- * Requires a migrated, seeded database — the one docker-compose brings up:
+ * Requires a migrated, seeded database - the one docker-compose brings up:
  *
  *   docker compose up -d postgres
  *   npm --prefix database run migration:run
@@ -87,7 +87,7 @@ export function repositoryFor<T extends object>(
  * `describe` that skips when the database is unreachable, printing why once.
  *
  * Jest needs the skip decision before any `beforeAll` runs, so this probes with
- * a synchronous child process rather than an async connect — a promise cannot
+ * a synchronous child process rather than an async connect - a promise cannot
  * be awaited at describe-registration time.
  */
 export function describeWithDatabase(name: string, body: () => void): void {

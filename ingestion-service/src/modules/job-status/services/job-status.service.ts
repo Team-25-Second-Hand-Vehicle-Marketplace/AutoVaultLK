@@ -35,7 +35,7 @@ export class JobStatusService {
     private readonly etlStageLogRepository: EtlStageLogRepository,
   ) {}
 
-  /** Null means no active job — the caller (Bulk Upload page) shows the form. */
+  /** Null means no active job - the caller (Bulk Upload page) shows the form. */
   async getActiveJob(dealerId: string): Promise<{ id: string } | null> {
     const job =
       await this.jobStatusRepository.findLatestActiveForDealer(dealerId);
@@ -68,7 +68,7 @@ export class JobStatusService {
   }
 
   /**
-   * The dealer's own upload history, newest first — the list a dealer finds
+   * The dealer's own upload history, newest first - the list a dealer finds
    * their way back to a past job's rejection report from, rather than only
    * being able to reach it right after that upload finished.
    */
@@ -97,7 +97,7 @@ export class JobStatusService {
   /**
    * FR-57: the row-level half of the dealer's upload report.
    *
-   * A job with no rejections is an empty page, not a 404 — a clean upload is
+   * A job with no rejections is an empty page, not a 404 - a clean upload is
    * the expected case, and 404 here would read as "your job is gone". The 404
    * is reserved for a job that is not the caller's or does not exist, and the
    * ownership check is the same dealer-scoped query the rows come from, so

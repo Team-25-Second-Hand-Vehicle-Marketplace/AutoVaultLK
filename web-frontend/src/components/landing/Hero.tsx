@@ -132,15 +132,15 @@ export function Hero({ stats }: { stats: MarketplaceStats | null }) {
       <div className="nx-hero__foot">
         <div className="nx-hero__stats">
           <div className="nx-glass-stat">
-            <b>{stats ? <CountUp value={stats.vehicleCount} /> : '—'}</b>
+            <b>{stats ? <CountUp value={stats.vehicleCount} /> : '-'}</b>
             <span>Vehicles listed</span>
           </div>
           <div className="nx-glass-stat">
-            <b>{stats ? <CountUp value={stats.verifiedDealerCount} /> : '—'}</b>
+            <b>{stats ? <CountUp value={stats.verifiedDealerCount} /> : '-'}</b>
             <span>Verified dealers</span>
           </div>
           <div className="nx-glass-stat">
-            <b>{stats ? <CountUp value={stats.makeCount} /> : '—'}</b>
+            <b>{stats ? <CountUp value={stats.makeCount} /> : '-'}</b>
             <span>Makes</span>
           </div>
         </div>

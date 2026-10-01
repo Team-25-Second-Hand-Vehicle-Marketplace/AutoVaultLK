@@ -9,18 +9,18 @@ import { VerifyEmailPage } from '../pages/VerifyEmailPage';
 /**
  * Dealer registration (individual path, no file upload) → email
  * verification → sign in while PENDING → administrator approval (via
- * admin-service's real API, not its UI — see helpers/admin-api.ts) →
+ * admin-service's real API, not its UI - see helpers/admin-api.ts) →
  * verified dashboard → profile completion.
  *
  * Uses the individual-dealer path deliberately: the business path requires
  * uploading a real file (POST /documents/verification) before the wizard
  * can proceed past step 0, which needs its own fixture file and S3/local
  * storage config to be deterministic. Individual dealers supply an NIC
- * number instead — no upload, same downstream approval flow.
+ * number instead - no upload, same downstream approval flow.
  *
  * A dealer can sign in immediately after verifying their email, before
  * administrator approval (auth-user-service's DealerProfilesService:
- * approval no longer gates login) — VerifyEmailPage's copy was corrected to
+ * approval no longer gates login) - VerifyEmailPage's copy was corrected to
  * say so as part of writing this test; the previous copy claimed sign-in
  * was blocked until approval, which the backend has not enforced for some
  * time.
@@ -92,7 +92,7 @@ test('dealer can register, verify email, sign in while pending, and get approved
   await verifyEmailPage.gotoWithToken(body.verificationToken!);
   await verifyEmailPage.expectVerified();
   // Corrected copy: confirms sign-in is offered immediately, not gated on
-  // approval — this is the assertion that would have caught the stale text.
+  // approval - this is the assertion that would have caught the stale text.
   await expect(page.getByText(/you can sign in now/i)).toBeVisible();
 
   await verifyEmailPage.goToSignIn();

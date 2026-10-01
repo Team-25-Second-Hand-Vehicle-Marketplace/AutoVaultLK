@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
  * Drift guard between JobStatusResponseDto/RejectionsResponseDto and the
  * web-frontend types that mirror them (ingestion.types.ts). The two build
  * independently, so the frontend has no import path into this service's DTOs
- * — a field added, renamed or removed here has nothing else to fail until a
+ * - a field added, renamed or removed here has nothing else to fail until a
  * dealer's upload-status page silently drops it. This reads both files off
  * disk and compares their field names.
  *
@@ -32,7 +32,7 @@ const FRONTEND_TYPES = resolve(
 
 /**
  * Reads the field names declared directly inside a `class Name { ... }` or
- * `type Name = { ... }` block — one level deep only, so a nested class
+ * `type Name = { ... }` block - one level deep only, so a nested class
  * (StageProgressDto used inside JobStatusResponseDto) is read separately by
  * name rather than by following the reference.
  */
@@ -48,7 +48,7 @@ function readFieldNames(source: string, blockName: string): string[] {
 
   // A field line starts the statement at column 0 inside the block body,
   // named with an optional /** doc comment */ or // line comment stripped,
-  // and ends at the first `:` — this intentionally does not try to parse
+  // and ends at the first `:` - this intentionally does not try to parse
   // the type on the right-hand side, only the field name on the left.
   const withoutComments = body
     .replace(/\/\*\*[\s\S]*?\*\//g, '')
@@ -74,7 +74,7 @@ describeIfPresent('job-status response contract parity with web-frontend', () =>
 
   it('JobStatusResponseDto fields match web-frontend JobStatus', () => {
     // If this fails, GET /jobs/{id} returns a field the frontend type does
-    // not declare (or vice versa) — the dealer's upload-status page is
+    // not declare (or vice versa) - the dealer's upload-status page is
     // reading a shape that no longer matches what the server sends.
     const backendFields = readFieldNames(jobStatusSource, 'JobStatusResponseDto').sort();
     const frontendFields = readFieldNames(frontendSource, 'JobStatus').sort();

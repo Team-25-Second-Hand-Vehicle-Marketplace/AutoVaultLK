@@ -50,7 +50,7 @@ type ChunkOutcome = {
  * Transcribes the state machine in SAD §6.6 exactly: the stage decomposition,
  * the fan-out and its concurrency bound are the same, only the executor
  * differs. Deployment means writing thin Lambda wrappers around the same stage
- * objects and transcribing this flat graph into ASL — no stage function changes.
+ * objects and transcribing this flat graph into ASL - no stage function changes.
  *
  * **Chunk isolation is a correctness requirement, not resilience polish.** One
  * chunk failing must not fail the job: that is precisely what produces PARTIAL
@@ -59,7 +59,7 @@ type ChunkOutcome = {
  * vehicles, not a rejected upload.
  *
  * **Images run as a parallel branch alongside the chunk Map**, not
- * sequentially after it (see `run()`'s `Promise.all`) — photos come from the
+ * sequentially after it (see `run()`'s `Promise.all`) - photos come from the
  * ZIP and depend on nothing in the text pipeline, so processing them
  * concurrently cuts wall-clock time on a large upload. This is not yet
  * mirrored in the ASL state machine (`infrastructure/step-functions/
@@ -85,7 +85,7 @@ export class LocalOrchestrator {
   async run(jobId: string): Promise<void> {
     const job = await this.uploadJobs.findById(jobId);
     if (!job) {
-      // Nothing to mark FAILED — the row the status would live on is the one
+      // Nothing to mark FAILED - the row the status would live on is the one
       // that is missing.
       this.logger.error(`Upload job ${jobId} not found; nothing to process`);
       return;
@@ -107,7 +107,7 @@ export class LocalOrchestrator {
       );
 
       if (totalRecords === 0) {
-        // A header-only file is not a failure — the dealer uploaded an empty
+        // A header-only file is not a failure - the dealer uploaded an empty
         // inventory. COMPLETED with zero counts is the honest outcome.
         await this.uploadJobs.updateCounts(jobId, {
           validRecords: 0,
@@ -131,8 +131,8 @@ export class LocalOrchestrator {
       // pipeline, so processing them concurrently cuts wall-clock time on a
       // large upload instead of paying for image processing on top of the
       // Map's duration. The cost of running concurrently is that a vehicle
-      // row may not exist yet when its image is ready to match — Load for
-      // that chunk may still be running — which is why the lookup inside
+      // row may not exist yet when its image is ready to match - Load for
+      // that chunk may still be running - which is why the lookup inside
       // processImages retries with a budget rather than looking up once.
       const [outcomes] = await Promise.all([
         mapWithConcurrency(
@@ -174,7 +174,7 @@ export class LocalOrchestrator {
     }
   }
 
-  /** validateFile then splitChunks — the whole-file stages. */
+  /** validateFile then splitChunks - the whole-file stages. */
   private async prepare(
     jobId: string,
     job: { csvS3Path: string; fileName: string; zipS3Path: string | null },
@@ -220,7 +220,7 @@ export class LocalOrchestrator {
   }
 
   /**
-   * One chunk through the row stages. Never throws — a chunk that fails is
+   * One chunk through the row stages. Never throws - a chunk that fails is
    * reported as `failed` so the job can still complete as PARTIAL.
    */
   private async runChunk(input: {
@@ -237,7 +237,7 @@ export class LocalOrchestrator {
     if (skip) {
       // Rows with a null registration number miss both partial indexes, so a
       // re-run would insert them twice. Skipping the chunk is what makes retry
-      // idempotent for them — the database cannot deduplicate what it has no
+      // idempotent for them - the database cannot deduplicate what it has no
       // key for.
       return { chunkId, loaded: 0, rejections: [], failed: false };
     }
@@ -308,7 +308,7 @@ export class LocalOrchestrator {
 
   /**
    * Load, retried once. Alone among the stages because its failures are
-   * typically transient — a dropped connection or a lock timeout — whereas a
+   * typically transient - a dropped connection or a lock timeout - whereas a
    * stage that rejected a row will reject it identically on a second run.
    */
   private async load(
@@ -442,7 +442,7 @@ export class LocalOrchestrator {
     const anyFailed = outcomes.some((o) => o.failed);
 
     // Counted from the database, not from this run's outcomes. A resumed job
-    // loads nothing new — its rows were written by the previous run — and
+    // loads nothing new - its rows were written by the previous run - and
     // tallying only what happened here would report 0 loaded and downgrade a
     // finished job to FAILED on a harmless retry.
     const loaded = await this.vehicles.countForJob(jobId);
@@ -480,7 +480,7 @@ export class LocalOrchestrator {
    *
    * Never throws. The rows are already written by this point, so a
    * notification-service outage must not turn a successful upload into a
-   * FAILED one — that would invite the dealer to re-upload work that landed.
+   * FAILED one - that would invite the dealer to re-upload work that landed.
    */
   private async notify(
     jobId: string,

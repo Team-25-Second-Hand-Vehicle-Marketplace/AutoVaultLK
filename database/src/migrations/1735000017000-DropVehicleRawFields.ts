@@ -5,7 +5,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  *
  * These held the dealer's original spelling before typo correction, kept
  * for audit and as future input to the alias-promotion loop. Decided not
- * worth the two columns — dropped rather than left unused.
+ * worth the two columns - dropped rather than left unused.
  */
 export class DropVehicleRawFields1735000017000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {

@@ -1,7 +1,7 @@
 // One-off / re-run-as-needed: shrinks public/images/*.jpg to the size they are
 // actually displayed at and re-compresses them. The source photos come
 // straight out of an image generator at full resolution and ~85% quality,
-// which is far more than any slot on the page needs — that's most of why
+// which is far more than any slot on the page needs - that's most of why
 // they were slow to appear on first load.
 import { readdir, rename, stat } from 'node:fs/promises'
 import { join } from 'node:path'

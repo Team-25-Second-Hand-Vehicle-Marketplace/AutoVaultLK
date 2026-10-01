@@ -15,7 +15,7 @@ interface ListingEnvelope {
 }
 
 /**
- * GET /marketplace/listings/mine — every status, scoped to the JWT dealer.
+ * GET /marketplace/listings/mine - every status, scoped to the JWT dealer.
  *
  * `sort: 'confidence_asc'` (FR-42.1) puts the PENDING_REVIEW rows most likely
  * to need a correction first, ahead of the ones the pipeline resolved
@@ -33,7 +33,7 @@ export async function getMyListings(
 }
 
 /**
- * POST /marketplace/listings — DEALER or ADMIN only.
+ * POST /marketplace/listings - DEALER or ADMIN only.
  *
  * The owner comes from the JWT, never the body, so there is no dealer id to
  * pass. A manual listing lands PENDING_REVIEW unless `status: 'DRAFT'` is sent.
@@ -58,7 +58,7 @@ export async function createListing(
   return data.data
 }
 
-/** PATCH /marketplace/listings/:id — cannot change status; see deactivateListing. */
+/** PATCH /marketplace/listings/:id - cannot change status; see deactivateListing. */
 export async function updateListing(
   id: string,
   input: UpdateListingInput,
@@ -73,7 +73,7 @@ export async function updateListing(
 }
 
 /**
- * PATCH /marketplace/listings/:id/deactivate — sets status to ARCHIVED.
+ * PATCH /marketplace/listings/:id/deactivate - sets status to ARCHIVED.
  *
  * Its own route rather than a status field on update, so archiving is always a
  * deliberate act rather than something a stray field could do.
@@ -91,7 +91,7 @@ export async function deactivateListing(
 }
 
 /**
- * PATCH /marketplace/listings/:id/unarchive — reverses deactivateListing,
+ * PATCH /marketplace/listings/:id/unarchive - reverses deactivateListing,
  * bringing an ARCHIVED listing back to LIVE. The backend 409s if the listing
  * is not ARCHIVED.
  */
@@ -108,9 +108,9 @@ export async function unarchiveListing(
 }
 
 /**
- * PATCH /marketplace/listings/:id/approve — FR-42: moves a PENDING_REVIEW
+ * PATCH /marketplace/listings/:id/approve - FR-42: moves a PENDING_REVIEW
  * listing to LIVE. The backend 409s if the listing is not PENDING_REVIEW,
- * distinct from the 404 an unknown/foreign id gets — see the api-error
+ * distinct from the 404 an unknown/foreign id gets - see the api-error
  * detail surfaced by toErrorMessage.
  */
 export async function approveListing(
@@ -126,7 +126,7 @@ export async function approveListing(
 }
 
 /**
- * PATCH /marketplace/listings/approve-all — approves every PENDING_REVIEW
+ * PATCH /marketplace/listings/approve-all - approves every PENDING_REVIEW
  * listing the signed-in dealer owns in one request and returns how many moved
  * to LIVE (0 when none were pending).
  */
@@ -140,9 +140,9 @@ export async function approveAllListings(signal?: AbortSignal): Promise<number> 
 }
 
 /**
- * DELETE /marketplace/listings/:id — permanently removes the listing.
+ * DELETE /marketplace/listings/:id - permanently removes the listing.
  * Distinct from `deactivateListing`, which only hides it: the backend 409s
- * unless the listing is DRAFT, PENDING_REVIEW or REJECTED — a LIVE, SOLD or
+ * unless the listing is DRAFT, PENDING_REVIEW or REJECTED - a LIVE, SOLD or
  * ARCHIVED listing can only be archived, never deleted.
  */
 export async function deleteListing(id: string, signal?: AbortSignal): Promise<void> {
@@ -150,7 +150,7 @@ export async function deleteListing(id: string, signal?: AbortSignal): Promise<v
 }
 
 /**
- * DELETE /marketplace/listings/:id/images/:imageId — FR-58. Removes one
+ * DELETE /marketplace/listings/:id/images/:imageId - FR-58. Removes one
  * photo, leaving the rest in place. Distinct from `uploadListingImages`,
  * which replaces the whole set: the edit form has no File object for a photo
  * it only knows as a stored URL, so removing one without resending every
@@ -171,13 +171,13 @@ interface ImagesEnvelope {
 }
 
 /**
- * POST /marketplace/listings/:id/images — FR-58. Replaces the listing's
+ * POST /marketplace/listings/:id/images - FR-58. Replaces the listing's
  * whole image set; a re-upload means "this is the current set of photos",
  * not "add more to what's there". The first file in `files` becomes the
  * primary photo.
  *
  * The backend 400s in demo mode (IMAGE_SERVE_MODE=demo, the local dev
- * default) — an upload it can never serve back is a worse failure than
+ * default) - an upload it can never serve back is a worse failure than
  * refusing it outright. toErrorMessage surfaces that message directly.
  */
 export async function uploadListingImages(
@@ -196,7 +196,7 @@ export async function uploadListingImages(
       timeout: SLOW_WRITE_TIMEOUT_MS,
       // Content-Type deliberately unset: the browser must add the
       // multipart boundary itself (see uploadInventory in ingestion.api.ts
-      // for the same reasoning) — naming the header here would overwrite it
+      // for the same reasoning) - naming the header here would overwrite it
       // with one that has no boundary.
     },
   )

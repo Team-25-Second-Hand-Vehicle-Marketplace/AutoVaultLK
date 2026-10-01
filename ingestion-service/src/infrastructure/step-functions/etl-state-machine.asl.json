@@ -91,7 +91,7 @@
     },
     "ProcessRows": {
       "Type": "Parallel",
-      "Comment": "ProcessChunks and ProcessImages run concurrently, not sequentially: photos come from the ZIP and depend on nothing in the text pipeline, so processing them alongside the Map cuts wall-clock time on a large upload instead of paying for image processing on top of the Map's duration. A vehicle row an image needs to match against may not exist yet when ProcessImages runs \u2014 Load for that row's chunk may still be running \u2014 which is why the image branch's registration lookup retries with a bounded budget (ProcessJobImagesService) rather than requiring the row to already exist.",
+      "Comment": "ProcessChunks and ProcessImages run concurrently, not sequentially: photos come from the ZIP and depend on nothing in the text pipeline, so processing them alongside the Map cuts wall-clock time on a large upload instead of paying for image processing on top of the Map's duration. A vehicle row an image needs to match against may not exist yet when ProcessImages runs - Load for that row's chunk may still be running - which is why the image branch's registration lookup retries with a bounded budget (ProcessJobImagesService) rather than requiring the row to already exist.",
       "Branches": [
         {
           "StartAt": "ProcessChunks",
@@ -279,7 +279,7 @@
           "States": {
             "ProcessImages": {
               "Type": "Task",
-              "Comment": "Runs the whole upload's photo set in one invocation, not per chunk \u2014 images are keyed by registration_number, not by which chunk their row happened to land in. Never fails the execution on a row-image mismatch or a corrupt file; only an infrastructure failure (S3, the database) propagates, exactly like every other stage.",
+              "Comment": "Runs the whole upload's photo set in one invocation, not per chunk - images are keyed by registration_number, not by which chunk their row happened to land in. Never fails the execution on a row-image mismatch or a corrupt file; only an infrastructure failure (S3, the database) propagates, exactly like every other stage.",
               "Resource": "arn:aws:states:::lambda:invoke",
               "Parameters": {
                 "FunctionName": "${ProcessImagesFunctionArn}",
@@ -302,7 +302,7 @@
               ],
               "Catch": [
                 {
-                  "Comment": "An image-branch infrastructure failure must not fail rows that already loaded successfully in the other branch \u2014 the dealer's vehicles are the primary outcome, photos are secondary. Recorded as a DEGRADED stage log by the handler where possible; this Catch only guards the case that fails before the handler can log anything.",
+                  "Comment": "An image-branch infrastructure failure must not fail rows that already loaded successfully in the other branch - the dealer's vehicles are the primary outcome, photos are secondary. Recorded as a DEGRADED stage log by the handler where possible; this Catch only guards the case that fails before the handler can log anything.",
                   "ErrorEquals": [
                     "States.ALL"
                   ],
@@ -363,7 +363,7 @@
     },
     "Notify": {
       "Type": "Task",
-      "Comment": "Tells the dealer the upload finished. Runs last, after every row is already in marketplace.vehicles, which is what licenses its failure posture: the handler never throws, so a notification-service outage cannot mark a successful upload FAILED and invite the dealer to re-upload work that already landed. There is deliberately no Catch \u2014 nothing to catch.",
+      "Comment": "Tells the dealer the upload finished. Runs last, after every row is already in marketplace.vehicles, which is what licenses its failure posture: the handler never throws, so a notification-service outage cannot mark a successful upload FAILED and invite the dealer to re-upload work that already landed. There is deliberately no Catch - nothing to catch.",
       "Resource": "arn:aws:states:::lambda:invoke",
       "Parameters": {
         "FunctionName": "${NotifyFunctionArn}",

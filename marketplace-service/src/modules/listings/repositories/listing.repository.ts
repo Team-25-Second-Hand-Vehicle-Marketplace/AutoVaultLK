@@ -11,7 +11,7 @@ import type { ListingSortOption } from '../dto/my-listings-query.dto';
 import { ListingSearchIndexService } from '../services/listing-search-index.service';
 
 // Editing any of these fields changes what buildSearchText() produces, so
-// search_text/embedding must be recomputed — not just the plain column.
+// search_text/embedding must be recomputed - not just the plain column.
 //
 // price and mileage are here because they feed the band phrases: dropping a
 // price from 6M to 4M moves the listing from "upper mid range" to "mid range",
@@ -112,8 +112,8 @@ export class ListingRepository {
    * A dealer's own inventory, every status included.
    *
    * `sort: 'confidence_asc'` (FR-42.1) orders by
-   * `normalization->>'rowConfidence'` ascending — the rows most likely to
-   * need a correction first — with a row that carries no provenance at all
+   * `normalization->>'rowConfidence'` ascending - the rows most likely to
+   * need a correction first - with a row that carries no provenance at all
    * (a manually-created listing, or one that predates migration 29000)
    * placed last via NULLS LAST: there is nothing in it to review, so it
    * should not crowd out the ones that do.
@@ -210,7 +210,7 @@ export class ListingRepository {
 
   /**
    * Reverses `deactivate`: brings an ARCHIVED listing back to LIVE. Only
-   * valid from ARCHIVED — returns null otherwise (does not exist, or was
+   * valid from ARCHIVED - returns null otherwise (does not exist, or was
    * never archived in the first place), same "say only whether it happened"
    * split as `approve`.
    */
@@ -227,13 +227,13 @@ export class ListingRepository {
 
   /**
    * FR-42: moves a PENDING_REVIEW listing to LIVE. This is the "explicitly
-   * approve" step the FR requires — no ETL-loaded listing becomes publicly
+   * approve" step the FR requires - no ETL-loaded listing becomes publicly
    * visible until the owning dealer takes this action, and until this method
    * existed nothing in the service could take it at all.
    *
    * Returns null both when the listing does not exist and when it exists but
    * is not PENDING_REVIEW (already LIVE, or REJECTED, or a manually-created
-   * DRAFT) — the service maps both to the same 404/409 split its caller
+   * DRAFT) - the service maps both to the same 404/409 split its caller
    * needs, and this method's job is only to say whether the transition
    * happened, not to explain why it did not.
    */
@@ -265,7 +265,7 @@ export class ListingRepository {
   }
 
   /**
-   * Permanently removes a listing — distinct from `deactivate`, which only
+   * Permanently removes a listing - distinct from `deactivate`, which only
    * hides it. Restricted by the service to DRAFT/PENDING_REVIEW/REJECTED:
    * nothing external (favourites, recommendations, search history) should
    * reasonably reference a listing that was never LIVE, but a listing that
@@ -273,7 +273,7 @@ export class ListingRepository {
    *
    * `vehicle_images` cascades on `vehicle_id` (migration 7000) and
    * `favourites` cascades on `vehicle_id` (migration 10000), so this needs no
-   * manual cleanup of either — the FK constraints do it in the same
+   * manual cleanup of either - the FK constraints do it in the same
    * transaction as the DELETE.
    */
   async remove(id: string): Promise<boolean> {

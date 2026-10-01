@@ -1,8 +1,8 @@
 name: Load Test - DB Pool Exhaustion (manual)
 
-# Manual trigger only — same reasoning as load-test.yml. 8 concurrent
+# Manual trigger only - same reasoning as load-test.yml. 8 concurrent
 # dealers uploading at the same moment, against ingestion-service's real
-# 5-connection Postgres pool (extra: { max: 5 }, database.config.ts) —
+# 5-connection Postgres pool (extra: { max: 5 }, database.config.ts) -
 # deliberately past the pool size to confirm it degrades by queuing, not
 # by erroring (04-load-testing.md Incident 5.13).
 on:

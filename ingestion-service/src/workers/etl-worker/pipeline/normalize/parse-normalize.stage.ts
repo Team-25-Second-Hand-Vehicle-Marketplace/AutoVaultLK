@@ -28,7 +28,7 @@ import {
 /**
  * Confidence for a field the dealer left blank but which is optional.
  *
- * Absence is not a failure — most dealer sheets carry five columns, and
+ * Absence is not a failure - most dealer sheets carry five columns, and
  * scoring a blank `color` as a miss would drag every row below the Groq
  * threshold and send the whole file to an LLM that has nothing to work with.
  * Only fields the dealer actually filled in are scored.
@@ -46,7 +46,7 @@ const CONFIDENCE_UNRESOLVED = 0;
  * 1. **It never rejects a row.** Even a row with no make at all comes through
  *    with `normalized.make` absent and a low confidence. validateRows (§A5) is
  *    the single gate that decides what is loadable, so there is exactly one
- *    place listing every rejection reason — and Groq (§A4) still gets a chance
+ *    place listing every rejection reason - and Groq (§A4) still gets a chance
  *    at rows this stage could not resolve. Rejecting here would foreclose that.
  *
  * 2. **Confidence is the minimum across fields the dealer filled in**, not the
@@ -78,7 +78,7 @@ function normalizeRow(ctx: StageContext, row: RawRow): NormalizedRow {
 
   /**
    * Records both the row-level score and this field's own provenance entry in
-   * one call, so the two cannot drift — a field scored here but missing from
+   * one call, so the two cannot drift - a field scored here but missing from
    * `provenance` would silently vanish from the review UI's field list while
    * still counting toward the row's confidence.
    */
@@ -99,8 +99,8 @@ function normalizeRow(ctx: StageContext, row: RawRow): NormalizedRow {
    * vehicle_type is the one field whose value can come from the dictionary
    * even when the dealer's own cell was blank (deriveVehicleType falls back
    * to the matched model/make). The row-level score has never counted that
-   * derivation — score() only ever fired on a non-blank `vehicle_type` cell,
-   * matching every other dictionary-backed field — and this deliberately
+   * derivation - score() only ever fired on a non-blank `vehicle_type` cell,
+   * matching every other dictionary-backed field - and this deliberately
    * leaves that alone rather than changing what routes a row to Groq. What it
    * does add is the provenance entry itself: a value FR-42.1 wants the review
    * UI able to show as dictionary-sourced even though nothing scored it.
@@ -148,7 +148,7 @@ function normalizeRow(ctx: StageContext, row: RawRow): NormalizedRow {
   // vocabulary, so this is never a bare pass-through of raw input.
   //
   // Scored (and thus routed toward Groq on a miss) only when the dealer
-  // supplied the column themselves — record() preserves that, unchanged from
+  // supplied the column themselves - record() preserves that, unchanged from
   // before provenance existed. A value silently derived from the model/make
   // still gets a provenance entry via recordProvenanceOnly, because FR-42.1's
   // review UI should be able to say "we inferred PICKUP from the Hilux model"
@@ -226,7 +226,7 @@ function normalizeRow(ctx: StageContext, row: RawRow): NormalizedRow {
     'rule',
   );
 
-  // Condition is left absent when unrecognised rather than defaulted here —
+  // Condition is left absent when unrecognised rather than defaulted here -
   // enrich (§A6) applies `USED` deliberately, and doing it in two places would
   // make the default impossible to find.
   const condition = coerceCondition(cell('condition'));
@@ -269,7 +269,7 @@ function normalizeRow(ctx: StageContext, row: RawRow): NormalizedRow {
  *
  * The dealer CSV contract does not require the column, so most rows derive it
  * from the dictionary instead: the matched model's vehicle_types[] first
- * (migration 21000 — a Hilux is a PICKUP), falling back to the make's array
+ * (migration 21000 - a Hilux is a PICKUP), falling back to the make's array
  * when the model did not resolve.
  *
  * The make's array is only usable when it holds exactly one value. Toyota

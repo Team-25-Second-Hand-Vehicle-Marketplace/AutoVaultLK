@@ -8,14 +8,14 @@ const optionsError = (err: unknown) => toErrorMessage(err, 'Could not load the r
 /**
  * A dealer typing make/model/vehicle_type/condition into a spreadsheet has no
  * way to know what the pipeline will actually recognise until the upload
- * comes back with rows rejected for "make could not be recognised" — the
+ * comes back with rows rejected for "make could not be recognised" - the
  * same makes/models/enums the manual listing form already constrains a
  * dealer to, bulk upload only checks after the fact. This surfaces the same
  * reference data (GET /search/options, which the public search sidebar
  * already uses) on the Bulk Upload page itself, before that first failed
  * attempt.
  *
- * Collapsed by default and fetched lazily — most dealers uploading a file
+ * Collapsed by default and fetched lazily - most dealers uploading a file
  * they have used before don't need this every time, and the makes/models
  * list is a few hundred rows not worth loading unconditionally.
  */
@@ -41,7 +41,7 @@ export function KnownValuesReference() {
       {open && (
         <div id={panelId} className="known-values">
           <p className="dealer-muted">
-            Check spelling before uploading — an unrecognised make or model is rejected, not
+            Check spelling before uploading - an unrecognised make or model is rejected, not
             guessed. Misspellings close to one of these are corrected automatically.
           </p>
 

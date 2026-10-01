@@ -126,7 +126,7 @@ describe('asChunkStage', () => {
   });
 
   it('carries SKIPPED without collapsing it into SUCCEEDED', async () => {
-    // SKIPPED means the stage correctly did nothing — no Groq key, or no
+    // SKIPPED means the stage correctly did nothing - no Groq key, or no
     // candidates. Logging it as SUCCEEDED would claim the LLM had run.
     const h = harness({ rows: [], rejections: [], outcome: 'SKIPPED' });
 

@@ -16,7 +16,7 @@ import {
  * Drift guard between the manual listing form's selects and the DTO that
  * validates them.
  *
- * The lists in `listings.types.ts` are a copy — the two services build
+ * The lists in `listings.types.ts` are a copy - the two services build
  * independently, so the frontend has no import path into
  * `create-listing.dto.ts`. This reads that file off disk and compares. Without
  * it, a backend enum change ships a form whose options produce a 400 the dealer
@@ -26,7 +26,7 @@ import {
  * outside the project root. The triple-slash reference keeps Node types local
  * rather than widening tsconfig.app.json for all of src/.
  *
- * Skips itself when the sibling service is absent — a frontend-only checkout,
+ * Skips itself when the sibling service is absent - a frontend-only checkout,
  * or once the repos split.
  */
 const CONSTANTS = resolve(
@@ -109,7 +109,7 @@ describeIfVehicleEntityPresent('listing status vocabulary parity', () => {
 
   it('DealerListing/ListingStatus covers every status VehicleStatus allows', () => {
     // The two sides are hand-maintained independently (vehicle.entity.ts's
-    // VehicleStatus vs. this file's ALL_LISTING_STATUSES) — nothing stops
+    // VehicleStatus vs. this file's ALL_LISTING_STATUSES) - nothing stops
     // someone adding a status to one and forgetting the other, and nothing
     // fails until a real search/dashboard response carries a status value
     // the frontend's switch/display logic has never seen.

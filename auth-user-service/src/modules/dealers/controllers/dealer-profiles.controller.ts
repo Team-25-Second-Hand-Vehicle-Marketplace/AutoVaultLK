@@ -74,7 +74,7 @@ export class DealerProfilesController {
 
   /**
    * A rejected dealer fixing their details and trying again. Its own route
-   * rather than a flag on the PATCH above — see DealerProfilesService.resubmit's
+   * rather than a flag on the PATCH above - see DealerProfilesService.resubmit's
    * doc comment for why that matters.
    */
   @Patch(':userId/resubmit')

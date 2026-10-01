@@ -33,7 +33,7 @@ describe('MarketplaceVehicleImagesWriteAdapter', () => {
       // idx_vehicle_images_one_primary is a partial unique index on
       // (vehicle_id) WHERE is_primary. A second true raises 23505 and takes
       // the whole statement with it, so the caller is not trusted to get this
-      // right — primaryIndex names the winner and every other row is forced
+      // right - primaryIndex names the winner and every other row is forced
       // false.
       const { adapter, query } = harness();
 

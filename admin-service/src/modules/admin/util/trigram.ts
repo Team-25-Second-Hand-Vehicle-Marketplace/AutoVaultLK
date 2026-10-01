@@ -1,5 +1,5 @@
 /**
- * Dice coefficient over padded trigram sets — a copy of
+ * Dice coefficient over padded trigram sets - a copy of
  * ingestion-service/src/workers/etl-worker/pipeline/normalize/trigram.ts,
  * itself a copy of marketplace-service's parser/trigram.ts.
  *

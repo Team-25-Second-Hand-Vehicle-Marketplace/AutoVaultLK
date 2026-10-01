@@ -41,7 +41,7 @@ export function DealerLoginPage() {
     getMarketplaceStats(controller.signal)
       .then(setStats)
       .catch(() => {
-        // Decorative panel figures — a failure here must not block sign-in.
+        // Decorative panel figures - a failure here must not block sign-in.
       })
     return () => controller.abort()
   }, [])
@@ -92,15 +92,15 @@ export function DealerLoginPage() {
 
           <div className="dealer-auth__stats">
             <div>
-              <strong>{stats ? stats.vehicleCount.toLocaleString('en-LK') : '—'}</strong>
+              <strong>{stats ? stats.vehicleCount.toLocaleString('en-LK') : '-'}</strong>
               <span>Live listings</span>
             </div>
             <div>
-              <strong>{stats ? stats.verifiedDealerCount : '—'}</strong>
+              <strong>{stats ? stats.verifiedDealerCount : '-'}</strong>
               <span>Verified dealers</span>
             </div>
             <div>
-              <strong>{stats ? stats.makeCount : '—'}</strong>
+              <strong>{stats ? stats.makeCount : '-'}</strong>
               <span>Brands listed</span>
             </div>
           </div>

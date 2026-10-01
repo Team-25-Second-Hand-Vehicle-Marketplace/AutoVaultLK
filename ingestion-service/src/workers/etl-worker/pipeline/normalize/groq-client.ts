@@ -3,7 +3,7 @@
  *
  * Deliberately NOT the @Injectable one from
  * marketplace-service/src/modules/search/groq/groq-client.ts: stages may not
- * import NestJS (see pipeline/types.ts), so this reads process.env directly —
+ * import NestJS (see pipeline/types.ts), so this reads process.env directly -
  * the same way groq-normalize.stage.ts already checks for the key. The request
  * shape, the retry rule and the fence-stripping parser are copied from there,
  * because both halves of the platform should fail the same way.
@@ -40,13 +40,13 @@ export function isGroqConfigured(): boolean {
  * Sub-batching (groq-normalize.stage.ts) and vocabulary scoping
  * (groq-prompt.ts) both bound the cost of a SINGLE request, but chunks run
  * concurrently under the orchestrator's MaxConcurrency and each chunk fires
- * its own sequential run of sub-batches independently — nothing coordinated
+ * its own sequential run of sub-batches independently - nothing coordinated
  * how many requests landed in the same rolling 60s window across chunks.
  * Observed directly: a 300-row file split into two chunks had chunk 0's
  * sub-batches succeed, then chunk 1's sub-batches immediately 429 ("Limit
  * 8000") because chunk 0 had already spent most of the per-minute budget.
- * Pacing every request through one process-wide gate — regardless of which
- * chunk or sub-batch issued it — keeps total consumption under the limit
+ * Pacing every request through one process-wide gate - regardless of which
+ * chunk or sub-batch issued it - keeps total consumption under the limit
  * without needing the stages themselves to know about each other.
  *
  * 750ms means at most 80 requests/minute; each sub-batch is small enough
@@ -79,7 +79,7 @@ function throttle(): Promise<void> {
  * failure shapes and warrant different patience):
  *
  * - **Rate limit (429):** transient and often clears within seconds under
- *   sustained load, so this is the one worth waiting out — 5 attempts,
+ *   sustained load, so this is the one worth waiting out - 5 attempts,
  *   exponential backoff starting at 2s (2s, 4s, 8s, 16s).
  * - **Timeout / connection failure:** either a slow response or Groq being
  *   down outright; a long backoff schedule spends the chunk's budget without
@@ -150,7 +150,7 @@ function rateLimitBackoff(attempt: number): number {
  * Caps the model's own completion budget. Without this, openai/gpt-oss-20b
  * (a reasoning model that emits a separate, often very long "reasoning"
  * field before its answer) can consume its entire response on visible
- * chain-of-thought and leave nothing for the actual JSON answer — Groq's
+ * chain-of-thought and leave nothing for the actual JSON answer - Groq's
  * response_format: json_object validator then rejects the truncated/empty
  * output with a 400 "json_validate_failed", which look identical to a
  * malformed prompt from the outside. Reproduced directly against the API: a
@@ -163,7 +163,7 @@ const MAX_COMPLETION_TOKENS = 2000;
 /**
  * Groq-specific parameter for reasoning models (gpt-oss family): how much
  * internal reasoning to spend before answering. This task is bounded field
- * repair against fixed enums, not open-ended problem solving — 'low' still
+ * repair against fixed enums, not open-ended problem solving - 'low' still
  * produced correct cross-field repairs in testing (reading a fuel type out
  * of a free-text description, catching that "C200" is a Mercedes model, not
  * a Toyota one) while leaving enough of the token budget for the answer
@@ -203,7 +203,7 @@ async function once(systemPrompt: string, userPayload: string): Promise<string> 
 
   if (!response.ok) {
     // The body names the actual cause (json_validate_failed, an invalid
-    // model name, a bad parameter) — a bare status code alone reads
+    // model name, a bad parameter) - a bare status code alone reads
     // identically for every one of those in etl_stage_logs.error_message,
     // which is what made this class of failure slow to diagnose. Guarded
     // for a response with no readable body at all, not just a rejected one.
@@ -244,13 +244,13 @@ export function parseGroqJson(content: string): unknown {
   return JSON.parse(raw.slice(start, end + 1)) as unknown;
 }
 
-/** 429, plus 5xx — both are transient server-side conditions worth the longer backoff. */
+/** 429, plus 5xx - both are transient server-side conditions worth the longer backoff. */
 function isRateLimited(err: unknown): boolean {
   const status = (err as { status?: number } | null)?.status;
   return status === 429 || (status !== undefined && status >= 500);
 }
 
-/** The request-side abort/timeout path — a fixed, short retry, not backoff. */
+/** The request-side abort/timeout path - a fixed, short retry, not backoff. */
 function isTimeout(err: unknown): boolean {
   return err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError');
 }

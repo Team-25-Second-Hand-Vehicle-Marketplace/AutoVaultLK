@@ -15,7 +15,7 @@ export type LoadResult = {
  * Not a StageRunner: every other stage is a pure function of its input, but
  * Load needs the write adapter, which is a Nest injectable holding the
  * DataSource. Constructing it per chunk would open a connection pool per chunk.
- * The orchestrator therefore builds this once and hands it in — the same shape
+ * The orchestrator therefore builds this once and hands it in - the same shape
  * a Lambda handler would use, so nothing about deployment changes.
  *
  * Rows with a null registration number miss BOTH partial indexes: the global
@@ -23,7 +23,7 @@ export type LoadResult = {
  * neither conflict nor upsert, so a retry would insert them a second time.
  * That is why the orchestrator skips chunks already logged SUCCEEDED
  * (EtlStageLogRepository.succeededChunks) rather than relying on the database
- * to deduplicate — for these rows there is nothing to deduplicate against.
+ * to deduplicate - for these rows there is nothing to deduplicate against.
  */
 export function createLoadStage(adapter: MarketplaceVehiclesWriteAdapter) {
   return {

@@ -60,7 +60,7 @@ describe('extractNumeric', () => {
   });
 
   it('combines a repeated max-price mention by keeping the larger of the two ceilings', () => {
-    // applyBound's maxNum takes the larger value on repeated max mentions —
+    // applyBound's maxNum takes the larger value on repeated max mentions -
     // this pins that (perhaps surprising) actual behavior rather than assuming
     // it narrows to the tighter constraint.
     const filters: ExtractedFilters = {};
@@ -70,7 +70,7 @@ describe('extractNumeric', () => {
   });
 
   it('treats an explicit "km" unit as mileage, already in kilometres (not scaled)', () => {
-    // "50km" means 50 kilometres, full stop — unlike bare "k" (shorthand for
+    // "50km" means 50 kilometres, full stop - unlike bare "k" (shorthand for
     // "thousand"), the "km" suffix already states the unit, so it must not
     // be multiplied again. Previously this doubled the value (50km -> 50,000
     // "km", i.e. 50,000 km instead of 50), which made any mileage filter

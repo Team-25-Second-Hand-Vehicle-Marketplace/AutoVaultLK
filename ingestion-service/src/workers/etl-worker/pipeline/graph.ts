@@ -4,7 +4,7 @@ import type { EtlStage } from '../../../infrastructure/database/entities/etl-sta
  * The pipeline's shape, declared once.
  *
  * Two executors run this graph: `LocalOrchestrator` in process, and a Step
- * Functions state machine in AWS. Nothing else would stop them drifting — and
+ * Functions state machine in AWS. Nothing else would stop them drifting - and
  * the drift is silent in the worst direction, because local tests would pass
  * while the deployed pipeline skipped a stage.
  *
@@ -43,7 +43,7 @@ export const FINALIZE_STAGES: readonly EtlStage[] = ['AGGREGATE', 'NOTIFY'];
 
 /**
  * Stages the image branch runs, as a Parallel state's second branch
- * alongside the chunk Map — not sequentially after it. Photos come from the
+ * alongside the chunk Map - not sequentially after it. Photos come from the
  * ZIP and depend on nothing in the text pipeline, so running the two
  * concurrently cuts wall-clock time on a large upload instead of paying for
  * image processing on top of the Map's duration.
@@ -52,7 +52,7 @@ export const FINALIZE_STAGES: readonly EtlStage[] = ['AGGREGATE', 'NOTIFY'];
  * a photo against may not exist yet, since LOAD for that row's chunk may
  * still be running. ProcessJobImagesService's registration-number lookup
  * retries with a bounded budget for exactly this reason (see its own header
- * comment) rather than requiring the row to already exist — a design choice
+ * comment) rather than requiring the row to already exist - a design choice
  * over the alternative of a staging table plus a post-Map reconciliation
  * join, made because it needs no schema change and self-corrects once the
  * row lands.

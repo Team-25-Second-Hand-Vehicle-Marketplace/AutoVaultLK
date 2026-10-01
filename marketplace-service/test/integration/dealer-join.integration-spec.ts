@@ -17,7 +17,7 @@ import {
  * The cross-schema reads into `auth`.
  *
  * FR-18.1 specifies a local read model fed by DealerApproved events. The code
- * reads `auth.dealer_profiles` directly instead — a deliberate choice recorded
+ * reads `auth.dealer_profiles` directly instead - a deliberate choice recorded
  * in Documentation/plan-b-reads-cross-schemas.md, and the reason this suite
  * earns its place: marketplace now depends on another service's schema and on
  * grants it does not own. Neither dependency is visible to a unit test, and
@@ -43,7 +43,7 @@ describeWithDatabase('cross-schema dealer reads (integration)', () => {
     if (!connection)
       throw new Error('Database became unreachable after the probe');
     ds = connection;
-    // demo mode (no IMAGE_SERVE_MODE set) — this suite is about the auth
+    // demo mode (no IMAGE_SERVE_MODE set) - this suite is about the auth
     // cross-schema join, not image resolution, so the resolver runs for
     // real but every image resolves to null, same as an unconfigured
     // deployment.
@@ -66,7 +66,7 @@ describeWithDatabase('cross-schema dealer reads (integration)', () => {
   const hasVehicles = () => liveCount > 0;
 
   describe('grants', () => {
-    // If this fails, grants.sql has not been applied — every dealer badge and
+    // If this fails, grants.sql has not been applied - every dealer badge and
     // every verified-only search would 500 in the running service.
     it('can read auth.dealer_profiles as the marketplace role', async () => {
       const rows = await queryRows<{ count: string }>(

@@ -7,19 +7,19 @@
 // -> ~34KB/image), so reaching anywhere near the real 250MB cap
 // (ingestion-upload.service.ts's maxZipSize) through that tool alone would
 // need far more than MAX_ZIP_ENTRIES=2000 entries. This test isn't about
-// realistic photo content — it's about whether upload/multipart-parsing/
-// streaming survives a ZIP near the real size ceiling — so entries here are
+// realistic photo content - it's about whether upload/multipart-parsing/
+// streaming survives a ZIP near the real size ceiling - so entries here are
 // deliberately random bytes, sized to hit a target total directly.
 //
 // --from-csv: an earlier version of this tool always named entries
 // STRESS-0001.jpg etc., unconditionally, regardless of the paired CSV's
-// real registration numbers — which meant every entry was permanently
+// real registration numbers - which meant every entry was permanently
 // "unmatched" in process-job-images.service.ts, each paying the full 30s
 // findVehicleWithRetry budget (MATCH_RETRY_BUDGET_MS) before PROCESS_IMAGES
 // ever reached Sharp at all. Confirmed the hard way: two separate large-ZIP
 // stress runs against mismatched fixtures both looked identical to a
 // PROCESS_IMAGES hang for 5+ minutes, and were still indistinguishable from
-// one at that point — the unmatched-retry wait and a genuine Sharp hang
+// one at that point - the unmatched-retry wait and a genuine Sharp hang
 // both present as "STARTED, no completed_at, no progress" for several
 // minutes. Passing --from-csv (same registrationsFromCsv() helper
 // image-generator.ts already uses) makes entries match real rows, so a job
@@ -71,7 +71,7 @@ function parseArguments(): Args {
   return { targetMb, entries, output, fromCsv };
 }
 
-/** Pulls registration_number out of a generator CSV — same logic as image-generator.ts's own helper. */
+/** Pulls registration_number out of a generator CSV - same logic as image-generator.ts's own helper. */
 async function registrationsFromCsv(path: string): Promise<string[]> {
   const content = await readFile(path, 'utf-8');
   const lines = content.split(/\r?\n/).filter((line) => line.trim().length > 0);

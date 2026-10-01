@@ -89,7 +89,7 @@ jobs:
       # because nothing is reachable. Port 5433 matches docker-compose, which
       # maps the container's 5432 to avoid a native Postgres on the host.
       # seed:vehicles imports buildSearchText from marketplace-service so the
-      # seeded listings carry the same search text the services produce — the
+      # seeded listings carry the same search text the services produce - the
       # FR-22.1 parity the whole embedding design rests on. That import pulls in
       # the shared module's index, which re-exports the MiniLM embedder, so
       # marketplace-service's dependencies have to be installed even though this
@@ -108,9 +108,9 @@ jobs:
           npm run seed:vehicles
 
       # Two URLs, deliberately different roles. The suite connects as
-      # ingestion_service_role so it exercises the real ADR-002 grants — one of
+      # ingestion_service_role so it exercises the real ADR-002 grants - one of
       # its assertions is that the role CANNOT delete from marketplace.vehicles
-      # — and cleans up as the owner, which is the only role that can.
+      # - and cleans up as the owner, which is the only role that can.
       - name: Run integration tests
         run: npm run test:integration
 
@@ -118,7 +118,7 @@ jobs:
         run: npm run build
 
       # The default Dockerfile targets the ingest API, whose handler is Dev B's
-      # (B1) and does not exist yet — so this image builds but cannot cold
+      # (B1) and does not exist yet - so this image builds but cannot cold
       # start. Every ETL stage handler does exist; those are packaged
       # separately per docker/etl-zip-lambdas.Dockerfile and
       # docker/embed.Dockerfile.

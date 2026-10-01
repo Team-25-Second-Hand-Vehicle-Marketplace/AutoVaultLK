@@ -287,7 +287,7 @@ describeWithDatabase('LocalOrchestrator (integration)', () => {
   describe('idempotency', () => {
     it('re-running a job inserts nothing new', async () => {
       // The claim §A8 rests on. Rows with a null registration number miss both
-      // partial indexes, so the database cannot deduplicate them — only the
+      // partial indexes, so the database cannot deduplicate them - only the
       // succeededChunks skip protects them.
       const jobId = await upload([HEADER, good(60), good(61)].join('\n'));
 

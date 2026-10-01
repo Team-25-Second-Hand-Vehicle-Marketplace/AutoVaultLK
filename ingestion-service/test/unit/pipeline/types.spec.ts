@@ -16,7 +16,7 @@ describe('rejection()', () => {
   });
 
   // rejected_records.reason is varchar(500). An over-long reason throws at
-  // INSERT time and takes the whole chunk's rejections with it — so a bad
+  // INSERT time and takes the whole chunk's rejections with it - so a bad
   // error message would cost more than the bad row it describes.
   it('clamps a reason longer than the column width', () => {
     const result = rejection(row, 'x'.repeat(MAX_REJECTION_REASON_LENGTH + 200));

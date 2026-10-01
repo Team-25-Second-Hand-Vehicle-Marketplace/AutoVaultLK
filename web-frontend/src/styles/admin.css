@@ -121,7 +121,7 @@
   height: 100vh;
   /* A grid item defaults to min-width: auto, which lets its content (the
      brand row below) force this track wider than the 240px column instead
-     of wrapping — same fix as .dealer-shell__sidebar. */
+     of wrapping - same fix as .dealer-shell__sidebar. */
   min-width: 0;
 }
 
@@ -275,7 +275,7 @@
 }
 
 /* Everything with this class is UI chrome (nav, the date form, the export
-   button itself) that has no place on the exported document — only
+   button itself) that has no place on the exported document - only
    .report-doc should survive to the printed page. */
 @media print {
   .no-print,
@@ -492,7 +492,7 @@
   display: grid;
   /* auto-fit (not auto-fill): auto-fill keeps empty tracks in the grid when
      there are fewer items than fit, sized as if the item columns had to
-     share the row with them — which is what left these squeezed into a
+     share the row with them - which is what left these squeezed into a
      corner with the remaining row width blank. auto-fit collapses empty
      tracks so the real tiles' 1fr sizing claims the full row instead. */
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -534,7 +534,7 @@
 }
 
 /* Icon tone follows what the number means, not decoration: a healthy count
-   reads as --success, a queue that needs action as --warning-text — the
+   reads as --success, a queue that needs action as --warning-text - the
    same reserved tokens the bar charts and pills already use, so a tile and
    a status pill for the same concept never disagree. */
 .admin-kpi__icon--success {

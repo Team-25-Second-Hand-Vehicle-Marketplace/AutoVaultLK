@@ -18,15 +18,15 @@ import {
  * and every @UseGuards(InternalServiceGuard) controller in this service,
  * rather than testing routes already covered elsewhere again:
  *
- * 1. IDOR on every @ResourceOwner('userId') dealer-profile route — the
+ * 1. IDOR on every @ResourceOwner('userId') dealer-profile route - the
  *    concrete mechanism behind the Test Plan's own S1-severity example
  *    ("one dealer able to read or mutate another dealer's listings").
  * 2. InternalServiceGuard rejection on both internal-only controllers
- *    (internal-dealers.controller.ts, internal-users.controller.ts) — proof
+ *    (internal-dealers.controller.ts, internal-users.controller.ts) - proof
  *    an external caller cannot reach a route meant only for service-to-
  *    service calls, regardless of role/JWT.
  */
-describe('Access control — IDOR (e2e)', () => {
+describe('Access control - IDOR (e2e)', () => {
   let context: AuthE2eContext;
 
   beforeEach(async () => {
@@ -118,7 +118,7 @@ describe('Access control — IDOR (e2e)', () => {
   });
 });
 
-describe('Access control — internal-service-only routes (e2e)', () => {
+describe('Access control - internal-service-only routes (e2e)', () => {
   let context: AuthE2eContext;
 
   beforeEach(async () => {
@@ -153,7 +153,7 @@ describe('Access control — internal-service-only routes (e2e)', () => {
     it('rejects even a valid admin JWT with no internal key', async () => {
       await seedVerifiedAdmin(context.store, 'admin@test.com');
       // /auth/login explicitly rejects ADMIN-role users (adminOnly: false on
-      // that route) — admins authenticate via the separate /auth/login/admin
+      // that route) - admins authenticate via the separate /auth/login/admin
       // route instead (auth.service.ts's validateCredentials).
       const adminLogin = await context.agent
         .post('/auth/login/admin')
@@ -162,7 +162,7 @@ describe('Access control — internal-service-only routes (e2e)', () => {
         .expect(201);
       const admin = adminLogin.body as { accessToken: string };
 
-      // A real JWT alone must not substitute for the internal-service key —
+      // A real JWT alone must not substitute for the internal-service key -
       // this route is meant for service-to-service calls (admin-service
       // approving/rejecting a dealer), not for any authenticated end user
       // calling auth-user-service directly, however privileged their role.

@@ -26,7 +26,7 @@ export class MarketplaceVehicleImagesWriteAdapter {
    * Inserts the images for one vehicle.
    *
    * **`idx_vehicle_images_one_primary` is a partial unique index on
-   * `(vehicle_id) WHERE is_primary`** — a second `is_primary = true` for the
+   * `(vehicle_id) WHERE is_primary`** - a second `is_primary = true` for the
    * same vehicle raises 23505 and takes the whole statement with it. The
    * caller is not trusted to get that right: `primaryIndex` names which image
    * is primary and every other row is forced false, so a batch cannot violate
@@ -83,7 +83,7 @@ export class MarketplaceVehicleImagesWriteAdapter {
    * dealer's upload cannot attach images to another dealer's stock that
    * happens to share a plate.
    *
-   * Returns a Map keyed by the *canonical* registration number — the same form
+   * Returns a Map keyed by the *canonical* registration number - the same form
    * coerceRegistrationNumber produces (`CAB-1234`), so a filename must be
    * folded through it before lookup or `cab1234.jpg` will miss.
    */

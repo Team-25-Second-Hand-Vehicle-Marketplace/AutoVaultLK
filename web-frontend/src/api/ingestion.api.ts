@@ -5,7 +5,7 @@ import { TEMPLATE_HEADER } from './ingestion.template'
 /**
  * A bulk upload is up to INGESTION_MAX_UPLOAD_MB (25 MB by default) plus an
  * image archive, and the client's 10s default would abort a perfectly healthy
- * upload on a slow connection. The request only has to reach the service —
+ * upload on a slow connection. The request only has to reach the service -
  * the pipeline itself runs asynchronously and is polled through getJobStatus.
  */
 const UPLOAD_TIMEOUT_MS = 5 * 60 * 1000
@@ -15,7 +15,7 @@ export type UploadProgress = (percent: number) => void
 /**
  * Field names are `csv` and `zip` to match the FileFieldsInterceptor on
  * ingestion-service's IngestionController. Multer rejects any other field
- * outright — a wrong name returns 400 "Unexpected field", not the friendlier
+ * outright - a wrong name returns 400 "Unexpected field", not the friendlier
  * "csv file is required".
  */
 export async function uploadInventory(
@@ -49,7 +49,7 @@ export async function getJobStatus(jobId: string, signal?: AbortSignal): Promise
 }
 
 /**
- * The dealer's own most recent job that hasn't settled yet, if any — lets the
+ * The dealer's own most recent job that hasn't settled yet, if any - lets the
  * Bulk Upload page notice "you already have one running" instead of showing a
  * blank form a dealer who navigated away and came back could resubmit into.
  */
@@ -61,7 +61,7 @@ export async function getActiveJob(signal?: AbortSignal): Promise<{ id: string }
 /**
  * FR-57: the row-level report behind the counts on getJobStatus.
  *
- * Only worth calling once a job is terminal — before that the pipeline is
+ * Only worth calling once a job is terminal - before that the pipeline is
  * still writing rejections and the page would be a moving target.
  */
 export async function getJobRejections(
@@ -78,7 +78,7 @@ export async function getJobRejections(
 }
 
 /**
- * The dealer's own upload history, newest first — lets the dealer find their
+ * The dealer's own upload history, newest first - lets the dealer find their
  * way back to a past job's rejection report after navigating away, since
  * getActiveJob only ever covers the one still running.
  */
@@ -95,10 +95,10 @@ export async function getMyUploadJobs(page = 1, signal?: AbortSignal): Promise<J
  *
  * A file the dealer downloads and fills in is the one upload guaranteed to
  * validate, so the header must not drift from ingestion-service's
- * csv-contract.ts — see the note in ingestion.template.ts.
+ * csv-contract.ts - see the note in ingestion.template.ts.
  */
 /**
- * Keyed by column name rather than a positional array — TEMPLATE_HEADER's
+ * Keyed by column name rather than a positional array - TEMPLATE_HEADER's
  * order is a plain copy of csv-contract.ts's KNOWN_COLUMNS and can shift if
  * that list is reordered; a keyed example survives that, a positional one
  * would silently put values under the wrong header.
@@ -129,7 +129,7 @@ export function buildTemplateCsv(): string {
 
 /**
  * FR-57's export: a dealer fixing skipped rows needs them outside the
- * browser, not just on screen — re-typing which rows failed from a table is
+ * browser, not just on screen - re-typing which rows failed from a table is
  * exactly the manual, error-prone step this is meant to remove.
  *
  * `row` and `reason` lead the file for reference. They are not template

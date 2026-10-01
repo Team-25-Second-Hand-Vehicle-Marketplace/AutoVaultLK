@@ -7,7 +7,7 @@ import {
 } from '../../../src/workers/etl-worker/pipeline/graph';
 
 /**
- * The graph is declared once and consumed by two executors — LocalOrchestrator
+ * The graph is declared once and consumed by two executors - LocalOrchestrator
  * in process and a Step Functions state machine in AWS. These tests pin the
  * declaration itself; the ASL definition is checked against it separately once
  * that file exists.

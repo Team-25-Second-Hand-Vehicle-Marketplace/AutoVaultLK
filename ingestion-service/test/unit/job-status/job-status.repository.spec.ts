@@ -3,7 +3,7 @@ import { UploadJob } from '../../../src/infrastructure/database/entities/upload-
 
 /**
  * The query builder is stubbed, so what these assert is the *shape* of the
- * query — specifically that the dealer scope is inside it. That is the whole
+ * query - specifically that the dealer scope is inside it. That is the whole
  * security property of the endpoint: see the note on findRejectedRecords.
  */
 describe('JobStatusRepository', () => {

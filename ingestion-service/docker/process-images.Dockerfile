@@ -1,4 +1,4 @@
-# Container image — the process-images Lambda depends on Sharp, which ships
+# Container image - the process-images Lambda depends on Sharp, which ships
 # native per-platform binaries. A container avoids Lambda-layer architecture
 # pinning issues that Sharp is known for. Deployed at 2048MB memory.
 FROM node:22-alpine AS build

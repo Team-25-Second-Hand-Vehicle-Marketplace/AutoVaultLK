@@ -4,7 +4,7 @@ import encoding from 'k6/encoding';
 import { textSummary } from 'https://jslib.k6.io/k6-summary/0.1.0/index.js';
 
 /**
- * DB connection-pool exhaustion test — every earlier ingestion script in
+ * DB connection-pool exhaustion test - every earlier ingestion script in
  * this repo ran ONE upload at a time (dealer-ingestion-volume.js is
  * explicitly sequential by design; the CSV+ZIP volume test is a single
  * iteration). Nothing has driven MULTIPLE CONCURRENT uploads against
@@ -12,12 +12,12 @@ import { textSummary } from 'https://jslib.k6.io/k6-summary/0.1.0/index.js';
  * contention.
  *
  * The real, previously-undocumented condition this test targets: every
- * service's database.config.ts sets `extra: { max: 5 }` — a 5-connection
+ * service's database.config.ts sets `extra: { max: 5 }` - a 5-connection
  * pg pool, confirmed identical across auth-user-service, ingestion-service,
  * admin-service, notification-service, and marketplace-service (grepped
  * directly, not assumed). ingestion-service's own INGESTION_MAX_CONCURRENCY
  * (.env, default 10) already describes MORE concurrent chunk-processing
- * slots than the pool has connections to serve — meaning pool contention is
+ * slots than the pool has connections to serve - meaning pool contention is
  * a latent condition in the pipeline's OWN designed concurrency, not
  * something this test artificially invents. NUM_CONCURRENT_UPLOADS defaults
  * to 8: comfortably past the 5-connection ceiling, without being so far past
@@ -28,15 +28,15 @@ import { textSummary } from 'https://jslib.k6.io/k6-summary/0.1.0/index.js';
  * distinctly-prefixed CSV (k6-volume-100.csv, 100 rows, rewritten
  * per-VU the same way dealer-ingestion-volume.js does) at the same moment,
  * via a single rendezvous-style scenario (all VUs start together, one
- * iteration each) — the goal is genuine simultaneous pool pressure, not a
+ * iteration each) - the goal is genuine simultaneous pool pressure, not a
  * ramped approach to it.
  *
- * What "pass" means here is NOT "every upload completes fast" — a pool of 5
+ * What "pass" means here is NOT "every upload completes fast" - a pool of 5
  * genuinely CANNOT serve 8 concurrent LOAD-stage writers without some
  * queuing. What this checks is that the service degrades by QUEUING
  * (requests wait longer, then complete) rather than by failing outright
  * (connection errors, 500s, or the job-status GET endpoint itself becoming
- * unreachable while uploads are in flight) — that's the actual
+ * unreachable while uploads are in flight) - that's the actual
  * correctness bar for pool contention, not a latency target.
  */
 
@@ -48,7 +48,7 @@ const ADMIN_PASSWORD = __ENV.ADMIN_SEED_PASSWORD;
 
 const NUM_CONCURRENT_UPLOADS = Number(__ENV.NUM_CONCURRENT_UPLOADS || 8);
 
-// Read once at init time, same as every other ingestion k6 script — k6
+// Read once at init time, same as every other ingestion k6 script - k6
 // resolves open() relative to this file's own directory, not the CWD.
 const CSV_TEMPLATE = open('../../ingestion-service/test-data/k6-volume-100.csv');
 
@@ -62,7 +62,7 @@ export const options = {
     },
   },
   thresholds: {
-    // Not a latency bar (see header) — the only hard requirement is that
+    // Not a latency bar (see header) - the only hard requirement is that
     // uploads don't outright fail, and that job-status reads (a cheap,
     // separate query) stay responsive even while the pool is under pressure
     // from concurrent LOAD-stage writers.
@@ -232,7 +232,7 @@ export function handleSummary(data) {
   const totalRequests = data.metrics.http_reqs ? data.metrics.http_reqs.values.count : 0;
   if (totalRequests === 0) {
     throw new Error(
-      'db-pool-exhaustion made zero HTTP requests — every iteration threw before any request fired ' +
+      'db-pool-exhaustion made zero HTTP requests - every iteration threw before any request fired ' +
         '(check the k6 error log above and setup()).',
     );
   }

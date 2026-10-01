@@ -188,7 +188,7 @@ describe('S3ObjectStore', () => {
   });
 
   describe('key validation', () => {
-    // S3's flat namespace makes traversal meaningless — `../../etc/passwd` is
+    // S3's flat namespace makes traversal meaningless - `../../etc/passwd` is
     // just an object name. Only genuine caller bugs are rejected.
     it.each([[''], ['\0']])('rejects the invalid key %j', async (key) => {
       await expect(store().get(key)).rejects.toThrow(/Invalid object key/);

@@ -28,10 +28,10 @@ export class RejectedRecordRepository {
    * dealer would see one bad row listed as two with no way to tell.
    *
    * The upsert replaces rather than skips: a retry that produces a *different*
-   * reason for the same row — a transient dependency recovering, say — should
+   * reason for the same row - a transient dependency recovering, say - should
    * show the newer reason, not the stale one.
    *
-   * Reasons must already be clamped to varchar(500) — use the `rejection()`
+   * Reasons must already be clamped to varchar(500) - use the `rejection()`
    * helper in pipeline/types.ts rather than building the object by hand, or an
    * over-long message throws here and takes the whole batch with it.
    */
@@ -46,7 +46,7 @@ export class RejectedRecordRepository {
     // the whole-file rejection and keys on (job, stage) alone, everything else
     // keys on (job, stage, row_number). A batch mixing the two would need two
     // different conflict targets in one statement, which Postgres cannot
-    // express — so they are written separately.
+    // express - so they are written separately.
     const fileLevel = rejections.filter((r) => r.rowNumber === 0);
     const rowLevel = rejections.filter((r) => r.rowNumber > 0);
 
@@ -94,7 +94,7 @@ export class RejectedRecordRepository {
     return this.repo.count({ where: { uploadJobId } });
   }
 
-  /** Paginated for GET /jobs/{id} — a bad upload can reject thousands of rows. */
+  /** Paginated for GET /jobs/{id} - a bad upload can reject thousands of rows. */
   async findForJob(
     uploadJobId: string,
     limit = 50,

@@ -1,4 +1,4 @@
--- One login role per service. Local dev passwords only —
+-- One login role per service. Local dev passwords only -
 -- production uses AWS Secrets Manager.
 --
 -- Table-level grants are NOT here. They live in database/src/grants.sql

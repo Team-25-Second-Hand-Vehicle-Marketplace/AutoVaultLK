@@ -11,7 +11,7 @@ import { getContext, stageContext } from './bootstrap';
  * file, so its envelope carries `key: null` rather than a pointer to output
  * nothing will read.
  *
- * **No retry loop here.** ASL owns it — a Retry block with exponential backoff
+ * **No retry loop here.** ASL owns it - a Retry block with exponential backoff
  * and jitter, which is better than the fixed 250ms the in-process orchestrator
  * uses and costs no code. That is the one behavioural difference between the
  * two executors, and it is a deliberate improvement rather than drift.

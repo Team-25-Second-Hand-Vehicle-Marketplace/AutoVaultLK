@@ -19,7 +19,7 @@ export class AdminUsersPage {
   async expectRowGone(email: string): Promise<void> {
     // AdminUsersPage.load() re-fetches after the mutation, so on the
     // "pending" tab the approved dealer's row disappears without a manual
-    // reload — this is the assertion that catches a regression there.
+    // reload - this is the assertion that catches a regression there.
     await expect(this.rowFor(email)).toHaveCount(0);
   }
 }

@@ -16,7 +16,7 @@ import {
  * still ranks it afterwards is not something a mocked repository can answer:
  * a malformed literal or a dimension mismatch raises only on the real INSERT.
  *
- * The embedder itself is not exercised here — loading the ~90MB MiniLM ONNX
+ * The embedder itself is not exercised here - loading the ~90MB MiniLM ONNX
  * model would make the suite slow and dependent on a model download. What
  * matters for the SQL is the *shape* of the value it emits, so these use a
  * synthetic vector of the same dimensionality. The embedder's own behaviour is

@@ -32,7 +32,7 @@ export type UploadedDocumentFile = {
 
 /**
  * Stores a single verification document (business registration certificate)
- * uploaded during dealer registration — before the account exists, so there
+ * uploaded during dealer registration - before the account exists, so there
  * is no userId to key the object on. Keyed by a random upload token instead;
  * the frontend carries the returned key into the actual register-dealer
  * call, which is what ends up persisted in DealerProfile.verificationDocuments.

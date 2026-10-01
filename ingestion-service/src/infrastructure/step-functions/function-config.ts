@@ -5,7 +5,7 @@ import { stageSlug } from '../../workers/etl-worker/pipeline/graph';
  * Per-function deployment settings.
  *
  * Declared in TypeScript rather than straight into Terraform so a test can
- * assert them against the pipeline's own constraints — a timeout shorter than
+ * assert them against the pipeline's own constraints - a timeout shorter than
  * the statement_timeout in lambda/bootstrap.ts, or a memory size too small for
  * the model, is the kind of mismatch that only shows up under load.
  *
@@ -66,7 +66,7 @@ export const FUNCTION_CONFIGS: Record<string, FunctionConfig> = {
     slug: 'split-chunks',
     packaging: 'zip',
     // Streams rather than buffering, so memory is one chunk regardless of file
-    // size — but a 25MB upload still moves through this function, and Lambda
+    // size - but a 25MB upload still moves through this function, and Lambda
     // scales I/O throughput with memory.
     memoryMb: 1024,
     timeoutSeconds: 300,
@@ -135,7 +135,7 @@ export const FUNCTION_CONFIGS: Record<string, FunctionConfig> = {
     packaging: 'zip',
     memoryMb: 512,
     // Batched upsert, degrading to per-row isolation when a duplicate
-    // registration is present — 250 individual statements in the worst case.
+    // registration is present - 250 individual statements in the worst case.
     timeoutSeconds: 120,
     env: [...BASE_ENV, ...PIPELINE_ENV],
   },
@@ -144,11 +144,11 @@ export const FUNCTION_CONFIGS: Record<string, FunctionConfig> = {
     slug: 'process-images',
     // Sharp's native binary and its image buffers are the memory driver here,
     // the same reason images.ts's local orchestrator equivalent runs as a
-    // container image — see docker/process-images.Dockerfile.
+    // container image - see docker/process-images.Dockerfile.
     packaging: 'image',
     memoryMb: 2048,
     // Runs concurrently with ProcessChunks (Parallel branch), so its budget
-    // must cover the whole upload's photo set, not one chunk's worth — plus
+    // must cover the whole upload's photo set, not one chunk's worth - plus
     // the registration-lookup retry budget (up to 30s per unmatched image)
     // for rows whose Load has not landed yet.
     timeoutSeconds: 600,
@@ -167,7 +167,7 @@ export const FUNCTION_CONFIGS: Record<string, FunctionConfig> = {
     slug: 'notify',
     packaging: 'zip',
     memoryMb: 256,
-    // One HTTP POST, capped by NOTIFICATION_TIMEOUT_MS, plus one job lookup —
+    // One HTTP POST, capped by NOTIFICATION_TIMEOUT_MS, plus one job lookup -
     // and it is that lookup that sets the floor. bootstrap.ts sets
     // statement_timeout to 55s so a hung query dies before the function does;
     // a shorter timeout here would invert that and orphan the connection,

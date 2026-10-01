@@ -10,7 +10,7 @@ terraform {
 # -----------------------------------------------------------------------------
 # SES starts every new account in the sandbox: it can only send to addresses
 # that are themselves verified, which blocks real user signups. Provisioning
-# an identity here does not lift that — request production access separately
+# an identity here does not lift that - request production access separately
 # in the SES console (Account dashboard -> "Request production access").
 # There is no Terraform resource for that request.
 # -----------------------------------------------------------------------------
@@ -39,7 +39,7 @@ resource "aws_ses_domain_dkim" "domain" {
   domain = aws_ses_domain_identity.domain[0].domain
 }
 
-# Only created when both domain_name and route53_zone_id are set — otherwise
+# Only created when both domain_name and route53_zone_id are set - otherwise
 # add the verification TXT record manually (see the verification_token
 # output) at whatever DNS provider hosts the domain.
 resource "aws_route53_record" "verification" {

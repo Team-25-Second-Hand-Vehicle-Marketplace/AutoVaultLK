@@ -11,7 +11,7 @@ export async function getMyDealerProfile(signal?: AbortSignal): Promise<DealerPr
 }
 
 /**
- * PATCH /dealer-profiles/:userId — the backend's ResourceOwnerGuard checks
+ * PATCH /dealer-profiles/:userId - the backend's ResourceOwnerGuard checks
  * that `userId` is the caller's own id, so this can only ever update the
  * signed-in dealer's own profile.
  */
@@ -27,7 +27,7 @@ export async function updateMyDealerProfile(
 }
 
 /**
- * PATCH /dealer-profiles/:userId/resubmit — only for a REJECTED profile (the
+ * PATCH /dealer-profiles/:userId/resubmit - only for a REJECTED profile (the
  * backend 409s otherwise); on success the profile goes back to PENDING for
  * an admin to review again, and its rejectionReason is cleared.
  */

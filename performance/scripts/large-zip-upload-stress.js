@@ -4,20 +4,20 @@ import encoding from 'k6/encoding';
 import { textSummary } from 'https://jslib.k6.io/k6-summary/0.1.0/index.js';
 
 /**
- * Large ZIP upload stress test — never exercised at any scale close to the
+ * Large ZIP upload stress test - never exercised at any scale close to the
  * real ceiling by any earlier script in this repo. The CSV+ZIP volume test
  * (dealer-ingestion-csv-zip-volume.js) uploads ~22MB; nothing in the repo
  * has come anywhere near ingestion-upload.service.ts's real
  * maxZipSize = 250 * 1024 * 1024 (250MB) hard cap before this.
  *
  * GATEWAY CAP MISMATCH FOUND WHILE BUILDING THIS TEST: api-gateway/local/
- * nginx.conf's `/ingest/` location sets client_max_body_size 25m — far
+ * nginx.conf's `/ingest/` location sets client_max_body_size 25m - far
  * below the service's own 250MB check. A request this size sent THROUGH
  * the gateway (port 8080) would be rejected by nginx with a bare 413 long
  * before ingestion-service's own maxZipSize logic ever runs. This script
  * targets ingestion-service directly on port 3003 (the same convention
  * every other ingestion k6 script in this repo already uses), which is the
- * only path that can actually reach the service-level 250MB check — so it
+ * only path that can actually reach the service-level 250MB check - so it
  * intentionally does NOT exercise the gateway's tighter limit. That
  * mismatch is a real, previously-undocumented finding in its own right: if
  * a 250MB ZIP is genuinely meant to be supported end-to-end (not just
@@ -39,7 +39,7 @@ import { textSummary } from 'https://jslib.k6.io/k6-summary/0.1.0/index.js';
  * entries STRESS-0001.jpg unconditionally, which never matched the paired
  * CSV's real registration numbers. Every entry was then genuinely
  * "unmatched" in process-job-images.service.ts, each paying the full 30s
- * findVehicleWithRetry budget before ever reaching Sharp — indistinguishable
+ * findVehicleWithRetry budget before ever reaching Sharp - indistinguishable
  * from a true PROCESS_IMAGES hang by symptom alone (both look like
  * "STARTED, no completed_at, no progress" for 5+ minutes). --from-csv makes
  * entries match real rows, so the job actually exercises Sharp instead of
@@ -51,7 +51,7 @@ import { textSummary } from 'https://jslib.k6.io/k6-summary/0.1.0/index.js';
  * tool would need far more than MAX_ZIP_ENTRIES=2000 entries. This test is
  * about whether upload streaming / multipart parsing / size-limit
  * enforcement survive a ZIP near the real ceiling, not about realistic
- * photo content — incompressible random bytes make --target-mb land
+ * photo content - incompressible random bytes make --target-mb land
  * accurately (store-mode zlib, see generate-oversized-zip.ts) and are a
  * fair stand-in for "the pipeline must not assume small payloads," which is
  * the actual thing being tested.
@@ -59,7 +59,7 @@ import { textSummary } from 'https://jslib.k6.io/k6-summary/0.1.0/index.js';
  * Two iterations, not a sustained-load shape: this is a single-shot
  * capability/boundary check (does a near-cap upload succeed; does an
  * over-cap upload fail cleanly with 400, not a timeout or a crash), not a
- * concurrency test — sending many 230-260MB uploads at once would mostly
+ * concurrency test - sending many 230-260MB uploads at once would mostly
  * measure this machine's disk/network I/O ceiling, a different and less
  * interesting signal than the boundary behavior itself.
  */
@@ -243,7 +243,7 @@ export function handleSummary(data) {
   const totalRequests = data.metrics.http_reqs ? data.metrics.http_reqs.values.count : 0;
   if (totalRequests === 0) {
     throw new Error(
-      'large-zip-upload-stress made zero HTTP requests — every step threw before any request fired ' +
+      'large-zip-upload-stress made zero HTTP requests - every step threw before any request fired ' +
         '(check the k6 error log above, setup(), and that the fixture files exist).',
     );
   }

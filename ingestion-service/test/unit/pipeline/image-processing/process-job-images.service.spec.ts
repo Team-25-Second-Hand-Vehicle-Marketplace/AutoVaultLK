@@ -62,7 +62,7 @@ const harness = () => {
   const service = new ProcessJobImagesService(repo as never);
   service.setImageProcessorForTest(processor as never);
   // Images now retry the registration lookup for MATCH_RETRY_BUDGET_MS
-  // (parallel-with-Map race tolerance) — shrunk here so "unmatched" tests
+  // (parallel-with-Map race tolerance) - shrunk here so "unmatched" tests
   // don't pay that wait.
   service.setMatchRetryTimingForTest(10, 5);
 

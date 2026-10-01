@@ -1,4 +1,4 @@
-# ingestion-service — building B1 and B2
+# ingestion-service - building B1 and B2
 
 > **Start with `docs/HANDOVER-VIRUSAN.md`.** It covers the whole B1-B6 scope and
 > who owns what. This file is the deeper reference for the two endpoints: the
@@ -20,7 +20,7 @@ and writes real rows to `marketplace.vehicles`.
 cd D:\Projects\AutoVaultLK
 docker compose up -d postgres          # pgvector on host port 5433
 npm --prefix database run migration:run
-npm --prefix database run grants       # REQUIRED — see "Dealer gate" below
+npm --prefix database run grants       # REQUIRED - see "Dealer gate" below
 npm --prefix database run seed:dictionaries
 npm --prefix database run seed:vehicles   # creates the DEALER users you log in as
 
@@ -75,7 +75,7 @@ unedited.
 
 ## Your interfaces
 
-### `ObjectStore` — inject with `@Inject(OBJECT_STORE)`
+### `ObjectStore` - inject with `@Inject(OBJECT_STORE)`
 
 ```ts
 put(key, body, contentType?): Promise<string>
@@ -85,7 +85,7 @@ exists(key): Promise<boolean>
 list(prefix): Promise<string[]>
 ```
 
-**Key conventions** — stick to these, the pipeline reads them:
+**Key conventions** - stick to these, the pipeline reads them:
 
 | Key | Contents |
 |---|---|
@@ -98,20 +98,20 @@ Locally these land under `ingestion-service/.storage/` (gitignored). Keys are
 always relative and POSIX-style; the store **rejects** any key escaping its
 root, so pass a sanitized filename, not the raw upload name.
 
-### `JobQueue` — inject with `@Inject(JOB_QUEUE)`
+### `JobQueue` - inject with `@Inject(JOB_QUEUE)`
 
 ```ts
 publish({ jobId }): Promise<void>
 ```
 
-Resolves as soon as the message is accepted — **never await the pipeline.**
+Resolves as soon as the message is accepted - **never await the pipeline.**
 Your handler must return `202 { jobId }` immediately (FR-32: the dealer polls).
 
 ### `UploadJobRepository`
 
 ```ts
 create({ dealerId, fileName, csvS3Path, zipS3Path? }): Promise<UploadJob>
-findById(id)            // unscoped — pipeline use
+findById(id)            // unscoped - pipeline use
 findByDealer(dealerId, limit?, offset?)
 updateStatus(id, status)
 updateTotal(id, totalRecords)
@@ -120,7 +120,7 @@ updateCounts(id, { validRecords, invalidRecords })
 
 `create` always starts `PENDING` with zeroed counts. Don't pass counts.
 
-### `DealerProfileRepository` — the upload gate
+### `DealerProfileRepository` - the upload gate
 
 ```ts
 isVerifiedBusinessDealer(userId): Promise<boolean>
@@ -149,7 +149,7 @@ POST /ingest/upload
 
 ## Five things that will bite you if you don't know them
 
-**1. The pipeline is live — your upload really will load vehicles.**
+**1. The pipeline is live - your upload really will load vehicles.**
 `JobQueue.publish({ jobId })` triggers `LocalOrchestrator`, which runs all
 eight stages and writes `marketplace.vehicles`. There is no placeholder any
 more; the old `queue-bootstrap.service.ts` was deleted when the orchestrator
@@ -160,7 +160,7 @@ Read the terminal status correctly:
 | Status | Means |
 |---|---|
 | `COMPLETED` | every row loaded |
-| `PARTIAL` | **a success** — some rows rejected with reasons, the rest loaded |
+| `PARTIAL` | **a success** - some rows rejected with reasons, the rest loaded |
 | `FAILED` | nothing loaded: usually a malformed file, or every row invalid |
 
 `PARTIAL` is the normal outcome for a real dealer file. It is not your bug.
@@ -172,8 +172,8 @@ npm run build
 node dist/tools/run-pipeline.js test/fixtures/e2e-mixed.csv
 ```
 
-That tool does exactly what B1 must do — store the file, insert the job, run
-the pipeline — then prints the job row, the stage logs and the rejections.
+That tool does exactly what B1 must do - store the file, insert the job, run
+the pipeline - then prints the job row, the stage logs and the rejections.
 **It is the reference implementation for your handler.**
 
 **2. Dealer gate needs a grant that may not be applied in your database.**
@@ -184,13 +184,13 @@ error, run `npm --prefix database run grants`. Verify with:
 SELECT has_table_privilege('ingestion_service_role','auth.dealer_profiles','SELECT');
 ```
 
-**3. `pipeline/persistence/` is mine — do not add a second writer.**
+**3. `pipeline/persistence/` is mine - do not add a second writer.**
 ADR-002 confines the *entire* platform's cross-schema write exception to one
 class, `MarketplaceVehiclesWriteAdapter`. It is already exported from
 `IngestionModule`, so inject it rather than writing SQL.
 
 For B3 (images) `MarketplaceVehicleImagesWriteAdapter` is **already built and
-exported from `IngestionModule`** — inject it:
+exported from `IngestionModule`** - inject it:
 
 ```ts
 insertForVehicle(vehicleId, images, primaryIndex = 0): Promise<InsertedImage[]>
@@ -211,7 +211,7 @@ checked rather than assumed.
 `(vehicle_id) WHERE is_primary`. A second `is_primary = true` **throws**.
 
 **5. `@Roles('DEALER')` alone is not enough.** The contract says "business
-dealer, verified" — two conditions. An `individual` dealer with `VERIFIED`
+dealer, verified" - two conditions. An `individual` dealer with `VERIFIED`
 status must still be refused.
 
 ---
@@ -219,26 +219,26 @@ status must still be refused.
 ## Conventions
 
 **Tests** live in `test/unit/<area>/<name>.spec.ts` mirroring `src/`. Unit tests
-use plain constructor injection with `jest.fn()` literals cast `as never` — **no
+use plain constructor injection with `jest.fn()` literals cast `as never` - **no
 `Test.createTestingModule`** (see
 `test/unit/ingestion/repositories/upload-job.repository.spec.ts`). E2e tests do
 use it, plus supertest, replicating `main.ts` wiring including the global
 `ValidationPipe` (see marketplace-service's `test/e2e/` for the pattern).
 
-**Env** — all `INGESTION_*` vars are documented in `.env.example`.
+**Env** - all `INGESTION_*` vars are documented in `.env.example`.
 
 **Don't edit `src/shared/normalize-embed/`.** It is a deliberate byte-identical
 copy of marketplace-service's, enforced by
 `test/unit/shared/normalize-embed-parity.spec.ts`. See the README beside it.
 
-**Routes** are `/ingest/upload` and `/jobs/:id` — nginx proxies both
+**Routes** are `/ingest/upload` and `/jobs/:id` - nginx proxies both
 *without* stripping the prefix, so the controller path includes it.
 
 ---
 
 ## What is NOT built yet
 
-Everything below is yours. **Nothing here is blocked on me** — the two things
+Everything below is yours. **Nothing here is blocked on me** - the two things
 that used to be ("ask me for the image adapter", "ask me for the CSV header")
 are both built and documented.
 
@@ -255,7 +255,7 @@ are both built and documented.
 **Already built, do not rebuild:** the whole ETL pipeline, both cross-schema
 write adapters, the S3 and SQS drivers, 9 Lambda handlers, and the live Groq
 call. The Groq stage logging `SKIPPED` with no API key is correct behaviour,
-not a gap — CI has no key and a dealer upload cannot fail because a third party
+not a gap - CI has no key and a dealer upload cannot fail because a third party
 is unreachable.
 
 For the full brief on S4-S8 and B3-B6, see **`docs/HANDOVER-VIRUSAN.md`**.
@@ -274,5 +274,5 @@ For the full brief on S4-S8 and B3-B6, see **`docs/HANDOVER-VIRUSAN.md`**.
 - [ ] OpenAPI stubs for both routes filled in (`api-gateway/openapi/public-api.yaml`)
 - [ ] `npm run test:ci`, `npm run test:e2e` and `npm run test:integration` green
 - [ ] An upload of `test/fixtures/e2e-mixed.csv` through your endpoint ends
-      `PARTIAL` with rows in `marketplace.vehicles` — proving the whole path
+      `PARTIAL` with rows in `marketplace.vehicles` - proving the whole path
       works, not just the 202

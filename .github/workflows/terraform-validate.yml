@@ -1,7 +1,7 @@
 name: Terraform Validate
 
 # Runs on every push/PR touching Terraform code. Deliberately scoped to
-# validate + fmt -check only — both are pure static analysis
+# validate + fmt -check only - both are pure static analysis
 # (terraform init -backend=false needs no AWS credentials, no S3 backend,
 # no network calls to AWS) and catch syntax/reference errors and style
 # drift before a human ever runs a real `terraform plan`/`apply` against

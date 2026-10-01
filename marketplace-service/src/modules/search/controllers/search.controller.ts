@@ -85,7 +85,7 @@ export class SearchController {
    * route here is the public browse surface and must stay unauthenticated.
    *
    * This writes to marketplace.vehicle_dictionaries, which is reference data
-   * the whole platform reads — the ingestion ETL loads a snapshot of it on
+   * the whole platform reads - the ingestion ETL loads a snapshot of it on
    * every run. An unguarded endpoint would let anyone who can reach /search
    * search a junk token five times and then make it a permanent alias,
    * silently changing how dealer uploads normalize.

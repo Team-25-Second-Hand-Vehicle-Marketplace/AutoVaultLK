@@ -230,7 +230,7 @@ describe('LocalOrchestrator', () => {
     });
 
     it('is COMPLETED with zero counts for a header-only file', async () => {
-      // An empty inventory is not a failure — the dealer uploaded nothing.
+      // An empty inventory is not a failure - the dealer uploaded nothing.
       const h = harness({ csv: `${HEADER}\n` });
 
       await h.orchestrator.run('job-1');
@@ -289,8 +289,8 @@ describe('LocalOrchestrator', () => {
 
   describe('retry', () => {
     it('retries Load once before giving up', async () => {
-      // Load failures are typically transient — a dropped connection or a lock
-      // timeout — unlike a stage that rejected a row deterministically.
+      // Load failures are typically transient - a dropped connection or a lock
+      // timeout - unlike a stage that rejected a row deterministically.
       const h = harness({ chunkSize: 2 });
       h.vehicles.upsertBatch
         .mockRejectedValueOnce(new Error('deadlock'))
@@ -327,7 +327,7 @@ describe('LocalOrchestrator', () => {
     it('skips chunks already logged SUCCEEDED', async () => {
       // Rows with a null registration number miss both partial indexes, so a
       // re-run would insert them twice. The database cannot deduplicate what
-      // it has no key for — skipping the chunk is what makes retry safe.
+      // it has no key for - skipping the chunk is what makes retry safe.
       const h = harness({ chunkSize: 1 });
       h.stageLogs.succeededChunks.mockResolvedValue(new Set([0]));
 
@@ -346,7 +346,7 @@ describe('LocalOrchestrator', () => {
     });
 
     it('does not downgrade a finished job to FAILED', async () => {
-      // A fully resumed run loads nothing new — its rows belong to the
+      // A fully resumed run loads nothing new - its rows belong to the
       // previous run. Tallying only this run's outcomes would report 0 loaded
       // and turn a COMPLETED job into FAILED on a harmless retry.
       const h = harness({ chunkSize: 1 });
@@ -409,7 +409,7 @@ describe('LocalOrchestrator', () => {
     });
 
     it('returns quietly when the job row does not exist', async () => {
-      // There is no row to mark FAILED — it is the one that is missing.
+      // There is no row to mark FAILED - it is the one that is missing.
       const h = harness();
       h.uploadJobs.findById.mockResolvedValue(null);
 

@@ -5,18 +5,18 @@ export interface ActionMenuItem {
   label: string
   onClick: () => void
   disabled?: boolean
-  /** Red text — for a destructive action like Delete. */
+  /** Red text - for a destructive action like Delete. */
   danger?: boolean
 }
 
 /**
  * A "⋮" button that opens a small menu of actions. Used where a row (a
  * listing, say) has more actions than fit as inline buttons, and not every
- * action applies to every row — the caller decides which items to pass per
+ * action applies to every row - the caller decides which items to pass per
  * row, so an action that would just 409 never appears at all.
  *
  * The panel is `position: fixed`, positioned from the trigger's own
- * bounding rect rather than a plain `position: absolute` in normal flow —
+ * bounding rect rather than a plain `position: absolute` in normal flow -
  * this table's wrapper scrolls horizontally (`overflow-x: auto`), which
  * would otherwise clip the dropdown for any row near the bottom, since
  * setting overflow-x forces overflow-y to clip too (CSS spec: overflow on
@@ -52,7 +52,7 @@ export function ActionMenu({ items, label = 'More actions' }: { items: ActionMen
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setOpen(false)
     }
-    // The panel's position is computed once, on open — rather than track it
+    // The panel's position is computed once, on open - rather than track it
     // continuously, just close on scroll so it never renders somewhere stale.
     const onScroll = () => setOpen(false)
 

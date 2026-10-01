@@ -25,12 +25,12 @@ __pycache__/
 .terraform.tfstate.lock.info
 tfplan
 *.auto.tfvars
-# .terraform.lock.hcl is deliberately NOT ignored — it pins provider versions
+# .terraform.lock.hcl is deliberately NOT ignored - it pins provider versions
 # and hashes, and belongs in version control so every machine and CI run
 # resolves the same providers.
 
 # EC2 key pairs created for one-off manual bootstrap tasks (e.g. a temporary
-# SSH bastion) — a live private key, never committed.
+# SSH bastion) - a live private key, never committed.
 *.pem
 
 cdk.out/
@@ -40,12 +40,12 @@ mywork.txt
 *.err
 
 # LocalObjectStore driver root (ADR-007): raw dealer uploads and inter-stage
-# payloads. Never committed — recreated on demand.
+# payloads. Never committed - recreated on demand.
 .storage/
 DEPLOYMENT-GAPS.md
 
 # ingestion-tester's per-run output (generated CSV/ZIP/HTML report) and the
-# large one-off scratch CSVs manually generated during ETL testing — both
+# large one-off scratch CSVs manually generated during ETL testing - both
 # regenerated on demand by vehicle-generator.ts / image-generator.ts /
 # ingestion-tester.ts, never meant to be committed. Named explicitly rather
 # than by a broad glob so this never shadows the committed fixtures
@@ -55,7 +55,7 @@ ingestion-service/test-data/300_rows*.csv
 ingestion-service/test-data/10_rows.csv
 ingestion-service/test-data/3_dirty_rows.csv
 
-# k6 load-test fixtures (performance/scripts/*.js) — regenerated on demand
+# k6 load-test fixtures (performance/scripts/*.js) - regenerated on demand
 # by vehicle-generator.ts / generate-unique-csv.ts / image-generator.ts /
 # generate-oversized-zip.ts, via the exact commands documented in each
 # script's own header comment and run fresh in the matching CI workflow

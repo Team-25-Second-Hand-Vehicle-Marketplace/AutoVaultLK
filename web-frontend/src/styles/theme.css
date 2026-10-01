@@ -25,7 +25,7 @@
   --danger: #d92d20;
 
   /* Cards in the reference sit on a very soft, wide shadow rather than a
-     hard border — the border is a fallback for when they sit on white. */
+     hard border - the border is a fallback for when they sit on white. */
   --shadow: 0 1px 2px rgba(13, 24, 41, 0.04), 0 1px 3px rgba(13, 24, 41, 0.06);
   --shadow-md: 0 4px 12px rgba(13, 24, 41, 0.06), 0 2px 4px rgba(13, 24, 41, 0.04);
   --shadow-lg: 0 12px 32px rgba(13, 24, 41, 0.1);
@@ -40,7 +40,7 @@
   background: var(--bg);
 }
 
-/* Neutralise app.css's dark scheme — see the header note. */
+/* Neutralise app.css's dark scheme - see the header note. */
 @media (prefers-color-scheme: dark) {
   :root {
     --text: #5b6472;

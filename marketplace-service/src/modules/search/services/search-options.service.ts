@@ -23,7 +23,7 @@ interface DictRow {
 
 /**
  * vehicle_dictionaries changes when someone runs a seed or an admin adds a
- * make — not during a browsing session. Without this cache every sidebar
+ * make - not during a browsing session. Without this cache every sidebar
  * mount (and every vehicle-type change) re-runs two dictionary queries to
  * return bytes that are almost always identical.
  *
@@ -155,7 +155,7 @@ export class SearchOptionsService {
   }
 
   /**
-   * Type-scoped make/model dropdown — the reason vehicle_types was added to
+   * Type-scoped make/model dropdown - the reason vehicle_types was added to
    * vehicle_dictionaries in Phase 0.3b. Without the @> filter, a buyer
    * browsing BIKE would see Toyota in the Make list.
    */

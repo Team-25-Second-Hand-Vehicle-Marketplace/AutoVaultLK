@@ -1,0 +1,11 @@
+registration_number,make,model,year,price,mileage,fuel_type,transmission,body_type,color,engine_capacity_cc,owners_count,location_district
+WP-0001,Honda,Fit,2023,20115061,146608,Hybrid,Automatic,Sedan,Grey,1853,1,Galle
+WP-0002,BMW,X1,2026,8123637,111104,Diesel,Manual,Hatchback,Black,1565,1,Colombo
+WP-0003,BMW,X3,2022,11135656,160135,Diesel,Manual,Sedan,Silver,1675,2,Gampaha
+WP-0004,Nissan,March,2023,9538329,46069,Diesel,Automatic,Sedan,Red,1007,4,Colombo
+WP-0005,Mercedes-Benz,GLA,2023,12851556,58666,Petrol,Automatic,Sedan,White,2608,2,Kandy
+WP-0006,Mercedes-Benz,GLC,2018,4999351,122633,Petrol,Manual,Wagon,Pearl White,1521,3,Gampaha
+WP-0007,BMW,X3,2024,14433792,158713,Diesel,Automatic,Sedan,Red,2189,2,Gampaha
+WP-0008,Toyota,Corolla,2019,14962967,115366,Diesel,Automatic,Sedan,Blue,1660,4,Kandy
+WP-0009,Mercedes-Benz,GLA,2019,10817871,83255,Electric,Manual,Coupe,Blue,1208,4,Colombo
+WP-0010,Toyota,Prius,2024,19221310,103600,Electric,Automatic,Wagon,Pearl White,2414,1,Colombo

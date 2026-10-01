@@ -10,7 +10,7 @@ async function bootstrap() {
   app.enableCors();
 
   // Mirrors main.ts exactly (see the comment there on why all three flags
-  // matter — the upload DTOs and e2e suites depend on this staying in sync).
+  // matter - the upload DTOs and e2e suites depend on this staying in sync).
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,

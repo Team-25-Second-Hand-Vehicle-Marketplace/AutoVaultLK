@@ -16,12 +16,12 @@ import { useDealerProfile } from './useDealerProfile'
 const PHONE_REGEX = /^\+?[1-9]\d{8,14}$/
 
 const schema = z.object({
-  // The dealer's own name (User.name — who to contact), distinct from
-  // companyName (DealerProfile — what to call the business). Two different
+  // The dealer's own name (User.name - who to contact), distinct from
+  // companyName (DealerProfile - what to call the business). Two different
   // resources, two different PATCH calls on submit; see onSubmit below.
   name: z.string().trim().min(2, 'Contact name is required').max(255),
   companyName: z.string().trim().min(2, 'Company name is required'),
-  // Business dealers only — see the conditional field below and the
+  // Business dealers only - see the conditional field below and the
   // superRefine, which is how the requirement is actually enforced (an
   // individual dealer's businessRegistrationNumber is never sent to the
   // schema empty-checked, since the field is never rendered for them).
@@ -42,7 +42,7 @@ type FormValues = z.infer<typeof schema>
 /**
  * Self-service edit for the details a dealer gave at registration: their own
  * name (User.name) plus the business fields (DealerProfile). Deliberately
- * does not include verification documents (a bigger, separate flow — re-upload
+ * does not include verification documents (a bigger, separate flow - re-upload
  * would need its own re-verification step, see DealerVerificationGate) or
  * dealerType/email (not part of UpdateDealerProfileDto; the backend fixes
  * dealer type at registration, and email changes aren't exposed anywhere yet).
@@ -109,7 +109,7 @@ export function DealerProfilePage() {
     }
 
     try {
-      // Two different resources — User.name and the DealerProfile fields —
+      // Two different resources - User.name and the DealerProfile fields -
       // so two PATCH calls. Name first: if it fails, nothing else is saved
       // either, which is simpler to reason about than a partial save.
       const updatedUser = await updateMyName(dealer.userId, values.name.trim())
@@ -118,7 +118,7 @@ export function DealerProfilePage() {
       await updateMyDealerProfile(dealer.userId, {
         companyName: values.companyName.trim(),
         // Individual dealers never had this field editable here (it's hidden
-        // below), so it's left out of the request rather than sent empty —
+        // below), so it's left out of the request rather than sent empty -
         // a PATCH only touches the fields it's given.
         ...(dealer.dealerType === 'business'
           ? { businessRegistrationNumber: values.businessRegistrationNumber.trim() }

@@ -4,7 +4,7 @@
  *
  * Kept as a copy rather than an import because the two services build
  * independently and the frontend has no path into ingestion-service's source.
- * If that file's TEMPLATE_HEADER or REQUIRED_COLUMNS change, change these too —
+ * If that file's TEMPLATE_HEADER or REQUIRED_COLUMNS change, change these too -
  * a template that no longer matches the parser hands dealers a file that fails
  * validation, which is worse than offering no template at all.
  */
@@ -77,17 +77,17 @@ export function isRequired(column: string): boolean {
 /**
  * What each column accepts, for the on-page reference.
  *
- * The parser is deliberately forgiving — it strips currency prefixes and unit
- * suffixes, expands two-digit years, and folds ~35 header aliases — so these
+ * The parser is deliberately forgiving - it strips currency prefixes and unit
+ * suffixes, expands two-digit years, and folds ~35 header aliases - so these
  * describe intent rather than a strict format.
  */
 export const COLUMN_HELP: Record<string, string> = {
   vehicle_type:
     'Car, Bike, Van, Truck, SUV, Bus, Three Wheeler, Lorry, Pickup, Tractor or Heavy Machinery. Defaults to Car if left blank or unrecognised.',
   registration_number:
-    'Plate, e.g. CAB-1234. Leave blank for unregistered imports — but images are matched on it.',
-  make: 'Manufacturer, e.g. Toyota. Misspellings are corrected where possible — see "Known makes & models" below to check spelling before uploading.',
-  model: 'Model, e.g. Vitz. Matched within the make — see "Known makes & models" below.',
+    'Plate, e.g. CAB-1234. Leave blank for unregistered imports - but images are matched on it.',
+  make: 'Manufacturer, e.g. Toyota. Misspellings are corrected where possible - see "Known makes & models" below to check spelling before uploading.',
+  model: 'Model, e.g. Vitz. Matched within the make - see "Known makes & models" below.',
   year: 'Manufacture year, 1980 onwards. Two-digit years are expanded.',
   price: 'Asking price in LKR. "Rs. 3,500,000" and "3.5M" both work.',
   mileage: 'Odometer reading. "45,000 km" works.',
@@ -95,15 +95,15 @@ export const COLUMN_HELP: Record<string, string> = {
   transmission: 'Manual, Automatic, CVT or Semi-automatic.',
   body_type: 'Sedan, Hatchback, SUV, Wagon, Coupe, Convertible, Pickup, Minivan…',
   condition:
-    'One of: New, Used, or Reconditioned (also accepts "Brand new", "Recon", "Second hand"). A value outside these three is treated as Used — write one of the three plainly rather than a grade like "Excellent" or "Like new".',
+    'One of: New, Used, or Reconditioned (also accepts "Brand new", "Recon", "Second hand"). A value outside these three is treated as Used - write one of the three plainly rather than a grade like "Excellent" or "Like new".',
   engine_capacity_cc: 'Engine size in cc, e.g. 1500.',
-  color: 'Exterior color as a short plain name, e.g. White, Silver, Black, Pearl White. Free text — stick to a single common color name per vehicle so search and filtering stay useful.',
+  color: 'Exterior color as a short plain name, e.g. White, Silver, Black, Pearl White. Free text - stick to a single common color name per vehicle so search and filtering stay useful.',
   owners_count: 'Number of previous owners.',
   location_city: 'City the vehicle is listed from, e.g. Colombo.',
   location_district: 'District, e.g. Colombo.',
   chassis_number: 'Chassis/VIN number.',
   description: 'Free-text notes. Anything in a column we don’t recognise is appended here too.',
-  is_negotiable: 'true/false — whether the price is negotiable.',
+  is_negotiable: 'true/false - whether the price is negotiable.',
   registration_year: 'Year the vehicle was first registered, if different from the manufacture year.',
   seats: 'Number of seats, e.g. 5.',
   doors: 'Number of doors, e.g. 4.',
@@ -111,7 +111,7 @@ export const COLUMN_HELP: Record<string, string> = {
   load_capacity_kg: 'Cargo capacity in kg (lorries/trucks).',
   drive_type: 'FWD, RWD, AWD or 4WD.',
   sunroof: 'true/false.',
-  full_option: 'true/false — fully equipped.',
+  full_option: 'true/false - fully equipped.',
   alloy_wheels: 'true/false.',
   reverse_camera: 'true/false.',
   leather_seats: 'true/false.',

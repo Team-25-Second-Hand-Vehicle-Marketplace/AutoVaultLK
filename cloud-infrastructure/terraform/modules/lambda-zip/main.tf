@@ -13,14 +13,14 @@ terraform {
 # 10 are zip and embed/process-images are container images via modules.lambda
 # instead).
 #
-# BOOTSTRAP ORDER — same chicken-and-egg as modules.lambda's ECR repos: the S3
+# BOOTSTRAP ORDER - same chicken-and-egg as modules.lambda's ECR repos: the S3
 # object at s3_key must already exist before this resource can be created.
 # First apply of a brand-new environment must create the lambda-artifacts
 # bucket first (-target), build+upload the zips, then apply the rest. See
 # environments/production/README.md.
 #
 # After that, CI updates the running function directly via `aws lambda
-# update-function-code --s3-bucket ... --s3-key ...` — faster than a full
+# update-function-code --s3-bucket ... --s3-key ...` - faster than a full
 # terraform apply. Unlike modules.lambda's image_uri, s3_bucket/s3_key here
 # are static values this module never recomputes, so a later `terraform
 # apply` has nothing to fight and no lifecycle.ignore_changes is needed.

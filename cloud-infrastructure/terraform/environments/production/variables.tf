@@ -13,20 +13,20 @@ variable "project_name" {
   default = "vehicle-marketplace"
 }
 
-# The only value you MUST supply — see cloud-infrastructure/terraform/environments/production/README.md.
+# The only value you MUST supply - see cloud-infrastructure/terraform/environments/production/README.md.
 # Pass via a git-ignored production.auto.tfvars, never commit a real key.
 variable "groq_api_key" {
   type      = string
   sensitive = true
 }
 
-# --- SES sending identity — set at least one of these two ---
+# --- SES sending identity - set at least one of these two ---
 variable "ses_sender_email" {
   type    = string
   default = null
 }
 
-# OAuth 2.0 Client ID from Google Cloud Console — verifies the audience of
+# OAuth 2.0 Client ID from Google Cloud Console - verifies the audience of
 # Google ID tokens server-side. Not a secret (the frontend also ships it, via
 # VITE_GOOGLE_CLIENT_ID), so no reason to route it through Secrets Manager.
 variable "google_client_id" {
@@ -46,7 +46,7 @@ variable "ses_route53_zone_id" {
 
 # Tag pushed to each ECR repo that the Lambda functions run. CI updates the
 # running function directly after a build (see modules/lambda's bootstrap
-# note) — this var only matters for the very first apply, before any image
+# note) - this var only matters for the very first apply, before any image
 # exists.
 variable "image_tag" {
   type    = string
@@ -54,7 +54,7 @@ variable "image_tag" {
 }
 
 # Flip to false only once auth-user-service's SES integration (plan item 2)
-# is actually implemented and deployed — until then this is the only way a
+# is actually implemented and deployed - until then this is the only way a
 # registered user can complete email verification at all.
 variable "auth_return_verification_token" {
   type    = bool
@@ -84,13 +84,13 @@ variable "github_repo_id" {
 }
 
 # Set false only if this AWS account already has a GitHub OIDC provider from
-# another project — AWS allows just one per unique provider URL per account.
+# another project - AWS allows just one per unique provider URL per account.
 variable "create_github_oidc_provider" {
   type    = bool
   default = true
 }
 
-# Optional — the alerts SNS topic (module.monitoring) is created either way;
+# Optional - the alerts SNS topic (module.monitoring) is created either way;
 # this just subscribes an inbox to it at apply time. Subscribe later from the
 # console instead if you'd rather not put an email in tfvars.
 variable "alarm_email" {
@@ -100,7 +100,7 @@ variable "alarm_email" {
 
 # --- SMTP email (alternative to SES) ---------------------------------------
 # When smtp_host is set, auth-user-service and notification-service send mail
-# over SMTP instead of SES — no SES sandbox exit or verified domain needed.
+# over SMTP instead of SES - no SES sandbox exit or verified domain needed.
 # For Gmail: smtp.gmail.com / 587 / the account's address / an APP PASSWORD
 # (Google Account -> Security -> 2-Step Verification -> App passwords), never
 # the normal account password. Set these in the git-ignored *.auto.tfvars.

@@ -51,7 +51,7 @@ export type PipelineConfig = {
 // ---------------------------------------------------------------------------
 
 /**
- * Loaded once per pipeline run and held in memory — never queried per row.
+ * Loaded once per pipeline run and held in memory - never queried per row.
  * That is what keeps the `extra: { max: 5 }` connection-pool argument in
  * config/database.config.ts intact under MaxConcurrency: 10.
  */
@@ -67,8 +67,8 @@ export interface DictionarySnapshot {
    *
    * Exists for the Groq stage's whitelist: the model is given the allowed
    * vocabulary in its prompt, and every value it returns is checked against
-   * this before being written. An LLM inventing "Toyota Supra" — a real
-   * vehicle, absent from this dictionary — would otherwise produce a pair no
+   * this before being written. An LLM inventing "Toyota Supra" - a real
+   * vehicle, absent from this dictionary - would otherwise produce a pair no
    * search facet, filter or lookup can ever match, which is worse than the
    * unresolved value it replaced.
    */
@@ -112,17 +112,17 @@ export type RawRow = {
  * Where one field's value came from, and how sure the pipeline is of it.
  *
  * `rule` covers everything parseNormalize resolves deterministically without
- * a dictionary lookup — a parsed number, a matched enum keyword. `dictionary`
+ * a dictionary lookup - a parsed number, a matched enum keyword. `dictionary`
  * is a make/model (or any DictionaryHit-backed field) resolved against
  * ctx.dictionary, whether the hit was exact, alias or fuzzy; the distinction
  * between those already lives in `confidence`, so the source label does not
  * need to repeat it. `raw` is a field carried through unparsed (free text like
  * description, or a value coerced but not looked up against any vocabulary).
- * `groq` is a value the Groq fallback supplied — currently make/model only,
+ * `groq` is a value the Groq fallback supplied - currently make/model only,
  * see groq-normalize.stage.ts.
  *
  * `reasoning` is populated only for `groq` entries whose value Groq actually
- * changed, and only when Groq returns one — the deterministic paths have
+ * changed, and only when Groq returns one - the deterministic paths have
  * nothing to explain beyond the source itself, and asking Groq to justify
  * every row (not just the ones it resolves) would widen the request FR-33.7
  * says to keep minimal.
@@ -132,14 +132,14 @@ export type FieldSource = 'rule' | 'dictionary' | 'raw' | 'groq';
 export type FieldProvenance = {
   source: FieldSource;
   confidence: number;
-  /** varchar(500) in marketplace.vehicles — see MAX_REASONING_LENGTH below. */
+  /** varchar(500) in marketplace.vehicles - see MAX_REASONING_LENGTH below. */
   reasoning?: string;
 };
 
 /**
  * Per-field provenance for one row, keyed by VehicleFields property name.
  *
- * Only fields the dealer actually supplied something for are present — the
+ * Only fields the dealer actually supplied something for are present - the
  * same rule parseNormalize's own `record()` already follows for row-level
  * confidence (a blank optional column is not evidence of anything, so it does
  * not get an entry either).
@@ -154,8 +154,8 @@ export type NormalizationProvenance = Partial<
  * `provenance` is optional on the type rather than required: every row the
  * running pipeline produces carries one (parseNormalizeStage always sets it),
  * but making it mandatory would force every NormalizedRow literal across the
- * test suite — which builds rows by hand to exercise validateRows, enrich,
- * embed and load in isolation from parseNormalize — to fabricate provenance
+ * test suite - which builds rows by hand to exercise validateRows, enrich,
+ * embed and load in isolation from parseNormalize - to fabricate provenance
  * data those tests have no reason to care about. Call sites that need it
  * (the review UI's mapping, groqNormalize's merge) default a missing value to
  * `{}` rather than assuming it is present.
@@ -173,7 +173,7 @@ export type ValidatedRow = NormalizedRow & {
   normalized: VehicleFields;
 };
 
-/** After enrich — specs, status and defaults filled in. */
+/** After enrich - specs, status and defaults filled in. */
 export type EnrichedRow = ValidatedRow;
 
 /**
@@ -192,7 +192,7 @@ export type EmbeddedRow = EnrichedRow & {
  * Deliberately Pick<>-ed from the write entity rather than restated: renaming a
  * column there breaks the build here instead of silently dropping the field on
  * write. `id`, `dealerId`, `uploadJobId`, `status`, `searchText`, `embedding`
- * and the timestamps are excluded — the Load adapter owns those, not the
+ * and the timestamps are excluded - the Load adapter owns those, not the
  * normalizer, and dealer CSV content must never be able to set them.
  */
 export type VehicleFields = Pick<
@@ -249,7 +249,7 @@ export const MAX_REJECTION_REASON_LENGTH = 500;
 /**
  * marketplace.vehicles.normalization is JSONB with no column-width cap of its
  * own, but a `reasoning` string is stored inside it and read by a review UI
- * that renders it inline — unbounded LLM output there is a display problem
+ * that renders it inline - unbounded LLM output there is a display problem
  * today and a storage-bloat one if a future run ever asks for more than one
  * sentence. Clamped the same way rejected-records' `reason` is, for the same
  * reason: an oversized value should degrade gracefully, not throw or balloon.
@@ -266,7 +266,7 @@ export function clampReasoning(reasoning: string): string {
 /**
  * The shape written to marketplace.vehicles.normalization (FR-42.1). Built by
  * the Load stage from a row's `provenance` map and `confidence`, immediately
- * before the write — see buildNormalizationPayload in
+ * before the write - see buildNormalizationPayload in
  * marketplace-vehicles-write.adapter.ts.
  */
 export type NormalizationPayload = {

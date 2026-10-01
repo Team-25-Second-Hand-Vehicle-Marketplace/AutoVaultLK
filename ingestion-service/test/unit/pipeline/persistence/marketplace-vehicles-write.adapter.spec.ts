@@ -59,7 +59,7 @@ describe('MarketplaceVehiclesWriteAdapter', () => {
   describe('the ADR-002 boundary', () => {
     it('never emits DELETE', async () => {
       // ingestion_service_role holds no DELETE grant, so this would fail at
-      // runtime — but the reason it holds none is that ETL must not be able to
+      // runtime - but the reason it holds none is that ETL must not be able to
       // destroy a dealer's manually created listings.
       const { adapter, query } = harness();
 
@@ -211,7 +211,7 @@ describe('MarketplaceVehiclesWriteAdapter', () => {
         ),
       ]);
 
-      // Column 25 (index 24) is normalization — see placeholders().
+      // Column 25 (index 24) is normalization - see placeholders().
       expect(sqlOf(query)).toMatch(/\$25::jsonb/);
     });
 
@@ -248,7 +248,7 @@ describe('MarketplaceVehiclesWriteAdapter', () => {
     });
 
     // A manually-typed listing and a row parseNormalize resolved with nothing
-    // to say both mean "no provenance to review" — writing `{}` here would
+    // to say both mean "no provenance to review" - writing `{}` here would
     // make the review UI render an empty, confusing panel instead of nothing.
     it('writes null when the row carries no provenance', async () => {
       const { adapter, query } = harness();
@@ -284,7 +284,7 @@ describe('MarketplaceVehiclesWriteAdapter', () => {
   describe('duplicate registration across jobs', () => {
     it('isolates the offending row and keeps the rest of the batch', async () => {
       // The GLOBAL unique on registration_number fires when a dealer
-      // re-uploads a vehicle already listed under a DIFFERENT job — the
+      // re-uploads a vehicle already listed under a DIFFERENT job - the
       // composite target cannot catch it, because the job ids differ. A batch
       // INSERT aborts entirely, so the good rows would be lost.
       const query = jest

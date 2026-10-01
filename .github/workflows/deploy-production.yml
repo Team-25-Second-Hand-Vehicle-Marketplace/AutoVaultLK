@@ -10,7 +10,7 @@ name: Deploy to production
 #   - database migrations or seeds (they need the private-subnet bastion).
 #
 # AWS access is via the OIDC role from modules/github-oidc, which only trusts
-# this repo's `main` branch — so this cannot deploy from any other branch.
+# this repo's `main` branch - so this cannot deploy from any other branch.
 #
 # If the production environment is torn down, every deploy here will fail
 # (resources missing). Disable the workflow in the Actions tab until it is back.
@@ -25,7 +25,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  id-token: write # required for OIDC — do not remove
+  id-token: write # required for OIDC - do not remove
   contents: read
 
 # One deploy at a time: two overlapping update-function-code / s3 sync runs
@@ -368,7 +368,7 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
       - uses: aws-actions/amazon-ecr-login@v2
       # The MiniLM ONNX model is ~90MB, over the 250MB zip-package unzipped cap
-      # — the one ETL stage (with process-images) that ships as a container
+      # - the one ETL stage (with process-images) that ships as a container
       # image instead of a zip. See function-config.ts.
       - name: Build and push image
         working-directory: ingestion-service
@@ -429,7 +429,7 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: ingestion-service/package-lock.json
-      # The 10 lightweight ETL stage Lambdas — zip-packaged, not container
+      # The 10 lightweight ETL stage Lambdas - zip-packaged, not container
       # images (see function-config.ts / STEP-FUNCTIONS-MIGRATION-PLAN.md §S7).
       # One shared build produces all 10 zips; each gets its own upload +
       # update-function-code call.
@@ -474,18 +474,18 @@ jobs:
         run: |
           npm ci
           # The app joins paths itself (`${base}/auth/refresh`), so a trailing
-          # slash — `terraform output public_api_endpoint` ends with one —
+          # slash - `terraform output public_api_endpoint` ends with one -
           # would produce `//auth/refresh`. Strip it.
           VITE_API_BASE_URL="${PUBLIC_API_ENDPOINT%/}" VITE_GOOGLE_CLIENT_ID="$GOOGLE_CLIENT_ID" npm run build
       - name: Sync to S3
         # Three passes, worst-cacheability first, so a broader later pass never
         # undoes a more specific header an earlier one set:
-        #   1. Everything, short/no cache — covers index.html, which must always
+        #   1. Everything, short/no cache - covers index.html, which must always
         #      be re-fetched or a returning visitor keeps an old build's HTML
         #      pointing at hashed bundle files that no longer exist.
-        #   2. /assets/* (Vite's hashed JS/CSS) — the filename changes whenever
+        #   2. /assets/* (Vite's hashed JS/CSS) - the filename changes whenever
         #      the content does, so these can be cached for a year.
-        #   3. /images/* (unhashed design photos) — cached for a day. Long
+        #   3. /images/* (unhashed design photos) - cached for a day. Long
         #      enough that a repeat visit in the same session or the next day
         #      doesn't re-download 1MB of photos; short enough that swapping a
         #      photo (see scripts/optimize-images.mjs) shows up for returning

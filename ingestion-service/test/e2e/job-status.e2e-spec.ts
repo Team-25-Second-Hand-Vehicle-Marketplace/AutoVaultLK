@@ -13,7 +13,7 @@ import type { AuthenticatedUser } from '../../src/modules/auth/types/authenticat
  * routing, real ParseUUIDPipe, real ValidationPipe, with only the repository
  * stubbed.
  *
- * The route is `/jobs`, not `/upload-jobs` — api-gateway/openapi/public-api.yaml
+ * The route is `/jobs`, not `/upload-jobs` - api-gateway/openapi/public-api.yaml
  * publishes GET /jobs/{jobId} and nginx proxies `location /jobs/` WITHOUT
  * stripping the prefix, so the path the service sees includes it. That mismatch
  * was a live 404 once; this suite pins it.
@@ -210,7 +210,7 @@ describe('GET /jobs/:id (e2e)', () => {
 });
 
 /**
- * The dealer's upload history — same controller, same guard, and the same
+ * The dealer's upload history - same controller, same guard, and the same
  * "mine" pattern as GET /jobs/active, registered ahead of :id so Nest never
  * tries to parse it as a job id.
  */
@@ -283,7 +283,7 @@ describe('GET /jobs/mine (e2e)', () => {
 
 /**
  * FR-57: the row-level report behind the aggregate counts. Same routing and
- * scoping rules as the status endpoint above — a job that is not yours is a
+ * scoping rules as the status endpoint above - a job that is not yours is a
  * 404, and the dealer id comes from the token.
  */
 describe('GET /jobs/:id/rejections (e2e)', () => {

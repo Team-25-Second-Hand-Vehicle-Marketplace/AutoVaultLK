@@ -25,7 +25,7 @@ are equally plausible, or none is.
 
 Rules:
 - Fill only fields the deterministic parser missed.
-- Never invent a value that is absent from the allowed lists — but
+- Never invent a value that is absent from the allowed lists - but
   correcting a misspelled token TO an allowed value is required, not
   inventing.
 - Every filter key is SINGULAR even though its value is an array and the

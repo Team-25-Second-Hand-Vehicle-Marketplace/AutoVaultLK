@@ -7,9 +7,9 @@ import { INTAKE_NOTIFICATION_TYPES } from '../../src/modules/notifications/dto/c
  * internal callers that emit events against it.
  *
  * admin-service's NotificationInternalClient and ingestion-service's
- * notification-client.ts each keep their own copy of this union — both files
+ * notification-client.ts each keep their own copy of this union - both files
  * say so directly ("Matches notification-service's INTAKE_NOTIFICATION_TYPES")
- * — because a plain pipeline stage module cannot import a NestJS DTO across a
+ * - because a plain pipeline stage module cannot import a NestJS DTO across a
  * service boundary. Nothing but this test enforces that promise: a type added
  * here and not mirrored there is accepted by TypeScript on both sides and
  * rejected at runtime by CreateNotificationEventDto's @IsIn validator, with
@@ -50,7 +50,7 @@ describeIfPresent('intake notification type parity with internal callers', () =>
 
   it('admin-service NotificationEventType matches INTAKE_NOTIFICATION_TYPES', () => {
     // If this fails, admin-service can construct an event notification-service
-    // rejects with a 400 — an admin action (dealer verified/rejected) whose
+    // rejects with a 400 - an admin action (dealer verified/rejected) whose
     // notification silently never sends.
     const theirs = readUnionMembers(adminSource, 'NotificationEventType');
     expect(theirs).toEqual([...INTAKE_NOTIFICATION_TYPES]);
@@ -58,7 +58,7 @@ describeIfPresent('intake notification type parity with internal callers', () =>
 
   it('ingestion-service NotificationEventType matches INTAKE_NOTIFICATION_TYPES', () => {
     // If this fails, a completed or failed upload job's notification is
-    // rejected the same way — the dealer never finds out their upload finished.
+    // rejected the same way - the dealer never finds out their upload finished.
     const theirs = readUnionMembers(ingestionSource, 'NotificationEventType');
     expect(theirs).toEqual([...INTAKE_NOTIFICATION_TYPES]);
   });

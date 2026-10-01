@@ -38,7 +38,7 @@ describe('AliasPromotionRepository', () => {
     it('offers only parentless rows', async () => {
       // MODEL rows hang off a make and are resolved scoped to it. A bare
       // search token carries no make context, so a model alias would attach
-      // under whichever make scored highest — and under the wrong parent it
+      // under whichever make scored highest - and under the wrong parent it
       // can never resolve again.
       await repository.findDictionaryEntries();
 

@@ -16,7 +16,7 @@ loadEnv({ path: '.env' });
  * index, or a cast pgvector rejects, passes every one of those and fails on the
  * first real upload. Only a live Postgres can tell the difference.
  *
- * Requires a migrated, seeded database — the one docker-compose brings up:
+ * Requires a migrated, seeded database - the one docker-compose brings up:
  *
  *   docker compose up -d postgres
  *   npm --prefix database run migration:run
@@ -41,7 +41,7 @@ export async function connect(): Promise<DataSource | null> {
     type: 'postgres',
     url: INTEGRATION_DATABASE_URL,
     // The real entities, so repositories under test map columns exactly as
-    // they do in the running service. `schema` matches database.config.ts —
+    // they do in the running service. `schema` matches database.config.ts -
     // without it the ingestion tables resolve to `public`.
     schema: 'ingestion',
     entities: [UploadJob, RejectedRecord, EtlStageLog, VehicleDictionaryView],
@@ -70,7 +70,7 @@ export async function disconnect(): Promise<void> {
  * `describe` that skips when the database is unreachable, printing why once.
  *
  * Jest needs the skip decision before any `beforeAll` runs, so this probes with
- * a synchronous child process rather than an async connect — a promise cannot
+ * a synchronous child process rather than an async connect - a promise cannot
  * be awaited at describe-registration time.
  */
 export function describeWithDatabase(name: string, body: () => void): void {
@@ -116,7 +116,7 @@ function redact(url: string): string {
   return url.replace(/\/\/[^@]*@/, '//***@');
 }
 
-/** A dealer to own the test jobs. Any will do — dealer_id comes from the job. */
+/** A dealer to own the test jobs. Any will do - dealer_id comes from the job. */
 export async function findDealer(ds: DataSource): Promise<string> {
   const [dealer] = (await ds.query(
     `SELECT id FROM auth.users WHERE role = 'DEALER' LIMIT 1`,
@@ -143,8 +143,8 @@ export async function createJob(ds: DataSource, dealerId: string): Promise<strin
 /**
  * Removes everything a test created.
  *
- * ingestion_service_role holds no DELETE on marketplace.vehicles (ADR-002) —
- * the same grant the adapter is built around — so cleanup connects as the
+ * ingestion_service_role holds no DELETE on marketplace.vehicles (ADR-002) -
+ * the same grant the adapter is built around - so cleanup connects as the
  * owner. That asymmetry is the point: if this ever succeeds as the ETL role,
  * the grant has been widened and the architectural claim is gone.
  */

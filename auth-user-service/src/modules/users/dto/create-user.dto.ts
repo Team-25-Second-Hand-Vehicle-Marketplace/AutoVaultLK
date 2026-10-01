@@ -12,7 +12,7 @@ import {
   PERSON_NAME_MIN,
 } from '../../../common/validation/validation.constants';
 
-/** Safe user creation — no role, isActive, or passwordHash from clients. */
+/** Safe user creation - no role, isActive, or passwordHash from clients. */
 export class CreateUserDto {
   @NormalizeEmail()
   @IsEmail({}, { message: 'email must be a valid email address' })

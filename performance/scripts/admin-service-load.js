@@ -3,7 +3,7 @@ import { check, sleep } from 'k6';
 import { textSummary } from 'https://jslib.k6.io/k6-summary/0.1.0/index.js';
 
 /**
- * Admin service load test — never exercised at any concurrency by any
+ * Admin service load test - never exercised at any concurrency by any
  * earlier script in this repo (every prior admin-service interaction was a
  * single Playwright browser session or a single k6 setup() call to approve
  * one dealer). Covers the read-heavy screens an admin actually spends time
@@ -12,13 +12,13 @@ import { textSummary } from 'https://jslib.k6.io/k6-summary/0.1.0/index.js';
  * Reuses ONE real admin login across N concurrent virtual sessions, rather
  * than registering N distinct admin accounts: admin-service is a small,
  * fixed-size operations team's tool, not a public-facing surface with many
- * independent accounts — the realistic scenario is several admin staff
+ * independent accounts - the realistic scenario is several admin staff
  * viewing the SAME dashboard at the same time, sharing the one seeded
  * admin identity, not N different admins. (Contrast with buyer/dealer load
  * tests, which correctly register N distinct accounts because that IS the
  * realistic shape of buyer/dealer traffic.)
  *
- * NUM_ADMIN_SESSIONS defaults to 10 — no NFR in the SRS specifies a target
+ * NUM_ADMIN_SESSIONS defaults to 10 - no NFR in the SRS specifies a target
  * concurrent-admin-session count the way NFR-10 does for buyers; 10 is a
  * reasonable stand-in for "the whole admin/ops team looking at this at
  * once," not a documented requirement.
@@ -44,7 +44,7 @@ export const options = {
     },
   },
   thresholds: {
-    // NFR-09: CRUD/browse APIs under 500ms p95 — admin screens are exactly
+    // NFR-09: CRUD/browse APIs under 500ms p95 - admin screens are exactly
     // this category (read-heavy list/dashboard views), so the same bar
     // applies even though the SRS never names admin-service specifically.
     http_req_duration: ['p(95)<500'],
@@ -81,10 +81,10 @@ export default function (data) {
   });
   check(dashboardRes, { 'dashboard succeeded': (r) => r.status === 200 });
 
-  // None of these three endpoints takes a `limit` query param — listUsers
+  // None of these three endpoints takes a `limit` query param - listUsers
   // and listUploads return their full (unpaginated) set filtered only by
   // an optional status, and audit-logs search is internally fixed to the
-  // latest 200 (AuditLogsRepository.search's own .take(200)) — confirmed
+  // latest 200 (AuditLogsRepository.search's own .take(200)) - confirmed
   // by reading admin.controller.ts's DTOs before guessing at query shapes.
   const usersRes = http.get(`${ADMIN_BASE_URL}/admin/users`, {
     ...authHeaders,
@@ -111,7 +111,7 @@ export function handleSummary(data) {
   const totalRequests = data.metrics.http_reqs ? data.metrics.http_reqs.values.count : 0;
   if (totalRequests === 0) {
     throw new Error(
-      'admin-service-load made zero HTTP requests — every iteration threw before any request ' +
+      'admin-service-load made zero HTTP requests - every iteration threw before any request ' +
         'fired (check the k6 error log above and setup()).',
     );
   }

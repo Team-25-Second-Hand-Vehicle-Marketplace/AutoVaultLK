@@ -1,6 +1,6 @@
 import { RecommendationsRepository } from '../../../../src/modules/recommendations/repositories/recommendations.repository';
 
-/** One full row as Postgres returns it — snake_case, numerics as strings. */
+/** One full row as Postgres returns it - snake_case, numerics as strings. */
 const ROW = {
   id: 'v-1',
   vehicle_type: 'CAR',
@@ -24,7 +24,7 @@ const ROW = {
 };
 
 /**
- * Passes every path through unchanged — image *resolution* (s3/local/demo
+ * Passes every path through unchanged - image *resolution* (s3/local/demo
  * mode) is ImageUrlResolverService's own concern with its own spec; this
  * file only needs imageUrl/thumbnailUrl to keep meaning what ROW says.
  */
@@ -112,7 +112,7 @@ describe('RecommendationsRepository', () => {
 
     it('coerces numerics from strings', async () => {
       // pg returns numeric and double precision as strings. Left as-is, the
-      // frontend would sort prices lexicographically — "900000" above
+      // frontend would sort prices lexicographically - "900000" above
       // "3500000".
       dataSource.query.mockResolvedValue([ROW]);
 

@@ -4,7 +4,7 @@ import { textSummary } from 'https://jslib.k6.io/k6-summary/0.1.0/index.js';
 
 /**
  * Stress test: ramps buyer concurrency PAST NFR-10's 50-session target,
- * with no pre-chosen ceiling, to find the actual saturation point — the
+ * with no pre-chosen ceiling, to find the actual saturation point - the
  * Test Plan's own definition (§3.3.5): "concurrency ramped past expected
  * peak to locate the saturation point and confirm the system degrades via
  * queueing, throttling or clear errors rather than opaque failure."
@@ -12,20 +12,20 @@ import { textSummary } from 'https://jslib.k6.io/k6-summary/0.1.0/index.js';
  * Deliberately NO http_req_duration threshold gating this run: a stress
  * test's whole point is to go past where the system is expected to still
  * meet its normal targets, so failing NFR-09's 500ms bar at 200+ VUs is
- * not a bug this script should flag — it's the expected, useful outcome.
+ * not a bug this script should flag - it's the expected, useful outcome.
  * The only thing gated is http_req_failed, and even that is set generous
- * (10%, not 1%) — some failures under deliberate overload are the correct
+ * (10%, not 1%) - some failures under deliberate overload are the correct
  * signal, not noise; a 0%-failure stress test would mean the ramp never
  * actually found the ceiling.
  *
- * No ingestion mixed in here (unlike end-to-end-load.js) — stress testing
+ * No ingestion mixed in here (unlike end-to-end-load.js) - stress testing
  * isolates ONE variable (buyer concurrency) so a saturation point found
  * here is attributable to buyer load alone, not entangled with a
  * concurrent dealer upload. The interaction between the two is what
  * end-to-end-load.js already covers separately.
  *
  * Read the console output and the per-stage p95/error-rate trend after a
- * run to find where degradation actually starts — that number is the
+ * run to find where degradation actually starts - that number is the
  * point of this script, not a pass/fail verdict on the numbers file.
  */
 
@@ -74,12 +74,12 @@ export const options = {
 // A smaller, reused pool rather than one account per VU: MAX_VUS accounts
 // registered via one giant http.batch() call is itself a 400-way
 // concurrent burst against the registration endpoint (each doing a real
-// bcrypt.hash server-side) — confirmed by direct observation to make
+// bcrypt.hash server-side) - confirmed by direct observation to make
 // setup() itself the bottleneck (avg registration response time rose to
 // 3.58s under a 298-wide batch, well past what a single VU sees). This
 // script is meant to stress BROWSING concurrency, not registration
 // concurrency, so a fixed, smaller pool of real accounts is reused across
-// VUs (several VUs sharing one login) — realistic enough for a browsing
+// VUs (several VUs sharing one login) - realistic enough for a browsing
 // stress test, and keeps setup() itself fast regardless of how high
 // MAX_VUS goes.
 const ACCOUNT_POOL_SIZE = 50;
@@ -109,7 +109,7 @@ export function setup() {
     const body = JSON.parse(res.body);
     if (!body.verificationToken) {
       throw new Error(
-        'setup: POST /auth/register/buyer did not return verificationToken — ' +
+        'setup: POST /auth/register/buyer did not return verificationToken - ' +
           'is AUTH_RETURN_VERIFICATION_TOKEN=true set?',
       );
     }
@@ -138,7 +138,7 @@ export function setup() {
   }
   const items = JSON.parse(searchRes.body).items;
   if (!items || items.length === 0) {
-    throw new Error('setup: local catalogue is empty — is it seeded (database/ seed:vehicles)?');
+    throw new Error('setup: local catalogue is empty - is it seeded (database/ seed:vehicles)?');
   }
 
   return { buyers, vehicleId: items[0].id };
@@ -146,7 +146,7 @@ export function setup() {
 
 export default function (data) {
   // Every path through this function ends in sleep(1), including the
-  // early-return failure paths below — confirmed by direct observation
+  // early-return failure paths below - confirmed by direct observation
   // that omitting it on those paths let a VU whose login failed spin in a
   // near-zero-cost tight loop: one run recorded 43 MILLION iterations in
   // under 4 minutes from just 46 failed logins out of 400 VUs, which also
@@ -189,7 +189,7 @@ export function handleSummary(data) {
   const totalRequests = data.metrics.http_reqs ? data.metrics.http_reqs.values.count : 0;
   if (totalRequests === 0) {
     throw new Error(
-      'buyer-traffic-stress made zero HTTP requests — every iteration threw before any request ' +
+      'buyer-traffic-stress made zero HTTP requests - every iteration threw before any request ' +
         'fired (check the k6 error log above and setup()).',
     );
   }

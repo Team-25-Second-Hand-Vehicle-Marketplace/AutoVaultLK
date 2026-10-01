@@ -87,7 +87,7 @@ describe('enrichStage', () => {
     });
 
     it('drops a body type outside KNOWN_SPEC_KEYS', async () => {
-      // A value no search facet can filter on is worse than an absent one — it
+      // A value no search facet can filter on is worse than an absent one - it
       // looks like data.
       expect((await enrich(row({}, { body_type: 'limousine' }))).normalized.specs).toBeUndefined();
     });
@@ -95,7 +95,7 @@ describe('enrichStage', () => {
     it('is set before embed runs, since buildSearchText reads it', async () => {
       // A bulk row without body_type produces a shorter search text than the
       // equivalent manual listing, and a different text embeds to a different
-      // vector — FR-22.1 drift through the side door.
+      // vector - FR-22.1 drift through the side door.
       const result = await enrich(row({}, { body_type: 'saloon' }));
 
       expect(result.normalized.specs).toHaveProperty('body_type');
@@ -130,7 +130,7 @@ describe('enrichStage', () => {
   describe('category-gated specs (SRS Appendix B.2)', () => {
     it('ignores CAR/SUV-only columns on a non-CAR/SUV vehicle_type', async () => {
       // A TRUCK row with a seats/doors/drive_type column should not get a CAR
-      // cabin spec — the column describes the wrong category of vehicle.
+      // cabin spec - the column describes the wrong category of vehicle.
       const result = await enrich(
         row({ vehicleType: 'TRUCK' }, { seats: '5', doors: '4', drive_type: '4wd' }),
       );
@@ -153,7 +153,7 @@ describe('enrichStage', () => {
         abs_equipped: true,
       });
 
-      // Same columns on a CAR row are ignored — a car has no stroke_type.
+      // Same columns on a CAR row are ignored - a car has no stroke_type.
       const car = await enrich(
         row({ vehicleType: 'CAR' }, { stroke_type: '4-stroke', cooling_system: 'liquid' }),
       );
@@ -205,7 +205,7 @@ describe('enrichStage', () => {
     });
 
     it('applies universal equipment specs regardless of vehicle_type', async () => {
-      // A van or truck can have a sunroof too — these are not category-gated.
+      // A van or truck can have a sunroof too - these are not category-gated.
       const result = await enrich(
         row({ vehicleType: 'TRUCK' }, { sunroof: 'yes', full_option: 'yes' }),
       );
@@ -270,7 +270,7 @@ describe('enrichStage', () => {
       // "Warranty: 2 years" is real information a buyer would search for, and
       // dropping it silently loses the only place it existed. It is written to
       // specs verbatim so the dealer's own data survives structurally (FR-15 /
-      // Appendix B.2), and to description so it still reaches the embedding —
+      // Appendix B.2), and to description so it still reaches the embedding -
       // no search facet queries an unknown specs key, but that is a filtering
       // limitation, not a reason to lose the data.
       const result = await enrich(row({}, { warranty: '2 years', service_records: 'full' }));
@@ -349,7 +349,7 @@ describe('enrichStage', () => {
     expect((await enrich(row())).normalized.specs).toBeUndefined();
   });
 
-  it('never rejects a row — it only adds', async () => {
+  it('never rejects a row - it only adds', async () => {
     const result = await enrichStage.run(ctx, [row(), row()]);
 
     expect(result.rejections).toEqual([]);

@@ -15,7 +15,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  *
  * Safe to drop the old tables: all three were empty (never seeded).
  *
- * Ownership unchanged — marketplace-service owns this table.
+ * Ownership unchanged - marketplace-service owns this table.
  * ingestion-service holds SELECT only and caches a snapshot at container
  * init; alias promotion goes through marketplace's API, not a direct write.
  * See database/src/grants.sql.
@@ -51,7 +51,7 @@ export class VehicleDictionaries1735000016000 implements MigrationInterface {
       )
     `);
 
-    // Trigram index for typo correction — the reason this is a table at
+    // Trigram index for typo correction - the reason this is a table at
     // all rather than a hardcoded array. similarity() needs a GIN index.
     await queryRunner.query(`
       CREATE INDEX idx_vehicle_dictionaries_value_trgm
@@ -73,7 +73,7 @@ export class VehicleDictionaries1735000016000 implements MigrationInterface {
       USING gin (aliases jsonb_path_ops)
     `);
 
-    // Old three-table design. All empty — nothing to migrate across.
+    // Old three-table design. All empty - nothing to migrate across.
     // Dropped in FK-safe order: aliases has no FK, models references makes.
     await queryRunner.query(`DROP TABLE IF EXISTS marketplace.aliases`);
     await queryRunner.query(`DROP TABLE IF EXISTS marketplace.models`);

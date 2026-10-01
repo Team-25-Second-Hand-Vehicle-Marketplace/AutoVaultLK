@@ -6,7 +6,7 @@ import { textSummary } from 'https://jslib.k6.io/k6-summary/0.1.0/index.js';
 
 // isTime=true tells k6 the values passed to .add() are MILLISECONDS, so it
 // can auto-format/auto-scale them like its own built-in duration metrics
-// (http_req_duration, etc.) — passing seconds directly under that flag is
+// (http_req_duration, etc.) - passing seconds directly under that flag is
 // what produced a misleadingly tiny "4.2ms" for what was actually a 4.2s
 // job (k6 divided the seconds value by 1000 again, on top of the value
 // already being in the wrong unit). completionSeconds is computed in
@@ -15,25 +15,25 @@ import { textSummary } from 'https://jslib.k6.io/k6-summary/0.1.0/index.js';
 const jobCompletionTrend = new Trend('job_completion_ms', true);
 
 /**
- * Single-user baseline for dealer bulk ingestion — the Test Plan's
+ * Single-user baseline for dealer bulk ingestion - the Test Plan's
  * highest-risk transaction (§3.3.5: "one dealer uploading a large
  * inventory degrades search for every concurrent buyer"). This baseline
  * measures ONE full cycle in isolation, end to end: register a verified
  * business dealer, submit a real CSV upload, and poll job status through
- * to a terminal state — establishing the per-job cost this transaction
+ * to a terminal state - establishing the per-job cost this transaction
  * carries BEFORE any concurrent-load or volume scenario (§3.3.4's stated
  * ordering) makes that cost harder to isolate from contention.
  *
  * Not gated on NFR-09's 500ms bar: this is an async job, not a
  * request/response transaction, and NFR-09 explicitly scopes itself to
- * "CRUD and browse APIs." The metric this script actually reports —
- * job_completion_seconds, a custom Trend — is the number this baseline
+ * "CRUD and browse APIs." The metric this script actually reports -
+ * job_completion_seconds, a custom Trend - is the number this baseline
  * exists to establish; there is no NFR-derived number to gate it against
  * yet, so this only checks the job reaches a terminal, non-FAILED state.
  *
  * Deliberately NOT a k6 "iteration per VU" shape: registration, approval
  * and upload only need to happen once, so they live in setup() exactly
- * like login-favourites-load.js's account pre-registration — the polling
+ * like login-favourites-load.js's account pre-registration - the polling
  * loop that actually measures the job's duration is the only thing that
  * runs as the default function, once.
  */
@@ -61,7 +61,7 @@ function csvRow(reg) {
   return `${reg},Toyota,Corolla,2020,5500000,45000,Petrol,Automatic,White,1500,1,Colombo,Used`;
 }
 
-/** A tiny valid 1x1 PNG, base64-decoded — same fixture content as e2e/fixtures/verification-document.png. */
+/** A tiny valid 1x1 PNG, base64-decoded - same fixture content as e2e/fixtures/verification-document.png. */
 const DOCUMENT_PNG_BASE64 =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
 
@@ -77,7 +77,7 @@ export function setup() {
   const password = 'Passw0rd!23';
   const regNumber = `PV ${stamp}`;
 
-  // uploadVerificationDocument first, like DealerRegisterPage.tsx does —
+  // uploadVerificationDocument first, like DealerRegisterPage.tsx does -
   // registerDealer needs the returned key in verificationDocuments.
   const documentBytes = encoding.b64decode(DOCUMENT_PNG_BASE64);
   const uploadDocRes = http.post(
@@ -115,7 +115,7 @@ export function setup() {
   const registerBody = JSON.parse(registerRes.body);
   if (!registerBody.verificationToken) {
     throw new Error(
-      'setup: POST /auth/register/dealer did not return verificationToken — ' +
+      'setup: POST /auth/register/dealer did not return verificationToken - ' +
         'is AUTH_RETURN_VERIFICATION_TOKEN=true set on the running auth-user-service?',
     );
   }
@@ -131,7 +131,7 @@ export function setup() {
   }
 
   // Approve via admin-service's real API, same mechanism as
-  // e2e/helpers/admin-api.ts — a direct call, not the admin UI, since this
+  // e2e/helpers/admin-api.ts - a direct call, not the admin UI, since this
   // baseline is about the ingestion pipeline, not the admin console.
   const adminLoginRes = http.post(
     `${AUTH_BASE_URL}/auth/login/admin`,
@@ -220,7 +220,7 @@ export function handleSummary(data) {
   const totalRequests = data.metrics.http_reqs ? data.metrics.http_reqs.values.count : 0;
   if (totalRequests === 0) {
     throw new Error(
-      'dealer-ingestion-baseline made zero HTTP requests — every step threw before any request ' +
+      'dealer-ingestion-baseline made zero HTTP requests - every step threw before any request ' +
         'fired (check the k6 error log above and setup()).',
     );
   }

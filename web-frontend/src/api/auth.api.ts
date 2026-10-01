@@ -20,13 +20,13 @@ export async function login(payload: LoginRequest): Promise<AuthTokenResponse> {
   return data
 }
 
-/** Admin-only login — rejects non-ADMIN accounts server-side. */
+/** Admin-only login - rejects non-ADMIN accounts server-side. */
 export async function loginAdmin(payload: LoginRequest): Promise<AuthTokenResponse> {
   const { data } = await apiClient.post<AuthTokenResponse>('/auth/login/admin', payload)
   return data
 }
 
-/** "Continue with Google" — idToken is the credential Google Identity Services hands back to the frontend directly; the backend verifies it. */
+/** "Continue with Google" - idToken is the credential Google Identity Services hands back to the frontend directly; the backend verifies it. */
 export async function loginWithGoogle(payload: GoogleLoginRequest): Promise<AuthTokenResponse> {
   const { data } = await apiClient.post<AuthTokenResponse>('/auth/google', payload)
   return data
@@ -60,7 +60,7 @@ export async function resendVerification(email: string): Promise<{ message: stri
   return { message: data.message }
 }
 
-/** POST /auth/email/verify — consumes the token from the emailed link. */
+/** POST /auth/email/verify - consumes the token from the emailed link. */
 export async function verifyEmail(token: string): Promise<VerifyEmailResponse> {
   const { data } = await apiClient.post<VerifyEmailResponse>('/auth/email/verify', { token })
   return data
@@ -68,7 +68,7 @@ export async function verifyEmail(token: string): Promise<VerifyEmailResponse> {
 
 /**
  * POST /auth/forgot-password. Answers the same way whether or not the
- * address has an account (no account enumeration) — callers must not imply
+ * address has an account (no account enumeration) - callers must not imply
  * an email definitely went out.
  */
 export async function requestPasswordReset(email: string): Promise<{ message: string }> {
@@ -76,7 +76,7 @@ export async function requestPasswordReset(email: string): Promise<{ message: st
   return data
 }
 
-/** POST /auth/password-reset/confirm — consumes the token from the emailed link. */
+/** POST /auth/password-reset/confirm - consumes the token from the emailed link. */
 export async function confirmPasswordReset(
   token: string,
   newPassword: string,
@@ -89,7 +89,7 @@ export async function confirmPasswordReset(
 }
 
 /**
- * POST /documents/verification — uploads a business registration certificate
+ * POST /documents/verification - uploads a business registration certificate
  * before the dealer account exists, returning a stored key. That key is what
  * gets sent as verificationDocuments.businessRegistrationCertificate on the
  * actual registerDealer call.
@@ -108,7 +108,7 @@ export async function uploadVerificationDocument(
 }
 
 /**
- * The refresh token itself never reaches this code — it rides along as the
+ * The refresh token itself never reaches this code - it rides along as the
  * httpOnly refresh_token cookie (withCredentials: true below). The CSRF
  * cookie is the one piece of that pair readable from JS, and the server's
  * CsrfGuard requires it echoed back as a header whenever the refresh cookie

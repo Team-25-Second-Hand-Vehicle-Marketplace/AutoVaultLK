@@ -5,19 +5,19 @@ export type DictionaryType = 'MAKE' | 'MODEL' | 'BODY_TYPE' | 'COLOR';
 /**
  * Read-only projection of marketplace.vehicle_dictionaries, owned by
  * marketplace-service. Declared here so the ETL normalizer can resolve
- * make/model against the same vocabulary the search parser uses — the two
+ * make/model against the same vocabulary the search parser uses - the two
  * halves must agree or they drift silently (ingest storing MERCEDES-BENZ
  * while search queries Mercedes returns zero rows, with no error).
  *
- * Never migrated by this service — database/ created the real table.
+ * Never migrated by this service - database/ created the real table.
  *
  * ingestion_service_role holds SELECT only (see database/src/grants.sql).
  * Alias promotion from the ETL pipeline goes through marketplace-service's
- * API, not a direct write — that is what keeps the platform to one
+ * API, not a direct write - that is what keeps the platform to one
  * cross-schema write exception rather than two.
  *
  * Read pattern: load a snapshot at container init and refresh periodically.
- * Not a per-row query — the ETL design is explicit that groqNormalizeFn
+ * Not a per-row query - the ETL design is explicit that groqNormalizeFn
  * matches against an in-memory table snapshot, which is what keeps the
  * MaxConcurrency: 10 connection-pool argument intact.
  */
@@ -49,7 +49,7 @@ export class VehicleDictionaryView {
    * Which vehicle types this row applies to (migration 21000). A MAKE spans
    * types (Toyota builds cars, vans, SUVs and lorries) so it carries several;
    * a MODEL is always one thing (a HiAce is a van) so it carries exactly one.
-   * An empty array means "applies to every type" — that is how the flat
+   * An empty array means "applies to every type" - that is how the flat
    * dictionary types (BODY_TYPE, COLOR) opt out of scoping.
    *
    * parseNormalize derives marketplace.vehicles.vehicle_type from this, since

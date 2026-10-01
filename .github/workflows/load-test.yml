@@ -1,6 +1,6 @@
 name: Load Test (manual)
 
-# Manual trigger only — matches the Test Plan's stated cadence (§5.2:
+# Manual trigger only - matches the Test Plan's stated cadence (§5.2:
 # "full campaign on a scheduled basis against staging, and before any
 # release"), not per-push. This run takes ~3.5 minutes and registers 50
 # real accounts against whatever BASE_URL it's pointed at, which is not
