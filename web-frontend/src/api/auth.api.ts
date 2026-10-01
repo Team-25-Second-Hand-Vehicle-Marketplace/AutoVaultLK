@@ -67,6 +67,28 @@ export async function verifyEmail(token: string): Promise<VerifyEmailResponse> {
 }
 
 /**
+ * POST /auth/forgot-password. Answers the same way whether or not the
+ * address has an account (no account enumeration) — callers must not imply
+ * an email definitely went out.
+ */
+export async function requestPasswordReset(email: string): Promise<{ message: string }> {
+  const { data } = await apiClient.post<{ message: string }>('/auth/forgot-password', { email })
+  return data
+}
+
+/** POST /auth/password-reset/confirm — consumes the token from the emailed link. */
+export async function confirmPasswordReset(
+  token: string,
+  newPassword: string,
+): Promise<{ message: string }> {
+  const { data } = await apiClient.post<{ message: string }>('/auth/password-reset/confirm', {
+    token,
+    newPassword,
+  })
+  return data
+}
+
+/**
  * POST /documents/verification — uploads a business registration certificate
  * before the dealer account exists, returning a stored key. That key is what
  * gets sent as verificationDocuments.businessRegistrationCertificate on the

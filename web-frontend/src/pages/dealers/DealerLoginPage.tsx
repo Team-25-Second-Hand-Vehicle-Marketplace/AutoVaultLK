@@ -136,10 +136,11 @@ export function DealerLoginPage() {
               {...register('password')}
             />
 
-            {/* The reference shows "Remember me" and "Forgot password?" here.
-                Sessions already persist across reloads, and no password-reset
-                endpoint exists on this branch, so neither control is shown
-                rather than rendering one that does nothing. */}
+            {/* The reference shows "Remember me" too. Sessions already
+                persist across reloads, so that control isn't shown. */}
+            <p className="dealer-auth__footer">
+              <Link to="/forgot-password">Forgot password?</Link>
+            </p>
 
             <Button type="submit" size="lg" block disabled={isSubmitting}>
               {isSubmitting ? 'Signing in…' : 'Sign In'}
