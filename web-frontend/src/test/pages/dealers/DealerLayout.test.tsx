@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { DealerLayout } from '../../../pages/dealers/DealerLayout'
 import { getMyDealerProfile } from '../../../api/dealer.api'
@@ -47,6 +47,26 @@ describe('DealerLayout navigation', () => {
       '/dealer/uploads',
     )
     expect(screen.getByRole('link', { name: 'My listings' })).toBeInTheDocument()
+  })
+
+  it('orders a business dealer\'s nav with Business details last', async () => {
+    getProfile.mockResolvedValue({
+      dealerType: 'business',
+      verificationStatus: 'VERIFIED',
+    } as DealerProfile)
+    renderLayout()
+
+    await screen.findByRole('link', { name: 'Bulk upload' })
+    const labels = within(screen.getByRole('navigation', { name: 'Dealer' }))
+      .getAllByRole('link')
+      .map((a) => a.textContent)
+    expect(labels).toEqual([
+      'Dashboard',
+      'My listings',
+      'Bulk upload',
+      'Upload history',
+      'Business details',
+    ])
   })
 
   it('does not show Bulk upload or Upload history to a verified individual dealer, but keeps My listings', async () => {
