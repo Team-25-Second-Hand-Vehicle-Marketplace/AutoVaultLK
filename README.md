@@ -13,7 +13,7 @@ cloud-native-marketplace-org/
 ├── database/                 Shared TypeORM migrations + grants
 ├── cloud-infrastructure/     Terraform (API Gateway module)
 ├── web-frontend/
-├── docker-compose.yml          Postgres (port 5433) — default `docker compose up`
+├── docker-compose.yml          Postgres (port 5433) - default `docker compose up`
 └── docker-compose.dev.yml      Local nginx API gateway shim (port 8080)
 ```
 
@@ -61,7 +61,7 @@ npm run seed:embeddings         # optional: enables vector search ranking
 
 > **Port gotcha:** the root `.env` sets a single `PORT=3001`. `marketplace`,
 > `admin`, and `notification` read their own `*_PORT` variable first, but
-> `auth` and `ingestion` read only `PORT` — so starting ingestion without
+> `auth` and `ingestion` read only `PORT` - so starting ingestion without
 > overriding it makes it collide with auth on 3001. `start-all.ps1` sets
 > `PORT` per service to avoid this; do the same if you start one by hand:
 > `$env:PORT=3003; npm run start:dev`.

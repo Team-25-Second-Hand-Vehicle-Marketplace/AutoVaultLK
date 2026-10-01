@@ -6,6 +6,7 @@ import { toErrorMessage } from '../api/client'
 import type { VehicleDetail } from '../api/search.types'
 import { RecommendationsSection } from '../components/search/RecommendationsSection'
 import { SaveButton } from '../components/search/SaveButton'
+import { VehicleGallery } from '../components/search/VehicleGallery'
 import { YearDisplay } from '../components/search/YearDisplay'
 import { formatMileage, formatPrice, humanizeEnum } from '../components/search/vehicle-format'
 
@@ -98,9 +99,6 @@ export function VehicleDetailPage() {
   )
 
 
-  // The listing's own first photo, or none: no stock fallback.
-  const primaryImage = vehicle.images[0]
-
   return (
     <div className="detail-page">
       <nav className="breadcrumb" aria-label="Breadcrumb">
@@ -113,16 +111,12 @@ export function VehicleDetailPage() {
 
       <div className="detail-page__grid">
         <div className="detail-page__main">
-          <div className="detail-gallery">
-            {primaryImage ? (
-              <img
-                src={primaryImage}
-                alt={`${vehicle.make} ${vehicle.model}`}
-                className="detail-gallery__primary"
-              />
-            ) : (
-              // No environment has image rows yet; say so plainly rather
-              // than showing a broken image icon.
+          {vehicle.images.length > 0 ? (
+            <VehicleGallery images={vehicle.images} alt={`${vehicle.make} ${vehicle.model}`} />
+          ) : (
+            // No environment has image rows yet; say so plainly rather
+            // than showing a broken image icon.
+            <div className="detail-gallery">
               <div className="detail-gallery__placeholder">
                 <svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
                   <path d="M3 13l1.5-4.5A2 2 0 0 1 6.4 7h11.2a2 2 0 0 1 1.9 1.5L21 13" />
@@ -132,16 +126,8 @@ export function VehicleDetailPage() {
                 </svg>
                 <p>No photos provided for this listing</p>
               </div>
-            )}
-
-            {vehicle.images.length > 1 && (
-              <div className="detail-gallery__thumbs">
-                {vehicle.images.slice(1).map((src) => (
-                  <img key={src} src={src} alt="" className="detail-gallery__thumb" />
-                ))}
-              </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {vehicle.description && (
             <section className="detail-section">
@@ -170,19 +156,19 @@ export function VehicleDetailPage() {
               {vehicle.condition && (
                 <div>
                   <dt>Condition</dt>
-                  <dd>{vehicle.condition}</dd>
+                  <dd>{humanizeEnum(vehicle.condition)}</dd>
                 </div>
               )}
               {vehicle.fuelType && (
                 <div>
                   <dt>Fuel</dt>
-                  <dd>{vehicle.fuelType}</dd>
+                  <dd>{humanizeEnum(vehicle.fuelType)}</dd>
                 </div>
               )}
               {vehicle.transmissionType && (
                 <div>
                   <dt>Transmission</dt>
-                  <dd>{vehicle.transmissionType}</dd>
+                  <dd>{humanizeEnum(vehicle.transmissionType)}</dd>
                 </div>
               )}
               {vehicle.color && (
@@ -229,9 +215,22 @@ export function VehicleDetailPage() {
               )}
             </div>
 
-            <div className="detail-summary__location">
-              {[vehicle.locationCity, vehicle.locationDistrict].filter(Boolean).join(', ') || '—'}
-            </div>
+            {/* The facts a buyer scans first, so the box is never just a name
+                and a price. Location only when there is one - no bare dash. */}
+            <ul className="detail-summary__facts">
+              <li>
+                <YearDisplay result={vehicle} />
+              </li>
+              <li>{formatMileage(vehicle.mileage)}</li>
+              {vehicle.fuelType && <li>{humanizeEnum(vehicle.fuelType)}</li>}
+              {vehicle.transmissionType && <li>{humanizeEnum(vehicle.transmissionType)}</li>}
+            </ul>
+
+            {(vehicle.locationCity || vehicle.locationDistrict) && (
+              <div className="detail-summary__location">
+                {[vehicle.locationCity, vehicle.locationDistrict].filter(Boolean).join(', ')}
+              </div>
+            )}
 
             <div className="detail-dealer">
               <h2>Dealer</h2>

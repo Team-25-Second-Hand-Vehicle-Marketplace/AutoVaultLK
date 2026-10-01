@@ -14,14 +14,14 @@ const DEFAULT_BATCH_SIZE = 20;
 /**
  * FR-53: drives the retries that NotificationEventHandler schedules.
  *
- * Without this, `next_attempt_at` would be a column nothing ever reads — the
+ * Without this, `next_attempt_at` would be a column nothing ever reads - the
  * handler would record that a row deserves another attempt and no attempt
  * would follow.
  *
  * A self-managed timer rather than @nestjs/schedule: the service already runs
  * its own polling loop in SqsConsumer, and one more dependency to fire a
  * 30-second tick is not worth the addition. The loop follows that consumer's
- * shape — a `running` flag flipped on destroy, so shutdown is not left waiting
+ * shape - a `running` flag flipped on destroy, so shutdown is not left waiting
  * on an interval.
  *
  * Set NOTIFICATION_RETRY_ENABLED=false to disable the sweep (tests, or a single
@@ -102,7 +102,7 @@ export class NotificationRetrySweeper implements OnModuleInit, OnModuleDestroy {
 
       return delivered;
     } catch (err) {
-      // A sweep that throws must not kill the interval — the next tick should
+      // A sweep that throws must not kill the interval - the next tick should
       // still run, since the usual cause is the database being briefly away.
       const message = err instanceof Error ? err.message : String(err);
       this.logger.error(`Notification retry sweep failed: ${message}`);

@@ -1,7 +1,7 @@
 import type { UploadJobStatus } from '../../../infrastructure/database/entities/upload-job.entity';
 
 /**
- * One row of the dealer's upload history — the same aggregate counts
+ * One row of the dealer's upload history - the same aggregate counts
  * GET /jobs/{id} shows, without per-stage detail or storage paths a list view
  * has no use for.
  */

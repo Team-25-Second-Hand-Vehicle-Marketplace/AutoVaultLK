@@ -1,6 +1,6 @@
 name: Load Test - Volume (manual)
 
-# Manual trigger only — same reasoning as load-test.yml. This run uploads
+# Manual trigger only - same reasoning as load-test.yml. This run uploads
 # progressively larger CSV files (up to 15,000 rows) sequentially, taking
 # several minutes, and needs pre-generated fixture files this job builds
 # itself via ingestion-service's own vehicle-generator tool.
@@ -82,7 +82,7 @@ jobs:
         run: npm ci && npm run build
 
       # dealer-ingestion-volume.js reads these via open() at k6 script-load
-      # time — they must exist on disk before k6 runs, same as the local
+      # time - they must exist on disk before k6 runs, same as the local
       # workflow documented in the script's own header comment.
       - name: Generate volume-test CSV fixtures
         working-directory: ingestion-service

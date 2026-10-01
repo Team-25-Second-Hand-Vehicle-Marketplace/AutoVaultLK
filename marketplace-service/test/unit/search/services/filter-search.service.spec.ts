@@ -14,7 +14,7 @@ import * as builderModuleRef from '../../../../src/modules/search/filters/filter
  * `counts` maps a predicate over the DTO to a row count, letting each test
  * describe "nothing matches until X is relaxed" declaratively.
  */
-describe('FilterSearchService — relaxation ladder', () => {
+describe('FilterSearchService - relaxation ladder', () => {
   interface Stub {
     service: FilterSearchService;
     countCalls: FilterSearchDto[];
@@ -24,7 +24,7 @@ describe('FilterSearchService — relaxation ladder', () => {
     const countCalls: FilterSearchDto[] = [];
 
     // count() receives the built query, which the beforeAll hook below tags
-    // with the DTO that produced it — so each candidate filter set the
+    // with the DTO that produced it - so each candidate filter set the
     // ladder considers is observable here.
     const repository = {
       count: jest.fn(async (built: unknown) => {
@@ -53,7 +53,7 @@ describe('FilterSearchService — relaxation ladder', () => {
    * that produced it makes that visible without changing production code.
    *
    * The service imports buildFilterQuery as a named import, which ts-jest
-   * compiles to a property lookup on the module object — so patching the
+   * compiles to a property lookup on the module object - so patching the
    * module export here is seen by the service at call time.
    */
   beforeAll(() => {

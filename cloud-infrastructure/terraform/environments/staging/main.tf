@@ -17,7 +17,7 @@ terraform {
     key          = "staging/terraform.tfstate"
     region       = "ap-southeast-2"
     encrypt      = true
-    use_lockfile = true # native S3 conditional-write locking (TF 1.10+) — no DynamoDB table needed
+    use_lockfile = true # native S3 conditional-write locking (TF 1.10+) - no DynamoDB table needed
   }
 }
 
@@ -26,31 +26,31 @@ provider "aws" {
 }
 
 # -----------------------------------------------------------------------------
-# ingestion-service: the full design (SAD §6.6) — one Lambda per ETL stage,
+# ingestion-service: the full design (SAD §6.6) - one Lambda per ETL stage,
 # fanned out by a Step Functions state machine
 # (src/infrastructure/step-functions/etl-state-machine.asl.json). Built by
 # Janith Vishula / Virusan T (see ingestion-service/docs/HANDOVER-VIRUSAN.md
 # and STEP-FUNCTIONS-MIGRATION-PLAN.md); this file's job is §S8 of that plan
-# — provisioning it.
+# - provisioning it.
 #
 # Two Lambdas serve the dealer-facing API: module.ingest_api_lambda
 # (POST /ingest/upload) and module.job_status_api_lambda (GET /jobs/{id}),
-# split into separate Lambdas per the migration plan — ingest-api.ts still
-# boots the combined AppModule under the hood (harmless — nothing routes
+# split into separate Lambdas per the migration plan - ingest-api.ts still
+# boots the combined AppModule under the hood (harmless - nothing routes
 # /jobs traffic to it), while job-status-api.ts boots a slimmer
 # JobStatusAppModule (see src/job-status-app.module.ts).
 #
 # The pipeline itself is 12 Lambdas (module.stage_lambda_zip for the 10
 # lightweight ones, module.embed_lambda and module.process_images_lambda for
-# the two container-image ones — see function-config.ts for why), invoked by
+# the two container-image ones - see function-config.ts for why), invoked by
 # module.step_functions' state machine. An EventBridge Pipe reads the
-# ingestion jobs SQS queue below and starts one execution per message —
+# ingestion jobs SQS queue below and starts one execution per message -
 # module.ingest_api_lambda (via SqsJobQueue) is still what publishes to it.
 #
 # Earlier revision of this file ran an MVP instead: one etl-worker Lambda
 # running the whole pipeline per invocation via LocalOrchestrator, capped at
 # its own 900s Lambda timeout. That was never applied to a real AWS account
-# and is fully replaced here — see ingestion-service/src/lambda/etl-worker.ts
+# and is fully replaced here - see ingestion-service/src/lambda/etl-worker.ts
 # for the code, which stays in place but is no longer provisioned.
 # -----------------------------------------------------------------------------
 
@@ -68,7 +68,7 @@ module "secrets" {
   environment  = var.environment
   groq_api_key = var.groq_api_key
 
-  # Default is ["auth", "marketplace", "admin", "notification"] — "ingestion"
+  # Default is ["auth", "marketplace", "admin", "notification"] - "ingestion"
   # added now that the ingestion Lambdas exist (ingest-api, job-status-api,
   # and the 12 ETL stage functions all share this one role).
   db_service_roles = ["auth", "marketplace", "admin", "notification", "ingestion"]
@@ -101,9 +101,9 @@ module "iam" {
   environment        = var.environment
   shared_secret_arns = [module.secrets.jwt_access_secret_arn, module.secrets.internal_service_key_arn]
 
-  # Default is ["auth", "marketplace", "admin", "notification"] — "ingestion"
+  # Default is ["auth", "marketplace", "admin", "notification"] - "ingestion"
   # added for every ingestion Lambda below (ingest-api, job-status-api, embed,
-  # process-images, and the 10 zip-packaged stage functions) — they all share
+  # process-images, and the 10 zip-packaged stage functions) - they all share
   # this one execution role.
   service_names = ["auth", "marketplace", "admin", "notification", "ingestion"]
 
@@ -121,7 +121,7 @@ module "iam" {
   # internal_api_execution_arn is deliberately left unset here: scoping it
   # to module.api_gateway.internal_api_execution_arn would make iam depend
   # on api_gateway, which depends on lambda's invoke ARNs, which depends on
-  # iam's role ARNs — a cycle. admin's execute-api:Invoke grant falls back
+  # iam's role ARNs - a cycle. admin's execute-api:Invoke grant falls back
   # to resource "*" instead of the tightly-scoped ARN. Acceptable for this
   # pass; tightening it later means breaking that cycle (e.g. a separate
   # aws_iam_role_policy attached after both modules exist).
@@ -141,10 +141,10 @@ module "images" {
   environment  = var.environment
 
   # marketplace mints presigned GET URLs (see IMAGE_SERVE_MODE=s3 in
-  # marketplace-service) — reader access. It also now owns the manual
+  # marketplace-service) - reader access. It also now owns the manual
   # listing image upload endpoint (POST /listings/:id/images), so it needs
-  # PutObject too — writer access. ingestion-service's raw/staging/images
-  # prefixes (see this module's own comment above) live in this same bucket —
+  # PutObject too - writer access. ingestion-service's raw/staging/images
+  # prefixes (see this module's own comment above) live in this same bucket -
   # writer access covers both PutObject and GetObject, which is all the ETL
   # pipeline needs to write and re-read its own inter-stage output.
   reader_role_names = [module.iam.role_names["marketplace"]]
@@ -153,10 +153,10 @@ module "images" {
   cors_allowed_origins = ["https://${module.frontend.distribution_domain_name}"]
 }
 
-# Sensitive KYC documents (NIC scans, business registration certificates) —
+# Sensitive KYC documents (NIC scans, business registration certificates) -
 # a separate bucket from vehicle images on purpose: distinct IAM roles and
 # access pattern (only auth, which owns upload/resolve during registration,
-# and admin, which only resolves a viewing URL for the approval screen —
+# and admin, which only resolves a viewing URL for the approval screen -
 # never marketplace or the public). See DOCUMENT_SERVE_MODE in
 # auth-user-service and admin-service's document-serve.config.ts.
 module "verification_documents" {
@@ -169,7 +169,7 @@ module "verification_documents" {
   reader_role_names = [module.iam.role_names["auth"], module.iam.role_names["admin"]]
   writer_role_names = [module.iam.role_names["auth"]]
 
-  # No direct browser upload/GET the way vehicle images use CORS for — every
+  # No direct browser upload/GET the way vehicle images use CORS for - every
   # verification-document read is a backend-minted presigned URL an admin
   # opens directly, and upload goes through auth-user-service's own API, so
   # this stays scoped to the frontend origin rather than the images bucket's
@@ -195,7 +195,7 @@ locals {
     CORS_ORIGINS           = "https://${module.frontend.distribution_domain_name}"
     API_GATEWAY_URL        = module.api_gateway.public_api_endpoint
     FRONTEND_URL           = "https://${module.frontend.distribution_domain_name}"
-    # AWS_REGION is a reserved Lambda env var — AWS sets it automatically,
+    # AWS_REGION is a reserved Lambda env var - AWS sets it automatically,
     # attempting to set it yourself 400s CreateFunction. Every service's
     # code can still read process.env.AWS_REGION; it's just not something
     # Terraform is allowed to pass in.
@@ -204,7 +204,7 @@ locals {
 
 locals {
   # Only the two services that send mail get the SMTP settings (incl. the
-  # password) — not every Lambda via common_env.
+  # password) - not every Lambda via common_env.
   smtp_env = var.smtp_host == "" ? {} : {
     SMTP_HOST = var.smtp_host
     SMTP_PORT = var.smtp_port
@@ -244,7 +244,7 @@ module "auth_lambda" {
     AUTH_RETURN_PASSWORD_RESET_TOKEN = tostring(var.auth_return_verification_token)
     SES_FROM_EMAIL                   = coalesce(var.ses_sender_email, var.ses_domain_name != null ? "no-reply@${var.ses_domain_name}" : "")
     NOTIFICATION_INTERNAL_URL        = local.internal_api_base
-    # Verification-document upload (FR-02.1) — same s3/local/demo modes as
+    # Verification-document upload (FR-02.1) - same s3/local/demo modes as
     # marketplace's image serving; production always runs s3.
     DOCUMENT_SERVE_MODE      = "s3"
     VERIFICATION_DOCS_BUCKET = module.verification_documents.bucket_name
@@ -296,7 +296,7 @@ module "admin_lambda" {
     NOTIFICATION_INTERNAL_URL = local.internal_api_base
     MARKETPLACE_INTERNAL_URL  = local.internal_api_base
     # Resolves a stored verification-document key into a presigned URL for
-    # the dealer approval screen — read-only, never uploads (see
+    # the dealer approval screen - read-only, never uploads (see
     # DocumentUrlResolverService in admin-service).
     DOCUMENT_SERVE_MODE      = "s3"
     VERIFICATION_DOCS_BUCKET = module.verification_documents.bucket_name
@@ -324,11 +324,11 @@ module "notification_lambda" {
     # in-process SQS consumer cannot run reliably on Lambda, and nothing
     # provisions a queue or an SQS trigger here. Failed sends are retried by
     # the EventBridge sweep below. Callers (admin, ingestion's notify stage)
-    # therefore wait for the send — hence NOTIFICATION_TIMEOUT_MS = 20000 on
+    # therefore wait for the send - hence NOTIFICATION_TIMEOUT_MS = 20000 on
     # the notify stage.
 
     # NotificationRetrySweeper's own setInterval never fires reliably in
-    # Lambda — the process freezes between invocations, so the timer only
+    # Lambda - the process freezes between invocations, so the timer only
     # ticks during the brief window a request happens to be in flight.
     # aws_cloudwatch_event_rule.notification_retry_sweep below is the real
     # trigger; disable the in-process one so it isn't silently doing nothing.
@@ -369,12 +369,12 @@ resource "aws_lambda_permission" "notification_retry_sweep" {
 }
 
 # -----------------------------------------------------------------------------
-# ingestion-service (MVP path — see the note at the top of this file).
+# ingestion-service (MVP path - see the note at the top of this file).
 #
 # One SQS queue takes the place of the Step Functions execution the full
 # design would start: POST /ingest/upload (module.ingest_api_lambda, via
 # SqsJobQueue) sends {jobId} here, and module.etl_worker_lambda's event
-# source mapping picks it up and runs LocalOrchestrator.run(jobId) — the
+# source mapping picks it up and runs LocalOrchestrator.run(jobId) - the
 # whole pipeline, in one invocation, per FR-30.1's chunk fan-out happening
 # inside that call rather than across separate Lambdas.
 # -----------------------------------------------------------------------------
@@ -397,7 +397,7 @@ resource "aws_sqs_queue" "ingestion_jobs" {
 
   redrive_policy = jsonencode({
     deadLetterTargetArn = aws_sqs_queue.ingestion_jobs_dlq.arn
-    # FR-41.3: after 3 failed deliveries (not 3 failed pipeline runs —
+    # FR-41.3: after 3 failed deliveries (not 3 failed pipeline runs -
     # LocalOrchestrator marks the job FAILED internally and returns
     # normally, so a redelivery only happens when the invocation itself
     # crashed or timed out), the message moves to the DLQ instead of
@@ -416,7 +416,7 @@ data "aws_iam_policy_document" "ingestion_sqs_access" {
     resources = [aws_sqs_queue.ingestion_jobs.arn]
   }
 
-  # No Receive/Delete grant here — module.step_functions' EventBridge Pipe
+  # No Receive/Delete grant here - module.step_functions' EventBridge Pipe
   # consumes this queue now (via its own IAM role), not a Lambda. Earlier MVP
   # revision granted that to the "ingestion" role for etl-worker; unused now.
 }
@@ -474,7 +474,7 @@ module "embed_lambda" {
   subnet_ids         = module.networking.private_subnet_ids
   security_group_ids = [module.networking.lambda_security_group_id]
 
-  # docker/embed.Dockerfile — the MiniLM ONNX model is ~90MB against a 250MB
+  # docker/embed.Dockerfile - the MiniLM ONNX model is ~90MB against a 250MB
   # unzipped zip-package layer cap, so this one stage runs as a container
   # image instead of the zip packaging the other 10 stages use.
   memory_size = 3008
@@ -500,7 +500,7 @@ module "process_images_lambda" {
   subnet_ids         = module.networking.private_subnet_ids
   security_group_ids = [module.networking.lambda_security_group_id]
 
-  # docker/process-images.Dockerfile — Sharp's native binary, same reasoning
+  # docker/process-images.Dockerfile - Sharp's native binary, same reasoning
   # as embed above.
   memory_size = 2048
   timeout     = 600
@@ -513,7 +513,7 @@ module "process_images_lambda" {
 }
 
 # -----------------------------------------------------------------------------
-# The 10 lightweight stage Lambdas — zip-packaged (see function-config.ts and
+# The 10 lightweight stage Lambdas - zip-packaged (see function-config.ts and
 # docs/STEP-FUNCTIONS-MIGRATION-PLAN.md §S7). CI builds and uploads these
 # (see ingestion-service/scripts/build-lambda-zips.mjs); Terraform reads the
 # manifest ingestion-service's build emits (npm run build:lambda-config) to
@@ -550,7 +550,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "lambda_artifacts"
 
 locals {
   # ingestion-service/scripts/emit-function-config.ts writes this from
-  # FUNCTION_CONFIGS — the single source of truth for memory/timeout/env per
+  # FUNCTION_CONFIGS - the single source of truth for memory/timeout/env per
   # stage. embed and process-images are in this same manifest (packaging:
   # "image") but provisioned above as plain modules.lambda instances instead;
   # only the "zip" entries turn into stage_lambda_zip instances below.
@@ -563,16 +563,16 @@ locals {
 
   # Every value any stage function's `env` list might ask for.
   # INGESTION_CHUNK_SIZE / INGESTION_GROQ_CONFIDENCE_THRESHOLD are
-  # deliberately absent — pipeline.config.ts's app-level defaults cover them,
+  # deliberately absent - pipeline.config.ts's app-level defaults cover them,
   # same as the earlier MVP never set them either. AWS_REGION is filtered out
-  # below regardless of whether a config lists it — Lambda sets it
+  # below regardless of whether a config lists it - Lambda sets it
   # automatically and rejects an attempt to set it yourself.
   stage_env_values = {
     INGESTION_DATABASE_URL   = local.db_url["ingestion"]
     INGESTION_STORAGE_DRIVER = "s3"
     INGESTION_S3_BUCKET      = module.images.bucket_name
     DATABASE_SSL             = "true"
-    # Matches the ASL's hardcoded ProcessChunks Map MaxConcurrency — must stay
+    # Matches the ASL's hardcoded ProcessChunks Map MaxConcurrency - must stay
     # in sync with that value if it's ever changed.
     INGESTION_MAX_CONCURRENCY = "10"
     GROQ_API_KEY              = var.groq_api_key
@@ -603,7 +603,7 @@ module "stage_lambda_zip" {
     for key in each.value.env : key => local.stage_env_values[key]
     # Excludes AWS_REGION (Lambda-reserved, never settable) and
     # INGESTION_CHUNK_SIZE / INGESTION_GROQ_CONFIDENCE_THRESHOLD (no entry in
-    # stage_env_values — pipeline.config.ts's app-level defaults cover them).
+    # stage_env_values - pipeline.config.ts's app-level defaults cover them).
     # Any key function-config.ts lists that isn't in stage_env_values is
     # assumed intentionally absent for the same reason, rather than an error.
     if contains(keys(local.stage_env_values), key)
@@ -671,7 +671,7 @@ module "api_gateway" {
   aws_region   = var.aws_region
 
   # Without this, API Gateway falls back to api-gateway/config/cors.json's
-  # allowOrigins — the local dev origin (http://localhost:5173), not this
+  # allowOrigins - the local dev origin (http://localhost:5173), not this
   # deployment's actual CloudFront domain. API Gateway handles CORS
   # preflight itself for HTTP APIs and only adds Access-Control-Allow-Origin
   # for origins it was explicitly told about; the app's own enableCors()
@@ -694,7 +694,7 @@ module "api_gateway" {
     internal      = module.auth_lambda.invoke_arn
     # More specific than "internal" ("/internal/{proxy+}" -> auth_lambda), so
     # this wins the route match for anything under /internal/dictionary
-    # instead of being swallowed by auth's catch-all — HTTP APIs resolve the
+    # instead of being swallowed by auth's catch-all - HTTP APIs resolve the
     # most specific path match, not declaration order.
     "internal/dictionary" = module.marketplace_lambda.invoke_arn
   }
@@ -765,7 +765,7 @@ resource "aws_lambda_permission" "job_status_api_public" {
 }
 
 # AWS allows only one OIDC provider per unique URL per account, and
-# production already created one — staging looks it up instead of creating a
+# production already created one - staging looks it up instead of creating a
 # second one. See environments/staging/README.md.
 data "aws_iam_openid_connect_provider" "github" {
   count = var.create_github_oidc_provider ? 0 : 1
@@ -883,7 +883,7 @@ output "ecr_repository_urls" {
 }
 
 output "lambda_artifacts_bucket_name" {
-  description = "Upload the 10 zip-packaged stage Lambdas' built packages here — see README's runbook"
+  description = "Upload the 10 zip-packaged stage Lambdas' built packages here - see README's runbook"
   value       = aws_s3_bucket.lambda_artifacts.bucket
 }
 
@@ -892,7 +892,7 @@ output "etl_state_machine_arn" {
 }
 
 output "db_service_role_passwords" {
-  description = "Needed for the one-time CREATE ROLE step — see README.md"
+  description = "Needed for the one-time CREATE ROLE step - see README.md"
   value       = module.secrets.db_service_role_passwords
   sensitive   = true
 }

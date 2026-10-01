@@ -113,7 +113,7 @@ describe('POST /notifications/events (e2e)', () => {
     });
 
     // The guard runs before the body is validated, so a malformed payload from
-    // an unauthenticated caller must still be a 401 — otherwise the 400/401
+    // an unauthenticated caller must still be a 401 - otherwise the 400/401
     // split tells an attacker their key was accepted.
     it('401s an unauthenticated caller before validating the body', async () => {
       await request(app.getHttpServer())

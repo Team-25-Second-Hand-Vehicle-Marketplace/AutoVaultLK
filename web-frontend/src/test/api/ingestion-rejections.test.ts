@@ -10,7 +10,7 @@ const { getJobRejections } = await import('../../api/ingestion.api')
 
 /**
  * FR-57. The path and the shape of the request are the contract with
- * api-gateway/openapi/public-api.yaml — nginx proxies `location /jobs/`
+ * api-gateway/openapi/public-api.yaml - nginx proxies `location /jobs/`
  * without stripping the prefix, so the URL the client builds is the URL the
  * service sees.
  */

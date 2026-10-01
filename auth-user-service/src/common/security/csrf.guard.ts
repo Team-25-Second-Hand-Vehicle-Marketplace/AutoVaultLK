@@ -27,7 +27,7 @@ export class CsrfGuard implements CanActivate {
 
     // No cookie means this request isn't relying on ambient browser
     // credentials in the first place (e.g. a first-time client that only
-    // has a body token) — nothing for a forged cross-site request to ride.
+    // has a body token) - nothing for a forged cross-site request to ride.
     if (!refreshCookie) {
       return true;
     }

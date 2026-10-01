@@ -15,7 +15,7 @@ see [`marketplace-service/src/modules/search/README.md`](../marketplace-service/
 You need three things up: Postgres, the two backend services, and this app.
 
 ```bash
-# 1. Database (from the repo root) — Postgres on host port 5433
+# 1. Database (from the repo root) - Postgres on host port 5433
 docker compose -f docker-compose.dev.yml up -d
 # (or your existing vehicle_marketplace_postgres container)
 
@@ -28,7 +28,7 @@ cd web-frontend && npm install && npm run dev               # :5173
 ```
 
 Then open the URL Vite prints. If 5173 is taken it will pick the next free
-port — use whatever it reports.
+port - use whatever it reports.
 
 **The nginx gateway container is not required in development.** Vite proxies
 the same path prefixes nginx does (see `vite.config.ts`):
@@ -55,7 +55,7 @@ npm run seed:dictionaries   # 30 makes, 133 models, 10 body types
 npm run seed:vehicles       # ~160 LIVE listings across 5 dealers
 ```
 
-There are no seeded BUYER accounts — register one through the UI at
+There are no seeded BUYER accounts - register one through the UI at
 `/register`.
 
 ---
@@ -73,7 +73,7 @@ There are no seeded BUYER accounts — register one through the UI at
 | `/saved` | **required** | Saved listings (redirects to `/login`) |
 | `*` | public | 404 |
 
-Browsing is deliberately anonymous — a buyer shouldn't need an account to
+Browsing is deliberately anonymous - a buyer shouldn't need an account to
 look at inventory.
 
 The two `/dealer/*` routes render without the site header and footer: both
@@ -87,8 +87,8 @@ the `auth.dealer_profiles` row in one transaction. New dealerships start at
 that column, so a new dealer's listings show as unverified until an admin
 promotes them.
 
-Two fields from the design reference are deliberately **not** collected —
-**VAT number** and **postcode** — because `auth.dealer_profiles` has no
+Two fields from the design reference are deliberately **not** collected -
+**VAT number** and **postcode** - because `auth.dealer_profiles` has no
 column for either and anything typed would be silently discarded on submit.
 `verificationDocuments` is sent as `{}` since no upload endpoint exists.
 
@@ -113,7 +113,7 @@ favour of the data:
   satisfaction and "happy buyers" figures are omitted entirely because this
   system has no orders or reviews to derive them from.
 
-The hero uses a rendered gradient rather than the reference's photograph —
+The hero uses a rendered gradient rather than the reference's photograph -
 this project ships no licensed vehicle photography. `HomePage.tsx` documents
 where to drop a real image in (`.hero__bg`) when one is available.
 
@@ -129,7 +129,7 @@ server-side on every refresh.
 - **`api/auth.storage.ts`** persists the session in `localStorage` so a page
   refresh doesn't sign the user out. `httpOnly` cookies would be safer, but
   the service returns tokens in the response body and has no cookie/CSRF
-  handling on this branch — matching the contract that exists beats inventing
+  handling on this branch - matching the contract that exists beats inventing
   half of a different one.
 - **`api/client.ts`** attaches the token, refreshes proactively when it has
   expired, and retries once on a 401. Refreshes are **single-flight**: because
@@ -144,7 +144,7 @@ server-side on every refresh.
 
 Password reset and email verification have **no endpoints on this branch**
 (they live on `feat/AUS-password-reset` and `feat/AUS-emailverification`), so
-there is no "Forgot password?" link — an inert link that posts nowhere is
+there is no "Forgot password?" link - an inert link that posts nowhere is
 worse than its absence. Registration already handles the
 `{ message }` response those branches introduce, so adopting them is a
 backend merge plus a link.
@@ -159,7 +159,7 @@ starts failing when that merges.
 
 ## Notes on state
 
-Filter state lives in **the URL**, not component state — searches are
+Filter state lives in **the URL**, not component state - searches are
 bookmarkable and shareable, and the back button works. `useVehicleSearch`
 only translates between `URLSearchParams` and the typed filter object.
 

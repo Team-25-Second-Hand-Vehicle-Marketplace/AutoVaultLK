@@ -7,7 +7,7 @@ export class AdminAuditLogsPage {
     await this.page.goto('/admin/audit-logs');
   }
 
-  /** AuditLogsRepository.search does `a.action = :action` — an exact match, not a substring. */
+  /** AuditLogsRepository.search does `a.action = :action` - an exact match, not a substring. */
   async searchByAction(action: string): Promise<void> {
     await this.page.getByLabel('Action').fill(action);
     await this.page.getByRole('button', { name: 'Search' }).click();

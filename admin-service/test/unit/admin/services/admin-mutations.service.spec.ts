@@ -179,7 +179,7 @@ describe('AdminMutationsService', () => {
         changes: { verificationStatus: 'REJECTED', reason: null },
       }),
     );
-    // An absent payload, not an empty object — the notification service
+    // An absent payload, not an empty object - the notification service
     // distinguishes the two.
     expect(notifications.emit).toHaveBeenCalledWith(
       expect.objectContaining({ payload: undefined }),

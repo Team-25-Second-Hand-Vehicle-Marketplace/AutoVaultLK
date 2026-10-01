@@ -4,7 +4,7 @@ import type { EtlStage } from '../../../infrastructure/database/entities/etl-sta
  * One row the pipeline refused, as the dealer needs to see it: which row, what
  * was wrong, and what they actually submitted.
  *
- * `rawData` is the dealer's own row echoed back — it is what makes the report
+ * `rawData` is the dealer's own row echoed back - it is what makes the report
  * actionable, since the reason alone ("year out of range") does not say which
  * value to correct. It is capped at RAW_DATA_MAX_KEYS columns by the service:
  * a wide CSV with 60 columns per row would otherwise dominate the response.

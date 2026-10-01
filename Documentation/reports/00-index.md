@@ -1,4 +1,4 @@
-# AutoVaultLK — Service Architecture Reports
+# AutoVaultLK - Service Architecture Reports
 
 Written from the source as of 2026-09-28 (branch `main`). Each report covers one
 service: its structure module by module, the reasoning behind the notable decisions,
@@ -23,7 +23,7 @@ Not covered here: `auth-user-service`, `admin-service`, `notification-service`,
                          │     web-frontend     │  React SPA (report 03)
                          └──────────┬───────────┘
                                     │
-                    nginx / API Gateway — one path space
+                    nginx / API Gateway - one path space
      ┌──────────────┬───────────────┼───────────────┬──────────────┐
      │              │               │               │              │
  /auth /users   /marketplace    /ingest /jobs     /admin       (static)
@@ -47,7 +47,7 @@ auth-user-    marketplace-     ingestion-      admin-service
 
 ### Schema access rules (ADR-002, `plan-b-reads-cross-schemas.md`)
 
-- Each service **owns** one schema and writes only there — with exactly one exception.
+- Each service **owns** one schema and writes only there - with exactly one exception.
 - **The exception:** `ingestion_service_role` holds SELECT/INSERT/UPDATE (never
   DELETE) on `marketplace.vehicles` and `marketplace.vehicle_images`, confined to a
   single class, `MarketplaceVehiclesWriteAdapter`. Report 02 §6.10.
@@ -62,7 +62,7 @@ auth-user-    marketplace-     ingestion-      admin-service
 **1. Embedding parity (FR-22.1 / NFR-26.1).** `shared/normalize-embed/` is duplicated
 **byte-for-byte** in marketplace-service and ingestion-service. A manually created
 listing and a bulk-uploaded one must land in the same 384-dimension vector space.
-Divergence produces no error, no failing test and no log line — just permanently
+Divergence produces no error, no failing test and no log line - just permanently
 badly-ranked listings. Guarded by a byte-identity parity test.
 
 **2. Shared matching thresholds.** `TRIGRAM_THRESHOLD = 0.45` and
@@ -103,7 +103,7 @@ Each report ends with an "observations" section. The items that span more than o
 service:
 
 - **`ProductionExceptionFilter` is registered in `main.ts` but not in the Lambda entry
-  points** of both marketplace-service and ingestion-service — error response bodies
+  points** of both marketplace-service and ingestion-service - error response bodies
   differ between local and deployed environments.
 - **The Step Functions ASL definition has no `PROCESS_IMAGES` state**, so the deployed
   Lambda path does not process images; only `LocalOrchestrator` does.
@@ -112,5 +112,5 @@ service:
 - **`ingestion.template.ts` (frontend) is a hand-maintained mirror** of
   `csv-contract.ts` (ingestion) with nothing enforcing parity.
 - **`marketplace-service/src/modules/search/README.md` is stale** in five specific
-  ways — most importantly it states the natural-language pipeline is unbuilt, when it
+  ways - most importantly it states the natural-language pipeline is unbuilt, when it
   is fully built and wired.

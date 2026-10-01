@@ -16,7 +16,7 @@ loadEnv({ path: '.env' });
  * Shared setup for the admin-service integration suite.
  *
  * admin_service_role holds SELECT across auth, marketplace, ingestion and
- * notification — read-only everywhere but its own `admin` schema (see
+ * notification - read-only everywhere but its own `admin` schema (see
  * database.config.ts). None of that is visible to a unit test: a unit test
  * against AdminReadsRepository stubs every Repository<T>, so it can never
  * catch a missing cross-schema GRANT, a view entity's column no longer
@@ -24,7 +24,7 @@ loadEnv({ path: '.env' });
  * (DATE_TRUNC, the audit_logs filter chain) that only a live Postgres can
  * validate.
  *
- * Requires a migrated, seeded database — the one docker-compose brings up:
+ * Requires a migrated, seeded database - the one docker-compose brings up:
  *
  *   docker compose up -d postgres
  *   npm --prefix database run migration:run
@@ -104,7 +104,7 @@ export function repositoryFor<T extends object>(
  * `describe` that skips when the database is unreachable, printing why once.
  *
  * Jest needs the skip decision before any `beforeAll` runs, so this probes with
- * a synchronous child process rather than an async connect — a promise cannot
+ * a synchronous child process rather than an async connect - a promise cannot
  * be awaited at describe-registration time.
  */
 export function describeWithDatabase(name: string, body: () => void): void {

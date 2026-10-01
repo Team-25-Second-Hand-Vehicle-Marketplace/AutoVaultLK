@@ -8,7 +8,7 @@
 }
 
 .dealer-shell__sidebar {
-  /* var(--surface) (white) against the shell's var(--bg-alt) (light grey) —
+  /* var(--surface) (white) against the shell's var(--bg-alt) (light grey) -
      using var(--bg) here made the sidebar the same tone as the page
      background it sits on, so the two panels had almost no visible seam. */
   background: var(--surface);
@@ -21,7 +21,7 @@
   top: 0;
   height: 100vh;
   z-index: 1;
-  /* A grid item's default min-width is auto, not 0 — without this, content
+  /* A grid item's default min-width is auto, not 0 - without this, content
      that doesn't fit (see .dealer-shell__brand below) can force this box
      wider than its 240px grid track and spill into the main column instead
      of wrapping, which is exactly what made the "Dealer" badge run into the
@@ -221,7 +221,7 @@
 
 /* This class is shared by pages with different tile counts (6 on the
    dashboard, 3 on the upload status page), so the column count can't be
-   hardcoded — a fixed repeat(6, ...) leaves a 3-tile row cornered on the
+   hardcoded - a fixed repeat(6, ...) leaves a 3-tile row cornered on the
    left with empty space on the right. auto-fit collapses columns that have
    no tile to fill instead of leaving them blank, so a shorter row still
    stretches to the full width; a longer row still wraps only when the
@@ -318,7 +318,7 @@
    No max-width: the listings table (.listing-table-wrap) and the columns
    reference below (.upload-columns) both already run edge to edge across
    .dealer-shell__main, and this page previously read as an outlier next to
-   them — a narrow card with a wide table sitting under it. Filling the same
+   them - a narrow card with a wide table sitting under it. Filling the same
    width keeps every dealer page at one consistent fill level. */
 
 .dealer-page__actions {
@@ -686,7 +686,123 @@
 .listing-table tbody th {
   color: var(--text-h);
   font-weight: 600;
+}
+
+/* Every column but the last shrinks to its content, so the data sits together on
+   the left and the spare width falls to the actions column, which pushes its
+   buttons to the right-hand corner. */
+.listing-table__compact,
+.listing-table__vehicle,
+.listing-table__select {
+  width: 1%;
   white-space: nowrap;
+}
+
+.listing-table__compact {
+  /* Type, condition, year, price, mileage and status: one shared width, centred,
+     so the columns read as an even grid whatever each value is. */
+  font-variant-numeric: tabular-nums;
+  /* Sized to hold the widest content, the "PENDING REVIEW" badge, so no column
+     is forced wider than the rest. */
+  min-width: 9.75rem;
+  padding-left: 8px;
+  padding-right: 8px;
+  width: 9.75rem;
+}
+
+/* Needs the element in the selector: `.listing-table th, .listing-table td`
+   above sets text-align: left and would otherwise win on specificity. */
+.listing-table th.listing-table__compact,
+.listing-table td.listing-table__compact {
+  text-align: center;
+}
+
+.listing-table__vehicle {
+  min-width: 200px;
+}
+
+.listing-table__select {
+  padding-right: 4px;
+}
+
+/* A header that sorts its column when clicked. */
+.listing-sort {
+  align-items: center;
+  background: none;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  letter-spacing: inherit;
+  padding: 0;
+  position: relative;
+  text-transform: inherit;
+}
+
+/* The arrow hangs off the label's right edge instead of sitting in the flow, so
+   the label text alone is what gets centred over its column. */
+.listing-sort svg {
+  left: calc(100% + 5px);
+  opacity: 0.45;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.listing-sort:hover,
+.listing-sort:focus-visible,
+.listing-sort--active {
+  color: var(--text-h);
+}
+
+.listing-sort:hover svg,
+.listing-sort--active svg {
+  opacity: 1;
+}
+
+.listing-table__select input {
+  cursor: pointer;
+  display: block;
+  margin: 0;
+}
+
+/* The status badges all share one width so they form a tidy column. */
+.listing-table .listing-status:not(.listing-status--review) {
+  min-width: 8rem;
+  text-align: center;
+}
+
+/* The "needs photo" flag sits under the status badge rather than beside it. */
+.listing-table .listing-status--review {
+  display: block;
+  margin: 4px auto 0;
+  width: fit-content;
+}
+
+.listing-table__row--selected th,
+.listing-table__row--selected td {
+  background: var(--accent-bg);
+}
+
+/* Appears once at least one listing is ticked. */
+.selection-bar {
+  align-items: center;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  padding: 10px 14px;
+}
+
+.selection-bar__actions {
+  display: flex;
+  gap: 8px;
 }
 
 .listing-table tbody tr:last-child td,
@@ -695,9 +811,28 @@
 }
 
 .listing-table__actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* The flex container is a div inside the cell: a table cell that is itself
+   display:flex stops behaving as a cell and breaks the column widths. */
+.listing-actions {
   display: flex;
-  gap: 0.5rem;
+  align-items: center;
   justify-content: flex-end;
+  gap: 8px;
+}
+
+.button.listing-action--danger {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 35%, transparent);
+}
+
+.button.listing-action--danger:hover:not(:disabled) {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+  border-color: var(--danger);
 }
 
 /* ── Status badges ──────────────────────────────────────────────────────── */
@@ -736,7 +871,7 @@
 }
 
 /* FR-35.2: a bulk row with no registration number, so no image could be
-   matched automatically — distinct from the status badge, which only says
+   matched automatically - distinct from the status badge, which only says
    where the listing is in the publish flow. */
 .listing-status--review {
   background: rgba(217, 45, 32, 0.1);
@@ -744,7 +879,7 @@
   margin-left: 6px;
 }
 
-/* Labels a screen reader needs but sighted users read from context — here, the
+/* Labels a screen reader needs but sighted users read from context - here, the
    actions column header above two clearly-labelled buttons. */
 .visually-hidden {
   clip: rect(0 0 0 0);
@@ -871,6 +1006,8 @@
   flex-wrap: wrap;
   gap: 0.75rem 1rem;
   justify-content: space-between;
+  /* Room before the review banner or the table that follows. */
+  margin-bottom: 1.5rem;
 }
 
 .listing-toolbar__sort {
@@ -928,7 +1065,8 @@
 .listing-table__details {
   display: grid;
   gap: 0.15rem;
-  padding: 0.4rem 1rem 0.6rem;
+  /* 14px matches the table cell padding, so this lines up with the vehicle name. */
+  padding: 0.4rem 14px 0.6rem;
 }
 
 .normalization-details {

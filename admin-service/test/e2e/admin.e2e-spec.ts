@@ -26,7 +26,7 @@ import type { AuthenticatedUser } from '../../src/modules/auth/types/authenticat
  * RolesGuard is left to the controller's own `@UseGuards(JwtAuthGuard,
  * RolesGuard)` rather than registered as an APP_GUARD here. A global guard
  * runs *before* controller-scoped ones, so it would read `request.user` before
- * the overridden JwtAuthGuard had set it and 403 every route — including the
+ * the overridden JwtAuthGuard had set it and 403 every route - including the
  * ones an admin is entitled to.
  */
 

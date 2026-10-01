@@ -6,11 +6,11 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * Without it, re-running the PROCESS_IMAGES stage inserts a second row for the
  * same source file: a dealer would see one photo listed twice, and
  * display_order would no longer mean anything. Step Functions retries a failed
- * state by re-invoking it, so that retry is routine rather than exceptional —
+ * state by re-invoking it, so that retry is routine rather than exceptional -
  * the same reasoning behind migration 26000 for rejected_records.
  *
  * Deliberately NOT partial. Both columns are NOT NULL, so every row is covered
- * and the ON CONFLICT target needs no predicate — unlike
+ * and the ON CONFLICT target needs no predicate - unlike
  * idx_vehicles_job_registration, where a null registration number is
  * legitimate and forces the WHERE clause into the conflict target.
  */

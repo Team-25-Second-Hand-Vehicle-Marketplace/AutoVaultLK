@@ -105,7 +105,7 @@ export async function registerAndVerifyBuyer(
 /**
  * individual dealerType, not business: a valid NIC is a single string field,
  * where a business dealer's verificationDocuments would also need a real
- * businessRegistrationNumber — individual is the minimal path to a real,
+ * businessRegistrationNumber - individual is the minimal path to a real,
  * fully-registered dealer for tests that only need *a* dealer identity, not
  * to exercise dealerType-specific behavior itself.
  */

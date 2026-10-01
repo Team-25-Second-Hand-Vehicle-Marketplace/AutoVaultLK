@@ -44,7 +44,7 @@ describe('useAsyncData', () => {
   // module-level function, so `toMessage` was a new reference every render.
   // Before the fix, the effect depended on `toMessage`, so a new reference
   // re-ran the fetch, whose resulting dispatch triggered the re-render that
-  // produced the *next* new reference — an infinite request loop with no
+  // produced the *next* new reference - an infinite request loop with no
   // error, which took down a live page with ERR_INSUFFICIENT_RESOURCES from
   // hammering the network. A stable `fetcher` must not be re-invoked just
   // because the caller's `toMessage` closure is a fresh function every time.
@@ -53,7 +53,7 @@ describe('useAsyncData', () => {
 
     const { result, rerender } = renderHook(
       ({ n }: { n: number }) =>
-        // A fresh arrow function every render — the exact shape of the bug.
+        // A fresh arrow function every render - the exact shape of the bug.
         useAsyncData(fetcher, (err) => `error ${n}: ${String(err)}`),
       { initialProps: { n: 0 } },
     )

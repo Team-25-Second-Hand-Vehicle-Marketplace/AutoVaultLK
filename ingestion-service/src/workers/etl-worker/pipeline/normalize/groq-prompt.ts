@@ -12,7 +12,7 @@ import { trigramSimilarity } from './trigram';
  *
  * Originally scoped to make/model only. Widened because the six fields
  * validateRows now requires (fuel_type, transmission, color,
- * engine_capacity_cc, owners_count, location_district — SRS Appendix A) can
+ * engine_capacity_cc, owners_count, location_district - SRS Appendix A) can
  * arrive misspelled ("manul"), blank, or only ever stated in free-text
  * description ("1.5L turbo petrol hybrid"), and none of that is fixable by
  * enum-vocabulary.ts's exact-match lookup or make/model's dictionary fuzzy
@@ -22,7 +22,7 @@ import { trigramSimilarity } from './trigram';
  *
  * Still narrow within that: the model returns a value ONLY when confident,
  * chooses only from the allowed enum lists supplied per row, and returns null
- * rather than guess — validateRows runs after this stage precisely so a field
+ * rather than guess - validateRows runs after this stage precisely so a field
  * the model correctly refuses to invent still fails the mandatory check with
  * an actionable reason, instead of carrying a fabricated value into the
  * database forever.
@@ -47,18 +47,18 @@ Fields and rules:
 - owners_count: an integer number of previous owners, or null.
 - location_district: a Sri Lankan administrative district name, or null.
 
-You MAY infer any of these from the free-text description when a column is blank or unparseable and the description clearly states it — e.g. description "1.5L turbo petrol hybrid" implies fuel_type HYBRID and engine_capacity_cc 1500. You MUST NOT infer a field the description does not actually support; return null instead of guessing.
+You MAY infer any of these from the free-text description when a column is blank or unparseable and the description clearly states it - e.g. description "1.5L turbo petrol hybrid" implies fuel_type HYBRID and engine_capacity_cc 1500. You MUST NOT infer a field the description does not actually support; return null instead of guessing.
 
 Convert prose numbers to plain integers: "95k" or "95,000 km" -> 95000; "8.5m" or "around 8.5 million" -> 8500000. Do this for engine_capacity_cc the same way if it is written as prose ("1500cc", "1.5L" -> 1500).
 
-Never invent a make, model, or any enum value outside the allowed lists. If genuinely ambiguous, return null and explain why in "reasoning" rather than guess — a wrong value stored is worse than an honest gap validateRows can report to the dealer.
+Never invent a make, model, or any enum value outside the allowed lists. If genuinely ambiguous, return null and explain why in "reasoning" rather than guess - a wrong value stored is worse than an honest gap validateRows can report to the dealer.
 
 When you return a non-null value for any field, add a one-sentence "reasoning" explaining the repair in plain English for a dealer reviewing the change, e.g. "Corrected misspelling; Corolla Axio matches the allowed Corolla model." or "Fuel type not given, but description states 'petrol hybrid'." Omit reasoning (or use null) when nothing on the row needed a repair.
 
 Respond with JSON only, in this exact shape:
 {"rows":[{"id":1,"make":"Toyota","model":"Corolla","fuel_type":"PETROL","transmission":"MANUAL","condition":"USED","color":"White","engine_capacity_cc":1500,"owners_count":1,"location_district":"Colombo","reasoning":"Corrected misspelling of Toyota Corolla; transmission 'manul' matched to MANUAL."}]}`;
 
-/** What the model sees for one row. Raw text only — no prices, no invented context. */
+/** What the model sees for one row. Raw text only - no prices, no invented context. */
 type PromptRow = {
   id: number;
   make: string;
@@ -86,7 +86,7 @@ const MAX_CANDIDATE_MAKES = 8;
 
 /**
  * Below this trigram score a make is not a plausible candidate for what the
- * dealer typed — same floor dictionary-snapshot.ts's fuzzy match uses, so a
+ * dealer typed - same floor dictionary-snapshot.ts's fuzzy match uses, so a
  * make Groq would never have resolved locally anyway is not worth a slot in
  * an already-tight vocabulary budget.
  */
@@ -99,21 +99,21 @@ const CANDIDATE_MAKE_THRESHOLD = 0.3;
  * candidate list.
  *
  * **The allowed list is scoped to candidate makes, not the whole
- * dictionary.** This used to be true only in the doc comment — every call
+ * dictionary.** This used to be true only in the doc comment - every call
  * actually sent the full ~30-make, ~140-model vocabulary regardless of what
  * the batch needed, which was the dominant cost in a real 429/413 against
  * Groq's free-tier 8,000 TPM limit: ~30 makes and their full model lists ran
  * to roughly 700-900 tokens on their own, before a single row's data. Now
  * each batch's candidate list is the union of, per row, the makes whose
  * canonical name or alias trigram-matches the dealer's raw text above
- * CANDIDATE_MAKE_THRESHOLD — the same floor the deterministic fuzzy match
- * uses — capped at MAX_CANDIDATE_MAKES. A make nothing in the batch is even
+ * CANDIDATE_MAKE_THRESHOLD - the same floor the deterministic fuzzy match
+ * uses - capped at MAX_CANDIDATE_MAKES. A make nothing in the batch is even
  * close to typing is not a candidate Groq needs to see; sending it anyway
  * both costs tokens and invites the model to pattern-match toward something
  * unrelated to what the dealer wrote.
  *
  * Falls back to the full make list only when nothing in the batch scores
- * above the threshold against anything — better to offer every option than
+ * above the threshold against anything - better to offer every option than
  * none when the raw text is too garbled to narrow down at all.
  */
 export function buildUserPayload(
@@ -158,7 +158,7 @@ export function buildUserPayload(
  * similarity to any row's raw make text clears CANDIDATE_MAKE_THRESHOLD,
  * ranked by best score across the batch and capped at MAX_CANDIDATE_MAKES.
  * Falls back to the full list when nothing scores above the threshold at
- * all — a batch of raw text too garbled to narrow down gets every option
+ * all - a batch of raw text too garbled to narrow down gets every option
  * rather than an empty (and useless) candidate list.
  */
 function selectCandidateMakes(
@@ -214,7 +214,7 @@ export type GroqRepair = {
  * Tolerant by design: a single bad entry drops that row's repair rather than
  * failing the batch, because the rows still carry their deterministic values
  * and are no worse off than if Groq had been unreachable. Enum-shaped fields
- * are read as raw strings here — applyRepairs is what checks them against
+ * are read as raw strings here - applyRepairs is what checks them against
  * enum-vocabulary.ts before anything is written, exactly as make/model are
  * checked against the dictionary rather than trusted as typed here.
  */

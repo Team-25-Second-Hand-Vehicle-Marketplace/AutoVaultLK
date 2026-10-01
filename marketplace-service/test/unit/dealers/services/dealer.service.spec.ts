@@ -52,7 +52,7 @@ describe('DealerService', () => {
   });
 
   describe('updateProfile', () => {
-    it('always throws — dealer profile writes are owned by auth-user-service', () => {
+    it('always throws - dealer profile writes are owned by auth-user-service', () => {
       expect(() => service.updateProfile('dealer-1', {})).toThrow(NotImplementedException);
     });
   });

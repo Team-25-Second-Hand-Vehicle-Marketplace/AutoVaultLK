@@ -8,8 +8,8 @@ import { FilterSearchDto } from '../../../../src/modules/search/dto/filter-searc
  * decorators before any controller body executes, and anything not declared
  * here is rejected outright.
  *
- * These tests exercise it exactly as the pipe does — plainToInstance with
- * transform semantics, then validateSync — so a decorator that silently stops
+ * These tests exercise it exactly as the pipe does - plainToInstance with
+ * transform semantics, then validateSync - so a decorator that silently stops
  * working (the `specs` whitelist interaction documented in the DTO is a real
  * instance of that) fails here rather than in production.
  */
@@ -30,7 +30,7 @@ function validate(query: Record<string, unknown>) {
 const failedProps = (errors: ReturnType<typeof validateSync>) =>
   errors.map((e) => e.property).sort();
 
-describe('FilterSearchDto — array coercion', () => {
+describe('FilterSearchDto - array coercion', () => {
   it('accepts a comma-separated list', () => {
     const { dto, errors } = validate({ fuelType: 'PETROL,DIESEL' });
 
@@ -65,7 +65,7 @@ describe('FilterSearchDto — array coercion', () => {
   });
 });
 
-describe('FilterSearchDto — enum whitelisting', () => {
+describe('FilterSearchDto - enum whitelisting', () => {
   it('rejects a vehicle type outside the CHECK constraint', () => {
     const { errors } = validate({ vehicleType: 'SPACESHIP' });
 
@@ -99,14 +99,14 @@ describe('FilterSearchDto — enum whitelisting', () => {
 
   it('accepts free-text make and model, which are not closed enums', () => {
     // make/model are validated against the dictionary at search time, not
-    // here — a new make must not require a code change to be searchable.
+    // here - a new make must not require a code change to be searchable.
     const { errors } = validate({ make: 'Some New Brand', model: 'Unknown Model' });
 
     expect(errors).toHaveLength(0);
   });
 });
 
-describe('FilterSearchDto — numeric coercion and bounds', () => {
+describe('FilterSearchDto - numeric coercion and bounds', () => {
   it('coerces numeric strings from the query string', () => {
     const { dto, errors } = validate({ minPrice: '1000000', maxPrice: '5000000' });
 
@@ -158,7 +158,7 @@ describe('FilterSearchDto — numeric coercion and bounds', () => {
   });
 });
 
-describe('FilterSearchDto — specs parsing', () => {
+describe('FilterSearchDto - specs parsing', () => {
   it('parses the flat key:value form', () => {
     const { dto, errors } = validate({ specs: 'body_type:SUV,seats:5' });
 
@@ -204,7 +204,7 @@ describe('FilterSearchDto — specs parsing', () => {
   });
 });
 
-describe('FilterSearchDto — unknown parameters', () => {
+describe('FilterSearchDto - unknown parameters', () => {
   it('rejects a parameter that is not declared', () => {
     const { errors } = validate({ dropTable: 'vehicles' });
 
@@ -214,7 +214,7 @@ describe('FilterSearchDto — unknown parameters', () => {
   });
 
   it('rejects an attempt to filter on status directly', () => {
-    // status is never buyer-controllable — every search is gated to LIVE by
+    // status is never buyer-controllable - every search is gated to LIVE by
     // the query builder, unconditionally.
     const { errors } = validate({ status: 'DRAFT' });
 
@@ -228,7 +228,7 @@ describe('FilterSearchDto — unknown parameters', () => {
   });
 });
 
-describe('FilterSearchDto — realistic query strings', () => {
+describe('FilterSearchDto - realistic query strings', () => {
   it('accepts a fully populated search', () => {
     const { dto, errors } = validate({
       vehicleType: 'CAR,SUV',
@@ -257,7 +257,7 @@ describe('FilterSearchDto — realistic query strings', () => {
   it('accepts an entirely empty query', () => {
     const { errors } = validate({});
 
-    // "Show me everything" is a valid search — the LIVE gate is applied by
+    // "Show me everything" is a valid search - the LIVE gate is applied by
     // the builder regardless.
     expect(errors).toHaveLength(0);
   });

@@ -39,7 +39,7 @@ paths:
         - auth
       summary: Register dealer (public)
       description: |
-        Creates a pending dealer account (FR-02). No JWT is returned —
+        Creates a pending dealer account (FR-02). No JWT is returned -
         dealers authenticate via POST /auth/login after administrator approval (FR-03).
       operationId: registerDealer
       responses:
@@ -88,7 +88,7 @@ paths:
     get:
       tags:
         - marketplace
-      summary: Browse listings (public — LIVE only)
+      summary: Browse listings (public - LIVE only)
       operationId: listListings
       responses:
         '200':
@@ -156,6 +156,45 @@ paths:
           description: No or invalid bearer token.
         '403':
           description: Not a DEALER.
+  /marketplace/listings/approve-selected:
+    patch:
+      tags:
+        - marketplace
+      summary: Approve the selected PENDING_REVIEW listings (dealer)
+      description: >
+        Bulk approve for the listings a dealer ticked. Moves those of the given
+        ids that belong to the caller and are still PENDING_REVIEW to LIVE in one
+        statement. Ids that are not the caller's, or are no longer pending, are
+        skipped rather than failing the request; `data.skipped` counts them.
+        At most 1000 ids per request.
+      operationId: approveSelectedListings
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - ids
+              properties:
+                ids:
+                  type: array
+                  minItems: 1
+                  maxItems: 1000
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        '200':
+          description: Approved. `data.approved` is the number published.
+        '400':
+          description: Empty, over-long, duplicated or non-UUID id list.
+        '401':
+          description: No or invalid bearer token.
+        '403':
+          description: Not a DEALER.
   /marketplace/listings/{id}/approve:
     patch:
       tags:
@@ -185,14 +224,14 @@ paths:
         '404':
           description: No such listing.
         '409':
-          description: The listing exists but is not PENDING_REVIEW — nothing to approve.
+          description: The listing exists but is not PENDING_REVIEW - nothing to approve.
   /marketplace/listings/{id}/images:
     post:
       tags:
         - marketplace
       summary: Attach photos to a listing the caller owns (dealer)
       description: >
-        FR-58. Replaces the listing's whole image set — a re-upload means
+        FR-58. Replaces the listing's whole image set - a re-upload means
         "this is the current set of photos", not "add more to what's there".
         The first file becomes the primary photo (the one search/detail
         responses use for imageUrl/thumbnailUrl).
@@ -264,7 +303,7 @@ paths:
     get:
       tags:
         - marketplace
-      summary: Filter-based search over LIVE listings (public — guest browsing)
+      summary: Filter-based search over LIVE listings (public - guest browsing)
       operationId: filterSearch
       parameters:
         - name: vehicleType
@@ -349,7 +388,7 @@ paths:
     get:
       tags:
         - marketplace
-      summary: Natural-language search over LIVE listings (public — guest browsing)
+      summary: Natural-language search over LIVE listings (public - guest browsing)
       description: |
         Deterministic parser (FR-21) turns `q` into structured filters. When
         parse confidence is below 0.6, unresolved tokens are sent to Groq
@@ -403,7 +442,7 @@ paths:
     get:
       tags:
         - marketplace
-      summary: Dropdown option values — enums plus make/model dictionary (public)
+      summary: Dropdown option values - enums plus make/model dictionary (public)
       operationId: searchOptions
       parameters:
         - name: vehicleType
@@ -464,7 +503,7 @@ paths:
       responses:
         '202':
           description: >
-            Upload accepted and queued. The job has not run yet — its status is
+            Upload accepted and queued. The job has not run yet - its status is
             PENDING until the pipeline starts.
           content:
             application/json:
@@ -494,9 +533,10 @@ paths:
                 $ref: '#/components/schemas/Error'
         '413':
           description: >
-            Body exceeds the gateway limit. nginx sets client_max_body_size on
-            this location; a file past the service's own 25 MB CSV cap returns
-            400 instead, because it reaches the handler.
+            Body exceeds the gateway limit (300 MB: the 25 MB CSV cap plus the
+            250 MB ZIP cap plus multipart overhead). A CSV past the service's
+            own 25 MB cap, or a ZIP past 250 MB, returns 400 instead, because
+            it reaches the handler.
           content:
             application/json:
               schema:

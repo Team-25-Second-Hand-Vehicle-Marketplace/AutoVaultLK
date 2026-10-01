@@ -11,7 +11,7 @@ import type { AsyncData } from '../../hooks/useAsyncData'
 import { Button } from '../../components/ui/Button'
 import { FormField } from '../../components/ui/FormField'
 
-/** Mirrors auth-user-service's DocumentUploadService limits — same as DealerRegisterPage. */
+/** Mirrors auth-user-service's DocumentUploadService limits - same as DealerRegisterPage. */
 const ACCEPTED_DOCUMENT_TYPES = ['application/pdf', 'image/jpeg', 'image/png']
 const MAX_DOCUMENT_SIZE_BYTES = 5 * 1024 * 1024
 
@@ -38,7 +38,7 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>
 
 /**
- * The one screen a PENDING or REJECTED dealer gets — see RequireVerifiedDealer
+ * The one screen a PENDING or REJECTED dealer gets - see RequireVerifiedDealer
  * and DealerLayout's empty nav for the rest of what keeps it that way.
  * DealerDashboardPage renders this instead of the dashboard whenever
  * `profile.data.verificationStatus !== 'VERIFIED'`.
@@ -157,7 +157,7 @@ function RejectedResubmitForm({
         contactNumber: values.contactNumber?.trim() || undefined,
         verificationDocuments,
       })
-      toast.success('Resubmitted — an administrator will take another look.')
+      toast.success('Resubmitted - an administrator will take another look.')
       profile.reload()
     } catch (error) {
       toast.error(toErrorMessage(error, 'Could not resubmit your details.'))

@@ -40,8 +40,8 @@ jobs:
 
       # Integration tests connect as notification_service_role and assert
       # the auth.users cross-schema SELECT grant holds, the idempotency_key
-      # unique constraint rejects a replayed queue message, and — the
-      # centerpiece — that FOR UPDATE SKIP LOCKED actually partitions due
+      # unique constraint rejects a replayed queue message, and - the
+      # centerpiece - that FOR UPDATE SKIP LOCKED actually partitions due
       # retries between two concurrent claimers with no overlap (FR-53's
       # exactly-once guarantee under more than one replica). None of that is
       # observable from a unit test that stubs Repository<T>. The suite

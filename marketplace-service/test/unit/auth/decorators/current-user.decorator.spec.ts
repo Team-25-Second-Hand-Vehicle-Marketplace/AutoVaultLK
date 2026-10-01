@@ -4,7 +4,7 @@ import type { AuthenticatedUser } from '../../../../src/modules/auth/types/authe
 // createParamDecorator wraps the factory in framework machinery that's
 // awkward to invoke directly in a unit test; ROUTE_ARGS_METADATA is how
 // Nest itself recovers the raw factory function at runtime, so reading it
-// back the same way exercises the real factory logic — request.user — with
+// back the same way exercises the real factory logic - request.user - with
 // no HTTP server involved.
 import { CurrentUser } from '../../../../src/modules/auth/decorators/current-user.decorator';
 import { ROUTE_ARGS_METADATA } from '@nestjs/common/constants';

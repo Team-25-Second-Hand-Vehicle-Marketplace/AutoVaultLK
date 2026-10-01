@@ -11,7 +11,7 @@ import type { Request } from 'express';
 const HEADER_NAME = 'x-internal-service-key';
 
 /**
- * East-west guard for routes admin-service calls directly (ADR-005) —
+ * East-west guard for routes admin-service calls directly (ADR-005) -
  * a copy of auth-user-service's InternalServiceGuard, kept byte-identical so
  * the same INTERNAL_SERVICE_KEY authorizes calls into either service.
  */

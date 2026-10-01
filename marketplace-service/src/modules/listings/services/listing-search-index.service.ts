@@ -15,7 +15,7 @@ export type SearchIndexFields = {
 
 /**
  * Builds the search_text/embedding pair for a listing. Kept as one service so
- * create and update always derive both fields the same way (FR-13.1/13.2) —
+ * create and update always derive both fields the same way (FR-13.1/13.2) -
  * the embedder loads a ~90MB ONNX model on first use, so it is cached here as
  * a singleton for the life of the process, same as QueryEmbeddingService.
  */

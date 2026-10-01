@@ -6,14 +6,14 @@ import exec from 'k6/execution';
 import { textSummary } from 'https://jslib.k6.io/k6-summary/0.1.0/index.js';
 
 /**
- * End-to-end concurrent load: the realistic mixed-traffic scenario —
+ * End-to-end concurrent load: the realistic mixed-traffic scenario -
  * multiple buyers searching/browsing/favouriting (via both filtered AND
  * natural-language search) AND multiple dealers each bulk-uploading
  * inventory, all running in the SAME k6 process at the SAME time, against
  * the SAME database. This is the specific risk the Test Plan names as the
  * reason Load Testing exists as its own technique (§3.3.5): "The risk is
  * therefore not that either fails alone, but that one dealer uploading a
- * large inventory degrades search for every concurrent buyer" — extended
+ * large inventory degrades search for every concurrent buyer" - extended
  * here to several dealers uploading at once, not just one, since that is
  * the more realistic "everything happening together" shape of production
  * traffic, not a single isolated actor.
@@ -22,21 +22,21 @@ import { textSummary } from 'https://jslib.k6.io/k6-summary/0.1.0/index.js';
  *   - buyer_traffic: NUM_BUYERS concurrent buyers, each looping through
  *     filtered search -> vehicle detail -> favourite. A small fraction
  *     (NL_SEARCH_BUYER_FRACTION) also issue a natural-language search each
- *     iteration — capped deliberately: NL search hits a REAL external Groq
+ *     iteration - capped deliberately: NL search hits a REAL external Groq
  *     API call with no client-side rate limiting (confirmed by inspection
  *     of groq-fallback.service.ts), and every one of NUM_BUYERS VUs firing
  *     NL search concurrently risks tripping Groq's own account rate limit,
  *     which would produce a false failure signal about Groq, not about
  *     AutoVaultLK. Only some buyers using NL search is also the more
- *     realistic mix — most real searches are filtered, not natural-language.
+ *     realistic mix - most real searches are filtered, not natural-language.
  *   - dealer_ingestion: NUM_DEALERS dealers, each uploading their own file
  *     concurrently, staggered slightly so they don't all submit in the
- *     same tick — the risk under test is "N dealers uploading around the
+ *     same tick - the risk under test is "N dealers uploading around the
  *     same time", not "N dealers submitting the exact same millisecond".
  *
  * Thresholds are scoped PER SCENARIO via tag filters: buyer-facing calls
  * are gated on NFR-09 (p95<500ms) even while multiple dealers ingest
- * concurrently — that is the actual pass/fail question this script
+ * concurrently - that is the actual pass/fail question this script
  * answers. Ingestion jobs' own completion times have no NFR to gate on
  * (same reasoning as dealer-ingestion-baseline.js) and are reported only.
  *
@@ -45,7 +45,7 @@ import { textSummary } from 'https://jslib.k6.io/k6-summary/0.1.0/index.js';
  *
  * Points at local services by default; override AUTH_BASE_URL /
  * MARKETPLACE_BASE_URL / INGESTION_BASE_URL / ADMIN_BASE_URL to run the
- * exact same script against a deployed environment — no separate
+ * exact same script against a deployed environment - no separate
  * staging copy of this file is needed.
  */
 
@@ -149,7 +149,7 @@ export const options = {
     'http_req_duration{name:get_favourites}': ['p(95)<500'],
     'http_req_duration{name:save_favourite}': ['p(95)<500'],
     // NL search is gated on the SRS's own 2s warm-start figure (NFR-09),
-    // not the 500ms CRUD/browse bar — same reasoning as nl-search-baseline.js.
+    // not the 500ms CRUD/browse bar - same reasoning as nl-search-baseline.js.
     'http_req_duration{name:nl_search}': ['p(95)<2000'],
     http_req_failed: ['rate<0.01'],
   },
@@ -161,7 +161,7 @@ export const options = {
 const DOCUMENT_PNG_BASE64 =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
 const CSV_HEADER =
-  'registration_number,make,model,year,price,mileage,fuel_type,transmission,color,engine_capacity_cc,owners_count,location_district';
+  'registration_number,make,model,year,price,mileage,fuel_type,transmission,color,engine_capacity_cc,owners_count,location_district,condition,vehicle_type';
 
 // Only make/model combinations already known to pass validation.
 const MAKES = [
@@ -177,7 +177,7 @@ function buildInlineCsv(regPrefix, rows) {
     const [make, model, fuel, trans, cc] = MAKES[n % MAKES.length];
     lines.push(
       [`${regPrefix}-${n}`, make, model, 2012 + (n % 12), 3000000 + n * 50000, 20000 + n * 1500,
-        fuel, trans, 'White', cc, 1 + (n % 3), DISTRICTS[n % DISTRICTS.length]].join(','),
+        fuel, trans, 'White', cc, 1 + (n % 3), DISTRICTS[n % DISTRICTS.length], 'Used', 'Car'].join(','),
     );
   }
   return lines.join('\n') + '\n';
@@ -212,7 +212,7 @@ const NL_QUERIES = [
  * verification/approval cost stays out of the measured windows.
  *
  * Uses http.batch() for the registration calls themselves (the genuinely
- * expensive, independent part — each does a real bcrypt.hash + DB write
+ * expensive, independent part - each does a real bcrypt.hash + DB write
  * server-side) rather than a sequential for-loop: the earlier version of
  * this script sent registrations one at a time and setup() would not
  * reliably finish inside even a 3-minute timeout once account counts grew.
@@ -253,7 +253,7 @@ export function setup() {
     const body = JSON.parse(res.body);
     if (!body.verificationToken) {
       throw new Error(
-        'setup: POST /auth/register/buyer did not return verificationToken — ' +
+        'setup: POST /auth/register/buyer did not return verificationToken - ' +
           'is AUTH_RETURN_VERIFICATION_TOKEN=true set?',
       );
     }
@@ -303,7 +303,7 @@ export function setup() {
   }
   const items = JSON.parse(searchRes.body).items;
   if (!items || items.length === 0) {
-    throw new Error('setup: local catalogue is empty — is it seeded (database/ seed:vehicles)?');
+    throw new Error('setup: local catalogue is empty - is it seeded (database/ seed:vehicles)?');
   }
 
   // --- Set up NUM_DEALERS verified business dealers ---
@@ -485,7 +485,7 @@ export function dealerIngestion(data) {
   }
 
   // A small, deterministic stagger per dealer so NUM_DEALERS uploads don't
-  // all submit in the exact same tick — "several dealers uploading around
+  // all submit in the exact same tick - "several dealers uploading around
   // the same time", not "the identical millisecond", matching how real
   // concurrent dealer activity would actually land.
   sleep(dealerIndex * 0.5);
@@ -540,7 +540,7 @@ export function handleSummary(data) {
   const totalRequests = data.metrics.http_reqs ? data.metrics.http_reqs.values.count : 0;
   if (totalRequests === 0) {
     throw new Error(
-      'end-to-end-load made zero HTTP requests — every iteration threw before any request fired ' +
+      'end-to-end-load made zero HTTP requests - every iteration threw before any request fired ' +
         '(check the k6 error log above and setup()).',
     );
   }

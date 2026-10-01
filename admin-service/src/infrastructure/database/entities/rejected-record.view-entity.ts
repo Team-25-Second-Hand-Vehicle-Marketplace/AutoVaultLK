@@ -1,7 +1,7 @@
 import { Column, Entity, PrimaryColumn } from 'typeorm';
 
 /**
- * Read-only projection of ingestion.rejected_records — the row-level detail
+ * Read-only projection of ingestion.rejected_records - the row-level detail
  * behind an upload job's invalid_records count. admin_service_role holds
  * SELECT only on the ingestion schema; ingestion-service owns all writes.
  */

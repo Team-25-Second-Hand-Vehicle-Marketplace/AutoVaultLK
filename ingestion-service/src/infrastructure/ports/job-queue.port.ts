@@ -20,5 +20,5 @@ export type UploadJobMessage = {
   jobId: string;
 };
 
-/** DI token — `JobQueue` is an interface and erases at runtime. */
+/** DI token - `JobQueue` is an interface and erases at runtime. */
 export const JOB_QUEUE = Symbol('JobQueue');

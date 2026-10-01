@@ -10,7 +10,7 @@ terraform {
 # -----------------------------------------------------------------------------
 # The full ingestion ETL design (SAD §6.6): a Standard state machine fanning
 # out to one Lambda per stage, started by an EventBridge Pipe reading the
-# ingestion jobs SQS queue — replacing the earlier MVP's single etl-worker
+# ingestion jobs SQS queue - replacing the earlier MVP's single etl-worker
 # Lambda consuming that same queue directly via an event source mapping.
 #
 # STANDARD, not EXPRESS: EXPRESS workflows cap an execution at 5 minutes,
@@ -20,7 +20,7 @@ terraform {
 #
 # The pipe uses FIRE_AND_FORGET: it starts an execution per message and does
 # not wait on it, matching JobQueue.publish()'s existing contract (resolves
-# once the message is accepted, not once the pipeline finishes — POST
+# once the message is accepted, not once the pipeline finishes - POST
 # /ingest/upload answers 202 immediately).
 # -----------------------------------------------------------------------------
 
@@ -131,7 +131,7 @@ resource "aws_pipes_pipe" "ingestion_jobs" {
 
   target_parameters {
     # Without this, Pipes hands the target the raw SQS record array
-    # (`[{ messageId, body, ... }]`) even at batch_size = 1 — every state's
+    # (`[{ messageId, body, ... }]`) even at batch_size = 1 - every state's
     # "Payload.$": "$" then forwards that array instead of {jobId}, and any
     # Catch's "ResultPath": "$.error" fails with States.ReferencePathConflict
     # ("Unable to apply step \"error\" to input [...]") because you can't

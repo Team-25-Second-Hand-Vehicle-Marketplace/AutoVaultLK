@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 /**
  * A car inside a shield, sitting on a road: trust (shield) applied to a
  * vehicle marketplace (car, road). Matches the concept the team picked from
- * generated references — see the design chat for the source image.
+ * generated references - see the design chat for the source image.
  *
  * `clipId` is per-render (useId) because BrandMark appears more than once on
  * the same page (header + footer), and two elements sharing one `id` would
@@ -23,7 +23,7 @@ export function BrandMark({ to = '/' }: { to?: string | null }) {
             </clipPath>
           </defs>
 
-          {/* The shield's lower third, solid — the "vault" half of the mark. */}
+          {/* The shield's lower third, solid - the "vault" half of the mark. */}
           <g clipPath={`url(#${clipId})`}>
             <rect x="2" y="16" width="20" height="8" fill="currentColor" />
           </g>
@@ -38,7 +38,7 @@ export function BrandMark({ to = '/' }: { to?: string | null }) {
             strokeLinejoin="round"
           />
 
-          {/* A car, sitting on the road line — the "marketplace" half. Same
+          {/* A car, sitting on the road line - the "marketplace" half. Same
               silhouette as VehicleTypeIcon's CAR mark, scaled to fit. */}
           <g
             transform="translate(4.5 3.4) scale(0.68)"

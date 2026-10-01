@@ -19,7 +19,7 @@ import type { ObjectStore } from '../ports/object-store.port';
  * flat namespace, where it is simply an object whose name contains dots. The
  * traversal guard LocalObjectStore needs has nothing to guard against here.
  *
- * Keys are still validated for emptiness and null bytes — an empty key is a
+ * Keys are still validated for emptiness and null bytes - an empty key is a
  * caller bug either way, and S3 rejects control characters with an opaque
  * error that is harder to trace than a thrown one.
  */
@@ -44,7 +44,7 @@ export class S3ObjectStore implements ObjectStore {
     this.client = new S3Client({
       region: config.get<string>('AWS_REGION'),
       // Credentials come from the Lambda execution role or the ambient
-      // provider chain. Never from config — a key in an env var is a key in a
+      // provider chain. Never from config - a key in an env var is a key in a
       // process listing.
     });
 
@@ -111,7 +111,7 @@ export class S3ObjectStore implements ObjectStore {
 
     if (body instanceof Readable) return body;
 
-    // A web ReadableStream — the shape the SDK returns outside Node.
+    // A web ReadableStream - the shape the SDK returns outside Node.
     return Readable.fromWeb(body as unknown as Parameters<typeof Readable.fromWeb>[0]);
   }
 
@@ -136,7 +136,7 @@ export class S3ObjectStore implements ObjectStore {
 
   /**
    * Pages through the listing. S3 caps a response at 1000 keys, and a job with
-   * more chunks than that would otherwise silently list only the first page —
+   * more chunks than that would otherwise silently list only the first page -
    * the pipeline would then process a prefix of the file and report success.
    */
   async list(prefix: string): Promise<string[]> {
@@ -167,7 +167,7 @@ export class S3ObjectStore implements ObjectStore {
 }
 
 /**
- * S3 has no directories, so traversal is not a threat — but an empty key or one
+ * S3 has no directories, so traversal is not a threat - but an empty key or one
  * containing a null byte is a caller bug in either driver, and failing here
  * beats an opaque XML error from the service.
  */

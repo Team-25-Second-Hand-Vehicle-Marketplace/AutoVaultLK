@@ -128,14 +128,14 @@ const ROLES: Record<string, RoleConfig> = {
 
 const SCHEMA_CHECKS: Check[] = [
   {
-    name: 'migration 1800 — verified_by on dealer_profiles',
+    name: 'migration 1800 - verified_by on dealer_profiles',
     sql: `SELECT 1 FROM information_schema.columns
           WHERE table_schema = 'auth' AND table_name = 'dealer_profiles'
             AND column_name = 'verified_by'`,
     expectRows: 1,
   },
   {
-    name: 'migration 1900 — idx_vehicles_job_registration',
+    name: 'migration 1900 - idx_vehicles_job_registration',
     sql: `SELECT 1 FROM pg_indexes
           WHERE schemaname = 'marketplace' AND indexname = 'idx_vehicles_job_registration'`,
     expectRows: 1,
@@ -262,7 +262,7 @@ async function main(): Promise<void> {
   for (const r of allResults) {
     const status = r.ok ? 'PASS' : 'FAIL';
     if (!r.ok) failed += 1;
-    const detail = r.detail ? ` — ${r.detail}` : '';
+    const detail = r.detail ? ` - ${r.detail}` : '';
     console.log(`[${status}] ${r.role}: ${r.name}${detail}`);
   }
 

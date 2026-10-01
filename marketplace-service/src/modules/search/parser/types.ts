@@ -15,7 +15,7 @@ export const TRIGRAM_THRESHOLD = 0.45;
  * trusted.
  *
  * Without it, "Corola" scoring 0.72 against Corolla and 0.71 against Corsa
- * resolves to whichever the scan happened to see first — a coin flip. Below
+ * resolves to whichever the scan happened to see first - a coin flip. Below
  * the margin the value is left unresolved instead.
  *
  * Shared deliberately: ingestion-service's dictionary-snapshot.ts pins the

@@ -18,7 +18,7 @@ export class SesUnavailableError extends Error {
  * log and succeed (same skip as Groq).
  *
  * Two transports behind one interface: when SMTP_HOST is set, mail goes out
- * over SMTP (nodemailer) — this needs no SES sandbox exit or verified domain.
+ * over SMTP (nodemailer) - this needs no SES sandbox exit or verified domain.
  * Otherwise it uses SES. The name is historical; the retry/idempotency logic
  * in NotificationEventHandler is transport-independent.
  */
@@ -160,7 +160,7 @@ function toSmtpError(err: unknown): SesUnavailableError {
   if (typeof e?.responseCode === 'number') {
     return new SesUnavailableError(message, e.responseCode >= 500 ? 400 : 503);
   }
-  // No SMTP reply at all: ETIMEDOUT / ECONNECTION / ESOCKET / DNS — transient.
+  // No SMTP reply at all: ETIMEDOUT / ECONNECTION / ESOCKET / DNS - transient.
   return new SesUnavailableError(message, 503);
 }
 

@@ -102,7 +102,7 @@ export function stageContext(
 }
 
 /**
- * Test seam. Lambda never calls this — a container is discarded, not reset —
+ * Test seam. Lambda never calls this - a container is discarded, not reset -
  * but a test asserting cold-start behaviour needs to clear the cache.
  */
 export function __resetContext(): void {

@@ -21,7 +21,7 @@ export type SearchTextFields = {
  * ⚠️ **This file is duplicated in ingestion-service and must stay
  * byte-identical.** A vector is only meaningful relative to vectors built the
  * same way, so if the two copies diverge, bulk-uploaded listings land in a
- * different region of vector space and rank badly forever — with no error, no
+ * different region of vector space and rank badly forever - with no error, no
  * failing test and no log line (FR-22.1 / NFR-26.1, plan-b §9A).
  *
  * Changing anything here also **invalidates every embedding already stored**.
@@ -59,7 +59,7 @@ export function buildSearchText(fields: SearchTextFields): string {
 /**
  * Price as a phrase, not a number.
  *
- * MiniLM tokenizes "3500000" as digit fragments with no numeric meaning —
+ * MiniLM tokenizes "3500000" as digit fragments with no numeric meaning -
  * "3,500,000" and "3,400,000" are not near each other in vector space, so
  * embedding the raw figure adds noise rather than signal. A band is a word the
  * model has seen in context, which is what lets "cheap family car" reach a
@@ -92,8 +92,8 @@ function mileageBand(mileage: number | null | undefined): string | null {
 }
 
 /**
- * Relative age, because buyers search in relative terms — "recent model",
- * "old car" — while the year alone only matches a query naming that year.
+ * Relative age, because buyers search in relative terms - "recent model",
+ * "old car" - while the year alone only matches a query naming that year.
  *
  * Computed against the current year, so a listing re-embedded later gets the
  * band that is true then. That is a deliberate consequence: it means the text
@@ -117,7 +117,7 @@ function ageBand(manufactureYear: number): string | null {
 /**
  * Equipment the dealer declared, as searchable words.
  *
- * Only keys that are true — an absent or false sunroof is not something a
+ * Only keys that are true - an absent or false sunroof is not something a
  * buyer searches for, and emitting "no sunroof" would pull the listing toward
  * queries mentioning sunroofs.
  *

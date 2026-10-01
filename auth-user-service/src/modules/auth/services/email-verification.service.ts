@@ -90,13 +90,13 @@ export class EmailVerificationService {
         { id: user.id },
         {
           emailVerifiedAt: verifiedAt,
-          // `isActive` means only "may authenticate" — the same thing for a
+          // `isActive` means only "may authenticate" - the same thing for a
           // dealer as for a buyer. Whether a dealer may create listings is a
           // separate question (DealerProfile.verificationStatus), checked
           // where listings are created and by the frontend, not here. It used
           // to also gate login (dealers stayed inactive until admin
           // approval), which meant a rejected dealer had no way to log back
-          // in, see why, and retry — see DealerProfilesService.decideVerification.
+          // in, see why, and retry - see DealerProfilesService.decideVerification.
           isActive: true,
         },
       );

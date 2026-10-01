@@ -1,9 +1,9 @@
 name: Load Test - Refresh Token Session Renewal (manual)
 
-# Manual trigger only — same reasoning as load-test.yml. 5 concurrent buyer
+# Manual trigger only - same reasoning as load-test.yml. 5 concurrent buyer
 # sessions x 5 refresh cycles each (25 total refreshes), deliberately kept
 # under AUTH_REFRESH_MAX_PER_IP's per-IP ceiling (see 04-load-testing.md
-# Incident 5.11 — the GitHub Actions runner is one IP, same constraint as a
+# Incident 5.11 - the GitHub Actions runner is one IP, same constraint as a
 # local run).
 on:
   workflow_dispatch:

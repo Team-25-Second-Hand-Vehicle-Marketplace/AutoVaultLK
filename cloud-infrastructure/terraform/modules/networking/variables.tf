@@ -16,7 +16,7 @@ variable "vpc_cidr" {
   default     = "10.0.0.0/16"
 }
 
-# One NAT Gateway (single-AZ) rather than one per AZ — cheaper, acceptable
+# One NAT Gateway (single-AZ) rather than one per AZ - cheaper, acceptable
 # for a first deployment. Both private subnets route through it, so an AZ
 # outage on the NAT's AZ takes egress down for both; revisit if that's not
 # an acceptable tradeoff.

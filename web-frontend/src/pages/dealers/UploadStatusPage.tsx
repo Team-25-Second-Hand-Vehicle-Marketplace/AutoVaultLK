@@ -13,7 +13,7 @@ import { Button } from '../../components/ui/Button'
 import { ErrorBanner } from '../../components/ui/ErrorBanner'
 
 /**
- * Mirrors ingestion-service's MAX_REJECTIONS_PAGE_SIZE — the export fetches
+ * Mirrors ingestion-service's MAX_REJECTIONS_PAGE_SIZE - the export fetches
  * every rejected row for the job, so it asks for the largest page the
  * backend allows rather than paging through at the on-screen report's
  * smaller default.
@@ -50,7 +50,7 @@ const STATUS_COPY: Record<UploadJobStatus, { label: string; tone: string; detail
     label: 'Completed with skipped rows',
     tone: 'is-warning',
     detail:
-      'Your valid rows were loaded. The rest were skipped — fix them in your file and upload just those rows.',
+      'Your valid rows were loaded. The rest were skipped - fix them in your file and upload just those rows.',
   },
   FAILED: {
     label: 'Failed',
@@ -105,7 +105,7 @@ export function UploadStatusPage() {
 
         setError(toErrorMessage(err, 'Could not load this upload.'))
         setLoading(false)
-        // Keep polling through a transient failure — the job itself is still
+        // Keep polling through a transient failure - the job itself is still
         // running, and a dropped request should not strand the page.
         delay.current = Math.min(delay.current * POLL_BACKOFF, POLL_MAX_MS)
         timer.current = window.setTimeout(poll, delay.current)
@@ -157,7 +157,7 @@ export function UploadStatusPage() {
     }
   }, [jobId, job])
 
-  // Fetches every rejected row, not just the report's first page — a
+  // Fetches every rejected row, not just the report's first page - a
   // dealer fixing 150 skipped rows needs all of them in the file, not the 50
   // the on-screen table shows before "showing the first 50 of 150".
   const onDownloadCsv = async () => {
@@ -284,7 +284,7 @@ export function UploadStatusPage() {
             </Button>
           </div>
           <p className="dealer-muted">
-            Includes a Row and Reason column for reference — remove them before re-uploading the
+            Includes a Row and Reason column for reference - remove them before re-uploading the
             fixed file.
           </p>
           {csvError && <ErrorBanner message={csvError} />}

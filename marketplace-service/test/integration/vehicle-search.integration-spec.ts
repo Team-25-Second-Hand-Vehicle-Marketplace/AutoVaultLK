@@ -42,13 +42,13 @@ describeWithDatabase('VehicleSearchRepository (integration)', () => {
     ds = connection;
 
     // The repository takes an injected DataSource, so it can be constructed
-    // directly — no Nest container needed for a query-only class.
+    // directly - no Nest container needed for a query-only class.
     //
     // ImageUrlResolverService runs for real, in demo mode (no
     // IMAGE_SERVE_MODE set in the integration test environment): every
     // resolved imageUrl/thumbnailUrl below is genuinely null, which is the
-    // correct, testable behaviour for a database that — per the seeded
-    // fixtures — carries no vehicle_images rows at all.
+    // correct, testable behaviour for a database that - per the seeded
+    // fixtures - carries no vehicle_images rows at all.
     repository = new VehicleSearchRepository(
       ds,
       new ImageUrlResolverService(new ConfigService({})),
@@ -132,7 +132,7 @@ describeWithDatabase('VehicleSearchRepository (integration)', () => {
           ORDER BY COUNT(*) DESC LIMIT 1`,
       );
 
-      // `make` is string[] on the DTO — the HTTP layer's @Transform(toArray())
+      // `make` is string[] on the DTO - the HTTP layer's @Transform(toArray())
       // widens a single value, and calling the repository directly skips it.
       const query = dto({ make: [make] });
       const results = await repository.search(buildFilterQuery(query), query);
@@ -159,7 +159,7 @@ describeWithDatabase('VehicleSearchRepository (integration)', () => {
       }
 
       // Spec filters go through the JSONB containment operator (`@>`), not a
-      // column compare — a different code path with its own cast.
+      // column compare - a different code path with its own cast.
       const query = dto({
         specs: [{ key: 'body_type', value: rows[0].body_type }],
       });
@@ -203,7 +203,7 @@ describeWithDatabase('VehicleSearchRepository (integration)', () => {
       'orders by year descending using the effective year',
       hasVehicles,
       async () => {
-        // COALESCE(registration_year, manufacture_year) — a row with a NULL
+        // COALESCE(registration_year, manufacture_year) - a row with a NULL
         // registration year must still sort by the year it actually has.
         const query = dto({ sort: 'year_desc', limit: 10 });
 
@@ -482,7 +482,7 @@ describeWithDatabase('VehicleSearchRepository (integration)', () => {
     );
 
     // The array_agg subquery returns NULL, not an empty array, for a vehicle
-    // with no images — the COALESCE in the mapper is load-bearing.
+    // with no images - the COALESCE in the mapper is load-bearing.
     itWithData(
       'returns an empty image list rather than null',
       hasVehicles,
@@ -506,7 +506,7 @@ describeWithDatabase('VehicleSearchRepository (integration)', () => {
       },
     );
 
-    // A non-LIVE listing must not be reachable by direct id — the status
+    // A non-LIVE listing must not be reachable by direct id - the status
     // predicate is the only thing hiding a DRAFT from the public.
     itWithData('hides a listing that is not LIVE', hasVehicles, async () => {
       const rows = await queryRows<{ id: string }>(

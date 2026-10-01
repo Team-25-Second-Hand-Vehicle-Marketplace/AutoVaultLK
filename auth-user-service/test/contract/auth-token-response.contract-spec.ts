@@ -5,13 +5,13 @@ import { resolve } from 'node:path';
  * Drift guard between AuthService's AuthUser/AuthTokenResponse and
  * web-frontend's mirrored types (auth.types.ts). The two build
  * independently, so the frontend has no import path into this service's
- * types — a field added, renamed or removed on either side has nothing else
+ * types - a field added, renamed or removed on either side has nothing else
  * to fail until login or registration silently returns a shape the frontend
  * does not expect.
  *
  * auth.service.ts builds this response inline (`{ accessToken, refreshToken,
  * user: this.toSafeUser(user) }`) rather than through a class-validator DTO
- * like the request side, because it is a plain, unvalidated read shape —
+ * like the request side, because it is a plain, unvalidated read shape -
  * there is nothing to validate on the way out. AuthUser/AuthTokenResponse
  * were exported alongside the existing logic specifically to give this test
  * a named type to diff, without changing what the endpoint returns.
@@ -24,7 +24,7 @@ const FRONTEND_TYPES = resolve(__dirname, '../../../web-frontend/src/api/auth.ty
 /**
  * Reads the field names declared by a type alias, in either of two forms:
  * an object literal (`type Name = { ... }`/`interface Name { ... }`), or a
- * `Pick<Source, 'a' | 'b' | ...>` — AuthUser is declared the second way, so
+ * `Pick<Source, 'a' | 'b' | ...>` - AuthUser is declared the second way, so
  * its "fields" are the picked keys rather than a brace-delimited body.
  */
 function readFieldNames(source: string, blockName: string): string[] {
@@ -82,7 +82,7 @@ describeIfPresent('auth token response contract parity with web-frontend', () =>
 
   it('AccessTokenPayload fields match, aside from iat/exp added by JWT signing', () => {
     // The frontend additionally declares iat/exp because jsonwebtoken adds
-    // them at sign time — they are never present in the type this service
+    // them at sign time - they are never present in the type this service
     // hands to JwtService.sign, so they are excluded here rather than
     // asserted, to keep the comparison honest about what each side actually
     // authors versus what the library adds.

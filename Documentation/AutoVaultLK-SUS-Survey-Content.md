@@ -1,4 +1,4 @@
-# AutoVaultLK System Usability Scale (SUS) Survey — Form Content
+# AutoVaultLK System Usability Scale (SUS) Survey - Form Content
 
 Use this to build the Google Form. Copy each section's title/description
 into the form header, and each question below into its own form item using
@@ -42,7 +42,7 @@ Mark the form: **Not shared** in the collaborator settings. Enable
 
 ---
 
-## Section 1 — About you
+## Section 1 - About you
 
 **Q0. Name** *(Short answer, required)*
 
@@ -53,7 +53,7 @@ Mark the form: **Not shared** in the collaborator settings. Enable
 
 ---
 
-## Section 2 — Standard SUS Questions
+## Section 2 - Standard SUS Questions
 
 Use a **Linear scale (1–5)**, labelled **1 = Strongly disagree**, **5 =
 Strongly agree**, for every question in this section. All required.
@@ -74,7 +74,7 @@ Strongly agree**, for every question in this section. All required.
 
 ---
 
-## Section 3 — AutoVaultLK-specific questions
+## Section 3 - AutoVaultLK-specific questions
 
 Use a **Linear scale (1–5)**, labelled **1 = Strongly disagree**, **5 =
 Strongly agree**, unless noted otherwise.
@@ -86,23 +86,23 @@ Strongly agree**, unless noted otherwise.
 13. The vehicle detail page gave me enough information to evaluate a
     listing. *(required)*
 14. Saving and un-saving a listing behaved the way I expected. *(required)*
-15. *(Dealers only — skip if not applicable)* Creating a listing by hand was
+15. *(Dealers only - skip if not applicable)* Creating a listing by hand was
     easy to understand.
-16. *(Dealers only — skip if not applicable)* The bulk upload process
+16. *(Dealers only - skip if not applicable)* The bulk upload process
     (uploading a file and checking its status) was easy to understand.
-17. *(Dealers only — skip if not applicable)* When some rows in my bulk
+17. *(Dealers only - skip if not applicable)* When some rows in my bulk
     upload failed, the reasons given were clear enough to act on.
-18. *(Admins only — skip if not applicable)* The admin dashboard and its
+18. *(Admins only - skip if not applicable)* The admin dashboard and its
     sections (Users, Uploads, Reports, Audit logs) were easy to navigate.
 19. It was clear which part of the site I was in (buyer / dealer / admin) at
     all times. *(required)*
 
 ---
 
-## Section 4 — Completion and open feedback
+## Section 4 - Completion and open feedback
 
 **Q20. Approximate time taken to complete the tasks** *(Short answer,
-required — example answer: "15 minutes")*
+required - example answer: "15 minutes")*
 
 **Q21. Were you able to complete the main tasks?** *(Multiple choice,
 required)*

@@ -12,7 +12,7 @@ const favouritesError = (err: unknown) =>
   toErrorMessage(err, 'Could not load your saved listings.')
 
 export function SavedPage() {
-  // `savedIds` is not rendered — it is the refetch key. Un-hearting a card from
+  // `savedIds` is not rendered - it is the refetch key. Un-hearting a card from
   // this page changes it, which re-runs the fetch below so the row disappears
   // without a manual reload.
   const { savedIds } = useSavedVehicles()

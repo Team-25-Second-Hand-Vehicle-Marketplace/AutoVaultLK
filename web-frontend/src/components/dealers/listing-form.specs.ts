@@ -3,7 +3,7 @@ import type { TEMPLATE_HEADER } from '../../api/ingestion.template'
 /**
  * Which form field carries each dealer-CSV column. Typed against
  * `TEMPLATE_HEADER`, so adding a column to the template without a field here is
- * a compile error — the manual form and the bulk template cannot silently drift
+ * a compile error - the manual form and the bulk template cannot silently drift
  * apart. `listing-form.contract.test.ts` checks the same at run time.
  */
 export const CSV_COLUMN_TO_FIELD: Record<(typeof TEMPLATE_HEADER)[number], string> = {
@@ -52,7 +52,7 @@ export const CSV_COLUMN_TO_FIELD: Record<(typeof TEMPLATE_HEADER)[number], strin
   cargo_bed_type: 'cargoBedType',
 }
 
-/** Sri Lanka's 25 districts — suggestions only; the field stays free text like the CSV's. */
+/** Sri Lanka's 25 districts - suggestions only; the field stays free text like the CSV's. */
 export const DISTRICTS = [
   'Ampara', 'Anuradhapura', 'Badulla', 'Batticaloa', 'Colombo', 'Galle', 'Gampaha',
   'Hambantota', 'Jaffna', 'Kalutara', 'Kandy', 'Kegalle', 'Kilinochchi', 'Kurunegala',
@@ -67,7 +67,27 @@ export const BIKE_TYPES = ['BIKE']
 export const VAN_BUS_TYPES = ['VAN', 'BUS']
 export const TRUCK_TYPES = ['TRUCK', 'LORRY', 'PICKUP']
 
-/** Equipment that applies to every vehicle type. */
+/**
+ * Comfort equipment that makes no sense on these types (a sunroof on a motor
+ * bike). Mirrors the ETL's rule in ingestion-service's enrich stage, so a
+ * listing entered by hand and one uploaded in a CSV end up the same.
+ */
+export const NO_COMFORT_EQUIPMENT_TYPES = ['BIKE', 'THREE_WHEELER']
+const COMFORT_EQUIPMENT_KEYS = new Set([
+  'sunroof',
+  'full_option',
+  'reverse_camera',
+  'leather_seats',
+  'power_steering',
+  'air_conditioning',
+])
+
+/** Whether an equipment item can exist on this vehicle type. */
+export function equipmentAvailable(vehicleType: string, key: string): boolean {
+  return !(NO_COMFORT_EQUIPMENT_TYPES.includes(vehicleType) && COMFORT_EQUIPMENT_KEYS.has(key))
+}
+
+/** Equipment: every type has it, except the comfort items above on bikes and three-wheelers. */
 export const EQUIPMENT = [
   { field: 'sunroof', key: 'sunroof', label: 'Sunroof' },
   { field: 'fullOption', key: 'full_option', label: 'Full option' },
@@ -120,7 +140,7 @@ export interface SpecValues {
  * The `specs` object for a submit. Mirrors the enrich stage: a category's
  * columns are stored only for that category (a bike's stroke type on a car is
  * dropped), the equipment flags apply to every type, and an unticked flag is
- * left out rather than stored as false — the same as a blank CSV cell.
+ * left out rather than stored as false - the same as a blank CSV cell.
  *
  * `extras` are keys on an edited listing that the form does not own (a bulk
  * upload's carried-over DMS columns); they pass through so an edit never
@@ -162,7 +182,9 @@ export function buildSpecs(
     put('axle_count', values.axleCount)
     put('cargo_bed_type', values.cargoBedType)
   }
-  for (const { field, key } of EQUIPMENT) put(key, values[field])
+  for (const { field, key } of EQUIPMENT) {
+    if (equipmentAvailable(type, key)) put(key, values[field])
+  }
 
   return specs
 }

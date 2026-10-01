@@ -58,7 +58,7 @@ export class Notification {
 
   /**
    * When the retry sweep may next claim this row. NULL means it is not waiting
-   * on a retry — either it is SENT, or it exhausted its attempts and is FAILED.
+   * on a retry - either it is SENT, or it exhausted its attempts and is FAILED.
    */
   @Column({ name: 'next_attempt_at', type: 'timestamptz', nullable: true })
   nextAttemptAt: Date | null;

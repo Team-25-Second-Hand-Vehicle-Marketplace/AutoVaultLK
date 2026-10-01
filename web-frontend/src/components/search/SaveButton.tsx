@@ -31,7 +31,7 @@ export function SaveButton({ vehicleId }: { vehicleId: string }) {
       toast.success(nowSaved ? 'Saved to your list' : 'Removed from your list')
     } catch (error) {
       // The hook has already rolled the heart back, so the message is all the
-      // buyer needs — the button state already tells the truth.
+      // buyer needs - the button state already tells the truth.
       toast.error(toErrorMessage(error, 'Could not update your saved list.'))
     } finally {
       setPending(false)

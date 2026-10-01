@@ -18,6 +18,6 @@ export class SchemasAndExtensions1735000001000 implements MigrationInterface {
   }
 
   public async down(): Promise<void> {
-    // Schemas are not dropped — that would cascade away every table.
+    // Schemas are not dropped - that would cascade away every table.
   }
 }

@@ -1,5 +1,5 @@
 # Default image target for the HTTP ingestion API.
-# Most ETL Lambdas are zip-packaged, not containers — see docker/etl-zip-lambdas.Dockerfile.
+# Most ETL Lambdas are zip-packaged, not containers - see docker/etl-zip-lambdas.Dockerfile.
 # Dedicated container images for the two heavy-dependency Lambdas (embed, process-images)
 # live in docker/embed.Dockerfile and docker/process-images.Dockerfile.
 FROM node:22-alpine AS build

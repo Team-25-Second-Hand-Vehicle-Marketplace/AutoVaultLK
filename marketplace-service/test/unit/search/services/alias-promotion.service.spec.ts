@@ -2,14 +2,14 @@ import { AliasPromotionService } from '../../../../src/modules/search/services/a
 
 /**
  * Guards the one process in the platform that writes permanently to
- * marketplace.vehicle_dictionaries — reference data the ingestion ETL loads a
+ * marketplace.vehicle_dictionaries - reference data the ingestion ETL loads a
  * snapshot of on every run, and that every search facet filters against. A
  * wrong promotion is not a bad result set; it is a permanent alias nobody
  * remembers adding.
  *
  * `findBestMatch` is private, so these drive it through `promoteAliases` with
  * controlled repository returns. The trigram scores quoted in comments are
- * measured, not assumed — `trigramSimilarity` is real here, and using fitted
+ * measured, not assumed - `trigramSimilarity` is real here, and using fitted
  * fixtures would test the fixtures rather than the thresholds.
  */
 
@@ -37,7 +37,7 @@ describe('AliasPromotionService', () => {
   });
 
   it('promotes a clear misspelling', async () => {
-    // "toyotta" vs "Toyota" = 0.800, and 0.000 against Nissan — well over the
+    // "toyotta" vs "Toyota" = 0.800, and 0.000 against Nissan - well over the
     // threshold with the whole gap to itself.
     repository.findAliasCandidates.mockResolvedValue([
       { token: 'toyotta', occurrences: 7 },
@@ -133,7 +133,7 @@ describe('AliasPromotionService', () => {
     });
 
     it('refuses an ambiguous match rather than picking one', async () => {
-      // "corolla" scores 0.750 against both "Corollx" and "Corolly" — a gap of
+      // "corolla" scores 0.750 against both "Corollx" and "Corolly" - a gap of
       // zero. Picking either would be a coin flip written permanently into the
       // dictionary.
       repository.findDictionaryEntries.mockResolvedValue([
@@ -152,7 +152,7 @@ describe('AliasPromotionService', () => {
 
     it('accepts when the winner clears the runner-up by the margin', async () => {
       // The other side of the same boundary: "corollaa" scores 0.824 against
-      // Corolla and 0.706 against Corollo — a gap of 0.118, over the 0.05
+      // Corolla and 0.706 against Corollo - a gap of 0.118, over the 0.05
       // margin. Without this the ambiguity test above would also pass if
       // somebody made the guard unconditional.
       repository.findDictionaryEntries.mockResolvedValue([

@@ -6,7 +6,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  *
  * Makes span types (Toyota builds cars, vans, SUVs and lorries), so a MAKE
  * row carries an array. Models do not (a HiAce is always a van), so a MODEL
- * row carries a single-element array — one column, one shape, no special
+ * row carries a single-element array - one column, one shape, no special
  * casing in the query builder.
  *
  * Empty array = "applies to every type", which keeps the column optional

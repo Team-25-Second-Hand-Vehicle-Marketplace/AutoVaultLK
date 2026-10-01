@@ -31,7 +31,7 @@ export async function handler(event: SqsEvent): Promise<void> {
     } catch (err) {
       // LocalOrchestrator already handles per-chunk and per-stage failure
       // internally (PARTIAL/FAILED). Reaching here means something escaped
-      // it — mirror EtlWorkerService's same last-resort handling so a dealer
+      // it - mirror EtlWorkerService's same last-resort handling so a dealer
       // polling GET /jobs/{id} does not wait on a status that never arrives.
       const message = err instanceof Error ? err.message : String(err);
       logger.error(`Unhandled pipeline error for job ${jobId}: ${message}`);

@@ -57,7 +57,7 @@ describe('buildFilterQuery', () => {
     it('filters on COALESCE(registration_year, manufacture_year) by default', () => {
       // registration_year is nullable because dealers omit it. Filtering it
       // directly hides those listings from every year-filtered search with
-      // no error — the single most costly bug this module has had.
+      // no error - the single most costly bug this module has had.
       const { whereSql } = build({ minYear: 2015 });
       expect(whereSql).toContain('COALESCE(v.registration_year, v.manufacture_year) >= $2');
       expect(whereSql).not.toMatch(/[^(]v\.registration_year >=/);

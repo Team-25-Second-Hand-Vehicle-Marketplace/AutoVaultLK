@@ -1,6 +1,6 @@
 /**
  * Blob storage boundary. Backed by the local filesystem today and by S3 once
- * the service is deployed (ADR-007) — no pipeline stage or application service
+ * the service is deployed (ADR-007) - no pipeline stage or application service
  * may import an AWS SDK directly, so swapping the driver stays a one-line
  * change in StorageModule rather than an edit to every stage.
  *
@@ -11,7 +11,7 @@
  *   images/{jobId}/{vehicleId}/...    processed images + thumbnails
  *
  * Keys derive from dealer-supplied filenames, so an implementation backed by a
- * real filesystem MUST reject any key that escapes its root — see
+ * real filesystem MUST reject any key that escapes its root - see
  * LocalObjectStore.
  */
 export interface ObjectStore {
@@ -22,7 +22,7 @@ export interface ObjectStore {
   get(key: string): Promise<Buffer>;
 
   /**
-   * Streams an object — used for the CSV split and ZIP extraction, where
+   * Streams an object - used for the CSV split and ZIP extraction, where
    * buffering a whole dealer upload into memory is not acceptable.
    */
   getStream(key: string): Promise<NodeJS.ReadableStream>;
@@ -33,5 +33,5 @@ export interface ObjectStore {
   list(prefix: string): Promise<string[]>;
 }
 
-/** DI token — `ObjectStore` is an interface and erases at runtime. */
+/** DI token - `ObjectStore` is an interface and erases at runtime. */
 export const OBJECT_STORE = Symbol('ObjectStore');

@@ -1,15 +1,15 @@
 name: Load Test - NL Search Concurrency (manual)
 
-# Manual trigger only — same reasoning as load-test.yml. 15 concurrent VUs
+# Manual trigger only - same reasoning as load-test.yml. 15 concurrent VUs
 # issuing real GET /search/nl calls for ~95 seconds.
 #
 # Requires GROQ_API_KEY (secret) and GROQ_MODEL (var) to exercise the real
-# Groq LLM path this test is meant to measure — see 04-load-testing.md
+# Groq LLM path this test is meant to measure - see 04-load-testing.md
 # Incident 5.10: without GROQ_MODEL set, marketplace-service silently falls
 # back to the deterministic parser (NFR-12.1) and every NL search still
 # succeeds, but the test no longer measures what its own header says it
 # measures. If these are not configured as repo secrets/vars, the job still
-# runs (Groq is optional per SAD 3.6.2 — an empty key skips it and logs
+# runs (Groq is optional per SAD 3.6.2 - an empty key skips it and logs
 # locally) but is only exercising the fallback path.
 on:
   workflow_dispatch:

@@ -12,7 +12,7 @@ variable "environment" {
 
 variable "service_name" {
   type        = string
-  description = "e.g. validate-file, split-chunks — becomes part of the function name"
+  description = "e.g. validate-file, split-chunks - becomes part of the function name"
 }
 
 variable "s3_bucket" {
@@ -22,7 +22,7 @@ variable "s3_bucket" {
 
 variable "s3_key" {
   type        = string
-  description = "Fixed key CI overwrites on each deploy, e.g. lambda-artifacts/validate-file.zip. Unlike modules.lambda's image_uri, this is a static value Terraform never computes, so there is nothing for a later apply to fight — no lifecycle.ignore_changes needed."
+  description = "Fixed key CI overwrites on each deploy, e.g. lambda-artifacts/validate-file.zip. Unlike modules.lambda's image_uri, this is a static value Terraform never computes, so there is nothing for a later apply to fight - no lifecycle.ignore_changes needed."
 }
 
 variable "handler" {

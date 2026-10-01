@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { MoreThanOrEqual, Repository } from 'typeorm';
+import { In, MoreThanOrEqual, Repository } from 'typeorm';
 
 import {
   Vehicle,
@@ -11,7 +11,7 @@ import type { ListingSortOption } from '../dto/my-listings-query.dto';
 import { ListingSearchIndexService } from '../services/listing-search-index.service';
 
 // Editing any of these fields changes what buildSearchText() produces, so
-// search_text/embedding must be recomputed — not just the plain column.
+// search_text/embedding must be recomputed - not just the plain column.
 //
 // price and mileage are here because they feed the band phrases: dropping a
 // price from 6M to 4M moves the listing from "upper mid range" to "mid range",
@@ -43,7 +43,7 @@ export class ListingRepository {
   async create(dto: CreateListingDto, status: VehicleStatus) {
     const vehicle = this.vehicleRepo.create({
       dealerId: dto.dealerId,
-      vehicleType: dto.vehicleType ?? 'CAR',
+      vehicleType: dto.vehicleType,
       make: dto.make,
       model: dto.model,
       condition: dto.condition ?? 'USED',
@@ -112,8 +112,8 @@ export class ListingRepository {
    * A dealer's own inventory, every status included.
    *
    * `sort: 'confidence_asc'` (FR-42.1) orders by
-   * `normalization->>'rowConfidence'` ascending — the rows most likely to
-   * need a correction first — with a row that carries no provenance at all
+   * `normalization->>'rowConfidence'` ascending - the rows most likely to
+   * need a correction first - with a row that carries no provenance at all
    * (a manually-created listing, or one that predates migration 29000)
    * placed last via NULLS LAST: there is nothing in it to review, so it
    * should not crowd out the ones that do.
@@ -210,7 +210,7 @@ export class ListingRepository {
 
   /**
    * Reverses `deactivate`: brings an ARCHIVED listing back to LIVE. Only
-   * valid from ARCHIVED — returns null otherwise (does not exist, or was
+   * valid from ARCHIVED - returns null otherwise (does not exist, or was
    * never archived in the first place), same "say only whether it happened"
    * split as `approve`.
    */
@@ -227,13 +227,13 @@ export class ListingRepository {
 
   /**
    * FR-42: moves a PENDING_REVIEW listing to LIVE. This is the "explicitly
-   * approve" step the FR requires — no ETL-loaded listing becomes publicly
+   * approve" step the FR requires - no ETL-loaded listing becomes publicly
    * visible until the owning dealer takes this action, and until this method
    * existed nothing in the service could take it at all.
    *
    * Returns null both when the listing does not exist and when it exists but
    * is not PENDING_REVIEW (already LIVE, or REJECTED, or a manually-created
-   * DRAFT) — the service maps both to the same 404/409 split its caller
+   * DRAFT) - the service maps both to the same 404/409 split its caller
    * needs, and this method's job is only to say whether the transition
    * happened, not to explain why it did not.
    */
@@ -265,7 +265,23 @@ export class ListingRepository {
   }
 
   /**
-   * Permanently removes a listing — distinct from `deactivate`, which only
+   * Approves only the listed ids, and only those that are the dealer's own and
+   * still PENDING_REVIEW. Anything else in `ids` (someone else's listing, one
+   * already live, one that does not exist) is skipped rather than failing the
+   * lot, because the dealer's view can be stale by the time they click. The
+   * dealer and status conditions live in the WHERE clause itself, so a crafted
+   * id list can never touch another dealer's rows.
+   */
+  async approveSelected(dealerId: string, ids: string[]): Promise<number> {
+    const result = await this.vehicleRepo.update(
+      { dealerId, status: 'PENDING_REVIEW', id: In(ids) },
+      { status: 'LIVE' },
+    );
+    return result.affected ?? 0;
+  }
+
+  /**
+   * Permanently removes a listing - distinct from `deactivate`, which only
    * hides it. Restricted by the service to DRAFT/PENDING_REVIEW/REJECTED:
    * nothing external (favourites, recommendations, search history) should
    * reasonably reference a listing that was never LIVE, but a listing that
@@ -273,7 +289,7 @@ export class ListingRepository {
    *
    * `vehicle_images` cascades on `vehicle_id` (migration 7000) and
    * `favourites` cascades on `vehicle_id` (migration 10000), so this needs no
-   * manual cleanup of either — the FK constraints do it in the same
+   * manual cleanup of either - the FK constraints do it in the same
    * transaction as the DELETE.
    */
   async remove(id: string): Promise<boolean> {

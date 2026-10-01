@@ -112,7 +112,7 @@ describe('NotificationRetrySweeper', () => {
       );
     });
 
-    // One undeliverable notification must not abandon the rest of the batch —
+    // One undeliverable notification must not abandon the rest of the batch -
     // deliver() has already recorded its outcome on the row.
     it('continues the batch when one row throws', async () => {
       const { sweeper, repository, handler } = started();

@@ -28,7 +28,7 @@ export type VehicleStatus =
   'DRAFT' | 'PENDING_REVIEW' | 'LIVE' | 'SOLD' | 'ARCHIVED' | 'REJECTED';
 
 /**
- * FR-42.1. Mirrors ingestion-service's NormalizationPayload — see the
+ * FR-42.1. Mirrors ingestion-service's NormalizationPayload - see the
  * `normalization` column below for why this is a JSONB blob rather than
  * relational columns.
  */
@@ -152,7 +152,7 @@ export class Vehicle {
   status: VehicleStatus;
 
   // FR-35.2 (migration 30000). Set by ingestion-service's Enrich stage when
-  // registration_number is blank — the row loads fine but has no automated
+  // registration_number is blank - the row loads fine but has no automated
   // image match, so the dealer review queue must call it out distinctly
   // from an ordinary PENDING_REVIEW row.
   @Column({ name: 'needs_manual_review', type: 'boolean', default: false })
@@ -168,7 +168,7 @@ export class Vehicle {
    * FR-42.1: which fields on a PENDING_REVIEW listing the ETL pipeline
    * inferred (dictionary/rule/groq) versus took verbatim, and Groq's stated
    * reasoning where it repaired a value. Written once by the Load stage
-   * (ingestion-service) and never by anything in this service — null for
+   * (ingestion-service) and never by anything in this service - null for
    * every manually-created listing and for the rows that predate migration
    * 29000. Shape: NormalizationPayload in
    * ingestion-service/.../pipeline/types.ts, kept in sync by hand the same
@@ -184,7 +184,7 @@ export class Vehicle {
   @Column({ type: 'text', nullable: true, select: false })
   embedding: string | null;
 
-  // Maintained by a database trigger — never written from application code.
+  // Maintained by a database trigger - never written from application code.
   @Column({
     name: 'search_vector',
     type: 'tsvector',

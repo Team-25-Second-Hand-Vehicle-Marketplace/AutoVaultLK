@@ -145,7 +145,7 @@ describe('InMemoryDictionarySnapshot', () => {
     });
 
     /**
-     * Two near-equal candidates must not be resolved by a coin flip — that
+     * Two near-equal candidates must not be resolved by a coin flip - that
      * would write an arbitrary make into a dealer's inventory. Leaving it
      * unresolved drops the row's confidence and routes it to Groq instead.
      */
@@ -161,7 +161,7 @@ describe('InMemoryDictionarySnapshot', () => {
     });
 
     it('resolves when one candidate clearly beats the other', () => {
-      // Same shape, but 'Carola' beats 'Carla' by 0.269 — well over the margin.
+      // Same shape, but 'Carola' beats 'Carla' by 0.269 - well over the margin.
       const clear = new InMemoryDictionarySnapshot([
         row({ id: 'a', canonicalValue: 'Carola' }),
         row({ id: 'b', canonicalValue: 'Carla' }),

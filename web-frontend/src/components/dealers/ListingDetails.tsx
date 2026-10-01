@@ -7,7 +7,7 @@ import type { DealerListing } from '../../api/listings.types'
  * stage captured, the manual-review flag for a row that arrived with no
  * registration number (FR-35.2), and the photos matched against it. Follows
  * the same collapsible-panel pattern as NormalizationDetails, and renders
- * nothing when a listing has none of the three to show — a manually-created
+ * nothing when a listing has none of the three to show - a manually-created
  * listing with a normal photo set should not grow an empty panel.
  */
 

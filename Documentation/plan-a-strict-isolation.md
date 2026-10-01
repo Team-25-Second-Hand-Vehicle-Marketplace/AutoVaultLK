@@ -1,9 +1,9 @@
-# Plan A — Strict Isolation
+# Plan A - Strict Isolation
 
 > **Model:** Schema-per-service. No service reads or writes another service's
 > tables. Every cross-service data access is a REST call.
 >
-> **Companion:** [Plan B — Reads Cross Schemas](./plan-b-reads-cross-schemas.md).
+> **Companion:** [Plan B - Reads Cross Schemas](./plan-b-reads-cross-schemas.md).
 > Open questions behind both: [database-open-questions.md](./database-open-questions.md).
 
 ---
@@ -11,7 +11,7 @@
 ## 1. The idea in one paragraph
 
 One PostgreSQL database, five schemas, five roles. Each role can touch exactly
-one schema — its own. A service that needs another service's data asks for it
+one schema - its own. A service that needs another service's data asks for it
 over HTTP; it cannot reach across in SQL, because PostgreSQL will refuse. The
 shared database is an operational convenience (one container, one backup, one
 pgvector install), not a shared data space. The boundary is enforced by the
@@ -71,7 +71,7 @@ visibility are separate mechanisms, so in principle both can hold at once.
 
 > **⚠ Unverified.** Whether a role with *no* privilege on `auth` can insert a
 > row whose FK references `auth.users` has not been tested. FK validation runs
-> as the system rather than the inserting user, so this *should* work — but
+> as the system rather than the inserting user, so this *should* work - but
 > if it does not, this plan requires 4b. **Test before building on it:**
 > ```sql
 > -- as marketplace_service_role, with a valid dealer_id
@@ -97,7 +97,7 @@ WHERE u.id IS NULL;
 Run as the superuser (the only role that can see both schemas).
 
 **Recommendation:** attempt 4a; fall back to 4b if the test fails. 4b is also
-the honest choice if you intend to split into separate databases later —
+the honest choice if you intend to split into separate databases later -
 a cross-schema FK is a coupling that a database split cannot carry.
 
 ---
@@ -113,7 +113,7 @@ and it is not small.
 |---|---|---|
 | marketplace-service | `AuthClient` | dealer name/email for listing pages; dealer capabilities for the listing cap |
 | ingestion-service | `AuthClient` | verify dealer may bulk upload |
-| ingestion-service | `MarketplaceClient` | **write vehicles** — see §6 |
+| ingestion-service | `MarketplaceClient` | **write vehicles** - see §6 |
 | notification-service | `AuthClient` | resolve recipient email |
 | admin-service | all four | every dashboard read and every moderation write |
 
@@ -145,7 +145,7 @@ export interface AuthClient {
 
 Transport stays behind the interface: HTTP to `localhost:300X` in
 development, most likely direct Lambda invoke on AWS (east-west traffic should
-not traverse API Gateway — that is north-south infrastructure).
+not traverse API Gateway - that is north-south infrastructure).
 
 ### 5.3 What each client must handle
 
@@ -155,7 +155,7 @@ of that exists today.
 
 ---
 
-## 6. The ETL write path — the hard part
+## 6. The ETL write path - the hard part
 
 The ETL design has `loadFn` bulk-inserting ~100 rows per chunk directly into
 `marketplace.vehicles`, with `MaxConcurrency: 10` on the Step Functions Map
@@ -190,7 +190,7 @@ worth measuring rather than assuming.
 
 `MaxConcurrency: 10` was chosen to protect the connection pool that `loadFn`
 was holding. Under Plan A, `loadFn` holds an HTTP connection instead, and the
-pool pressure moves to marketplace-service — where it is now driven by *both*
+pool pressure moves to marketplace-service - where it is now driven by *both*
 ETL traffic and live buyer traffic on the same pool.
 
 **The ETL design's §14–15 concurrency argument does not survive this plan and
@@ -199,7 +199,7 @@ requests marketplace-service can absorb without degrading search latency.
 
 ---
 
-## 7. Admin service — the unavoidable exception
+## 7. Admin service - the unavoidable exception
 
 Admin dashboards are inherently cross-cutting: counts of users, listings,
 upload jobs, and delivery rates, often in one view.
@@ -211,7 +211,7 @@ must be assembled in application memory.
 Two options, neither clean:
 
 **7a. No exception.** Admin calls every service. Each service exposes the
-aggregates admin needs. Purest, and the most endpoints to build — every new
+aggregates admin needs. Purest, and the most endpoints to build - every new
 dashboard panel is a new endpoint on someone else's service.
 
 **7b. Read-only exception.** Admin gets `SELECT` on all schemas, documented as
@@ -219,7 +219,7 @@ deliberate. All admin *mutations* still go through the owning service's API.
 
 ```sql
 -- EXCEPTION: internal, trusted, read-only reporting consumer.
--- Mutations are NOT granted — approving a listing or verifying a dealer
+-- Mutations are NOT granted - approving a listing or verifying a dealer
 -- goes through that service's API.
 GRANT USAGE ON SCHEMA auth, marketplace, ingestion, notification TO admin_service_role;
 GRANT SELECT ON ALL TABLES IN SCHEMA auth        TO admin_service_role;
@@ -244,7 +244,7 @@ ORDER BY embedding <=> $1::vector
 LIMIT 20;
 ```
 
-This is not a cross-service query — `vehicles` belongs to marketplace — so it
+This is not a cross-service query - `vehicles` belongs to marketplace - so it
 is fully compatible with Plan A.
 
 Deploy search as a **separate Lambda within marketplace-service** so MiniLM
@@ -254,7 +254,7 @@ statement the search design calls its "entire justification" for one
 PostgreSQL instance.
 
 Splitting search into its own *service* would require a synced copy of every
-listing plus its vector — a replication pipeline and eventual consistency, for
+listing plus its vector - a replication pipeline and eventual consistency, for
 no benefit that the separate-Lambda approach does not already provide.
 
 ---
@@ -263,14 +263,14 @@ no benefit that the separate-Lambda approach does not already provide.
 
 > **Superseded.** Plan B was chosen, and reference data is now implemented as
 > a single `marketplace.vehicle_dictionaries` table owned by
-> marketplace-service — see
+> marketplace-service - see
 > [plan-b-reads-cross-schemas.md §9](./plan-b-reads-cross-schemas.md#9-reference-data--marketplacevehicle_dictionaries--resolved--built).
 > The analysis below is kept as the record of why the alternatives were
 > rejected; the table names it uses no longer exist.
 
 Plan A's genuinely unresolved problem.
 
-Both search and ETL need the same make/model vocabulary — the designs warn
+Both search and ETL need the same make/model vocabulary - the designs warn
 that if ingest stores `MERCEDES-BENZ` while search queries `Mercedes`, the
 mismatch returns zero results **silently**. Both also describe an alias
 promotion loop where logged corrections become dictionary entries, so the
@@ -282,7 +282,7 @@ Under strict isolation, shared mutable state is exactly what is forbidden.
 |---|---|
 | Shared `reference` schema, both read+write | Violates the plan. Honest, but an exception. |
 | Owned by one service, exposed over REST | Isolation-clean. A per-token HTTP call during parsing is likely too slow. |
-| Duplicated in a shared npm library | No `pg_trgm` — `similarity()` cannot run against a JS array. Fuzzy matching would need reimplementing without an index. Alias promotion needs a redeploy. |
+| Duplicated in a shared npm library | No `pg_trgm` - `similarity()` cannot run against a JS array. Fuzzy matching would need reimplementing without an index. Alias promotion needs a redeploy. |
 | Owned by one service + cached snapshots | Most workable: one service owns the table; others pull a snapshot at container init and cache it. Matches what the ETL design already specifies for the Groq Lambda. Writes (alias promotion) go through the owner's API. |
 
 **Recommendation:** the last option. It is the only one that keeps trigram
@@ -293,7 +293,7 @@ call.
 
 ## 10. Pros
 
-**The boundary is real and enforced.** Not a convention people remember —
+**The boundary is real and enforced.** Not a convention people remember -
 PostgreSQL refuses. A junior developer *cannot* accidentally couple two
 services with a join, because the query errors.
 
@@ -313,7 +313,7 @@ joins discovered by grepping.
 own repository. Plan A is the model that survives that split unchanged.
 
 **Independent deployability is genuine.** Because no service reads another's
-tables, a schema change inside `auth` cannot break marketplace at runtime —
+tables, a schema change inside `auth` cannot break marketplace at runtime -
 only an API change can, and API changes are visible.
 
 ---
@@ -340,7 +340,7 @@ merge. Two round trips minimum, and on Lambda the second may hit a cold start.
 
 **Cross-service reporting becomes hard.** "Listings per verified dealer" is
 one SQL join under Plan B, and an application-memory join over two API
-responses under Plan A — which does not paginate or aggregate well.
+responses under Plan A - which does not paginate or aggregate well.
 
 **Reference data has no clean home** (§9). Any answer is a compromise.
 
@@ -357,9 +357,9 @@ services instead of querying one database.
    is built on the answer. Do this first.
 2. Init scripts: extensions, schemas, roles.
 3. Migrations for all 13 tables (FKs per the §4 outcome).
-4. `grants.sql` — own-schema only, plus the §7 admin decision.
+4. `grants.sql` - own-schema only, plus the §7 admin decision.
 5. Run and **verify**: cross-schema `SELECT` must fail; own-schema must work.
-6. Per-service TypeORM config and entities. No view-entities — they are
+6. Per-service TypeORM config and entities. No view-entities - they are
    illegal in this plan.
 7. `AuthClient` interface + local HTTP implementation.
 8. Internal endpoints on auth-user-service.
@@ -386,5 +386,5 @@ Steps 1–6 are roughly a day. Steps 7–11 are the 1–2 weeks.
 - The team is small and co-located, where boundaries are cheap to maintain
   socially.
 - Cross-service reporting is a major feature.
-- You are not yet certain the service boundaries themselves are right —
+- You are not yet certain the service boundaries themselves are right -
   strict isolation makes them expensive to move.

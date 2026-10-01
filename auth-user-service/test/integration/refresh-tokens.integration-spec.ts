@@ -145,7 +145,7 @@ describeWithDatabase('RefreshTokensRepository (integration)', () => {
       ]);
       expect(reloadedActive!.revokedAt).not.toBeNull();
       // The already-revoked row's original timestamp is untouched, not
-      // overwritten by this second call — proves the WHERE clause excludes it.
+      // overwritten by this second call - proves the WHERE clause excludes it.
       expect(reloadedOld!.revokedAt!.getTime()).toBe(revokedAt.getTime());
     });
   });
@@ -177,7 +177,7 @@ describeWithDatabase('RefreshTokensRepository (integration)', () => {
       const token = await create(user.id);
 
       await deleteFixtureUser(ds, user.id);
-      // Remove from the afterAll cleanup list — it no longer exists.
+      // Remove from the afterAll cleanup list - it no longer exists.
       const idx = createdUserIds.indexOf(user.id);
       if (idx >= 0) createdUserIds.splice(idx, 1);
 

@@ -11,7 +11,7 @@ import { ErrorBanner } from '../ui/ErrorBanner'
  */
 
 /**
- * Stage names are internal pipeline vocabulary — a dealer has no reason to
+ * Stage names are internal pipeline vocabulary - a dealer has no reason to
  * know what GROQ_NORMALIZE is. These say what failed in the dealer's terms.
  */
 const STAGE_COPY: Record<EtlStage, string> = {
@@ -32,7 +32,7 @@ type Props = {
   rows: RejectedRecord[]
   /** Rejections recorded for the job, which may exceed the rows on this page. */
   total: number
-  /** invalid_records from the job itself — the number the tiles above show. */
+  /** invalid_records from the job itself - the number the tiles above show. */
   skippedCount: number
   loading: boolean
   error: string | null
@@ -45,7 +45,7 @@ export function RejectionsReport({ rows, total, skippedCount, loading, error }: 
 
       <p className="dealer-muted">
         {skippedCount} row{skippedCount === 1 ? '' : 's'} could not be loaded. Correct
-        {skippedCount === 1 ? ' it' : ' them'} in your file and upload just those rows —
+        {skippedCount === 1 ? ' it' : ' them'} in your file and upload just those rows -
         the rows that already loaded are unaffected.
       </p>
 
@@ -122,7 +122,7 @@ function RawData({
   )
 
   if (entries.length === 0) {
-    return <span className="dealer-muted">—</span>
+    return <span className="dealer-muted">-</span>
   }
 
   return (

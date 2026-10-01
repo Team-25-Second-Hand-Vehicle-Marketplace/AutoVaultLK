@@ -87,7 +87,7 @@ describe('enrichStage', () => {
     });
 
     it('drops a body type outside KNOWN_SPEC_KEYS', async () => {
-      // A value no search facet can filter on is worse than an absent one — it
+      // A value no search facet can filter on is worse than an absent one - it
       // looks like data.
       expect((await enrich(row({}, { body_type: 'limousine' }))).normalized.specs).toBeUndefined();
     });
@@ -95,7 +95,7 @@ describe('enrichStage', () => {
     it('is set before embed runs, since buildSearchText reads it', async () => {
       // A bulk row without body_type produces a shorter search text than the
       // equivalent manual listing, and a different text embeds to a different
-      // vector — FR-22.1 drift through the side door.
+      // vector - FR-22.1 drift through the side door.
       const result = await enrich(row({}, { body_type: 'saloon' }));
 
       expect(result.normalized.specs).toHaveProperty('body_type');
@@ -130,7 +130,7 @@ describe('enrichStage', () => {
   describe('category-gated specs (SRS Appendix B.2)', () => {
     it('ignores CAR/SUV-only columns on a non-CAR/SUV vehicle_type', async () => {
       // A TRUCK row with a seats/doors/drive_type column should not get a CAR
-      // cabin spec — the column describes the wrong category of vehicle.
+      // cabin spec - the column describes the wrong category of vehicle.
       const result = await enrich(
         row({ vehicleType: 'TRUCK' }, { seats: '5', doors: '4', drive_type: '4wd' }),
       );
@@ -153,7 +153,7 @@ describe('enrichStage', () => {
         abs_equipped: true,
       });
 
-      // Same columns on a CAR row are ignored — a car has no stroke_type.
+      // Same columns on a CAR row are ignored - a car has no stroke_type.
       const car = await enrich(
         row({ vehicleType: 'CAR' }, { stroke_type: '4-stroke', cooling_system: 'liquid' }),
       );
@@ -205,7 +205,7 @@ describe('enrichStage', () => {
     });
 
     it('applies universal equipment specs regardless of vehicle_type', async () => {
-      // A van or truck can have a sunroof too — these are not category-gated.
+      // A van or truck can have a sunroof too - these are not category-gated.
       const result = await enrich(
         row({ vehicleType: 'TRUCK' }, { sunroof: 'yes', full_option: 'yes' }),
       );
@@ -270,7 +270,7 @@ describe('enrichStage', () => {
       // "Warranty: 2 years" is real information a buyer would search for, and
       // dropping it silently loses the only place it existed. It is written to
       // specs verbatim so the dealer's own data survives structurally (FR-15 /
-      // Appendix B.2), and to description so it still reaches the embedding —
+      // Appendix B.2), and to description so it still reaches the embedding -
       // no search facet queries an unknown specs key, but that is a filtering
       // limitation, not a reason to lose the data.
       const result = await enrich(row({}, { warranty: '2 years', service_records: 'full' }));
@@ -349,7 +349,7 @@ describe('enrichStage', () => {
     expect((await enrich(row())).normalized.specs).toBeUndefined();
   });
 
-  it('never rejects a row — it only adds', async () => {
+  it('never rejects a row - it only adds', async () => {
     const result = await enrichStage.run(ctx, [row(), row()]);
 
     expect(result.rejections).toEqual([]);
@@ -358,5 +358,119 @@ describe('enrichStage', () => {
 
   it('is registered as the ENRICH stage', () => {
     expect(enrichStage.stage).toBe('ENRICH');
+  });
+});
+
+describe('values that do not apply to the vehicle type', () => {
+  const type = (vehicleType: VehicleFields['vehicleType']) => ({ vehicleType });
+
+  it('does not store a sunroof on a bike, and flags the row for review', async () => {
+    const out = await enrich(row(type('BIKE'), { sunroof: 'Yes' }));
+
+    expect(out.normalized.specs?.sunroof).toBeUndefined();
+    expect(out.provenance?.specs?.reasoning).toMatch(/Ignored for a bike: sunroof/);
+    expect(out.provenance?.specs?.confidence).toBeLessThan(0.6);
+  });
+
+  it('lowers the row confidence so the row sorts to the top of the review queue', async () => {
+    const out = await enrich(row(type('BIKE'), { sunroof: 'yes' }));
+
+    expect(out.confidence).toBeLessThan(0.6);
+  });
+
+  it('names every ignored column in one note', async () => {
+    const out = await enrich(
+      row(type('BIKE'), { sunroof: 'yes', leather_seats: 'true', air_conditioning: 'y' }),
+    );
+
+    const note = out.provenance?.specs?.reasoning ?? '';
+    expect(note).toMatch(/sunroof/);
+    expect(note).toMatch(/leather seats/);
+    expect(note).toMatch(/air conditioning/);
+    expect(note).toMatch(/They do not apply/);
+  });
+
+  it('keeps alloy wheels on a bike, which is a real feature there', async () => {
+    const out = await enrich(row(type('BIKE'), { alloy_wheels: 'yes' }));
+
+    expect(out.normalized.specs).toMatchObject({ alloy_wheels: true });
+    expect(out.provenance?.specs).toBeUndefined();
+  });
+
+  it('does not flag a plain "no" or a blank, which are true or simply empty', async () => {
+    const out = await enrich(row(type('BIKE'), { sunroof: 'no', leather_seats: '', abs: 'yes' }));
+
+    expect(out.provenance?.specs).toBeUndefined();
+    expect(out.confidence).toBe(1);
+  });
+
+  it('still allows a sunroof on a van or truck, where a cab can have one', async () => {
+    const van = await enrich(row(type('VAN'), { sunroof: 'yes' }));
+    const truck = await enrich(row(type('TRUCK'), { air_conditioning: 'yes' }));
+
+    expect(van.normalized.specs).toMatchObject({ sunroof: true });
+    expect(truck.normalized.specs).toMatchObject({ air_conditioning: true });
+    expect(van.provenance?.specs).toBeUndefined();
+  });
+
+  it('flags a bike-only column on a car instead of dropping it silently', async () => {
+    const out = await enrich(row(type('CAR'), { stroke_type: '4-Stroke' }));
+
+    expect(out.normalized.specs?.stroke_type).toBeUndefined();
+    expect(out.provenance?.specs?.reasoning).toMatch(/Ignored for a car: stroke type/);
+  });
+
+  it('flags a truck column on a car, and uses the singular for one column', async () => {
+    const out = await enrich(row(type('CAR'), { axle_count: '3' }));
+
+    expect(out.provenance?.specs?.reasoning).toMatch(/It does not apply/);
+  });
+
+  it('leaves a correctly typed row alone', async () => {
+    const out = await enrich(row(type('BIKE'), { stroke_type: '4-Stroke', abs_equipped: 'yes' }));
+
+    expect(out.normalized.specs).toMatchObject({ stroke_type: '4_STROKE', abs_equipped: true });
+    expect(out.provenance?.specs).toBeUndefined();
+    expect(out.confidence).toBe(1);
+  });
+
+  it('keeps provenance the pipeline already recorded for other fields', async () => {
+    const r = row(type('BIKE'), { sunroof: 'yes' });
+    r.provenance = { make: { source: 'dictionary', confidence: 1 } };
+
+    const out = await enrich(r);
+
+    expect(out.provenance?.make).toEqual({ source: 'dictionary', confidence: 1 });
+    expect(out.provenance?.specs).toBeDefined();
+  });
+});
+
+describe('a vehicle type the dealer wrote that we could not read', () => {
+  it('flags it at low confidence and says which type was used instead', async () => {
+    const out = await enrich(row({ vehicleType: 'CAR' }, { vehicle_type: 'Hoverboard' }));
+
+    expect(out.provenance?.vehicleType?.confidence).toBeLessThan(0.6);
+    expect(out.provenance?.vehicleType?.reasoning).toMatch(
+      /Vehicle type "Hoverboard" was not recognised, so "car" was used/,
+    );
+    expect(out.confidence).toBeLessThan(0.6);
+  });
+
+  it('does not flag a type that was read, or a blank cell filled in from the model', async () => {
+    const read = await enrich(row({ vehicleType: 'PICKUP' }, { vehicle_type: 'Pick-up' }));
+    const blank = await enrich(row({ vehicleType: 'PICKUP' }, { vehicle_type: '' }));
+
+    expect(read.provenance?.vehicleType).toBeUndefined();
+    expect(blank.provenance?.vehicleType).toBeUndefined();
+    expect(blank.confidence).toBe(1);
+  });
+
+  it('reports both problems when the type was unreadable and a column does not apply', async () => {
+    const out = await enrich(
+      row({ vehicleType: 'CAR' }, { vehicle_type: 'Hoverboard', stroke_type: '4-Stroke' }),
+    );
+
+    expect(out.provenance?.vehicleType?.reasoning).toMatch(/not recognised/);
+    expect(out.provenance?.specs?.reasoning).toMatch(/Ignored for a car: stroke type/);
   });
 });

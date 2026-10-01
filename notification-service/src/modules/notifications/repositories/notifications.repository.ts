@@ -58,7 +58,7 @@ export class NotificationsRepository {
 
   /**
    * Records a transient failure and schedules the next attempt. FR-53: the row
-   * stays PENDING, because it has not failed — it has not finished.
+   * stays PENDING, because it has not failed - it has not finished.
    */
   scheduleRetry(
     id: string,
@@ -86,7 +86,7 @@ export class NotificationsRepository {
    *
    * The claim marks rows by clearing next_attempt_at inside the same
    * transaction, so a row is claimed exactly once even if delivery afterwards
-   * crashes the process — it then waits for the next sweep rather than being
+   * crashes the process - it then waits for the next sweep rather than being
    * picked up twice in this one.
    */
   async claimDueRetries(limit: number, now: Date): Promise<Notification[]> {

@@ -10,7 +10,7 @@ export type VerificationStatus = 'PENDING' | 'VERIFIED' | 'REJECTED';
  * dealer, verified" (see api-gateway/openapi/public-api.yaml) without a
  * round trip to auth-user-service on every upload.
  *
- * ingestion_service_role holds SELECT only — see database/src/grants.sql,
+ * ingestion_service_role holds SELECT only - see database/src/grants.sql,
  * where the identical grant already exists for marketplace_service_role.
  * Verification state is changed by admin-service through auth-user-service's
  * API; this service never writes it.
@@ -21,7 +21,7 @@ export type VerificationStatus = 'PENDING' | 'VERIFIED' | 'REJECTED';
  */
 @Entity({ schema: 'auth', name: 'dealer_profiles', synchronize: false })
 export class DealerProfileView {
-  // user_id is both PK and FK — one profile per user (migration 3000).
+  // user_id is both PK and FK - one profile per user (migration 3000).
   // upload_jobs.dealer_id references auth.users(id), so this joins directly.
   @PrimaryColumn({ name: 'user_id', type: 'uuid' })
   userId: string;

@@ -12,7 +12,7 @@ export type SplitChunksOutput = {
   /**
    * Passed through, not re-derived: ProcessRows' second branch (ProcessImages)
    * reads this off its own state input, which is this output, not off the job
-   * row — without threading it through, ProcessImages always saw undefined
+   * row - without threading it through, ProcessImages always saw undefined
    * and silently skipped every upload's photos, zip or no zip.
    */
   zipKey: string | null;
@@ -23,7 +23,7 @@ export type SplitChunksOutput = {
  * the object store and produces the Map state's input.
  *
  * **The output is envelopes, not rows.** Each is ~200 bytes, so a 50-chunk job
- * hands the Map about 10KB — comfortably inside the 256KB state-payload cap
+ * hands the Map about 10KB - comfortably inside the 256KB state-payload cap
  * that made this whole pointer design necessary.
  *
  * A file with more than a few hundred chunks would eventually approach that
@@ -48,7 +48,7 @@ export const handler = async (input: ValidateFileOutput): Promise<SplitChunksOut
       metrics: { chunks: result.chunkKeys.length, rows: result.totalRecords },
     });
 
-    // Row counts per chunk are not known here without re-reading each file —
+    // Row counts per chunk are not known here without re-reading each file -
     // splitChunks reports only the total. The first stage's envelope corrects
     // `in` from what it actually reads, so this is a starting value rather
     // than a claim.

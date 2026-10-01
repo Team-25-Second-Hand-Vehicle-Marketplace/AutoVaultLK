@@ -10,8 +10,8 @@ import type { JobQueue, UploadJobMessage } from '../ports/job-queue.port';
  * because locally the same process must also consume; in AWS, the deployed
  * MVP path (see production/main.tf's ingestion-service note) has
  * etl-worker.ts consume this queue directly via a Lambda SQS event source
- * mapping and run LocalOrchestrator.run(jobId) — not this class. A
- * `setHandler` here would be a method that silently does nothing — worse
+ * mapping and run LocalOrchestrator.run(jobId) - not this class. A
+ * `setHandler` here would be a method that silently does nothing - worse
  * than its absence, because the absence is a compile error and the no-op is
  * a support ticket.
  *
@@ -44,7 +44,7 @@ export class SqsJobQueue implements JobQueue {
 
   /**
    * Resolves once SQS has accepted the message, not once the pipeline
-   * finishes — the port's contract, and what lets POST /ingest/upload answer
+   * finishes - the port's contract, and what lets POST /ingest/upload answer
    * 202 immediately (FR-32).
    *
    * A send failure propagates. The caller has already stored the file and
@@ -58,8 +58,8 @@ export class SqsJobQueue implements JobQueue {
         QueueUrl: this.queueUrl,
         MessageBody: JSON.stringify(message),
         // MessageGroupId / MessageDeduplicationId are omitted: the queue is a
-        // standard queue, not FIFO. Ordering does not matter — each message is
-        // an independent job — and idempotency is handled by the pipeline's
+        // standard queue, not FIFO. Ordering does not matter - each message is
+        // an independent job - and idempotency is handled by the pipeline's
         // succeededChunks skip rather than by the queue.
       }),
     );

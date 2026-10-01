@@ -6,7 +6,7 @@ export type VerificationStatus = 'PENDING' | 'VERIFIED' | 'REJECTED';
 @Entity({ schema: 'auth', name: 'dealer_profiles', synchronize: false })
 export class DealerProfileView {
 
-  // The table's primary key IS user_id — there is no separate id column.
+  // The table's primary key IS user_id - there is no separate id column.
   // vehicles.dealer_id references auth.users(id), so this joins directly.
   @PrimaryColumn({ name: 'user_id', type: 'uuid' })
   userId: string;

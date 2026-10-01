@@ -108,7 +108,7 @@ export interface FilterSearchResponse {
   relaxation?: Relaxation
 }
 
-/** Control params for GET /marketplace/search/nl — not sidebar filters. */
+/** Control params for GET /marketplace/search/nl - not sidebar filters. */
 export interface NlSearchParams {
   q: string
   sort?: SortOption

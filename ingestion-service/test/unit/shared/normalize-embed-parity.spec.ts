@@ -8,7 +8,7 @@ import { resolve } from 'node:path';
  * copy of marketplace-service's. If the two definitions of buildSearchText or
  * EMBEDDING_MODEL_ID ever diverge, bulk-uploaded listings get embedded into a
  * different region of vector space than manually created ones and rank badly
- * forever — with no exception, no failing assertion anywhere else, and no log
+ * forever - with no exception, no failing assertion anywhere else, and no log
  * line (FR-22.1 / NFR-26.1; plan-b §9A "silent drift").
  *
  * Nothing but this test enforces it, so it compares raw file contents rather

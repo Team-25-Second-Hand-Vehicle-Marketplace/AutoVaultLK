@@ -52,7 +52,7 @@ import { IngestionUploadService } from './services/ingestion-upload.service';
     ProcessJobImagesService,
     // The ONE cross-schema write (ADR-002). Provided here rather than in a
     // pipeline module because it needs the DataSource; the orchestrator hands
-    // it to the Load stage. Do not add a second writer — see its header.
+    // it to the Load stage. Do not add a second writer - see its header.
     MarketplaceVehiclesWriteAdapter,
     // The image half of the same ADR-002 exception. B3 injects this rather
     // than writing marketplace.vehicle_images directly.

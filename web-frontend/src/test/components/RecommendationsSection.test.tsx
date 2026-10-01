@@ -57,7 +57,7 @@ describe('RecommendationsSection', () => {
 
   it('renders nothing when there is nothing similar', async () => {
     // A rare vehicle having no near neighbours is not something a buyer needs
-    // told — an empty box would be noise on someone else's page.
+    // told - an empty box would be noise on someone else's page.
     vi.mocked(getRecommendations).mockResolvedValue({
       vehicleId: 'v-1',
       recommendations: [],
@@ -105,7 +105,7 @@ describe('RecommendationsSection', () => {
     await waitFor(() => expect(getRecommendations).toHaveBeenCalledTimes(1))
 
     // rerender re-uses the original wrapper, so this must not add another
-    // MemoryRouter — nesting two Routers throws.
+    // MemoryRouter - nesting two Routers throws.
     rerender(<RecommendationsSection vehicleId="v-9" />)
 
     await waitFor(() => expect(getRecommendations).toHaveBeenCalledTimes(2))

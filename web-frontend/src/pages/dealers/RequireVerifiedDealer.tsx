@@ -5,11 +5,11 @@ import { useDealerProfile } from './useDealerProfile'
 
 /**
  * Keeps My listings / Bulk upload / an upload's status page unreachable until
- * the dealer is VERIFIED — a dealer can now log in while PENDING or REJECTED
+ * the dealer is VERIFIED - a dealer can now log in while PENDING or REJECTED
  * (see auth-user-service's DealerProfilesService: approval no longer gates
  * login), so this, not login, is what stands between that and the rest of
  * the dealer area. `/dealer` (the index route) always renders something
- * appropriate to the dealer's status — DealerDashboardPage branches on it —
+ * appropriate to the dealer's status - DealerDashboardPage branches on it -
  * so redirecting there is always safe.
  *
  * Same shape as RequireDealerType; the API enforces the same restriction

@@ -1,4 +1,4 @@
-# Production deployment — full runbook + everything we hit
+# Production deployment - full runbook + everything we hit
 
 This is the battle-tested version of the deployment process: every command
 that actually worked, plus every real problem we hit and how we fixed it.
@@ -10,24 +10,24 @@ re-diagnosing from scratch.
 notification-service, web-frontend, plus **the full ingestion-service
 design**: `ingest-api` and `job-status-api` (two thin API Lambdas) plus a
 12-Lambda Step Functions pipeline (`embed`/`process-images` as container
-images, the other 10 stages as zip packages) — see the "ingestion-service"
+images, the other 10 stages as zip packages) - see the "ingestion-service"
 comment block at the top of `main.tf`.
 
 **Status: the first 4 services + frontend are fully deployed and verified
 working**, end to end, as of this writing. All 4 confirmed live through the
 public API Gateway:
-- `GET /users/me` (auth) → `401 Unauthorized` (correct — no token sent; this
+- `GET /users/me` (auth) → `401 Unauthorized` (correct - no token sent; this
   means cold start + DB connection + routing all worked)
 - `GET /marketplace/listings` (marketplace) → real JSON data
 - `GET /admin/dashboard` (admin) → `401 Unauthorized` (same meaning as auth)
-- notification confirmed via CloudWatch logs — clean bootstrap, DB
+- notification confirmed via CloudWatch logs - clean bootstrap, DB
   connected, routes mapped (`POST /notifications/events` is its only real
   endpoint; there's no `GET /notifications`)
 
-**ingestion-service has never been run against a real AWS account** — the
+**ingestion-service has never been run against a real AWS account** - the
 full Step Functions design replaces an earlier MVP (one `etl-worker` Lambda)
 that was written but never applied either, so there's no prior deployment to
-compare against. Follow Step 3a below (new — the zip-packaged stage Lambdas
+compare against. Follow Step 3a below (new - the zip-packaged stage Lambdas
 need their artifacts uploaded before `terraform apply` can create them,
 same bootstrap-order problem as ECR needing an image first), then verify
 explicitly once deployed:
@@ -38,10 +38,10 @@ curl <public_api_endpoint>/jobs/<jobId returned above> -H "Authorization: Bearer
 and watch the state machine's execution in the Step Functions console (or
 `aws stepfunctions list-executions --state-machine-arn <etl_state_machine_arn output>`)
 for the pipeline actually running. If something in this path breaks, it's
-uncharted — the "Known issues" section below predates it.
+uncharted - the "Known issues" section below predates it.
 
 Getting the first 4 services here took 3 more real bugs beyond the ones
-documented when this file was first written (Issues 9–11 below) — read
+documented when this file was first written (Issues 9–11 below) - read
 those before assuming a fresh deployment will be issue-free; the fixes are
 in the Terraform/code now, but they're worth understanding if something
 *else* breaks.
@@ -58,7 +58,7 @@ in the Terraform/code now, but they're worth understanding if something
   `database/docker/init/03-roles.sql`, minus `ingestion_service_role`), with
   Terraform-generated random passwords stored in Secrets Manager.
 - **Networking:** one VPC, 2 public + 2 private subnets, one NAT Gateway.
-- **API Gateway:** the existing `modules/api-gateway` scaffold, completed —
+- **API Gateway:** the existing `modules/api-gateway` scaffold, completed -
   public API (auth/users/dealer-profiles/marketplace/admin) and internal API
   (notifications, internal auth calls), routes mirroring
   `api-gateway/local/nginx.conf`'s prefixes exactly.
@@ -66,7 +66,7 @@ in the Terraform/code now, but they're worth understanding if something
   custom error responses.
 - **Secrets:** Secrets Manager holds the source-of-truth values (JWT secret,
   internal service key, per-service DB passwords), but each Lambda also gets
-  them as plain environment variables — the app code doesn't fetch from
+  them as plain environment variables - the app code doesn't fetch from
   Secrets Manager at runtime, so this is a deliberate simplification, not an
   oversight. Rotating a secret means a `terraform apply`, not something
   automatic.
@@ -78,7 +78,7 @@ in the Terraform/code now, but they're worth understanding if something
 - AWS credentials with admin-equivalent access, in `~/.aws/credentials` /
   `~/.aws/config` (`aws sts get-caller-identity` should succeed).
 - Terraform ≥ 1.7 (we used 1.14.3), AWS CLI v2, Docker Desktop, Node/npm.
-- A Groq API key and an email address you control (for SES) — put these in a
+- A Groq API key and an email address you control (for SES) - put these in a
   git-ignored `production.auto.tfvars`:
   ```hcl
   groq_api_key     = "..."
@@ -87,10 +87,10 @@ in the Terraform/code now, but they're worth understanding if something
 
 ---
 
-## Step 1 — Remote state bucket
+## Step 1 - Remote state bucket
 
 Local state would hold generated secrets in plaintext, so set up a remote
-backend first. **This is a one-time setup — skip if the bucket already
+backend first. **This is a one-time setup - skip if the bucket already
 exists.**
 
 ```
@@ -101,11 +101,11 @@ aws s3api put-public-access-block --bucket vehicle-marketplace-tfstate-<account-
 ```
 
 `main.tf`'s `backend "s3"` block already points at this bucket name pattern
-with `use_lockfile = true` (Terraform's native S3 locking, TF 1.10+ — no
+with `use_lockfile = true` (Terraform's native S3 locking, TF 1.10+ - no
 DynamoDB table needed). Update the bucket name in that block if you're
 deploying to a different AWS account.
 
-## Step 2 — Init and sanity-check
+## Step 2 - Init and sanity-check
 
 ```
 cd cloud-infrastructure/terraform/environments/production
@@ -113,7 +113,7 @@ terraform init
 terraform plan
 ```
 
-## Step 3 — Bootstrap the 8 ECR repos only
+## Step 3 - Bootstrap the 8 ECR repos only
 
 Image-based Lambdas can't be created against an empty ECR repo, so create
 just the repos first:
@@ -122,16 +122,16 @@ just the repos first:
 terraform apply -auto-approve -target=module.auth_lambda.aws_ecr_repository.this -target=module.marketplace_lambda.aws_ecr_repository.this -target=module.admin_lambda.aws_ecr_repository.this -target=module.notification_lambda.aws_ecr_repository.this -target=module.ingest_api_lambda.aws_ecr_repository.this -target=module.job_status_api_lambda.aws_ecr_repository.this -target=module.embed_lambda.aws_ecr_repository.this -target=module.process_images_lambda.aws_ecr_repository.this
 ```
 
-Log in to ECR (once — good for all 8 repos, same registry host):
+Log in to ECR (once - good for all 8 repos, same registry host):
 
 ```
 aws ecr get-login-password --region ap-southeast-2 | docker login --username AWS --password-stdin <account-id>.dkr.ecr.ap-southeast-2.amazonaws.com
 ```
 
-## Step 3a — Bootstrap the lambda-artifacts bucket and build the 10 zip Lambdas
+## Step 3a - Bootstrap the lambda-artifacts bucket and build the 10 zip Lambdas
 
 The 10 lightweight ETL stage functions deploy as zip packages, not container
-images (see `function-config.ts`) — same chicken-and-egg problem as the ECR
+images (see `function-config.ts`) - same chicken-and-egg problem as the ECR
 repos above: the S3 object has to exist before `terraform apply` can create
 the Lambda function pointing at it.
 
@@ -145,9 +145,9 @@ aws s3 sync dist-lambda/ s3://<lambda_artifacts_bucket_name output>/lambda-artif
 cd ..
 ```
 
-## Step 4 — Build and push all 8 images
+## Step 4 - Build and push all 8 images
 
-**Use `--no-cache --provenance=false` on every build — both flags matter,
+**Use `--no-cache --provenance=false` on every build - both flags matter,
 see Issues 2 and 3 below for why.**
 
 ```bash
@@ -162,8 +162,8 @@ for svc in auth-user-service:auth marketplace-service:marketplace admin-service:
 done
 
 # embed and process-images are separate Dockerfiles in the same
-# ingestion-service tree (heavier deps — ONNX runtime, Sharp — kept out of
-# the two API Lambdas' images) — build them the same way.
+# ingestion-service tree (heavier deps - ONNX runtime, Sharp - kept out of
+# the two API Lambdas' images) - build them the same way.
 cd ingestion-service
 for name in embed process-images; do
   docker build --no-cache --provenance=false -f docker/$name.Dockerfile -t <account-id>.dkr.ecr.ap-southeast-2.amazonaws.com/vehicle-marketplace/$name-production:latest .
@@ -172,10 +172,10 @@ done
 cd ..
 ```
 
-(On Windows cmd.exe, do these individually rather than as a loop — see
+(On Windows cmd.exe, do these individually rather than as a loop - see
 "Windows quoting gotchas" below for cmd.exe-specific issues.)
 
-## Step 5 — Full apply
+## Step 5 - Full apply
 
 ```
 terraform apply
@@ -184,13 +184,13 @@ terraform apply
 This creates everything else: VPC, RDS + Proxy, IAM, SES, the 18 Lambdas (8
 container-image, 10 zip), the Step Functions state machine, the EventBridge
 Pipe that starts an execution per SQS message, the ingestion SQS queue + DLQ,
-API Gateway routes, S3+CloudFront. **Expect 10–15 minutes** — RDS and the NAT
+API Gateway routes, S3+CloudFront. **Expect 10–15 minutes** - RDS and the NAT
 Gateway are the slow parts. If this fails partway through with a network
 error while saving state, see Issue 5 below **before** retrying.
 
 If a Lambda `CreateFunction` call 409s with `Function already exist` on a
 retry, the function actually was created in an earlier attempt but state
-didn't record it (same network-drop issue) — `import` it instead of letting
+didn't record it (same network-drop issue) - `import` it instead of letting
 Terraform try to create it again:
 
 ```
@@ -206,11 +206,11 @@ terraform import module.process_images_lambda.aws_lambda_function.this vehicle-m
 # terraform import module.stage_lambda_zip[\"<slug>\"].aws_lambda_function.this vehicle-marketplace-<slug>-production
 ```
 
-## Step 6 — One-time database setup
+## Step 6 - One-time database setup
 
 RDS is in a private subnet with `publicly_accessible = false`, so nothing
 outside the VPC can reach it directly. **Don't flip `publicly-accessible` to
-try to work around this** — the DB's subnet group only has private subnets,
+try to work around this** - the DB's subnet group only has private subnets,
 so that flag doesn't actually make it reachable anyway (see Issue 4). Use a
 temporary bastion instead:
 
@@ -231,12 +231,12 @@ aws ec2 run-instances --image-id <ami-id> --instance-type t3.micro --subnet-id <
 ```
 
 **Give the bastion the "lambda" security group too** (`terraform output
-lambda_security_group_id`) — the database SG's ingress rule only allows
+lambda_security_group_id`) - the database SG's ingress rule only allows
 connections from that SG, so the bastion needs to be a member of it.
 
 We tried an SSM-Session-Manager-only bastion first (no key pair, no open
 ports) and it never registered with SSM after 15+ minutes, with completely
-empty console output — something in this account/region blocks it, never
+empty console output - something in this account/region blocks it, never
 root-caused. **SSH is the reliable path; don't bother with SSM first.**
 
 ### 6b. Connect and create the roles
@@ -252,11 +252,11 @@ Get the master credentials first: `aws secretsmanager get-secret-value
 --secret-id <database_master_secret_arn output> --query SecretString
 --output text`.
 
-**Use the direct instance endpoint, not the proxy, for this** — until Issue
+**Use the direct instance endpoint, not the proxy, for this** - until Issue
 6 is fixed the proxy can't reach the instance at all, and even after the fix
 there's no reason to route one-time admin SQL through the proxy.
 
-**`sslmode=require` is mandatory** — RDS refuses plaintext connections
+**`sslmode=require` is mandatory** - RDS refuses plaintext connections
 (`rds.force_ssl` is on by default), and the failure mode without it is a
 confusing "server closed the connection unexpectedly" with no clear reason,
 not a helpful auth error (see Issue 7).
@@ -294,24 +294,24 @@ npm run migration:run
 ```
 
 **Percent-encode special characters in the password** if building a URI by
-hand — an unescaped `<` (or similar) breaks both cmd.exe parsing and strict
-URI parsing. `<` → `%3C`, etc. `DATABASE_SSL=true` is required too —
+hand - an unescaped `<` (or similar) breaks both cmd.exe parsing and strict
+URI parsing. `<` → `%3C`, etc. `DATABASE_SSL=true` is required too -
 `data-source.ts` only enables TLS when that's set (see Issue 7 again; it's
 easy to fix the connection string and still forget this one).
 
-Then grants — safe to run unmodified:
+Then grants - safe to run unmodified:
 
 ```
 docker run --rm -i --add-host=host.docker.internal:host-gateway postgres:17 psql "postgresql://<master_user>:<master_password_percent_encoded>@host.docker.internal:15432/vehicle_marketplace?sslmode=require" < src\grants.sql
 ```
 
 If `ingestion_service_role` was created in step 6b above, every grant in
-`grants.sql` (including the ingestion ones — cross-schema read on
+`grants.sql` (including the ingestion ones - cross-schema read on
 `auth.dealer_profiles`/`auth.users`, and the one documented cross-schema
 write exception onto `marketplace.vehicles`/`marketplace.vehicle_images`,
 per ADR-002) now applies cleanly. If you skipped creating that role, you'll
-see `role "ingestion_service_role" does not exist` errors scroll by instead
-— psql doesn't stop on error when run this way, so every other grant still
+see `role "ingestion_service_role" does not exist` errors scroll by instead -
+psql doesn't stop on error when run this way, so every other grant still
 applies, but the ingestion Lambdas won't be able to connect until you go
 back and create the role.
 
@@ -321,10 +321,10 @@ back and create the role.
 aws ec2 terminate-instances --instance-ids <bastion-instance-id>
 aws ec2 delete-security-group --group-id <new-ssh-sg-id>
 ```
-(wait for termination first) and delete `db-bootstrap-key.pem` locally —
+(wait for termination first) and delete `db-bootstrap-key.pem` locally -
 it's already `*.pem`-gitignored, but there's no reason to keep it once done.
 
-## Step 7 — Deploy the frontend
+## Step 7 - Deploy the frontend
 
 ```
 cd web-frontend
@@ -334,32 +334,32 @@ aws s3 sync dist/ s3://<frontend_bucket_name output>/ --delete
 aws cloudfront create-invalidation --distribution-id <frontend_distribution_id output> --paths "/*"
 ```
 
-## Step 8 — Verify
+## Step 8 - Verify
 
-**There is no bare `/health` route reachable through the public API** — each
+**There is no bare `/health` route reachable through the public API** - each
 service's `HealthController` mounts at plain `/health` with no prefix, and
 `modules/api-gateway` only wires the `/auth`, `/users`, `/dealer-profiles`,
 `/marketplace`, `/admin` prefixes, not bare `/health`. Test a route that
 actually exists instead:
 
 ```
-curl <public_api_endpoint output>/users/me       # auth — expect 401 Unauthorized (success: means it's reachable, DB connected, JWT guard ran)
-curl <public_api_endpoint output>/marketplace/listings   # marketplace — expect real JSON, e.g. {"message":"...","data":[]}
-curl <public_api_endpoint output>/admin/dashboard        # admin — expect 401 Unauthorized, same meaning as auth
+curl <public_api_endpoint output>/users/me       # auth - expect 401 Unauthorized (success: means it's reachable, DB connected, JWT guard ran)
+curl <public_api_endpoint output>/marketplace/listings   # marketplace - expect real JSON, e.g. {"message":"...","data":[]}
+curl <public_api_endpoint output>/admin/dashboard        # admin - expect 401 Unauthorized, same meaning as auth
 ```
 
-A `401` from auth/admin is success here, not a failure — it means the
+A `401` from auth/admin is success here, not a failure - it means the
 Lambda cold-started, connected to the database (that happens at NestJS
 bootstrap, before any route runs), and the router matched correctly; it's
 just refusing an unauthenticated request as designed. notification-service
-has no public route at all — check it via CloudWatch instead:
+has no public route at all - check it via CloudWatch instead:
 ```
 aws logs tail /aws/lambda/vehicle-marketplace-notification-production --since 10m
 ```
 Look for `Nest application successfully started` with no `TypeOrmModule`
-errors above it, and `Mapped {/notifications/events, POST} route` — that
+errors above it, and `Mapped {/notifications/events, POST} route` - that
 confirms it's healthy without needing a request. (There's no `GET
-/notifications` route — don't test that path, it's a legitimate 404.)
+/notifications` route - don't test that path, it's a legitimate 404.)
 
 If any of the above returns `{"message":"Internal Server Error"}` or
 `Service Unavailable`, check that service's own Lambda logs before guessing
@@ -367,25 +367,25 @@ further:
 ```
 aws logs tail /aws/lambda/vehicle-marketplace-<service>-production --since 10m
 ```
-This is how Issues 2, 3, 6, and 9 were all actually found — the error
+This is how Issues 2, 3, 6, and 9 were all actually found - the error
 message returned over HTTP is generic by design (NestJS's default exception
 filter), but the Lambda's own log always has the real exception.
 
-## Step 9 — CI/CD (auto-deploy on push to `main`)
+## Step 9 - CI/CD (auto-deploy on push to `main`)
 
 `modules/github-oidc` sets up an IAM role GitHub Actions can assume via
-OIDC — no long-lived AWS keys stored in GitHub. `.github/workflows/
+OIDC - no long-lived AWS keys stored in GitHub. `.github/workflows/
 deploy-production.yml` uses it to build+push+update the 8 container-image
 Lambdas (auth, marketplace, admin, notification, ingest-api, job-status-api,
 embed, process-images), build+upload+update the 10 zip-packaged ETL stage
 Lambdas, and sync the frontend.
 **It runs on every push to `main`** and deploys only the parts whose files
 changed (auth, marketplace, admin, notification, ingestion, web-frontend),
-and only after that part's tests pass — `main` has no required status
+and only after that part's tests pass - `main` has no required status
 checks, so the workflow gates on them itself. "Run workflow" (Actions tab)
 deploys everything. Deploys are serialized (one at a time).
 
-**It does not run `terraform apply` or database migrations** — both stay
+**It does not run `terraform apply` or database migrations** - both stay
 manual on purpose. If the environment is torn down, every deploy will fail
 (resources missing): disable the workflow in the Actions tab until it's back.
 To roll back, revert the commit on `main` (it redeploys the previous code),
@@ -399,7 +399,7 @@ terraform output github_deploy_role_arn
 ```
 
 Then set these as **repository variables** (Settings → Secrets and
-variables → Actions → Variables tab — not Secrets; none of these are
+variables → Actions → Variables tab - not Secrets; none of these are
 secret, OIDC is what keeps this safe) on the GitHub repo:
 
 | Variable | Value |
@@ -411,12 +411,12 @@ secret, OIDC is what keeps this safe) on the GitHub repo:
 | `FRONTEND_DISTRIBUTION_ID` | `terraform output frontend_distribution_id` |
 
 The trust policy only allows runs from this repo's `main` branch
-(`repo:<org>/<repo>:ref:refs/heads/main` — see `modules/github-oidc/main.tf`
+(`repo:<org>/<repo>:ref:refs/heads/main` - see `modules/github-oidc/main.tf`
 if you need to broaden that, e.g. to allow deploys from another branch), so
 pull requests and other branches can never deploy.
 
 `PUBLIC_API_ENDPOINT` may include the trailing slash that `terraform output`
-prints — the frontend build strips it.
+prints - the frontend build strips it.
 
 **If this AWS account already has a GitHub OIDC provider** from another
 project (AWS allows only one per account for
@@ -425,7 +425,7 @@ false` in `production.auto.tfvars` and Terraform will reuse the existing
 one instead of trying to create a duplicate (which errors).
 
 **After a `terraform destroy` + fresh redeploy**, the account ID, role ARN,
-and all 3 other values above change — update the repository variables again
+and all 3 other values above change - update the repository variables again
 before the next manual trigger, or it'll deploy against stale/nonexistent
 resources.
 
@@ -433,33 +433,33 @@ resources.
 
 ## Known issues and fixes (all encountered on the first real deployment)
 
-### Issue 1 — `AWS_REGION` is a reserved Lambda env var
+### Issue 1 - `AWS_REGION` is a reserved Lambda env var
 Setting it yourself 400s `CreateFunction` with
-`InvalidParameterValueException`. **Already fixed in `main.tf`** — don't add
+`InvalidParameterValueException`. **Already fixed in `main.tf`** - don't add
 it back to `common_env`. Every Lambda can still read
 `process.env.AWS_REGION`; AWS sets it automatically.
 
-### Issue 2 — Lambda rejects the image: "manifest ... not supported"
+### Issue 2 - Lambda rejects the image: "manifest ... not supported"
 Recent Docker Desktop builds attach provenance/attestation manifests by
 default, producing a multi-manifest image index Lambda doesn't support.
 **Fix:** always build with `--provenance=false`.
 
-### Issue 3 — Missing `node_modules` package at runtime despite a clean-looking build
+### Issue 3 - Missing `node_modules` package at runtime despite a clean-looking build
 We hit `Cannot find module '@codegenie/serverless-express'` at Lambda
 cold-start, even though the build log showed no errors. Root cause: an
-earlier build had genuinely corrupted midway (Docker Desktop disk I/O errors
-— see Issue 8), and Docker's layer cache silently kept reusing that broken
+earlier build had genuinely corrupted midway (Docker Desktop disk I/O errors -
+see Issue 8), and Docker's layer cache silently kept reusing that broken
 `npm ci` layer in every subsequent build, because the layer's cache key
 (same `package*.json`) never changed. The build always *looked* successful.
 **Fix:** `--no-cache` on every build until you're confident the cache is
 clean; if you see a suspiciously fast `npm ci` step (well under a second),
 that's the tell.
 
-### Issue 4 — Trying to make RDS temporarily public doesn't work
+### Issue 4 - Trying to make RDS temporarily public doesn't work
 We flipped `publicly-accessible` to `true` and opened the security group,
 expecting to connect directly for the one-time bootstrap. It still refused
 every connection. Root cause: the DB subnet group only contains private
-subnets (no route to an Internet Gateway) — `publicly-accessible` only
+subnets (no route to an Internet Gateway) - `publicly-accessible` only
 matters if the subnets themselves can route to the internet. **Don't bother
 with this path; use the SSH bastion (Step 6) instead.** We reverted the
 public-access change afterward:
@@ -468,37 +468,37 @@ aws rds modify-db-instance --db-instance-identifier vehicle-marketplace-db-produ
 aws ec2 revoke-security-group-ingress --group-id <db-sg-id> --protocol tcp --port 5432 --cidr <your-ip>/32
 ```
 
-### Issue 5 — DNS drops mid-`apply`, corrupting the lock/state handoff
+### Issue 5 - DNS drops mid-`apply`, corrupting the lock/state handoff
 Twice during long applies (RDS creation, Lambda creation), our network had a
 transient DNS resolution failure exactly while Terraform tried to persist
 state to S3. Terraform writes an `errored.tfstate` locally and the lock
 doesn't release cleanly. **Recovery, in order:**
-1. `terraform plan` — if it errors with `Error acquiring the state lock`, note the `ID` and run `terraform force-unlock <ID>`.
-2. `terraform state push errored.tfstate` — **but check first**: if this refuses with `cannot import state with serial N over newer state with serial M` where M > N, the remote state is already ahead (the actual PUT likely succeeded on an internal retry before the connection dropped again on lock release) — **don't force it**, just skip to step 3.
+1. `terraform plan` - if it errors with `Error acquiring the state lock`, note the `ID` and run `terraform force-unlock <ID>`.
+2. `terraform state push errored.tfstate` - **but check first**: if this refuses with `cannot import state with serial N over newer state with serial M` where M > N, the remote state is already ahead (the actual PUT likely succeeded on an internal retry before the connection dropped again on lock release) - **don't force it**, just skip to step 3.
 3. `terraform plan` again to confirm you're back to the expected pending-resource count before applying.
 
 If a Lambda 409s with `Function already exist` after this, see the `import`
 commands in Step 5 above.
 
-### Issue 6 — RDS Proxy target permanently `UNAVAILABLE` ("internal error")
+### Issue 6 - RDS Proxy target permanently `UNAVAILABLE` ("internal error")
 This was the big one. The proxy's target health never passed, with a
 generic, unhelpful `"DBProxy Target unavailable due to an internal error"`.
 We tried: waiting, deregister+reregister (got a more specific but still
 stuck `PENDING_PROXY_CAPACITY`), and a full destroy+recreate of the proxy
-(`terraform apply -replace=module.database.aws_db_proxy.this`) — none of it
+(`terraform apply -replace=module.database.aws_db_proxy.this`) - none of it
 actually fixed the root cause, just masked it temporarily or not at all.
 
 **Root cause:** the RDS Proxy's own network interfaces sit in the *same*
 security group as the database instance (by design, for simplicity). That
 security group's only ingress rule allowed traffic *from the Lambda security
-group* — it never allowed traffic from **itself**. Since the proxy's ENIs
+group* - it never allowed traffic from **itself**. Since the proxy's ENIs
 are members of that same "database" SG, and members of a SG aren't
 automatically allowed to talk to each other, **the proxy was never able to
 open a connection to the database at all**, on any attempt, from the very
 first deployment. AWS's health-check error message never once hinted this
 was a security-group problem.
 
-**Fix — already applied in `modules/networking/main.tf`:** a self-referencing
+**Fix - already applied in `modules/networking/main.tf`:** a self-referencing
 ingress rule on the database security group:
 ```hcl
 ingress {
@@ -509,7 +509,7 @@ ingress {
 }
 ```
 **Do not also touch the security group's `description` field in the same
-change** — AWS treats a security group's `description` as immutable, so any
+change** - AWS treats a security group's `description` as immutable, so any
 edit to it forces a full destroy-and-recreate, which then fails outright
 because Terraform doesn't have permission to detach the RDS-owned ENIs
 attached to it. We hit this directly: changing the description alongside
@@ -524,23 +524,23 @@ aws rds describe-db-proxy-targets --db-proxy-name vehicle-marketplace-proxy-prod
 ```
 Waiting for `"State": "AVAILABLE"`.
 
-### Issue 7 — Postgres connections silently refused without SSL
+### Issue 7 - Postgres connections silently refused without SSL
 Two distinct symptoms, same underlying cause (RDS enforces `rds.force_ssl`):
 - Direct `psql` without `sslmode=require`: clear error, `no pg_hba.conf
-  entry for host ..., no encryption` — helpful.
+  entry for host ..., no encryption` - helpful.
 - Through the RDS Proxy, even *with* `sslmode=require` client-side: just
-  "server closed the connection unexpectedly" — **not** helpful, and this
+  "server closed the connection unexpectedly" - **not** helpful, and this
   turned out to be Issue 6 (the SG bug) rather than an SSL problem at all.
   Don't over-index on the proxy's vague error text; test the direct instance
   endpoint first to isolate SSL/auth issues from proxy-specific ones.
 - For the Node/TypeORM migration runner specifically: `DATABASE_URL` alone
-  isn't enough — `database/src/data-source.ts` only turns on TLS when
+  isn't enough - `database/src/data-source.ts` only turns on TLS when
   `DATABASE_SSL=true` is *also* set as a separate env var.
 
-### Issue 8 — Docker Desktop disk I/O corruption mid-build
+### Issue 8 - Docker Desktop disk I/O corruption mid-build
 Symptom: `npm ci` fails with `EIO: i/o error` / `TAR_ENTRY_ERROR`, or `docker
 push` fails with `write ... input/output error` on Docker Desktop's own
-containerd metadata database. Not a problem with the Dockerfile or npm —
+containerd metadata database. Not a problem with the Dockerfile or npm -
 Docker Desktop's own virtual disk got corrupted (possibly related to low
 host disk space, though we still saw one recurrence with 12 GB free).
 **Fix:**
@@ -549,12 +549,12 @@ host disk space, though we still saw one recurrence with 12 GB free).
    Docker Desktop, wait for the whale icon to go fully steady.
 3. Retry the build.
 4. If it still fails the same way, Docker Desktop → Settings →
-   Troubleshoot → Clean/Purge data (safe — just re-pulls base images).
+   Troubleshoot → Clean/Purge data (safe - just re-pulls base images).
 
-This is also the root cause behind Issue 3 — a corrupted build that *looked*
+This is also the root cause behind Issue 3 - a corrupted build that *looked*
 successful got cached and silently propagated through later builds.
 
-### Issue 9 — RDS Proxy connects, but every service role gets rejected
+### Issue 9 - RDS Proxy connects, but every service role gets rejected
 After Issue 6's fix, the proxy target went `AVAILABLE`, but every Lambda's
 TypeORM connection then failed with a *different*, much more specific error:
 `This RDS proxy has no credentials for the role auth_service_role. Check
@@ -562,17 +562,17 @@ the credentials for this role and try again.`
 
 **Root cause:** `modules/database`'s `aws_db_proxy` only ever had **one**
 `auth` block, pointing at the RDS-managed master user's secret. The proxy
-has no other way to know a role like `auth_service_role` exists — it can
+has no other way to know a role like `auth_service_role` exists - it can
 only authenticate as roles it has an explicit auth block + matching secret
 for. On top of that, the per-service secrets `modules/secrets` created held
 a bare password string, but RDS Proxy's `SECRETS` auth scheme requires the
-secret's content to be `{"username": "...", "password": "..."}` JSON — it
+secret's content to be `{"username": "...", "password": "..."}` JSON - it
 reads the *role to authenticate as* from that JSON, not from anywhere else.
 
-**Fix — already applied:**
+**Fix - already applied:**
 1. `modules/secrets`: each per-service secret now stores
    `jsonencode({ username = "<role>", password = <generated> })` instead of
-   a bare string. (Lambda env vars are unaffected — those read
+   a bare string. (Lambda env vars are unaffected - those read
    `random_password.db[...].result` directly, not the secret's content.)
 2. `modules/database`: a `dynamic "auth"` block on `aws_db_proxy.this`,
    one per entry in a new `db_service_role_secret_arns` variable, alongside
@@ -583,60 +583,60 @@ reads the *role to authenticate as* from that JSON, not from anywhere else.
    `module.secrets.db_service_role_arns` into the database module.
 
 This is a normal in-place update (new secret versions, new auth blocks on
-an existing proxy) — it does not replace anything.
+an existing proxy) - it does not replace anything.
 
-### Issue 10 — Every request 404s with the API Gateway **stage name** in the path
+### Issue 10 - Every request 404s with the API Gateway **stage name** in the path
 After Issue 9's fix, the database connected fine, but every request 404'd
-inside the NestJS app itself, e.g. `Cannot GET /production/auth/health` —
+inside the NestJS app itself, e.g. `Cannot GET /production/auth/health` -
 note the `/production/` that was never part of any real route.
 
 **Root cause:** AWS API Gateway HTTP APIs (v2) prepend a **named** stage's
-name to the path forwarded to a Lambda-proxy integration (`event.rawPath`) —
+name to the path forwarded to a Lambda-proxy integration (`event.rawPath`) -
 e.g. hitting `.../production/auth/login` sends `/production/auth/login` to
 the Lambda, not `/auth/login`. This is different from REST APIs (v1) and
 easy to miss since `modules/api-gateway`'s stages were named after
 `var.environment` ("production"), which looked completely reasonable.
 
-**Fix — already applied:** both stages (`modules/api-gateway/main.tf`) use
+**Fix - already applied:** both stages (`modules/api-gateway/main.tf`) use
 the special stage name `$default`, which adds no path prefix at all.
-**This forces a stage replacement** (`name` is immutable) — safe on its own
+**This forces a stage replacement** (`name` is immutable) - safe on its own
 (nothing else attaches to a "stage"), but it changes the invoke URL shape
 (`.../production/...` → `.../...`), which cascades to every Lambda's env
 vars that reference `public_api_endpoint`/`internal_api_endpoint` (a normal
 in-place update) **and** means the frontend needs a full rebuild + redeploy
-(`VITE_API_BASE_URL` is baked in at build time, not runtime-configurable) —
+(`VITE_API_BASE_URL` is baked in at build time, not runtime-configurable) -
 don't skip that step or the deployed frontend will call stale URLs.
 
-### Issue 11 — marketplace-service still 404s after Issue 10's fix
+### Issue 11 - marketplace-service still 404s after Issue 10's fix
 Every other service worked after Issue 10, but
 `GET /marketplace/listings` still 404'd with `Cannot GET /marketplace/
 listings`.
 
 **Root cause:** unlike auth/admin/notification, marketplace-service's own
-routes never include a `/marketplace` prefix locally either — nginx's
+routes never include a `/marketplace` prefix locally either - nginx's
 `location /marketplace/` **strips** it before forwarding (see
 `api-gateway/local/nginx.conf`'s comments), so the app's own controllers are
 mounted at e.g. `@Controller('listings')`, not `@Controller('marketplace/
 listings')`. AWS API Gateway's `AWS_PROXY` (Lambda-proxy) integration type
-has **no** path-rewrite capability — unlike an `HTTP_PROXY` integration,
+has **no** path-rewrite capability - unlike an `HTTP_PROXY` integration,
 there's no request-parameter mapping available, so whatever path hit the
 gateway is exactly what the Lambda receives, prefix and all.
 
-**Fix — already applied in `marketplace-service/src/lambda/marketplace-api.ts`:**
+**Fix - already applied in `marketplace-service/src/lambda/marketplace-api.ts`:**
 the handler strips a leading `/marketplace` off `event.rawPath` (and
 `event.requestContext.http.path`) before handing the event to
 `serverless-express`, replicating exactly what nginx does locally. This is
-application code, not Terraform — if `marketplace-api.ts` gets rewritten
+application code, not Terraform - if `marketplace-api.ts` gets rewritten
 later, this stripping needs to move with it. **No other service needs
-this** — auth/admin/notification all preserve their own prefix already,
+this** - auth/admin/notification all preserve their own prefix already,
 matching nginx's behavior for them.
 
-### Provider bug — "inconsistent final plan" on `.publish`
+### Provider bug - "inconsistent final plan" on `.publish`
 After the proxy replacement in Issue 6's investigation, `terraform apply`
 threw `Provider produced inconsistent final plan ... invalid new value for
-.publish` for all 4 Lambda functions — Terraform explicitly says this is a
+.publish` for all 4 Lambda functions - Terraform explicitly says this is a
 provider bug, not a config problem. **Fix: just retry `terraform apply`**
-(no flags) once the resource that was being replaced has actually finished —
+(no flags) once the resource that was being replaced has actually finished -
 mixing a `-replace` target with dependent resources' computed-value
 expansion in the same apply seems to trigger it.
 
@@ -645,7 +645,7 @@ expansion in the same apply seems to trigger it.
 ## Windows quoting gotchas
 
 - `docker login`/`ec2 authorize-security-group-ingress` etc.: never type
-  `<placeholder>` literally with angle brackets — in cmd.exe, `<` means
+  `<placeholder>` literally with angle brackets - in cmd.exe, `<` means
   "read input from this file" and breaks the command with confusing
   "system cannot find the file" errors.
 - Passwords containing `<`, `>`, `&`, `|` etc.: percent-encode them in
@@ -657,9 +657,9 @@ expansion in the same apply seems to trigger it.
 
 ## Cleanup checklist (temporary resources from this process)
 
-- [ ] Bastion EC2 instance(s) — `aws ec2 terminate-instances`
-- [ ] Temporary SSH security group — `aws ec2 delete-security-group`
-- [ ] `db-bootstrap-key.pem` — delete locally, it's gitignored but still a
+- [ ] Bastion EC2 instance(s) - `aws ec2 terminate-instances`
+- [ ] Temporary SSH security group - `aws ec2 delete-security-group`
+- [ ] `db-bootstrap-key.pem` - delete locally, it's gitignored but still a
       live credential while it exists
 - [ ] If an SSM-based bastion attempt was made and abandoned (see Issue 6's
       note): its IAM role/instance profile

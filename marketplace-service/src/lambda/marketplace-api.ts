@@ -9,7 +9,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.enableCors();
 
-  // Mirrors main.ts exactly — transform: true is what turns query-string
+  // Mirrors main.ts exactly - transform: true is what turns query-string
   // "true"/"2015" into real boolean/number before service code sees them.
   app.useGlobalPipes(
     new ValidationPipe({
@@ -24,7 +24,7 @@ async function bootstrap() {
 }
 
 // nginx strips the /marketplace prefix before forwarding locally (this
-// service's own routes have no such prefix — e.g. ListingController is
+// service's own routes have no such prefix - e.g. ListingController is
 // @Controller('listings'), not @Controller('marketplace/listings')). API
 // Gateway's Lambda-proxy integration has no path-rewrite capability of its
 // own, so the same stripping has to happen here instead.

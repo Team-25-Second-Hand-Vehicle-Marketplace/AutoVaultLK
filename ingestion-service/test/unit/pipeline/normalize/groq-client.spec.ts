@@ -3,7 +3,7 @@ import { complete, isGroqConfigured } from '../../../../src/workers/etl-worker/p
 /**
  * These tests exercise real retry delays (up to ~5s for the timeout policy,
  * and up to ~2+4+8+16s worst-case for the rate-limit policy) rather than
- * fake timers — jest's fake timers do not reliably interleave with a
+ * fake timers - jest's fake timers do not reliably interleave with a
  * fetch mock's own promise microtasks here, and the real delays are short
  * enough to run in CI without mocking them away.
  */
@@ -109,7 +109,7 @@ describe('groq-client', () => {
 
   it('includes the response body in a 400 error, not just the bare status', async () => {
     // json_validate_failed and an invalid-parameter 400 both read identically
-    // as "Groq HTTP 400" without this — the body is what actually names the
+    // as "Groq HTTP 400" without this - the body is what actually names the
     // cause in etl_stage_logs.error_message.
     const fetchSpy = jest.fn().mockResolvedValue({
       ok: false,
@@ -131,7 +131,7 @@ describe('groq-client', () => {
   it('sends reasoning_effort and max_completion_tokens to bound the response budget', async () => {
     // openai/gpt-oss-20b can spend its whole completion on chain-of-thought
     // reasoning and leave nothing for the JSON answer, which Groq's
-    // response_format validator then rejects — this is what keeps that from
+    // response_format validator then rejects - this is what keeps that from
     // happening.
     const fetchSpy = jest.fn().mockResolvedValue(okResponse());
     global.fetch = fetchSpy as never;

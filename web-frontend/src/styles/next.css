@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────
-   AutoVaultLK — redesign layer.
+   AutoVaultLK - redesign layer.
    Loaded last. It (1) redefines the design tokens, so every
    existing page re-themes at once, and (2) styles the new `nx-*` components.
    Light theme only.
@@ -1973,7 +1973,7 @@ h4 {
   color: var(--accent-bright);
 }
 
-/* ── Palette pass 2: black / white / dark blue throughout — no second
+/* ── Palette pass 2: black / white / dark blue throughout - no second
    accent colour. Photos keep their warm light; every overlay and dark
    surface above is a navy-black so the pictures and the page read as one. */
 
@@ -2010,7 +2010,7 @@ h4 {
   color: var(--accent);
 }
 
-/* Links and outlines on the light pages read as navy — the one accent colour, used everywhere. */
+/* Links and outlines on the light pages read as navy - the one accent colour, used everywhere. */
 .nx-hero__beam {
   background: linear-gradient(100deg, transparent, rgba(190, 215, 255, 0.12), transparent);
 }
@@ -2037,72 +2037,320 @@ img.is-loaded {
   }
 }
 
-/* ── Action menu (the "⋮" dropdown) ─────────────────────────────
-   Used wherever a row has more actions than fit inline, and not every
-   action applies to every row (My listings: Edit/Archive/Unarchive/Delete). */
-
-.action-menu {
-  display: inline-flex;
-  position: relative;
+/* Manual listing form: vehicle type drives which fields are unlocked. */
+.listing-form__hint {
+  grid-column: span 1;
+  align-self: end;
+  margin: 0 0 8px;
+  font-size: 0.82rem;
+  color: var(--text-muted, var(--text));
 }
 
-.action-menu__trigger {
-  display: inline-grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
-}
-
-.action-menu__trigger:hover,
-.action-menu__trigger[aria-expanded='true'] {
-  background: var(--bg-alt);
-  border-color: var(--border);
-  color: var(--text-h);
-}
-
-.action-menu__panel {
-  position: fixed;
-  z-index: 80;
-  min-width: 160px;
-  padding: 6px;
+.listing-form__locked {
+  margin: 4px 0 0;
+  padding: 10px 14px;
+  font-size: 0.88rem;
+  color: var(--text);
+  background: var(--accent-bg);
+  border: 1px dashed var(--border);
   border-radius: var(--radius);
-  background: var(--surface, var(--bg));
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-lg, var(--shadow-md, var(--shadow)));
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
 }
 
-.action-menu__item {
-  display: block;
-  width: 100%;
-  padding: 8px 10px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-h);
-  font: inherit;
-  font-size: 14px;
-  text-align: left;
-  cursor: pointer;
-}
-
-.action-menu__item:hover:not(:disabled) {
-  background: var(--bg-alt);
-}
-
-.action-menu__item:disabled {
+.listing-form__section:disabled,
+.listing-form select:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
 
-.action-menu__item--danger {
-  color: var(--danger);
+.toggle-filter:has(input:disabled) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* A nested list inside a dialog scrolls with the dialog, not on its own. */
+.modal .known-values__makes {
+  max-height: none;
+  overflow: visible;
+}
+
+/* Modal dialog (bulk upload guide, column list). */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(8, 6, 13, 0.5);
+  backdrop-filter: blur(3px);
+  animation: modal-fade 0.18s ease-out;
+}
+
+.modal {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: calc(100vh - 48px);
+  background: var(--surface, var(--bg));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg, var(--shadow-md, var(--shadow)));
+  outline: none;
+  animation: modal-rise 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.modal--md {
+  max-width: 520px;
+}
+
+.modal--lg {
+  max-width: 760px;
+}
+
+.modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal__header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.modal__close {
+  display: inline-flex;
+  padding: 6px;
+  color: var(--text);
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.modal__close:hover,
+.modal__close:focus-visible {
+  background: var(--accent-bg);
+  outline: none;
+}
+
+.modal__body {
+  overflow-y: auto;
+  padding: 18px 22px 8px;
+}
+
+.modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 22px;
+  border-top: 1px solid var(--border);
+}
+
+.modal__footer:has(> .button:only-child) {
+  justify-content: flex-end;
+}
+
+.modal__subhead {
+  margin: 18px 0 8px;
+  font-size: 0.95rem;
+}
+
+.modal__more {
+  margin: 14px 0;
+}
+
+.modal__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.guide-step {
+  margin: 18px 0;
+  padding: 14px 16px;
+  background: var(--bg-alt, transparent);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.guide-step h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 8px;
+  font-size: 0.98rem;
+}
+
+.guide-step__num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  font-size: 0.8rem;
+  color: #fff;
+  background: var(--accent);
+  border-radius: 50%;
+}
+
+.guide-step ul {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.9rem;
+}
+
+.guide-step__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.upload-card__tools {
+  display: flex;
+  gap: 8px;
+}
+
+.upload-columns__code {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--text-muted, var(--text));
+}
+
+.dealer-page__header--split {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+@keyframes modal-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-backdrop,
+  .modal {
+    animation: none;
+  }
+}
+
+/* New listing: a button that opens a two-way choice (manual / bulk upload). */
+.new-listing-menu {
+  position: relative;
+  display: inline-block;
+}
+
+.new-listing-menu .button {
+  gap: 8px;
+}
+
+.new-listing-menu__chevron {
+  transition: transform 0.2s ease;
+}
+
+.new-listing-menu__chevron--open {
+  transform: rotate(180deg);
+}
+
+.new-listing-menu__panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 40;
+  min-width: 320px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--surface, var(--bg));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg, var(--shadow-md, var(--shadow)));
+  animation: new-listing-menu-in 0.16s ease-out;
+}
+
+.new-listing-menu__option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 12px;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: calc(var(--radius) - 2px);
+  color: var(--text-h);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.new-listing-menu__option:hover,
+.new-listing-menu__option:focus-visible {
+  background: var(--accent-bg);
+  outline: none;
+}
+
+.new-listing-menu__option svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--accent);
+}
+
+.new-listing-menu__option strong {
+  display: block;
+  font-size: 0.95rem;
+}
+
+.new-listing-menu__option small {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.8rem;
+  color: var(--text-muted, var(--text));
+}
+
+@keyframes new-listing-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .new-listing-menu__panel {
+    animation: none;
+  }
 }

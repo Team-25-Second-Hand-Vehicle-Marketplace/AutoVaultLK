@@ -13,7 +13,7 @@ import { VerifyEmailPage } from '../pages/VerifyEmailPage';
  * approval was recorded.
  *
  * Registers a fresh dealer via the UI first, so there is a genuinely
- * PENDING row to find and act on — a dashboard/users/audit-log journey
+ * PENDING row to find and act on - a dashboard/users/audit-log journey
  * against an empty or already-settled dataset would not exercise the
  * approve action or the resulting audit entry at all.
  */

@@ -25,7 +25,7 @@ import {
  * What the stage did, for the orchestrator to log. SKIPPED when no key is
  * configured or nothing needed help; DEGRADED when at least one sub-batch's
  * call failed and those rows kept their deterministic values; SUCCEEDED when
- * every sub-batch that was attempted came back — including a chunk where
+ * every sub-batch that was attempted came back - including a chunk where
  * some sub-batches succeeded and others degraded, since the rows that did
  * get repaired should not be reported as a wholesale failure.
  */
@@ -44,7 +44,7 @@ export type GroqNormalizeResult = StageResult<NormalizedRow> & {
  * A whole chunk's low-confidence rows (up to INGESTION_CHUNK_SIZE, 250 by
  * default) sent in one request routinely exceeded Groq's free-tier 8,000
  * TPM limit once the full ~30-make dictionary vocabulary was included in the
- * same payload — observed directly against the API as a 413 ("Request too
+ * same payload - observed directly against the API as a 413 ("Request too
  * large") on the first chunk and a 429 on the second, degrading Groq
  * normalization on every realistically-sized file. Splitting into small
  * sub-batches keeps each request's token count well under the cap
@@ -59,7 +59,7 @@ const GROQ_BATCH_SIZE = 8;
  *
  * **The keyless path is required behaviour, not a fallback.** CI has no key
  * and a dealer upload cannot fail because a third party is down, so with
- * GROQ_API_KEY unset the stage logs SKIPPED and rows pass through untouched —
+ * GROQ_API_KEY unset the stage logs SKIPPED and rows pass through untouched -
  * exactly what a Groq outage produces.
  *
  * Three rules the live call does not break:
@@ -70,7 +70,7 @@ const GROQ_BATCH_SIZE = 8;
  *    absent from the snapshot are dropped, not stored.
  *
  * 2. **Failure degrades, never rejects.** Rows keep whatever parseNormalize
- *    determined and continue to validateRows, which may well accept them —
+ *    determined and continue to validateRows, which may well accept them -
  *    low confidence is not invalidity. A Groq outage must cost enrichment,
  *    not stock.
  *
@@ -119,7 +119,7 @@ export const groqNormalizeStage: StageRunner<
         repairedCount += result.count;
       } catch (err) {
         // This batch's rows keep whatever parseNormalize determined and
-        // continue to validateRows, which may well accept them — low
+        // continue to validateRows, which may well accept them - low
         // confidence is not invalidity. One batch failing must not discard
         // repairs another batch in the same chunk already made.
         failedBatches++;
@@ -176,12 +176,12 @@ async function requestRepairs(
 /**
  * Merges accepted repairs back by row number.
  *
- * **Every returned value is validated before it is written** — make/model
+ * **Every returned value is validated before it is written** - make/model
  * through the dictionary, the enum fields through enum-vocabulary.ts's exact
  * lookup, engine_capacity_cc/owners_count as positive integers. The prompt
  * states the allowed vocabulary, but a prompt is a request, not a constraint:
  * a model returning a value outside the stated list is dropped, not stored,
- * for the same reason an invented make/model pair is dropped — a facet or
+ * for the same reason an invented make/model pair is dropped - a facet or
  * filter that can never match it is worse than an honest absence.
  *
  * **A field already resolved by parseNormalize is never overwritten.** Groq
@@ -195,7 +195,7 @@ async function requestRepairs(
  * that failed, below an exact hit, because the LLM agreed with (or inferred)
  * a value rather than reading the vehicle's papers. FR-42.1: every repaired
  * field gets a `source: 'groq'` provenance entry, with `reasoning` attached
- * when Groq supplied one — only fields Groq actually changed are marked.
+ * when Groq supplied one - only fields Groq actually changed are marked.
  */
 function applyRepairs(
   ctx: StageContext,
@@ -236,7 +236,7 @@ function applyRepairs(
         if (modelHit) {
           normalized.model = modelHit.canonical;
           // vehicle_type follows the model, exactly as parseNormalize derives
-          // it — otherwise a repaired Hilux would stay typed from the make's
+          // it - otherwise a repaired Hilux would stay typed from the make's
           // array.
           const derived = modelHit.vehicleTypes[0];
           if (derived) {

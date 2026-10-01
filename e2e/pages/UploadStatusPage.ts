@@ -10,7 +10,7 @@ export class UploadStatusPage {
   /**
    * Waits for a terminal status label (Completed / Completed with skipped
    * rows / Failed), polling via Playwright's own retrying assertion rather
-   * than the page's internal 2s-15s backoff timer — this only needs to
+   * than the page's internal 2s-15s backoff timer - this only needs to
    * observe the end state, not replicate the frontend's poll cadence. The
    * pipeline runs in-process locally (no real Lambda/queue latency), but a
    * generous timeout keeps this robust under load.

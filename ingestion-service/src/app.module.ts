@@ -16,7 +16,7 @@ import { JobStatusModule } from './modules/job-status/job-status.module';
     }),
     TypeOrmModule.forRoot(databaseConfig()),
     // Infrastructure ports (@Global). Driver choice is env-driven and fails
-    // loudly on an unimplemented value rather than falling back — ADR-007.
+    // loudly on an unimplemented value rather than falling back - ADR-007.
     StorageModule,
     QueueModule,
     HealthModule,

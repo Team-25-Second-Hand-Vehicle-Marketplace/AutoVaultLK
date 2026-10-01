@@ -11,7 +11,7 @@ import { DocumentUploadService } from '../services/document-upload.service';
 /**
  * Verification-document upload for dealer registration (FR-02.1). Public
  * (no JwtAuthGuard): this runs before the account exists, so there is no
- * session to authenticate yet — the same reason ImageUploadService's
+ * session to authenticate yet - the same reason ImageUploadService's
  * equivalent in marketplace-service can require a JWT but this one cannot.
  * Multer's memory storage, matching marketplace-service's listing image
  * upload: DocumentUploadService decides where the bytes land.

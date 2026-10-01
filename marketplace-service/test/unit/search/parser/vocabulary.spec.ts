@@ -94,8 +94,8 @@ describe('fuzzySpanHit', () => {
   });
 
   it('requires a margin over the runner-up, not just crossing the threshold', () => {
-    // "aqxa" scores exactly 0.4 against both "aqua" and "aqva" — a genuine
-    // tie, well inside the 0.05 margin — so neither should win.
+    // "aqxa" scores exactly 0.4 against both "aqua" and "aqva" - a genuine
+    // tie, well inside the 0.05 margin - so neither should win.
     const near1 = entry('Aqua');
     const near2 = entry('Aqva');
     const tokens = tokenize('aqxa');
@@ -107,9 +107,9 @@ describe('fuzzySpanHit', () => {
   });
 
   it('never fuzzy-matches a vehicle-character word, even when it scores higher than a real typo would', () => {
-    // "sporty" vs "Sportage" scores 0.625 trigram similarity — HIGHER than
+    // "sporty" vs "Sportage" scores 0.625 trigram similarity - HIGHER than
     // several genuine typos this parser must keep correcting (e.g.
-    // "hunday"->"hyundai" at 0.400) — so no similarity threshold can admit
+    // "hunday"->"hyundai" at 0.400) - so no similarity threshold can admit
     // real typos while excluding this. The word is descriptive, never a
     // plausible answer to a make/model lookup, so it is blocked outright
     // rather than scored; it falls through to Groq/semantic ranking instead
@@ -217,7 +217,7 @@ describe('fuzzyClosedHit', () => {
     expect(fuzzyClosedHit(tokens, 0)).toMatchObject({ field: 'bodyType', value: 'HATCHBACK' });
   });
 
-  it('does NOT match "volkswagon" against "wagon" — the documented collision case', () => {
+  it('does NOT match "volkswagon" against "wagon" - the documented collision case', () => {
     const tokens = tokenize('volkswagon');
     expect(fuzzyClosedHit(tokens, 0)).toBeUndefined();
   });

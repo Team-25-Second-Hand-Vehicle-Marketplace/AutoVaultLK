@@ -11,7 +11,7 @@ import { type BrowserContext, type Page } from '@playwright/test';
  * whenever AUTH_USE_REFRESH_COOKIES is true, which it is by default and in
  * this repo's local .env. login() sets that cookie (httpOnly: false, but
  * still browser-managed, not something client.ts ever reads or writes) in
- * addition to localStorage — so corrupting only localStorage.refreshToken
+ * addition to localStorage - so corrupting only localStorage.refreshToken
  * still lets the server silently refresh using the real cookie, and the
  * session recovers instead of expiring. Confirmed by direct observation:
  * with only localStorage corrupted, the request actually sent still carried

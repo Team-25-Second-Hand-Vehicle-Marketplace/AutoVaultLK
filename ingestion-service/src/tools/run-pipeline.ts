@@ -2,8 +2,8 @@
  * Runs the ETL pipeline against a real database, end to end, with no HTTP.
  *
  * Stands in for POST /ingest/upload (§B1) so Phase A can be verified before
- * that endpoint exists: it does exactly what the upload handler will do —
- * store the file(s), insert a PENDING job, publish to the queue — and then
+ * that endpoint exists: it does exactly what the upload handler will do -
+ * store the file(s), insert a PENDING job, publish to the queue - and then
  * waits for the pipeline to finish and prints what landed, row by row.
  *
  *   npx ts-node src/tools/run-pipeline.ts test/fixtures/e2e-mixed.csv
@@ -13,7 +13,7 @@
  *
  * Run with ts-node, not tsx: tsx (esbuild) strips types per-file without a
  * type-checking pass, and Nest's DI relies on emitDecoratorMetadata, which
- * needs one — under tsx, constructor params resolve to undefined at runtime
+ * needs one - under tsx, constructor params resolve to undefined at runtime
  * and the app fails to boot with an UndefinedDependencyException.
  *
  * The --job form re-runs an existing job, which is how the idempotency claim
@@ -83,7 +83,7 @@ async function createJob(
   zipPath?: string,
   dealerEmail?: string,
 ): Promise<string> {
-  // Without --dealer, any dealer will do for a pipeline-correctness check —
+  // Without --dealer, any dealer will do for a pipeline-correctness check -
   // the pipeline reads dealer_id from the job, never from the file. But to
   // see the result in the portal, it has to land under an account you can
   // log into, so --dealer picks a specific one by email instead of whichever
@@ -186,7 +186,7 @@ async function report(dataSource: DataSource, jobId: string, filePath: string): 
 }
 
 /**
- * Re-reads the source CSV and, for every data row (1-based, header excluded —
+ * Re-reads the source CSV and, for every data row (1-based, header excluded -
  * the same numbering rejected_records uses), prints exactly one outcome line:
  * either the loaded vehicle's stored state, or the rejection reason. This is
  * the answer to "what happened to the record on row N", which the old
@@ -263,7 +263,7 @@ async function reportPerRow(dataSource: DataSource, jobId: string, filePath: str
       : loadedWithoutRegistration[unregisteredCursor++];
 
     if (!vehicle) {
-      console.log('   not found — check row_number offsets if the file has blank lines');
+      console.log('   not found - check row_number offsets if the file has blank lines');
       return;
     }
 

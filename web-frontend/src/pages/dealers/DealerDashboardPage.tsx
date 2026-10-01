@@ -13,7 +13,7 @@ import { useDealerProfile } from './useDealerProfile'
 
 const RECENT_LISTINGS_COUNT = 5
 
-// No SOLD tile: nothing in marketplace-service ever sets a listing to SOLD —
+// No SOLD tile: nothing in marketplace-service ever sets a listing to SOLD -
 // it's a valid status in the schema with no code path that reaches it. A
 // dealer marks a vehicle unavailable by archiving it instead, so Archived is
 // the tile that actually means "no longer for sale" here.
@@ -63,7 +63,7 @@ export function DealerDashboardPage() {
   const dealer = profile.data
 
   // A dealer can now log in while PENDING or REJECTED (approval no longer
-  // gates login — see auth-user-service's DealerProfilesService). Until
+  // gates login - see auth-user-service's DealerProfilesService). Until
   // they're VERIFIED, this is the only thing they get; see
   // RequireVerifiedDealer and DealerLayout's empty nav for the rest.
   if (dealer.verificationStatus !== 'VERIFIED') {

@@ -13,8 +13,8 @@
     "target": "ES2023",
     // "multer" is required, not incidental: this array is a whitelist, so
     // @types/multer would otherwise be excluded from automatic inclusion and
-    // Express.Multer.File — the type FileFieldsInterceptor hands the upload
-    // controller — would not resolve.
+    // Express.Multer.File - the type FileFieldsInterceptor hands the upload
+    // controller - would not resolve.
     "types": ["node", "jest", "multer"],
     "sourceMap": true,
     "outDir": "./dist",

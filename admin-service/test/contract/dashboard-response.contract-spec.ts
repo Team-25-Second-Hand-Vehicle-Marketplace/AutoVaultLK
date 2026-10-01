@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 /**
  * Drift guard between DashboardDto (dashboard.mapper.ts) and web-frontend's
  * AdminDashboard type (admin.types.ts). The two build independently, so the
- * frontend has no import path into this service's mapper — a field added,
+ * frontend has no import path into this service's mapper - a field added,
  * renamed or removed on either side has nothing else to fail until the admin
  * dashboard silently renders undefined for a real number.
  *

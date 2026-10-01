@@ -1,4 +1,4 @@
-# Container image — the embed Lambda carries the MiniLM model and its
+# Container image - the embed Lambda carries the MiniLM model and its
 # ONNX/transformers runtime, which exceeds the zip Lambda package size limit
 # (250MB unzipped, including layers). Deployed at 3008MB memory.
 FROM node:22-alpine AS build

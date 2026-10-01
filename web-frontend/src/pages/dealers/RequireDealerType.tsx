@@ -6,7 +6,7 @@ import { useDealerProfile } from './useDealerProfile'
 
 /**
  * Keeps a page to one kind of dealer. The API enforces the same restriction
- * for bulk upload (verified business dealers only) — manual listing
+ * for bulk upload (verified business dealers only) - manual listing
  * creation has no dealerType restriction on either side and so has no
  * RequireDealerType gate. This is about not showing people screens that
  * would only 403 on them.

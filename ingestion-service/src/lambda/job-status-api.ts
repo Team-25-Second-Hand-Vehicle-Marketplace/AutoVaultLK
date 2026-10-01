@@ -23,7 +23,7 @@ async function bootstrap() {
 }
 
 // This service's controller is @Controller('jobs'), matching the API
-// Gateway route key exactly — see ingest-api.ts's equivalent note.
+// Gateway route key exactly - see ingest-api.ts's equivalent note.
 export async function handler(event: unknown, context: unknown) {
   cachedServer ??= await bootstrap();
   return cachedServer(event, context);

@@ -7,7 +7,7 @@ interface SelectFieldProps extends SelectHTMLAttributes<HTMLSelectElement> {
   options: readonly string[]
   /** Shown as a disabled first option when the field is optional. */
   placeholder?: string
-  /** Turns an enum value into something readable — e.g. SEMI_AUTOMATIC. */
+  /** Turns an enum value into something readable - e.g. SEMI_AUTOMATIC. */
   format?: (value: string) => string
 }
 

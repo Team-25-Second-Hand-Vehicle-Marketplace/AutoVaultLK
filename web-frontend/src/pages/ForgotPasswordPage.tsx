@@ -18,7 +18,7 @@ type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>
 /**
  * The server answers identically whether or not the address has an account
  * (see AUTH_SECURITY_MESSAGES.PASSWORD_RESET_RECEIVED) so it can't be used to
- * discover which emails are registered — the success state here must stay
+ * discover which emails are registered - the success state here must stay
  * just as non-committal, same as ResendVerification's wording.
  */
 export function ForgotPasswordPage() {
@@ -48,7 +48,7 @@ export function ForgotPasswordPage() {
           <h1>Check your email</h1>
           <p role="status">
             If <strong>{submittedEmail}</strong> has an account, we have sent instructions to reset
-            your password. Check your inbox and spam folder — the link expires after a while, and
+            your password. Check your inbox and spam folder - the link expires after a while, and
             only the newest one works.
           </p>
           <Link className="button button--primary" to="/login">

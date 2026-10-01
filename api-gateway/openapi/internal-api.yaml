@@ -9,7 +9,7 @@ info:
     ingestion Load stage writes directly to marketplace.vehicles via
     MarketplaceVehiclesWriteAdapter (parameterized SQL + ON CONFLICT upsert).
     A future event-driven boundary (SQS consumer / internal bulk HTTP API) was
-    evaluated and deferred — revisit only if independent scaling is required.
+    evaluated and deferred - revisit only if independent scaling is required.
   version: 1.0.0
 
 servers:

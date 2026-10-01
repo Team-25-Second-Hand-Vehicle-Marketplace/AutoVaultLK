@@ -315,7 +315,7 @@ describe('groqNormalizeStage', () => {
     describe('sub-batching (rate-limit tolerance)', () => {
       // A whole chunk's candidates sent in one request routinely exceeded
       // Groq's free-tier 8,000 TPM limit once the dictionary vocabulary was
-      // included — reproduced directly against the API as a 413 on a
+      // included - reproduced directly against the API as a 413 on a
       // 250-row chunk. Splitting into groups of GROQ_BATCH_SIZE (8) keeps
       // each request small regardless of how many rows a chunk has.
       it('splits more than one batch worth of candidates into sequential requests', async () => {
@@ -392,7 +392,7 @@ describe('groqNormalizeStage', () => {
         expect(result.outcome).toBe('DEGRADED');
         expect(result.metrics).toMatchObject({ batches: 2, failedBatches: 1, repaired: 1 });
         expect(result.rows.find((r) => r.rowNumber === 1)?.normalized.make).toBe('Toyota');
-        // Row 9's batch failed — it keeps whatever parseNormalize gave it.
+        // Row 9's batch failed - it keeps whatever parseNormalize gave it.
         expect(result.rows.find((r) => r.rowNumber === 9)?.normalized.make).toBeUndefined();
       });
 
@@ -424,7 +424,7 @@ describe('groqNormalizeStage', () => {
     it('supplies the allowed vocabulary in the prompt, scoped to candidate makes', async () => {
       groqResponds({ rows: [] });
 
-      // row(...) raw make is 'toyta' — close to Toyota, nowhere near Honda —
+      // row(...) raw make is 'toyta' - close to Toyota, nowhere near Honda -
       // so the scoped vocabulary should carry Toyota's models but not
       // Honda's, unlike the old always-send-everything behaviour.
       await groqNormalizeStage.run(ctx(), [row(0, 1)]);
@@ -479,7 +479,7 @@ describe('groqNormalizeStage', () => {
       });
 
       it('drops an invented model but keeps the valid make', async () => {
-        // Supra is a real Toyota, but not one this dictionary carries — and
+        // Supra is a real Toyota, but not one this dictionary carries - and
         // the dictionary is the whole vocabulary the platform can search.
         groqResponds({ rows: [{ id: 1, make: 'Toyota', model: 'Supra' }] });
 
@@ -663,7 +663,7 @@ describe('groqNormalizeStage', () => {
 
     describe('degradation', () => {
       it('keeps deterministic values when the call fails', async () => {
-        // Low confidence is not invalidity — validateRows may well accept
+        // Low confidence is not invalidity - validateRows may well accept
         // these. A Groq outage must cost enrichment, not stock.
         global.fetch = jest
           .fn()

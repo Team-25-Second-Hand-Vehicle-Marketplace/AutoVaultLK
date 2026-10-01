@@ -5,7 +5,7 @@ import type { Favourite, RemoveFavouriteResponse } from './favourites.types'
 /**
  * Favourites live server-side so a buyer's saved list survives a device change.
  *
- * The path is `/favourites`, not `/marketplace/favourites` — nginx proxies
+ * The path is `/favourites`, not `/marketplace/favourites` - nginx proxies
  * `location /marketplace/` to `http://marketplace_service/` and the trailing
  * slash strips the prefix, so the service sees the bare path.
  */
@@ -40,7 +40,7 @@ export async function removeFavourite(
 
 /**
  * A 409 from add, or a 404 from remove, means the server already holds the
- * state the caller was asking for — the vehicle is saved, or it is not. Neither
+ * state the caller was asking for - the vehicle is saved, or it is not. Neither
  * is a failure worth showing or rolling back for; both mean client and server
  * agree, which is the point of the request.
  */

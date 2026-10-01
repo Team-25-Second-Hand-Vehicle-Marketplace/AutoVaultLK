@@ -14,7 +14,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * *recorded*. State in the queue is invisible to the dealer-facing and admin
  * views, and does not survive a queue purge or a redrive.
  *
- * next_attempt_at is NULL for a row that is not waiting to be retried — a SENT
+ * next_attempt_at is NULL for a row that is not waiting to be retried - a SENT
  * row, or one that exhausted its attempts. The partial index covers only the
  * due-and-waiting rows the sweep actually claims, so it stays small however
  * large the table grows.
@@ -36,7 +36,7 @@ export class NotificationRetryState1735000028000 implements MigrationInterface {
     `);
 
     // Rows that failed before this migration were terminal by accident, not by
-    // decision — nothing could ever retry them. Hand them back to the sweep,
+    // decision - nothing could ever retry them. Hand them back to the sweep,
     // which is safe because delivery is guarded by the idempotency key and a
     // SENT row is never re-sent.
     await queryRunner.query(`

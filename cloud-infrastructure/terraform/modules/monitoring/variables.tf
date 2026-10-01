@@ -22,7 +22,7 @@ variable "sqs_queue_name" {
 
 variable "sqs_dlq_name" {
   type        = string
-  description = "The ingestion jobs DLQ name — any message here means a job needs manual attention"
+  description = "The ingestion jobs DLQ name - any message here means a job needs manual attention"
 }
 
 variable "db_instance_identifier" {
@@ -32,12 +32,12 @@ variable "db_instance_identifier" {
 
 variable "db_proxy_name" {
   type        = string
-  description = "From modules.database.proxy_name (not currently alarmed on directly — RDS Proxy exposes fewer standalone CloudWatch metrics than the instance — but kept for the dashboard and future use)"
+  description = "From modules.database.proxy_name (not currently alarmed on directly - RDS Proxy exposes fewer standalone CloudWatch metrics than the instance - but kept for the dashboard and future use)"
 }
 
 variable "alarm_email" {
   type        = string
-  description = "Email to subscribe to the alerts SNS topic. Optional — the topic is always created either way, so it can be subscribed to later from the console without a terraform apply."
+  description = "Email to subscribe to the alerts SNS topic. Optional - the topic is always created either way, so it can be subscribed to later from the console without a terraform apply."
   default     = null
 }
 
@@ -54,6 +54,6 @@ variable "db_free_storage_threshold_bytes" {
 
 variable "db_connections_threshold" {
   type        = number
-  description = "Client connections to the RDS Proxy target, not raw Postgres backends — sized well under db.t4g.micro's max_connections"
+  description = "Client connections to the RDS Proxy target, not raw Postgres backends - sized well under db.t4g.micro's max_connections"
   default     = 60
 }

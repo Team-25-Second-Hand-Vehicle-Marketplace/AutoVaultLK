@@ -16,8 +16,8 @@ import type { AuthenticatedUser } from '../../src/modules/auth/types/authenticat
  * service path for POST /ingest/upload, wired the way main.ts wires it
  * (including the global ValidationPipe).
  *
- * The seams that need a database or a filesystem are stubbed — the
- * repositories, the ObjectStore and the JobQueue — because what this suite is
+ * The seams that need a database or a filesystem are stubbed - the
+ * repositories, the ObjectStore and the JobQueue - because what this suite is
  * for is the contract the gateway and the dealer frontend depend on: which
  * status code comes back, and what the body looks like. The pipeline itself is
  * covered by the integration suite against real Postgres.
@@ -81,7 +81,7 @@ describe('POST /ingest/upload (e2e)', () => {
       .compile();
 
     app = moduleRef.createNestApplication();
-    // Mirrors main.ts. Kept in sync deliberately — a pipe difference here
+    // Mirrors main.ts. Kept in sync deliberately - a pipe difference here
     // would make the suite pass on wiring the real app does not have.
     app.useGlobalPipes(
       new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }),
@@ -213,7 +213,7 @@ describe('POST /ingest/upload (e2e)', () => {
     it('400s a field the interceptor does not declare', async () => {
       // FileFieldsInterceptor declares only `csv` and `zip`. Multer rejects
       // anything else outright rather than dropping it, so a frontend using
-      // the wrong field name gets "Unexpected file field" — not the friendlier
+      // the wrong field name gets "Unexpected file field" - not the friendlier
       // "csv file is required". Pinned because that message is what a
       // developer debugging a failed upload will search for. (Older multer
       // versions worded this "Unexpected field"; the regex covers both.)

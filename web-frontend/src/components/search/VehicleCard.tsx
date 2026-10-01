@@ -10,7 +10,7 @@ import { formatMileage, formatPrice, humanizeEnum } from './vehicle-format'
  * What the card actually needs. Wider than `VehicleSearchResult` on purpose:
  * the favourites endpoint joins the raw `Vehicle` row, which carries no
  * computed `imageUrl`, `thumbnailUrl` or `dealerVerified`. Each is read as a
- * truthiness check below, so absent behaves exactly like false — the card shows
+ * truthiness check below, so absent behaves exactly like false - the card shows
  * its "no photo" placeholder and the verification badge is simply omitted.
  */
 type OptionalOnCard =
@@ -62,7 +62,7 @@ export function VehicleCard({ result }: { result: VehicleCardResult }) {
               <ShieldCheck size={12} /> Verified
             </span>
           )}
-          {result.condition && <span className="nx-tag">{result.condition}</span>}
+          {result.condition && <span className="nx-tag">{humanizeEnum(result.condition)}</span>}
         </div>
 
         <div className="nx-card__save">
@@ -86,7 +86,7 @@ export function VehicleCard({ result }: { result: VehicleCardResult }) {
           </li>
           {result.fuelType && (
             <li>
-              <Fuel size={14} /> {result.fuelType}
+              <Fuel size={14} /> {humanizeEnum(result.fuelType)}
             </li>
           )}
           {result.transmissionType && (
@@ -100,7 +100,7 @@ export function VehicleCard({ result }: { result: VehicleCardResult }) {
         </ul>
 
         <div className="nx-card__loc">
-          <MapPin size={13} /> {result.locationCity ?? result.locationDistrict ?? '—'}
+          <MapPin size={13} /> {result.locationCity ?? result.locationDistrict ?? '-'}
         </div>
       </div>
     </article>

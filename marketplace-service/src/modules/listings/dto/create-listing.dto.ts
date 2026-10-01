@@ -29,8 +29,8 @@ import {
  * behind: migration 20000 extended vehicle_type to eleven values and updated
  * the entity, the ingestion write-entity and the search constants, but not this
  * file. The result was a DTO that rejected THREE_WHEELER, LORRY, PICKUP,
- * TRACTOR and HEAVY_MACHINERY — types the database accepts, the search facets
- * offer, and the ETL writes every day — so a dealer could bulk-upload a lorry
+ * TRACTOR and HEAVY_MACHINERY - types the database accepts, the search facets
+ * offer, and the ETL writes every day - so a dealer could bulk-upload a lorry
  * but not create one by hand.
  *
  * Deriving them means the next extension cannot repeat that: there is one list,
@@ -65,16 +65,18 @@ export enum ManualListingStatusDto {
 
 export class CreateListingDto {
   /**
-   * Ignored on write — the owner is taken from the verified JWT (FR-13/FR-58).
+   * Ignored on write - the owner is taken from the verified JWT (FR-13/FR-58).
    * Kept optional so existing clients that still send it are not rejected.
    */
   @IsOptional()
   @IsUUID()
   dealerId?: string;
 
-  @IsOptional()
+  // Required: it decides which category-specific specs apply, so it is never
+  // defaulted. (UpdateListingDto makes every field optional, so a PATCH can
+  // still leave it alone.)
   @IsEnum(VehicleTypeDto)
-  vehicleType?: VehicleTypeDto;
+  vehicleType: VehicleTypeDto;
 
   @IsString()
   @IsNotEmpty()

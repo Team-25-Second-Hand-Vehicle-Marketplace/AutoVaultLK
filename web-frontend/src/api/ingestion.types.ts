@@ -32,7 +32,7 @@ export type EtlStage =
 /** Mirrors ingestion-service's EtlStageStatus union. */
 export type EtlStageStatus = 'STARTED' | 'SUCCEEDED' | 'FAILED' | 'SKIPPED' | 'DEGRADED'
 
-/** One stage's progress within a job — mirrors StageProgressDto. */
+/** One stage's progress within a job - mirrors StageProgressDto. */
 export type StageProgress = {
   stage: EtlStage
   status: EtlStageStatus
@@ -43,7 +43,7 @@ export type StageProgress = {
   errorMessage: string | null
 }
 
-/** GET /jobs/{id} — mirrors JobStatusResponseDto. */
+/** GET /jobs/{id} - mirrors JobStatusResponseDto. */
 export type JobStatus = {
   id: string
   status: UploadJobStatus
@@ -57,7 +57,7 @@ export type JobStatus = {
 }
 
 /**
- * One row of GET /jobs/mine — mirrors JobSummaryDto. Same fields as
+ * One row of GET /jobs/mine - mirrors JobSummaryDto. Same fields as
  * JobStatus minus `stages`: a list view has no use for per-stage detail, and
  * the backend does not compute it per row for that endpoint.
  */
@@ -72,7 +72,7 @@ export type JobSummary = {
   updatedAt: string
 }
 
-/** GET /jobs/mine — mirrors JobsResponseDto. */
+/** GET /jobs/mine - mirrors JobsResponseDto. */
 export type JobsPage = {
   items: JobSummary[]
   total: number
@@ -81,7 +81,7 @@ export type JobsPage = {
   totalPages: number
 }
 
-/** One refused row — mirrors RejectedRecordDto. */
+/** One refused row - mirrors RejectedRecordDto. */
 export type RejectedRecord = {
   /** 0 means the whole file was rejected, not a particular row. */
   rowNumber: number
@@ -93,7 +93,7 @@ export type RejectedRecord = {
   createdAt: string
 }
 
-/** GET /jobs/{id}/rejections — mirrors RejectionsResponseDto. */
+/** GET /jobs/{id}/rejections - mirrors RejectionsResponseDto. */
 export type RejectionsPage = {
   items: RejectedRecord[]
   total: number

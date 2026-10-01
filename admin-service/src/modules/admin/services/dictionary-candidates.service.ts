@@ -8,15 +8,15 @@ import { trigramSimilarity } from '../util/trigram';
 /**
  * Lower than AliasPromotionService's MIN_OCCURRENCES (5, marketplace-service):
  * that threshold gates an automatic, unreviewed write into the shared
- * dictionary, so it needs a high bar. This only decides what an admin sees —
- * a human reviews every entry before anything is written — so surfacing a
+ * dictionary, so it needs a high bar. This only decides what an admin sees -
+ * a human reviews every entry before anything is written - so surfacing a
  * real new make sooner is worth more than filtering one extra stray typo.
  */
 const MIN_OCCURRENCES = 2;
 
 /**
  * Below this a candidate's closest existing make is not a plausible typo of
- * it — shown as "no close match", which is itself a positive signal that the
+ * it - shown as "no close match", which is itself a positive signal that the
  * text names something genuinely new rather than a mangled version of
  * something that already exists.
  */
@@ -43,7 +43,7 @@ export class DictionaryCandidatesService {
    * Every unresolved make worth an admin's attention, each scored against
    * the existing dictionary so a mangled typo of a real make ("closest
    * match: Toyota, 62%") reads differently at a glance than something with
-   * nothing close ("no close match") — the latter is the stronger signal of
+   * nothing close ("no close match") - the latter is the stronger signal of
    * a genuinely new vehicle type.
    */
   async listMakeCandidates(): Promise<DictionaryCandidateDto[]> {

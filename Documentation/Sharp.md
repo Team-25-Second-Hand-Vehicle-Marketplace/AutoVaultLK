@@ -1,4 +1,4 @@
-Image processing — what exactly (given "not much")?
+Image processing - what exactly (given "not much")?
 
 Your mentor said minimal, so this is deliberately small. The entire image work is:
 
@@ -12,9 +12,9 @@ Your mentor said minimal, so this is deliberately small. The entire image work i
 5. STORE     upload the resized versions to S3, save the URLs on the listing  ← S3 SDK, NOT Sharp
 
 So Sharp does ONLY the actual image transformation (resize + compress). The surrounding
-steps are ZIP extraction, filename matching, and S3 upload — plain code, not Sharp.
+steps are ZIP extraction, filename matching, and S3 upload - plain code, not Sharp.
 
-That's it — a few sharp() calls:
+That's it - a few sharp() calls:
 
 
 sharp(input).resize(300).jpeg({quality:80}).toBuffer()   // thumbnail

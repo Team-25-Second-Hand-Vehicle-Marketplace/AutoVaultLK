@@ -67,7 +67,7 @@ describe('DealerProfilesService', () => {
     expect(dealerProfilesRepository.create).toHaveBeenCalledWith(data);
   });
 
-  describe('approve/reject — isActive is never touched', () => {
+  describe('approve/reject - isActive is never touched', () => {
     // A dealer's ability to log in is decided once, on email verification,
     // the same as a buyer's; approve/reject only ever change DealerProfile
     // fields. This pins that regression directly: it used to also flip

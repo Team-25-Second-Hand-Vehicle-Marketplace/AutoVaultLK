@@ -1,4 +1,4 @@
-// Mirrors marketplace-service's VehicleStatus (vehicle.entity.ts) — every
+// Mirrors marketplace-service's VehicleStatus (vehicle.entity.ts) - every
 // status the column can hold, not just the ones a dealer may manually set
 // (that narrower set is MANUAL_STATUSES below). Kept as a const array, not a
 // hand-written union, so listings-contract.test.ts can diff it against the
@@ -17,7 +17,7 @@ export type ListingStatus = (typeof ALL_LISTING_STATUSES)[number]
  * FR-42.1. Where one field's value on a bulk-uploaded listing came from, and
  * Groq's stated reason when it repaired the value. Mirrors marketplace-
  * service's FieldNormalization (Vehicle entity) and, ultimately, ingestion-
- * service's FieldProvenance — the pipeline's own type.
+ * service's FieldProvenance - the pipeline's own type.
  */
 export type FieldNormalizationSource = 'rule' | 'dictionary' | 'raw' | 'groq'
 
@@ -29,7 +29,7 @@ export interface FieldNormalization {
 
 /**
  * FR-42.1. Absent on a manually-created listing and on any row uploaded
- * before migration 29000 — there is no fallback value to show for those, and
+ * before migration 29000 - there is no fallback value to show for those, and
  * the UI must treat "no normalization" as "nothing to review" rather than as
  * missing data.
  */
@@ -40,7 +40,7 @@ export interface VehicleNormalization {
 
 /**
  * An image row on a dealer's own listing, with `url`/`thumbnailUrl` already
- * resolved server-side (NFR-19 — the raw stored key is never itself
+ * resolved server-side (NFR-19 - the raw stored key is never itself
  * fetchable). Distinct from UploadedVehicleImage, which is the shape POST
  * /listings/:id/images returns right after an upload and carries no resolved
  * URL yet.
@@ -54,7 +54,7 @@ export interface DealerListingImage {
 }
 
 /**
- * A row from GET /marketplace/listings/mine — the dealer's own inventory across
+ * A row from GET /marketplace/listings/mine - the dealer's own inventory across
  * every status, not the public search-result shape.
  *
  * The repository returns the whole `Vehicle` entity with no `select`, so the
@@ -93,12 +93,12 @@ export interface DealerListing {
   /** FR-42.1: null for a manually-created listing or one predating the column. */
   normalization: VehicleNormalization | null
 
-  /** Type-specific attributes the enrich stage captured — body_type, seats, sunroof, etc. */
+  /** Type-specific attributes the enrich stage captured - body_type, seats, sunroof, etc. */
   specs: Record<string, unknown> | null
 
   /**
    * FR-35.2: set when this listing's registration_number was blank at
-   * upload, so no automated image match could run — the dealer still needs
+   * upload, so no automated image match could run - the dealer still needs
    * to attach a photo (or clear the flag by editing it) before it should go
    * LIVE. Absent/false on a manually-created listing, which always has a
    * registration number or none required at all.
@@ -109,7 +109,7 @@ export interface DealerListing {
   images: DealerListingImage[]
 }
 
-/** GET /marketplace/listings/mine?sort=... — FR-42.1's confidence-ascending sort. */
+/** GET /marketplace/listings/mine?sort=... - FR-42.1's confidence-ascending sort. */
 export const LISTING_SORT_OPTIONS = ['createdAt', 'confidence_asc'] as const
 export type ListingSortOption = (typeof LISTING_SORT_OPTIONS)[number]
 
@@ -119,7 +119,7 @@ export interface ListingsEnvelope {
 }
 
 /**
- * A row from POST /marketplace/listings/:id/images — mirrors marketplace-
+ * A row from POST /marketplace/listings/:id/images - mirrors marketplace-
  * service's VehicleImage entity. `s3Path` is the raw storage key, not a
  * URL; the form has no use for it beyond confirming the upload landed; the
  * search/detail pages are what turn a vehicle's images back into fetchable
@@ -134,12 +134,12 @@ export interface UploadedVehicleImage {
 }
 
 /**
- * The vehicle types the manual listing form offers — all eleven the database
+ * The vehicle types the manual listing form offers - all eleven the database
  * accepts, matching `VehicleTypeValue`.
  *
  * This was six until `CreateListingDto` was fixed. Migration 20000 extended
  * vehicle_type to eleven values and updated the entity, the ingestion
- * write-entity and the search constants, but not that DTO — so a dealer could
+ * write-entity and the search constants, but not that DTO - so a dealer could
  * bulk-upload a lorry and not create one by hand. The DTO now derives its
  * vocabulary from the same canonical list, and `listings-contract.test.ts`
  * fails the build if the two ever diverge again.
@@ -216,7 +216,7 @@ export interface CreateListingInput {
   engineCapacityCc: number
   ownersCount: number
   locationDistrict: string
-  vehicleType?: ListableVehicleType
+  vehicleType: ListableVehicleType
   condition?: Condition
   registrationYear?: number
   locationCity?: string
@@ -232,6 +232,6 @@ export interface CreateListingInput {
  * Body for PATCH /listings/:id.
  *
  * `UpdateListingDto` is `PartialType(OmitType(CreateListingDto, ['status']))`,
- * so an edit cannot change status — that is what the deactivate route is for.
+ * so an edit cannot change status - that is what the deactivate route is for.
  */
 export type UpdateListingInput = Partial<Omit<CreateListingInput, 'status'>>

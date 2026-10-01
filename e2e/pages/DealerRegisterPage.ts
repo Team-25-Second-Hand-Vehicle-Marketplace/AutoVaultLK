@@ -9,7 +9,7 @@ export class DealerRegisterPage {
   }
 
   /**
-   * Individual dealer path — no file upload, so it's deterministic without
+   * Individual dealer path - no file upload, so it's deterministic without
    * a fixture file. The dealerType radio is checked FIRST: the NIC field
    * only renders once dealerType === 'individual' (it defaults to
    * 'business', which renders a file input in NIC's place instead).
@@ -28,7 +28,7 @@ export class DealerRegisterPage {
   }
 
   /**
-   * Business dealer path — required for bulk upload (RequireDealerType
+   * Business dealer path - required for bulk upload (RequireDealerType
    * type="business" gates /dealer/upload). dealerType defaults to
    * 'business', so no radio interaction is needed here, unlike the
    * individual path. Waits for the upload hint text to show the file name
@@ -80,7 +80,7 @@ export class DealerRegisterPage {
    * mousedown and mouseup (React's re-render is faster than that
    * sequence), the mouseup's native click-triggers-submit chain fires
    * against the now-type="submit" element even though nothing re-clicked
-   * it — confirmed by direct observation: a `button.evaluate(el =>
+   * it - confirmed by direct observation: a `button.evaluate(el =>
    * el.click())` DOM-API call on the exact same transition advances to
    * Review WITHOUT submitting, where a Playwright click() reliably submits
    * immediately. dispatchEvent (a single synchronous DOM event, not a

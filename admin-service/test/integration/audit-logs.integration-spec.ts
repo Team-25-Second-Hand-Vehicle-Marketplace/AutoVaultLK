@@ -6,7 +6,7 @@ import { connect, describeWithDatabase, disconnect, repositoryFor } from './test
 
 /**
  * `admin` is the one schema admin_service_role owns outright (see
- * database.config.ts) — append() and search()'s filter chain are exercised
+ * database.config.ts) - append() and search()'s filter chain are exercised
  * here against real persisted rows and a real jsonb `changes` column,
  * neither of which a stubbed-repository unit test can prove.
  */
@@ -25,7 +25,7 @@ describeWithDatabase('AuditLogsRepository (integration)', () => {
     repository = new AuditLogsRepository(repositoryFor(ds, AuditLog));
 
     // audit_logs.actor_id carries a real FK to auth.users (SET NULL on
-    // delete, not enforced away) — a fixture actor has to be a row that
+    // delete, not enforced away) - a fixture actor has to be a row that
     // exists, not just a syntactically valid uuid.
     const users = await ds.query<{ id: string }[]>(
       `SELECT id FROM auth.users LIMIT 2`,
@@ -92,7 +92,7 @@ describeWithDatabase('AuditLogsRepository (integration)', () => {
 
     it('survives the referenced actor being deleted (SET NULL, not CASCADE)', async () => {
       // The column is `actor_id ON DELETE SET NULL` precisely so audit
-      // history outlives the user it recorded — this proves the FK action
+      // history outlives the user it recorded - this proves the FK action
       // itself, not just the TypeScript nullability.
       const [constraint] = await ds.query<{ delete_rule: string }[]>(
         `SELECT rc.delete_rule

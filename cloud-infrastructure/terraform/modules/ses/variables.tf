@@ -22,7 +22,7 @@ variable "sender_email" {
 # better deliverability via DKIM). Only used if set.
 variable "domain_name" {
   type        = string
-  description = "Domain to verify for sending, e.g. autovaultlk.com — leave null to use sender_email instead"
+  description = "Domain to verify for sending, e.g. autovaultlk.com - leave null to use sender_email instead"
   default     = null
 }
 

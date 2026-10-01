@@ -25,7 +25,7 @@ export class InProcessJobQueue implements JobQueue {
       // A dropped trigger would look exactly like a successful upload: 202
       // returned, job row PENDING forever. Fail the request instead.
       throw new Error(
-        'InProcessJobQueue has no handler registered — the ETL module did not wire itself up',
+        'InProcessJobQueue has no handler registered - the ETL module did not wire itself up',
       );
     }
 

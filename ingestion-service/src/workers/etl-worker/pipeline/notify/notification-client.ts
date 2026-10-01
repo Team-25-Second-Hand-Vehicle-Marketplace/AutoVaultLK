@@ -39,7 +39,7 @@ export function isNotificationConfigured(): boolean {
  *
  * By the time this runs the rows are already in marketplace.vehicles. Failing
  * the job because an email could not be queued would turn a successful upload
- * into a FAILED one and invite the dealer to upload again — duplicating work
+ * into a FAILED one and invite the dealer to upload again - duplicating work
  * that already succeeded. The caller records DEGRADED instead.
  */
 export async function emit(event: NotificationEvent): Promise<EmitOutcome> {

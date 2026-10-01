@@ -1,6 +1,6 @@
 # API Gateway Terraform module (scaffold only)
 
-**Status:** scaffold — `terraform apply` does **not** make the API routable in AWS.
+**Status:** scaffold - `terraform apply` does **not** make the API routable in AWS.
 
 ## What this module creates
 
@@ -21,7 +21,7 @@ After apply you get invoke URLs and API IDs, but **every request returns API Gat
 
 ## Completing AWS routing (later)
 
-1. Deploy service backends (ECS/Lambda/ALB — TBD per service).
+1. Deploy service backends (ECS/Lambda/ALB - TBD per service).
 2. Uncomment and extend the example in `main.tf`, or import routes from OpenAPI.
 3. Populate `public_lambda_integrations` (or replace with VPC Link / HTTP proxy integrations).
 4. Add internal east-west routes on the internal API.

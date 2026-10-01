@@ -128,7 +128,7 @@ describe('GroqClient', () => {
     });
 
     it('extracts a JSON object surrounded by prose', () => {
-      expect(parseGroqJson('Sure, here you go: {"make":"Nissan"} — hope that helps!')).toEqual({
+      expect(parseGroqJson('Sure, here you go: {"make":"Nissan"} - hope that helps!')).toEqual({
         make: 'Nissan',
       });
     });

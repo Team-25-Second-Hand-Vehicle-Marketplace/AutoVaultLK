@@ -4,9 +4,9 @@
  * Each slot is a file at `public/images/<slot>.jpg`. Until that file exists the
  * slot shows a labelled placeholder (see SlotImage), so the layout is complete
  * and you can see exactly what to shoot or source. Drop in a JPG with the same
- * name and it replaces the placeholder — no code change.
+ * name and it replaces the placeholder - no code change.
  *
- * Brief for all of them: real, natural-looking photos are fine — the layout
+ * Brief for all of them: real, natural-looking photos are fine - the layout
  * does not assume a studio shot, a white background or a 3D render.
  */
 export interface ImageSlot {

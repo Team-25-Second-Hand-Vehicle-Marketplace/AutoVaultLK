@@ -10,7 +10,7 @@ terraform {
 # -----------------------------------------------------------------------------
 # Private object store for vehicle images (NFR-19: "Vehicle images shall not
 # be publicly writable; access shall be via signed URLs"). No CloudFront, no
-# public bucket policy, no ACLs — every read a browser makes is a presigned
+# public bucket policy, no ACLs - every read a browser makes is a presigned
 # GET URL marketplace-service mints per request and that expires shortly
 # after.
 #
@@ -64,7 +64,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "images" {
   }
 }
 
-# CORS governs the browser's direct GET against the presigned URL — not the
+# CORS governs the browser's direct GET against the presigned URL - not the
 # Lambda-to-S3 call that mints it, which never leaves AWS's network.
 resource "aws_s3_bucket_cors_configuration" "images" {
   bucket = aws_s3_bucket.images.id
@@ -79,15 +79,15 @@ resource "aws_s3_bucket_cors_configuration" "images" {
 
 # Three key prefixes share this bucket (see ingestion-service's
 # image-processing.stage.ts and envelope.ts):
-#   raw/{jobId}/...           the dealer's original upload — FR-28.1 requires
+#   raw/{jobId}/...           the dealer's original upload - FR-28.1 requires
 #                              this never be altered or overwritten, so it is
 #                              kept indefinitely (no rule below touches it).
 #   images/{jobId}/{vehicleId}/...  the processed photo + thumbnail a listing
-#                              actually serves — also kept indefinitely; this
+#                              actually serves - also kept indefinitely; this
 #                              is the one a stray expiry rule would notice
 #                              first, as a vehicle whose photos silently
 #                              404 months after upload.
-#   staging/{jobId}/...        the pipeline's own inter-stage scratch JSON —
+#   staging/{jobId}/...        the pipeline's own inter-stage scratch JSON -
 #                              nothing reads it once the job has finished, and
 #                              envelope.ts already documents the 7-day expiry
 #                              this rule implements.
@@ -151,7 +151,7 @@ data "aws_iam_policy_document" "write" {
 
   # No s3:DeleteObject: ADR-002's "ETL must not be able to destroy a
   # dealer's manually created listings" applies here as much as it does to
-  # marketplace.vehicles — the ETL role writes and overwrites, never
+  # marketplace.vehicles - the ETL role writes and overwrites, never
   # deletes.
 }
 

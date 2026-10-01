@@ -1,7 +1,8 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate, useOutlet } from 'react-router-dom'
 import { useAuth } from '../../auth/useAuth'
 import { BrandMark } from '../../components/layout/BrandMark'
 import { Button } from '../../components/ui/Button'
+import { PageTransition } from '../../components/layout/PageTransition'
 
 const NAV = [
   { to: '/admin', end: true, label: 'Dashboard' },
@@ -15,6 +16,8 @@ const NAV = [
 export function AdminLayout() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const outlet = useOutlet()
 
   const onSignOut = async () => {
     await logout()
@@ -53,7 +56,7 @@ export function AdminLayout() {
       </aside>
 
       <div className="admin-shell__main">
-        <Outlet />
+        <PageTransition id={pathname}>{outlet}</PageTransition>
       </div>
     </div>
   )

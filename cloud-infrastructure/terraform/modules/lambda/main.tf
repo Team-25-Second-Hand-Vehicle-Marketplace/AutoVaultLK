@@ -11,7 +11,7 @@ terraform {
 # One ECR repo + one image-package-type Lambda function, instantiated once
 # per deployed service (auth, marketplace, admin, notification).
 #
-# BOOTSTRAP ORDER — image-based Lambdas cannot be created against an empty
+# BOOTSTRAP ORDER - image-based Lambdas cannot be created against an empty
 # ECR repo. First apply of a brand-new environment must:
 #   1. terraform apply -target=module.<service>_lambda.aws_ecr_repository.this
 #      for all 4 services (creates the repos, nothing else)
@@ -21,7 +21,7 @@ terraform {
 #
 # After that, CI/CD updates the running image via `aws lambda
 # update-function-code --image-uri ...` (faster than a full terraform apply)
-# — hence `lifecycle.ignore_changes = [image_uri]` below, so a later
+# - hence `lifecycle.ignore_changes = [image_uri]` below, so a later
 # `terraform apply` doesn't fight CI and roll the image back to var.image_tag.
 # Terraform still owns everything else about the function (memory, timeout,
 # VPC config, env vars, role).

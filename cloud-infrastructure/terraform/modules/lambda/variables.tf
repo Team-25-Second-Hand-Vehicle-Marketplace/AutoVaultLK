@@ -12,12 +12,12 @@ variable "environment" {
 
 variable "service_name" {
   type        = string
-  description = "e.g. auth, marketplace, admin, notification — becomes part of the ECR repo and function name"
+  description = "e.g. auth, marketplace, admin, notification - becomes part of the ECR repo and function name"
 }
 
 variable "image_tag" {
   type        = string
-  description = "Tag CI pushes to ECR and this function runs. First apply needs an image already pushed at this tag — see module README note."
+  description = "Tag CI pushes to ECR and this function runs. First apply needs an image already pushed at this tag - see module README note."
   default     = "latest"
 }
 

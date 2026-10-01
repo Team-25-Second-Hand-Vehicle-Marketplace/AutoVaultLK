@@ -22,7 +22,7 @@ jest.mock('@nestjs/core', () => ({
 
 /**
  * Cheap insurance against a future main.ts edit silently dropping the
- * security middleware — this service used to run a bare app.enableCors()
+ * security middleware - this service used to run a bare app.enableCors()
  * with no Helmet at all, and nothing would have caught that regressing back.
  */
 describe('bootstrap', () => {

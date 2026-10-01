@@ -10,6 +10,7 @@ import { Pill, type PillVariant } from '../../components/ui/Pill'
 import { AdminTable } from '../../components/ui/AdminTable'
 import { RejectionsReport } from '../../components/dealers/RejectionsReport'
 import { formatDate } from '../../utils/format'
+import { humanizeEnum } from '../../components/search/vehicle-format'
 
 const STATUSES: Array<UploadJobStatus | ''> = [
   '',
@@ -82,7 +83,7 @@ export function AdminUploadsPage() {
             <option value="">All</option>
             {STATUSES.filter(Boolean).map((s) => (
               <option key={s} value={s}>
-                {s}
+                {humanizeEnum(s)}
               </option>
             ))}
           </select>
@@ -105,7 +106,7 @@ export function AdminUploadsPage() {
                 <span className="admin-muted admin-mono">{row.id}</span>
               </td>
               <td>
-                <Pill variant={statusVariant(row.status)}>{row.status}</Pill>
+                <Pill variant={statusVariant(row.status)}>{humanizeEnum(row.status)}</Pill>
               </td>
               <td>
                 <span className="admin-mono">{row.dealerId}</span>

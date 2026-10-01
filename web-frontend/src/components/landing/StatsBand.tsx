@@ -28,7 +28,7 @@ export function StatsBand({ stats }: { stats: MarketplaceStats | null }) {
                 <span className="nx-stats__icon" aria-hidden="true">
                   <Icon size={20} />
                 </span>
-                <b>{value === undefined ? '—' : <CountUp value={value} />}</b>
+                <b>{value === undefined ? '-' : <CountUp value={value} />}</b>
                 <span className="nx-stats__label">{label}</span>
               </div>
             ))}

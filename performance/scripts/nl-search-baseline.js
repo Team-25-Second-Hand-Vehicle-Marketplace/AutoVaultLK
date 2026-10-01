@@ -7,19 +7,19 @@ import { BASE_URL } from '../config.js';
  * Single-user baseline for natural-language search (GET /search/nl).
  *
  * Deliberately NOT gated on NFR-09's 500ms bar: the SRS states this
- * explicitly (NFR-09) — "average response time to natural language search
+ * explicitly (NFR-09) - "average response time to natural language search
  * queries should be below 2 seconds for warm start AWS Lambda invocations.
  * However, the response time to cold start AWS Lambda invocations... may
  * take more time than the threshold set." This baseline runs against
  * marketplace-service as a live Node process (no Lambda cold start at all
  * locally, and no cold start in the CI smoke context either), so its
- * numbers are not directly comparable to a deployed Lambda's — the
+ * numbers are not directly comparable to a deployed Lambda's - the
  * threshold below is the SRS's own 2s figure, not NFR-09's 500ms, kept
  * separate for exactly that reason.
  *
  * When GROQ_API_KEY is set (true in this repo's local .env), this baseline
  * measures the REAL Groq LLM round-trip, not the deterministic-parser
- * fallback (marketplace-service/src/modules/search/groq/groq-fallback.service.ts) —
+ * fallback (marketplace-service/src/modules/search/groq/groq-fallback.service.ts) -
  * so unlike every other script here, part of what this measures is an
  * external network dependency this project does not control. That is the
  * point: NL search's latency profile is genuinely different in kind from
@@ -38,7 +38,7 @@ export const options = {
   },
   thresholds: {
     // SRS NFR-09's own stated NL-search target (warm start), not the 500ms
-    // CRUD/browse bar — see the file comment above.
+    // CRUD/browse bar - see the file comment above.
     http_req_duration: ['p(95)<2000'],
     http_req_failed: ['rate<0.01'],
   },
@@ -75,7 +75,7 @@ export function handleSummary(data) {
   const totalRequests = data.metrics.http_reqs ? data.metrics.http_reqs.values.count : 0;
   if (totalRequests === 0) {
     throw new Error(
-      'nl-search-baseline made zero HTTP requests — every iteration threw before the request ' +
+      'nl-search-baseline made zero HTTP requests - every iteration threw before the request ' +
         'fired (check the k6 error log above).',
     );
   }

@@ -61,7 +61,7 @@ function parseSpecs(): (params: { value: unknown }) => SpecFilterDto[] | undefin
       const colonIndex = pair.indexOf(':');
       if (colonIndex === -1) {
         throw new BadRequestException(
-          `Malformed specs entry "${pair}" — expected "key:value"`,
+          `Malformed specs entry "${pair}" - expected "key:value"`,
         );
       }
       specs.push({
@@ -197,7 +197,7 @@ export class FilterSearchDto {
   @Transform(parseSpecs())
   specs?: SpecFilterDto[];
 
-  // ---- Keyword layer (D5 — the tsvector path, §11.5 of the design doc) ----
+  // ---- Keyword layer (D5 - the tsvector path, §11.5 of the design doc) ----
 
   @IsOptional()
   @IsString()

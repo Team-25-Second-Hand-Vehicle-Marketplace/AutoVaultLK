@@ -6,19 +6,19 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 // archiver is CommonJS-only and doesn't expose a default export under
-// strict ESM interop — require() it instead of import.
+// strict ESM interop - require() it instead of import.
 const require = createRequire(import.meta.url);
 const archiver = require('archiver');
 
 /**
  * Bundles each zip-packaged stage Lambda (per function-config.json, emitted
  * by `npm run build:lambda-config`) into a self-contained
- * dist-lambda/<slug>.zip — the artifact Terraform's stage_lambda_zip module
+ * dist-lambda/<slug>.zip - the artifact Terraform's stage_lambda_zip module
  * expects at s3://<bucket>/lambda-artifacts/<slug>.zip (see
  * environments/production/README.md's bootstrap steps).
  *
  * esbuild bundles the handler and every dependency (this service uses AWS SDK
- * v3 modular clients, which the nodejs22.x Lambda runtime does not provide) —
+ * v3 modular clients, which the nodejs22.x Lambda runtime does not provide) -
  * only Node builtins are left external. One file per function keeps each zip
  * small and cold starts fast, matching STEP-FUNCTIONS-MIGRATION-PLAN.md §S7's
  * reasoning for zip over container packaging here.
@@ -31,7 +31,7 @@ const configPath = join(distLambdaDir, 'function-config.json');
 
 if (!existsSync(configPath)) {
   console.error(
-    `${configPath} not found — run "npm run build:lambda-config" first.`,
+    `${configPath} not found - run "npm run build:lambda-config" first.`,
   );
   process.exit(1);
 }

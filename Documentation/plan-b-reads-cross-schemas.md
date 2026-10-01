@@ -1,16 +1,16 @@
-# Plan B — Reads Cross Schemas, Writes Go Through REST
+# Plan B - Reads Cross Schemas, Writes Go Through REST
 
 > **Model:** Schema-per-service. A service may `SELECT` from another schema
 > where a foreign key already links them. No service may ever `INSERT`,
-> `UPDATE`, or `DELETE` outside its own schema — **except one documented
+> `UPDATE`, or `DELETE` outside its own schema - **except one documented
 > exception**: ingestion-service writes directly to `marketplace.vehicles`
 > and `marketplace.vehicle_images` during the ETL load. See §6.
 >
-> **Companion:** [Plan A — Strict Isolation](./plan-a-strict-isolation.md).
+> **Companion:** [Plan A - Strict Isolation](./plan-a-strict-isolation.md).
 > Open questions behind both: [database-open-questions.md](./database-open-questions.md).
 >
 > **Status:** current and implemented. All sections reflect what exists in
-> the database as built and verified — including §9 (reference data), which
+> the database as built and verified - including §9 (reference data), which
 > is now resolved: a single `marketplace.vehicle_dictionaries` table.
 
 ---
@@ -23,8 +23,8 @@ milliseconds old. Writing another service's row can violate invariants that
 service is responsible for, and nothing will catch it. So reads are permitted
 where a foreign key already declares a relationship, and writes are permitted
 nowhere but your own schema. The database enforces the write boundary; the
-read boundary is deliberately left open so that joins — including the single
-SQL statement the search design depends on — remain possible.
+read boundary is deliberately left open so that joins - including the single
+SQL statement the search design depends on - remain possible.
 
 **The governing principle:** *you may look at another service's data; you may
 never change it.*
@@ -74,10 +74,10 @@ GRANT SELECT ON auth.users TO notification_service_role;
 GRANT USAGE  ON SCHEMA ingestion TO marketplace_service_role;
 GRANT SELECT ON ingestion.upload_jobs TO marketplace_service_role;
 
--- ─── DOCUMENTED EXCEPTION — the only cross-schema write in this plan ──────
+-- ─── DOCUMENTED EXCEPTION - the only cross-schema write in this plan ──────
 -- ingestion-service writes marketplace.vehicles and marketplace.vehicle_images
 -- directly, bypassing REST, during the ETL bulk load. See §6 for the full
--- justification. Scope is INSERT + UPDATE only — never DELETE.
+-- justification. Scope is INSERT + UPDATE only - never DELETE.
 GRANT USAGE ON SCHEMA marketplace TO ingestion_service_role;
 GRANT SELECT, INSERT, UPDATE ON marketplace.vehicles       TO ingestion_service_role;
 GRANT SELECT, INSERT, UPDATE ON marketplace.vehicle_images TO ingestion_service_role;
@@ -97,7 +97,7 @@ This rule is what stops Plan B decaying into "everyone reads everything."
 Without it there is no principled place to stop.
 
 A cross-schema **write** is allowed only for the single named exception in
-§6. There is no general rule for adding more write grants — each one would
+§6. There is no general rule for adding more write grants - each one would
 need the same weight of justification the ETL exception required, and should
 be treated as a rare, deliberate departure rather than a pattern to repeat.
 
@@ -108,14 +108,14 @@ be treated as a rare, deliberate departure rather than a pattern to repeat.
 All six FKs to `auth.users.id` stay. They are load-bearing here in a way they
 are not in Plan A:
 
-- They enforce referential integrity — no orphaned `dealer_id`.
+- They enforce referential integrity - no orphaned `dealer_id`.
 - They **justify** the read grants (§3.1).
 - They make the joins this plan permits actually correct.
 
 Within-schema FKs (`vehicle_images → vehicles`, `refresh_tokens → users`,
 `rejected_records → upload_jobs`) are unchanged and continue to cascade.
 
-No unverified behaviour here — a role that holds `SELECT` on the referenced
+No unverified behaviour here - a role that holds `SELECT` on the referenced
 table can certainly insert a referencing row. Plan A's open question in its §4
 does not arise.
 
@@ -134,7 +134,7 @@ describing that table.
  * Never migrated by this service.
  *
  * password_hash is deliberately absent. marketplace_service_role holds only
- * SELECT on this table, so it could be read but never written — narrow the
+ * SELECT on this table, so it could be read but never written - narrow the
  * grant to specific columns if that is not tight enough.
  */
 @Entity({ schema: 'auth', name: 'users', synchronize: false })
@@ -151,15 +151,15 @@ table. Three services need this file (marketplace, ingestion, notification).
 
 **The maintenance cost:** if auth renames a column, these copies rot. In one
 repo you can at least see them side by side. Split into separate repos and the
-drift becomes invisible — see §11.
+drift becomes invisible - see §11.
 
 ---
 
-## 6. The ETL write path — a documented exception, not a REST call
+## 6. The ETL write path - a documented exception, not a REST call
 
 Ingestion's `loadFn` writes ~100 rows per chunk to `marketplace.vehicles` and
 `marketplace.vehicle_images`. This is a cross-schema write, and Plan B's
-general rule forbids it — but this one case is carved out explicitly, rather
+general rule forbids it - but this one case is carved out explicitly, rather
 than converted to REST. This is a deliberate departure from what earlier
 drafts of this plan proposed, made because the alternative was worse than the
 isolation violation.
@@ -167,17 +167,17 @@ isolation violation.
 ### 6.1 Why the exception exists
 
 The ETL design justifies `MaxConcurrency: 10` on the Step Functions Map state
-as protection for the RDS connection pool `loadFn` holds — the design states
+as protection for the RDS connection pool `loadFn` holds - the design states
 `loadFn` is the only stage holding a write connection, and the concurrency
 limit exists specifically to bound that pool's pressure.
 
 Converting this to an HTTP bulk endpoint (`POST /internal/vehicles/bulk`)
-moves that pressure onto marketplace-service's own connection pool — now
-shared with live buyer search traffic — and invalidates the sizing argument
+moves that pressure onto marketplace-service's own connection pool - now
+shared with live buyer search traffic - and invalidates the sizing argument
 the ETL design spends real effort justifying, without providing a replacement
 argument. It would also require solving partial-success semantics (98 of 100
 rows insert, 2 fail), idempotency under Step Functions retries, and payload
-sizing (~500 KB per chunk with embeddings included) — real work for a path
+sizing (~500 KB per chunk with embeddings included) - real work for a path
 that already functions correctly as a direct write.
 
 **The exception avoids all of this.** `loadFn` keeps its direct connection,
@@ -186,17 +186,17 @@ isolation cost is confined to one clearly-scoped, clearly-documented grant.
 
 ### 6.2 Scope of the exception, precisely
 
-- **Tables:** `marketplace.vehicles` and `marketplace.vehicle_images` only —
+- **Tables:** `marketplace.vehicles` and `marketplace.vehicle_images` only -
   both are needed; `loadFn`'s image-processing stage writes the second table,
   and granting only the first will fail partway through a chunk.
 - **Verbs:** `SELECT`, `INSERT`, `UPDATE`. **Never `DELETE`.** Ingestion adds
   and corrects listings; it never removes them. Removal is marketplace's
   decision alone.
-- **`UPDATE` is required, not optional** — re-running a failed upload job, or
+- **`UPDATE` is required, not optional** - re-running a failed upload job, or
   a dealer's CSV correcting a `registration_number` that already exists,
   needs `UPDATE`, not just `INSERT`. Scoping the grant to `INSERT` only will
   make idempotent retries fail.
-- **`SELECT` on `marketplace.vehicles`** — checking for an existing listing
+- **`SELECT` on `marketplace.vehicles`** - checking for an existing listing
   during a re-run is a read, independently justified by the FK from
   `vehicles.upload_job_id` per the §3.1 rule, and needed regardless of the
   write exception.
@@ -207,7 +207,7 @@ This is the exact grant shown in §3.
 
 Because the direct write is preserved, **the ETL design's `MaxConcurrency: 10`
 connection-pool argument does not need to be rewritten under this plan.** This
-is the concrete payoff of choosing the exception over the REST conversion —
+is the concrete payoff of choosing the exception over the REST conversion -
 Plan B's earlier draft claimed this rewrite was unavoidable; it is not, once
 the write is treated as a scoped exception rather than forced through REST.
 
@@ -215,13 +215,13 @@ One thing still worth re-confirming, not rewriting: the pool `loadFn` writes
 into is `marketplace`'s pool specifically, shared with buyer-facing search
 traffic. `MaxConcurrency: 10` was sized against *some* pool's capacity: worth
 a sanity check that marketplace's pool, under normal buyer load plus ETL
-load, still supports that number — not a redesign, just a number to verify.
+load, still supports that number - not a redesign, just a number to verify.
 
 ---
 
 ## 7. Admin service
 
-Admin gets `SELECT` on all four other schemas — under Plan B this needs no
+Admin gets `SELECT` on all four other schemas - under Plan B this needs no
 special pleading, it is simply the same rule applied to a service whose job is
 cross-cutting reads.
 
@@ -260,13 +260,13 @@ either plan. Deploy search as a separate Lambda (MiniLM needs ~3 GB; CRUD
 endpoints need 256 MB) within the same service and schema.
 
 Plan B additionally allows search to *filter on dealer verification status*
-via a join to `auth.dealer_profiles` — something Plan A would require
+via a join to `auth.dealer_profiles` - something Plan A would require
 pre-fetching every dealer to achieve. Whether that matters depends on whether
 "only show listings from verified dealers" is a requirement.
 
 ---
 
-## 9. Reference data — `marketplace.vehicle_dictionaries` ✅ RESOLVED & BUILT
+## 9. Reference data - `marketplace.vehicle_dictionaries` ✅ RESOLVED & BUILT
 
 > **Status: decided and implemented.** Option B was chosen for ownership, and
 > the three-table design was subsequently replaced by a single
@@ -274,20 +274,20 @@ pre-fetching every dealer to achieve. Whether that matters depends on whether
 
 ### 9.1 What drove the design
 
-Both search and ETL need the same make/model vocabulary — the designs are
+Both search and ETL need the same make/model vocabulary - the designs are
 explicit that if ingest stores one spelling and search queries another, the
 mismatch returns zero results silently. Typo correction against this
 vocabulary needs `pg_trgm`, which requires a real, indexed table: a hardcoded
 list in application code cannot support `similarity()` queries. Both designs
-also describe an alias-promotion loop — corrections logged often enough get
+also describe an alias-promotion loop - corrections logged often enough get
 promoted into the dictionary, so the parser gets cheaper with use. That
 promotion is a write, which is why ownership had to be settled.
 
-### 9.2 Ownership — Option B (chosen)
+### 9.2 Ownership - Option B (chosen)
 
 The table lives inside the `marketplace` schema, **owned solely by
 marketplace-service**. ingestion-service holds `SELECT` only and loads a
-snapshot into memory at container init, refreshing periodically — matching
+snapshot into memory at container init, refreshing periodically - matching
 what the ETL design already specifies for the Groq Lambda's make/model
 resolution, which is explicitly not a live per-row query. That is what keeps
 the `MaxConcurrency: 10` connection-pool argument in §6 intact.
@@ -299,10 +299,10 @@ two. Alias promotion is low-frequency, so an API round-trip costs nothing
 meaningful.
 
 The rejected alternative was a separate `reference` schema with both services
-writing `aliases` directly — symmetric, but a second documented write
+writing `aliases` directly - symmetric, but a second documented write
 exception is a materially different story from one.
 
-### 9.3 Structure — one self-referencing table, not three
+### 9.3 Structure - one self-referencing table, not three
 
 The first implementation used three tables (`makes`, `models`, `aliases`).
 That was replaced, while all three were still empty, by a single table:
@@ -323,11 +323,11 @@ marketplace.vehicle_dictionaries (
 Why the change:
 
 - **One table serves every dictionary type.** Makes, models, and future
-  vocabularies (body types, colours, trims) need no new migrations — just a
+  vocabularies (body types, colours, trims) need no new migrations - just a
   new `dictionary_type` value.
 - **`aliases jsonb` removes a real weakness.** The old `aliases.entity_id`
   could not have a foreign key, because it pointed at either `makes.id` or
-  `models.id` depending on `entity_type` — Postgres cannot express a
+  `models.id` depending on `entity_type` - Postgres cannot express a
   conditional FK across two tables. Folding aliases into the owning row
   eliminates the dangling-reference risk entirely.
 - **`parent_id` expresses make → model containment directly**, so the
@@ -354,12 +354,12 @@ denied writing it; marketplace can write it; trigram matching resolves
 `"toyata"` → `Toyota`; alias containment lookup works; the make → model
 self-reference and scoped model lookup both behave correctly.
 
-**The table is currently empty — it has never been seeded.** No make or model
+**The table is currently empty - it has never been seeded.** No make or model
 can be resolved until it is.
 
 ---
 
-## 9A. Silent drift risks — a checklist for code review
+## 9A. Silent drift risks - a checklist for code review
 
 Plan B's read boundary is enforced by convention, not by the database (§3.1,
 §11). That convention only holds if the specific places it can quietly break
@@ -369,33 +369,33 @@ possible somewhere."
 
 Each of these is a place where **two or more services must agree on a shape
 neither of them can see the other enforcing.** Nothing fails loudly when they
-drift — the failure is a wrong result, a silent zero-row match, or a runtime
+drift - the failure is a wrong result, a silent zero-row match, or a runtime
 error discovered by a user before a developer.
 
-**1. Cross-schema view-entities** (§5) — `AuthUserView` and equivalents.
+**1. Cross-schema view-entities** (§5) - `AuthUserView` and equivalents.
 Three services (marketplace, ingestion, notification) each hold their own
 hand-written copy of a subset of `auth.users`'s shape. If auth-user-service
 renames or removes a column those copies reference, nothing at the TypeScript
-level catches it — the break surfaces as a runtime SQL error in a service
+level catches it - the break surfaces as a runtime SQL error in a service
 that was never touched by the change that caused it.
 *Check during review:* any migration touching `auth.users`,
 `auth.dealer_profiles`, `ingestion.upload_jobs`, or any other table with a
-cross-schema reader — search the other services for a matching view-entity
+cross-schema reader - search the other services for a matching view-entity
 before merging.
 
-**2. Reference table access** (§9) — ingestion-service depends on
+**2. Reference table access** (§9) - ingestion-service depends on
 marketplace-service's `vehicle_dictionaries` shape and refresh behaviour via
 `VehicleDictionaryView`. A cached snapshot loaded at container init is correct
-only as long as the caching service knows when to refresh it — a schema change
+only as long as the caching service knows when to refresh it - a schema change
 to that table which isn't reflected in ingestion's cache-loading code produces
 stale or missing matches with no error at all. Adding a new
 `dictionary_type` value is the likeliest such change, since it needs no
 migration.
 *Check during review:* a schema change to `vehicle_dictionaries`, or a new
 `dictionary_type`, should prompt an explicit check of every service holding a
-cached snapshot — not just the owning service's own code.
+cached snapshot - not just the owning service's own code.
 
-**3. The `KNOWN_SPEC_KEYS` / `specFilters` dictionary** — this single
+**3. The `KNOWN_SPEC_KEYS` / `specFilters` dictionary** - this single
 concept must stay identical across three independent places that do not
 share code by default:
    - the rule-based parser's Stage 3 exact-match dictionary (marketplace),
@@ -403,7 +403,7 @@ share code by default:
    - the SQL builder that turns `specFilters` into `WHERE specs->>'x'`
      clauses (marketplace).
 
-   Unlike risks 1–2, this one is *not* a cross-service risk — all three
+   Unlike risks 1–2, this one is *not* a cross-service risk - all three
    copies currently live inside marketplace-service. It is included here
    because it is the same class of failure (multiple places required to
    agree on one shape, nothing enforcing agreement) and because ingestion's
@@ -411,11 +411,11 @@ share code by default:
    that must also agree with the other three, making it cross-service after
    all.
 *Check during review:* `KNOWN_SPEC_KEYS` should be one exported constant,
-imported by the parser, the prompt builder, and the SQL builder — never
+imported by the parser, the prompt builder, and the SQL builder - never
 three hand-maintained lists. If a PR adds a new spec key in only one of
 those places, that is the drift this item exists to catch.
 
-**4. The ETL write exception's schema assumptions** (§6) — `loadFn` writes
+**4. The ETL write exception's schema assumptions** (§6) - `loadFn` writes
 directly to `marketplace.vehicles` and `marketplace.vehicle_images` using
 column names it must get right without a compiler checking it against
 marketplace-service's actual entity definitions, since ingestion-service does
@@ -435,7 +435,7 @@ assuming the change is local.
 ## 10. Pros
 
 **The write boundary is real and enforced.** No service can corrupt another's
-data. PostgreSQL refuses. This is the property that actually matters most —
+data. PostgreSQL refuses. This is the property that actually matters most -
 data corruption is the failure you cannot recover from.
 
 **The search design's core premise survives intact.** Filtering and vector
@@ -469,11 +469,11 @@ services need.
 ## 11. Cons
 
 **Read coupling is real coupling.** If auth renames `users.name`, three
-services' queries break — at runtime, not compile time. The FK rule (§3.1)
+services' queries break - at runtime, not compile time. The FK rule (§3.1)
 bounds this but does not eliminate it.
 
 **Cross-schema entity classes duplicate another service's schema** (§5), and
-this is one of several silent-drift risks the system now carries — see §9A
+this is one of several silent-drift risks the system now carries - see §9A
 for the full list. They drift silently when the owner changes a column. In a
 multi-repo split this gets meaningfully worse, and pushes toward a published
 contracts package.
@@ -483,7 +483,7 @@ Every cross-schema join must be found and converted to an API call. This is
 the single strongest argument for Plan A.
 
 **The read boundary is a convention, not enforced.** Grants stop a service
-reading a table it has no grant for — but adding a grant is one line, and
+reading a table it has no grant for - but adding a grant is one line, and
 nothing prevents someone adding it without justification. Plan A has no such
 slope because the answer to every cross-schema request is "no."
 
@@ -491,8 +491,8 @@ slope because the answer to every cross-schema request is "no."
 but it is a code-review rule, not a mechanical one.
 
 **The ETL write exception is a real, if scoped, hole in the isolation story**
-(§6). It preserves the ETL design's concurrency argument unchanged — which is
-the reason it exists — but it means the write boundary is not, in fact,
+(§6). It preserves the ETL design's concurrency argument unchanged - which is
+the reason it exists - but it means the write boundary is not, in fact,
 absolute. One service can write another's table, by design, and that design
 must be remembered and re-justified any time it's questioned.
 
@@ -511,7 +511,7 @@ Steps 1–6 are **done and verified**; 7–9 remain.
 
 1. ✅ Init scripts: extensions, schemas, roles.
 2. ✅ Migrations for all 13 tables, cross-schema FKs included.
-3. ✅ `grants.sql` — own-schema CRUD, cross-schema `SELECT` justified by FKs,
+3. ✅ `grants.sql` - own-schema CRUD, cross-schema `SELECT` justified by FKs,
    plus the one ETL write exception (§6.2).
 4. ✅ Run and **verify**: cross-schema `SELECT` succeeds where granted; the ETL
    exception's `INSERT`/`UPDATE` succeed on `vehicles`/`vehicle_images` but
@@ -519,7 +519,7 @@ Steps 1–6 are **done and verified**; 7–9 remain.
 5. ✅ Per-service TypeORM config and entities, including the view-entities in
    §5. All five services boot-tested against the live database.
 6. ✅ `marketplace.vehicle_dictionaries` created and granted (§9).
-7. ⬜ **Seed `vehicle_dictionaries`.** The table exists but is empty — no make
+7. ⬜ **Seed `vehicle_dictionaries`.** The table exists but is empty - no make
    or model resolves until it is populated.
 8. ⬜ `loadFn` in ingestion-service writing directly to `marketplace.vehicles`
    / `vehicle_images` using the grant from step 3. The grant and the
@@ -527,7 +527,7 @@ Steps 1–6 are **done and verified**; 7–9 remain.
 9. ⬜ Re-confirm (not rewrite) the ETL `MaxConcurrency: 10` sizing against
    marketplace's connection pool (§6.3).
 
-Step 7 blocks the parser — it has nothing to match against until the
+Step 7 blocks the parser - it has nothing to match against until the
 dictionary has rows.
 
 ---
@@ -559,22 +559,22 @@ dictionary has rows.
 | Clients to build | ~5 | 1 (ingestion → marketplace, for alias promotion only) |
 | Extra infra work | 1–2 weeks | a day or two |
 | Single-SQL search | ✓ | ✓ |
-| ETL concurrency rewrite | required | **not required — see §6.3** |
+| ETL concurrency rewrite | required | **not required - see §6.3** |
 | N+1 risk | high | none for display data |
 | Split to separate DBs later | config change | rewrite, and the ETL exception needs its own migration path |
-| Reference data | compromised (§9) | **resolved — one owned table (§9)** |
+| Reference data | compromised (§9) | **resolved - one owned table (§9)** |
 | Multi-repo fit | strong | weak |
-| Silent-drift surface | small (no cross-schema entities) | real — see §9A for the checklist |
+| Silent-drift surface | small (no cross-schema entities) | real - see §9A for the checklist |
 
-**The decision in one sentence:** Plan A buys future optionality — the ability
-to split databases cheaply — at roughly 1–2 weeks of present cost plus ongoing
+**The decision in one sentence:** Plan A buys future optionality - the ability
+to split databases cheaply - at roughly 1–2 weeks of present cost plus ongoing
 latency and failure-handling complexity. Plan B buys immediate velocity and
 keeps both the search design's premise *and* the ETL design's concurrency
 argument intact, at the cost of read coupling that becomes expensive to
 unwind later, plus one deliberate write exception that must stay documented
 and re-justified rather than forgotten.
 
-The two plans no longer forbid cross-schema writes identically — Plan B
+The two plans no longer forbid cross-schema writes identically - Plan B
 carries one scoped exception Plan A does not. That exception is what lets
 Plan B avoid the ETL rewrite Plan A still requires. **The differentiators are
 now reads (as before) and this one write exception.**

@@ -303,7 +303,7 @@ export class RecommendationsRepository {
     );
 
     // Presigning is a local SigV4 computation in s3 mode (no AWS round trip
-    // — see ImageUrlResolverService), so resolving every row's image in
+    // - see ImageUrlResolverService), so resolving every row's image in
     // parallel costs CPU, not N sequential network calls.
     return Promise.all(
       rows.map(async (row) => {

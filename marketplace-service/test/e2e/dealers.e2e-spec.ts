@@ -15,7 +15,7 @@ import { DealerProfileView } from '../../src/infrastructure/database/entities/de
  * error, and the 501 on the profile update.
  *
  * That 501 is the important one. `PUT /dealers/:id/profile` has no guard and a
- * DTO that would rewrite a dealer's business name, email and address — it looks
+ * DTO that would rewrite a dealer's business name, email and address - it looks
  * exactly like an unguarded write, and the only thing stopping it is that
  * DealerService throws NotImplementedException because profile updates are
  * owned by auth-user-service. Someone will eventually "fix" this by
@@ -58,7 +58,7 @@ describe('dealers (e2e)', () => {
   describe('GET /dealers/:id/profile', () => {
     it('returns the profile', async () => {
       // Both GETs route through DealerService.getProfile, which calls
-      // findById — getDealerById is an alias for it.
+      // findById - getDealerById is an alias for it.
       repository.findById.mockResolvedValue({ id: DEALER_ID, companyName: 'AutoLanka' });
 
       const response = await request(app.getHttpServer())
@@ -102,8 +102,8 @@ describe('dealers (e2e)', () => {
     });
 
     it('routes :id and :id/profile to their own handlers', async () => {
-      // Both end at findById today — getDealerById simply delegates to
-      // getProfile — so this pins that both paths resolve rather than one
+      // Both end at findById today - getDealerById simply delegates to
+      // getProfile - so this pins that both paths resolve rather than one
       // shadowing the other.
       repository.findById.mockResolvedValue({ id: DEALER_ID });
 
@@ -113,7 +113,7 @@ describe('dealers (e2e)', () => {
   });
 
   describe('PUT /dealers/:id/profile', () => {
-    it('501s — profile updates are owned by auth-user-service', async () => {
+    it('501s - profile updates are owned by auth-user-service', async () => {
       // Not a gap in this suite: the handler exists, is unguarded, and refuses
       // to act. Implementing it here would create an unauthenticated write to
       // dealer identity. If this test starts failing, check why before making

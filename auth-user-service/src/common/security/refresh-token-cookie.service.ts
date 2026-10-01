@@ -75,7 +75,7 @@ export class RefreshTokenCookieService {
   private getBaseCookieOptions() {
     // The SPA (CloudFront) and this API (API Gateway) are different origins
     // in every deployed environment, so the refresh/CSRF cookies must be
-    // sent cross-site — that requires SameSite=None, which browsers only
+    // sent cross-site - that requires SameSite=None, which browsers only
     // honor alongside Secure. Locally the Vite dev proxy makes everything
     // same-origin over plain http, where Secure would just break the
     // cookie, so the two attributes are tied together: whichever mode

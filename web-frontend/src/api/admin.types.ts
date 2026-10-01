@@ -125,17 +125,17 @@ export interface AuditLogsQuery {
 
 /**
  * A dealer's raw make text that never resolved during ingestion, grouped and
- * scored against the existing dictionary — mirrors admin-service's
+ * scored against the existing dictionary - mirrors admin-service's
  * DictionaryCandidateDto.
  */
 export interface DictionaryCandidate {
-  /** Normalized (lower-cased, trimmed) — the key used for dismiss/promote. */
+  /** Normalized (lower-cased, trimmed) - the key used for dismiss/promote. */
   rawValue: string
   /** As the dealer actually typed it, for display. */
   displayValue: string
   occurrences: number
   dealerCount: number
   samples: { make: string | null; model: string | null; description: string | null }[]
-  /** Null means nothing in the dictionary is a plausible match — the stronger signal of a genuinely new make. */
+  /** Null means nothing in the dictionary is a plausible match - the stronger signal of a genuinely new make. */
   closestMatch: { id: string; canonicalValue: string; score: number } | null
 }

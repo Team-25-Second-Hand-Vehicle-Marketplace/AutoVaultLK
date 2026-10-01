@@ -45,15 +45,26 @@ describe('buildSpecs', () => {
     expect(buildSpecs({ ...everything, vehicleType: 'CAR' })).toEqual({
       body_type: 'SUV', seats: 5, sunroof: true,
     })
-    expect(buildSpecs({ ...everything, vehicleType: 'BIKE' })).toEqual({
-      body_type: 'SUV', stroke_type: '4_STROKE', sunroof: true,
-    })
     expect(buildSpecs({ ...everything, vehicleType: 'VAN' })).toEqual({
       body_type: 'SUV', roof_type: 'HIGH_ROOF', sunroof: true,
     })
     expect(buildSpecs({ ...everything, vehicleType: 'LORRY' })).toEqual({
       body_type: 'SUV', axle_count: 3, sunroof: true,
     })
+    // A sunroof on a bike is dropped, as the ETL drops it.
+    expect(buildSpecs({ ...everything, vehicleType: 'BIKE' })).toEqual({
+      body_type: 'SUV', stroke_type: '4_STROKE',
+    })
+  })
+
+  it('keeps alloy wheels on a bike or three-wheeler but drops cabin comfort items', () => {
+    const equipment = {
+      alloyWheels: true, sunroof: true, leatherSeats: true, airConditioning: true,
+      reverseCamera: true, powerSteering: true, fullOption: true,
+    }
+    expect(buildSpecs({ ...equipment, vehicleType: 'BIKE' })).toEqual({ alloy_wheels: true })
+    expect(buildSpecs({ ...equipment, vehicleType: 'THREE_WHEELER' })).toEqual({ alloy_wheels: true })
+    expect(Object.keys(buildSpecs({ ...equipment, vehicleType: 'TRUCK' }))).toHaveLength(7)
   })
 
   it('treats a blank vehicle type as CAR', () => {

@@ -4,7 +4,7 @@ import type { RawRow, StageContext, StageRunner } from '../types';
 
 export type SplitChunksInput = {
   key: string;
-  /** Canonical headers from validateFile — re-derived, not trusted blindly. */
+  /** Canonical headers from validateFile - re-derived, not trusted blindly. */
   headers: string[];
 };
 
@@ -20,7 +20,7 @@ export type SplitChunksOutput = {
  *
  * Streamed end to end: rows accumulate only up to `config.chunkSize` before
  * being flushed and dropped. A 25 MB upload therefore costs one chunk of
- * memory, not 25 MB — and under MaxConcurrency 10 that difference is the
+ * memory, not 25 MB - and under MaxConcurrency 10 that difference is the
  * whole footprint of the worker.
  *
  * Chunk files are the unit of retry. The orchestrator skips chunks already
@@ -91,7 +91,7 @@ export function chunkKey(jobId: string, index: number): string {
  * reason; doing it here would throw that context away.
  *
  * relaxColumnCount gives extra cells the key `undefined`, and a header cell
- * that normalized to empty gives `''` — neither is a real column, so both are
+ * that normalized to empty gives `''` - neither is a real column, so both are
  * dropped rather than travelling into rejected_records.raw_data as noise.
  */
 function toStringRecord(record: Record<string, unknown>): Record<string, string> {

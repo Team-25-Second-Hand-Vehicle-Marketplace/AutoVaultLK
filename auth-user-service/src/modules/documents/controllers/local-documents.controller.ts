@@ -26,7 +26,7 @@ const CONTENT_TYPES: Record<string, string> = {
 
 /**
  * Streams a verification document from local storage. DOCUMENT_SERVE_MODE=local
- * dev convenience only — mirrors marketplace-service's LocalImagesController,
+ * dev convenience only - mirrors marketplace-service's LocalImagesController,
  * but ADMIN-only: unlike vehicle photos, a NIC scan or business registration
  * certificate is sensitive KYC data that must never be reachable without
  * authentication, even in a route that only exists for local dev.

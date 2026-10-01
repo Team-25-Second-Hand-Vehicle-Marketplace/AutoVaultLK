@@ -73,8 +73,8 @@ const stateName = (stage: EtlStage): string =>
 /**
  * The drift guard.
  *
- * Two executors run this pipeline — LocalOrchestrator in process and this
- * state machine in AWS — and nothing else would stop them diverging. The
+ * Two executors run this pipeline - LocalOrchestrator in process and this
+ * state machine in AWS - and nothing else would stop them diverging. The
  * failure mode is silent and in the worst direction: local tests pass while
  * the deployed pipeline skips a stage, and the first person to notice is a
  * dealer whose vehicles have no embeddings.
@@ -92,7 +92,7 @@ describe('ETL state machine', () => {
     // until inside ValidateFile's own InputPath, ValidateFile failing on real
     // input threw States.ReferencePathConflict trying to write $.error onto
     // the Pipe's one-element array, aborting the execution before
-    // MarkJobFailed could run — a job stuck at PROCESSING forever. Unwrapping
+    // MarkJobFailed could run - a job stuck at PROCESSING forever. Unwrapping
     // before any state (including ValidateFile) is entered fixes it for every
     // Catch downstream, not just this one.
     it('is a Pass state that unwraps the Pipe batch before any other state runs', () => {
@@ -105,7 +105,7 @@ describe('ETL state machine', () => {
 
     it('is not still duplicated on ValidateFile', () => {
       // Left on both, ValidateFile would try to unwrap an already-unwrapped
-      // object — $[0] on a plain {jobId} is undefined, not an error, so this
+      // object - $[0] on a plain {jobId} is undefined, not an error, so this
       // would fail silently rather than loudly.
       expect(asl.States.ValidateFile.InputPath).toBeUndefined();
     });
@@ -210,7 +210,7 @@ describe('ETL state machine', () => {
     it('catches a failed chunk on the Map rather than failing the job', () => {
       // THE correctness requirement. Without this Catch one bad chunk fails
       // the whole execution and a dealer loses 399 good vehicles to one bad
-      // row — the opposite of what PARTIAL exists for. The Map sits inside
+      // row - the opposite of what PARTIAL exists for. The Map sits inside
       // ProcessRows's chunks branch, so it converges on that branch's own
       // terminal Pass state, not directly on Aggregate.
       const caught = map.Catch?.find((c) =>

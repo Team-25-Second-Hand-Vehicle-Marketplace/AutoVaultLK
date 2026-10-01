@@ -5,7 +5,7 @@ import type { RecommendationsResponse } from './recommendations.types'
  * Vehicles similar to the one being viewed (FR-25).
  *
  * `limit` is clamped server-side to [1, 20] with a default of 6, so nothing is
- * re-clamped here — one authority for the bound is enough, and a second would
+ * re-clamped here - one authority for the bound is enough, and a second would
  * only drift from it.
  */
 export async function getRecommendations(

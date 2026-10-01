@@ -129,7 +129,7 @@ export class AdminMutationsService {
   /**
    * "New vehicle types" tab, path 1: the raw text names something genuinely
    * not in the dictionary yet. Dismissing the candidate after a successful
-   * add is what stops it reappearing in the review queue — the historical
+   * add is what stops it reappearing in the review queue - the historical
    * rejected_records rows behind it never go away, so without this the same
    * candidate would resurface every time the tab is reopened even though an
    * admin already acted on it.
@@ -158,7 +158,7 @@ export class AdminMutationsService {
 
   /**
    * "New vehicle types" tab, path 2: the raw text is just a mangled spelling
-   * of a make that already exists — recorded as an alias of it rather than a
+   * of a make that already exists - recorded as an alias of it rather than a
    * duplicate canonical entry.
    */
   async addDictionaryAlias(
@@ -184,7 +184,7 @@ export class AdminMutationsService {
     return { result, audit };
   }
 
-  /** Noise — not worth adding, but should stop showing up either. */
+  /** Noise - not worth adding, but should stop showing up either. */
   async dismissDictionaryCandidate(
     rawValue: string,
     actor: AuthenticatedUser,

@@ -1,6 +1,6 @@
 name: Load Test - Stress (manual)
 
-# Manual trigger only — same reasoning as load-test.yml. This run ramps to
+# Manual trigger only - same reasoning as load-test.yml. This run ramps to
 # up to 400 concurrent virtual users (8x NFR-10's 50-session target) over
 # ~4.5 minutes; deliberately not gated on the usual NFR-09 response-time
 # threshold, since finding where the system starts to degrade under

@@ -7,13 +7,13 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * index serves the containment operator (`specs @> '{"body_type":"SUV"}'`)
  * but NOT the arrow operator (`specs->>'body_type' = 'SUV'`), which falls
  * back to a sequential scan. The query builder therefore emits `@>` for spec
- * equality — no new index needed for that case.
+ * equality - no new index needed for that case.
  *
  * Ranges are the gap this migration fills. `specs->>'seats' >= '5'` cannot
  * use a containment index and, worse, compares TEXT: '10' < '4'
  * lexicographically. Both slow and wrong. The cast has to be indexed.
  *
- * `status` leads both indexes, matching the convention in migration 14000 —
+ * `status` leads both indexes, matching the convention in migration 14000 -
  * every buyer-facing query gates on status = 'LIVE' first.
  */
 export class SpecAndYearSearchIndexes1735000019000 implements MigrationInterface {
@@ -32,7 +32,7 @@ export class SpecAndYearSearchIndexes1735000019000 implements MigrationInterface
     // Effective-year filters (Decision 3): registration_year is nullable
     // because dealers omit it, so filtering on it directly would make those
     // listings invisible. COALESCE falls back per row to manufacture_year,
-    // which is NOT NULL — every vehicle stays reachable.
+    // which is NOT NULL - every vehicle stays reachable.
     //
     // COALESCE in a WHERE clause forces a seq scan unless the exact
     // expression is indexed.

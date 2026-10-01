@@ -63,6 +63,7 @@ describe('DealerLayout navigation', () => {
     expect(labels).toEqual([
       'Dashboard',
       'My listings',
+      'Manual listing',
       'Bulk upload',
       'Upload history',
       'Business details',
@@ -84,6 +85,10 @@ describe('DealerLayout navigation', () => {
     expect(screen.queryByRole('link', { name: 'Bulk upload' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Upload history' })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'My listings' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Manual listing' })).toHaveAttribute(
+      'href',
+      '/dealer/listings/new',
+    )
     expect(screen.getByRole('link', { name: 'Dashboard' })).toBeInTheDocument()
   })
 
@@ -98,11 +103,11 @@ describe('DealerLayout navigation', () => {
     expect(screen.getByText('Dashboard content')).toBeInTheDocument()
   })
 
-  it('shows no nav links until the profile — and so verification status — is known', async () => {
+  it('shows no nav links until the profile - and so verification status - is known', async () => {
     // A request that never settles: the layout must not show any nav item
     // while it doesn't yet know whether the dealer is verified. The Outlet
-    // content (DealerDashboardPage in real use) renders regardless — it has
-    // its own loading state — this is only about the sidebar.
+    // content (DealerDashboardPage in real use) renders regardless - it has
+    // its own loading state - this is only about the sidebar.
     getProfile.mockReturnValue(new Promise(() => {}))
     renderLayout()
 
@@ -116,7 +121,7 @@ describe('DealerLayout navigation', () => {
 
   // A dealer can now log in while PENDING or REJECTED (approval no longer
   // gates login). Until VERIFIED, the resubmit/status screen at /dealer is
-  // the only thing there is — so there is nothing to link to.
+  // the only thing there is - so there is nothing to link to.
   it('shows no nav links to a dealer who is not yet verified', async () => {
     getProfile.mockResolvedValue({
       dealerType: 'business',

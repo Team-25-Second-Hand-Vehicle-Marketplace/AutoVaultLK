@@ -9,7 +9,7 @@ import {
 } from 'class-validator';
 
 /**
- * Body for POST /internal/users/admin — FR-12's administrator-provisions-
+ * Body for POST /internal/users/admin - FR-12's administrator-provisions-
  * administrator path, called by admin-service.
  *
  * `adminId` identifies the acting administrator, matching the other internal

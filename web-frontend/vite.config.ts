@@ -25,7 +25,7 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (p) => p.replace(/^\/marketplace/, ""),
       },
-      // nginx: location /auth/ -> auth_user_service/auth/ (prefix PRESERVED —
+      // nginx: location /auth/ -> auth_user_service/auth/ (prefix PRESERVED -
       // the service mounts its own @Controller('auth'), unlike marketplace).
       "/auth": {
         target: "http://localhost:3001",

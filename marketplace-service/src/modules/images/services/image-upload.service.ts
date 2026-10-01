@@ -39,13 +39,13 @@ export type UploadedImageFile = {
 };
 
 /**
- * FR-58's manual listing path never had an image field — a dealer creating
+ * FR-58's manual listing path never had an image field - a dealer creating
  * one vehicle at a time (as opposed to bulk upload) had no way to attach a
  * photo at all. This is the write side; ImageUrlResolverService is the read
  * side that turns what gets stored here back into something a browser can
  * fetch.
  *
- * Writes under `images/manual/{vehicleId}/...` — a distinct prefix from
+ * Writes under `images/manual/{vehicleId}/...` - a distinct prefix from
  * ingestion's `images/{jobId}/{vehicleId}/...` (image-processing.stage.ts),
  * so a manual upload and a bulk-pipeline upload for the same vehicle can
  * never collide on the same key, and s3-images/main.tf's lifecycle rule
@@ -53,7 +53,7 @@ export type UploadedImageFile = {
  * the pipeline's own `images/` prefix alone.
  *
  * No Sharp resize/compress here, unlike the ETL pipeline's image-processing
- * stage — a dealer uploading one photo at a time through a web form is a
+ * stage - a dealer uploading one photo at a time through a web form is a
  * different cost profile than a bulk job processing hundreds, and adding
  * that dependency to marketplace-service for a handful of manual uploads a
  * day is not a trade this endpoint needs to make. Revisit if upload volume
@@ -71,7 +71,7 @@ export class ImageUploadService {
   ) {}
 
   /**
-   * Validates and stores every file, then records them as one batch —
+   * Validates and stores every file, then records them as one batch -
    * replacing whatever images the vehicle already had, since a dealer
    * re-submitting the photo set for a listing means "this is the current
    * set", not "add more to what's there".
@@ -116,7 +116,7 @@ export class ImageUploadService {
   /**
    * FR-58's counterpart to replaceImages for editing an existing listing:
    * removes one photo without touching the rest. replaceImages can't do this
-   * on its own — it requires resending every file, but the dealer's browser
+   * on its own - it requires resending every file, but the dealer's browser
    * only ever has a File object for a *new* photo, never for one it only
    * knows as a stored URL. If the removed photo was primary, the next one by
    * display order is promoted so a listing with remaining photos is never
@@ -169,7 +169,7 @@ export class ImageUploadService {
 
   /**
    * Takes the narrowed union (never `demo`) explicitly, rather than the full
-   * ImageServeConfig — replaceImages already threw before reaching this for
+   * ImageServeConfig - replaceImages already threw before reaching this for
    * demo mode, and re-widening the type here would silently let a future
    * caller pass an unhandled mode straight through to the `else` branch
    * below with no compiler error to catch it.
@@ -227,7 +227,7 @@ export class ImageUploadService {
     file: UploadedImageFile,
   ): Promise<void> {
     // safeLocalPath rejects a traversal attempt the same way
-    // LocalImagesController's read side does — the key here is built from a
+    // LocalImagesController's read side does - the key here is built from a
     // server-generated UUID, not user input, so it can never actually
     // trigger that guard, but the call stays rather than assuming so.
     const path = safeLocalPath(root, key);

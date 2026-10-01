@@ -113,7 +113,7 @@ export class NotificationEventHandler {
         return (await this.repository.findById(row.id)) ?? row;
       }
 
-      // Anything else is a defect or a malformed recipient — retrying it would
+      // Anything else is a defect or a malformed recipient - retrying it would
       // burn the attempt budget on an outcome that cannot change.
       await this.repository.markFailed(row.id, message);
       this.logger.warn(

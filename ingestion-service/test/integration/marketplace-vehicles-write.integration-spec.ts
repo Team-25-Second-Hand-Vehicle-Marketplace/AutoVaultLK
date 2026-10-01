@@ -28,7 +28,7 @@ const VALID: VehicleFields = {
   specs: { body_type: 'HATCHBACK' },
 };
 
-/** 384 floats — the MiniLM dimension pgvector's column is declared with. */
+/** 384 floats - the MiniLM dimension pgvector's column is declared with. */
 const VECTOR = `[${Array.from({ length: 384 }, () => 0.1).join(',')}]`;
 
 const row = (
@@ -204,11 +204,11 @@ describeWithDatabase('MarketplaceVehiclesWriteAdapter (integration)', () => {
       });
 
       // The dedicated partial index (migration 29000) targets exactly this
-      // predicate — a mistyped column name or cast would compile in the
+      // predicate - a mistyped column name or cast would compile in the
       // adapter's raw SQL and only fail here.
       it('is queryable by the confidence-ascending sort the review UI uses', async () => {
         // Not asserting this row sorts first (other PENDING_REVIEW rows exist
-        // in the seed) — only that ListingRepository.findByDealer's exact
+        // in the seed) - only that ListingRepository.findByDealer's exact
         // predicate and cast (migration 29000's partial index target) execute
         // against a row this adapter actually wrote, rather than a synthetic
         // fixture.
@@ -300,7 +300,7 @@ describeWithDatabase('MarketplaceVehiclesWriteAdapter (integration)', () => {
     it('matches the partial index and updates in place', async () => {
       // idx_vehicles_job_registration is partial. If the conflict target's
       // WHERE clause does not match the index predicate exactly, Postgres
-      // raises "no unique or exclusion constraint matching" — a failure no
+      // raises "no unique or exclusion constraint matching" - a failure no
       // string assertion can catch.
       const jobId = await newJob();
       const registration = plate(20);
@@ -313,7 +313,7 @@ describeWithDatabase('MarketplaceVehiclesWriteAdapter (integration)', () => {
         row({ registrationNumber: registration, price: 2_900_000 }),
       ]);
 
-      // Same row, updated — not a second insert.
+      // Same row, updated - not a second insert.
       expect(second.loaded[0].id).toBe(first.loaded[0].id);
       expect(await countFor(ds, jobId)).toBe(1);
 

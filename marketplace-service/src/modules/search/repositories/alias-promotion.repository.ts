@@ -57,7 +57,7 @@ export class AliasPromotionRepository {
    * as possible canonical values for an alias.
    *
    * Restricted to the parentless types. MODEL rows hang off a make
-   * (`parent_id`), and search resolves them scoped to it — ingestion's
+   * (`parent_id`), and search resolves them scoped to it - ingestion's
    * `resolveModel(raw, makeId)` does the same. A bare search token carries no
    * make context, so promoting "corrola" would attach it to whichever model
    * scored highest across every make in the table. Under the wrong parent that
@@ -133,7 +133,7 @@ export class AliasPromotionRepository {
   }
 
   /**
-   * Creates a new canonical dictionary entry — the admin "New vehicle types"
+   * Creates a new canonical dictionary entry - the admin "New vehicle types"
    * tab's path for a make that genuinely does not exist yet, as opposed to
    * `addAlias`'s path for one that does under a different spelling.
    *

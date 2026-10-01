@@ -1,6 +1,6 @@
-# marketplace-service — Architecture & Flow Report
+# marketplace-service - Architecture & Flow Report
 
-**Scope:** `marketplace-service/` — the buyer-facing catalogue and the dealer's
+**Scope:** `marketplace-service/` - the buyer-facing catalogue and the dealer's
 listing-management API. Written from the source as of 2026-09-28 (branch `main`).
 
 ---
@@ -10,16 +10,16 @@ listing-management API. Written from the source as of 2026-09-28 (branch `main`)
 A NestJS 11 HTTP service (TypeORM + Postgres, port `3002`) that owns everything a
 buyer sees and everything a dealer does to a listing *after* it exists:
 
-- **Browse & search** — filter search, natural-language search, facets, options,
+- **Browse & search** - filter search, natural-language search, facets, options,
   vehicle detail, marketplace stats. All public, no auth.
-- **Listing lifecycle** — create, update, approve, archive/unarchive, delete,
+- **Listing lifecycle** - create, update, approve, archive/unarchive, delete,
   image upload. Dealer/admin only.
-- **Favourites** — buyer's saved vehicles.
-- **Recommendations** — "similar vehicles" on a detail page.
-- **Dealer profile reads** — a denormalised join into the `auth` schema.
+- **Favourites** - buyer's saved vehicles.
+- **Recommendations** - "similar vehicles" on a detail page.
+- **Dealer profile reads** - a denormalised join into the `auth` schema.
 
-It does **not** own users, auth issuance, or dealer verification — those live in
-`auth-user-service`. It does not own bulk upload — that is `ingestion-service`.
+It does **not** own users, auth issuance, or dealer verification - those live in
+`auth-user-service`. It does not own bulk upload - that is `ingestion-service`.
 It reads the `auth` schema directly (the "plan-b reads cross-schemas" decision,
 `Documentation/plan-b-reads-cross-schemas.md`).
 
@@ -35,7 +35,7 @@ The Lambda wrapper adds one thing: `stripMarketplacePrefix()`, which removes the
 `/marketplace` path prefix from the API Gateway v2 event. Locally nginx strips it
 via a trailing-slash proxy pass; API Gateway's Lambda-proxy integration cannot
 rewrite paths, so it is done in code. **Consequence: no controller in this service
-may carry a `marketplace/` prefix** — they are all bare (`@Controller('listings')`,
+may carry a `marketplace/` prefix** - they are all bare (`@Controller('listings')`,
 `@Controller('search')`, …), and this is called out in comments in
 `favourites.controller.ts` because getting it wrong 404s every route behind the
 gateway.
@@ -51,16 +51,16 @@ Bootstrap. The `ValidationPipe` configuration is load-bearing and identical in b
 new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true })
 ```
 
-- `transform: true` — query-string values are strings; `@Type(() => Number)` only
+- `transform: true` - query-string values are strings; `@Type(() => Number)` only
   actually coerces them when transform is on. Without it `dealerVerified` arrived
   as the string `"true"` and `minYear` as `"2015"`, which validated fine and then
   behaved wrongly downstream. This is documented in a comment because it was a
   real bug.
-- `whitelist` / `forbidNonWhitelisted` — unknown query params are a 400, not
+- `whitelist` / `forbidNonWhitelisted` - unknown query params are a 400, not
   silently ignored. This is what makes every DTO a genuine whitelist boundary.
 
 `main.ts` additionally registers `ProductionExceptionFilter` globally; **the Lambda
-entry point does not** — a difference worth knowing when comparing local and
+entry point does not** - a difference worth knowing when comparing local and
 deployed error bodies.
 
 ### `src/config/database.config.ts`
@@ -73,7 +73,7 @@ Catch-all filter. Maps `HttpException` through faithfully; anything else is logg
 server-side with a stack and rendered as a generic 500. In production
 (`NODE_ENV=production` or `DISABLE_VERBOSE_ERRORS=true`) all 5xx messages are
 replaced with `"Internal server error"` and the `error` field is omitted.
-Deliberately duplicated from `auth-user-service` — the services share no package.
+Deliberately duplicated from `auth-user-service` - the services share no package.
 
 ### `src/health/`
 `GET /health` → `{ status: 'ok', service: 'marketplace-service' }`. No DB check.
@@ -85,11 +85,11 @@ Three-mode image strategy, the single most important config decision in the serv
 |---|---|---|
 | `s3` | Presigns a time-limited GET against `MARKETPLACE_IMAGES_BUCKET` | production (NFR-19) |
 | `local` | Streams from ingestion-service's `.storage` dir via an in-service route | dev, after a local ETL run |
-| `demo` | Resolves nothing; frontend falls back to placeholder photos | **default** — fresh checkout |
+| `demo` | Resolves nothing; frontend falls back to placeholder photos | **default** - fresh checkout |
 
 Presign expiry is clamped to 900s to match the Terraform module's documented
 ceiling; a misconfigured env var cannot produce a day-long URL. The function never
-throws on misconfiguration — it returns the requested mode's config and lets the
+throws on misconfiguration - it returns the requested mode's config and lets the
 image service degrade to `null` per image, because an image endpoint that 500s is
 worse than one that shows a placeholder.
 
@@ -111,7 +111,7 @@ This service **verifies** tokens; it never issues them.
 **The DB lookup in `validate()` is the important part.** A structurally valid token
 is still rejected when the user is missing, `is_active = false`, or (for non-ADMIN)
 has no `email_verified_at`. That means deactivation and email-verification take
-effect immediately rather than at token expiry — at the cost of one query per
+effect immediately rather than at token expiry - at the cost of one query per
 authenticated request.
 
 ---
@@ -128,25 +128,25 @@ authenticated request.
 | `AuthUserView` | `auth.users` (read-only) | `synchronize: false` view-entity. |
 | `DealerProfileView` | `auth.dealer_profiles` (read-only) | PK is `user_id`; there is no separate id. |
 
-### `Vehicle` — fields that carry design decisions
+### `Vehicle` - fields that carry design decisions
 
 - **`status`**: `DRAFT | PENDING_REVIEW | LIVE | SOLD | ARCHIVED | REJECTED`. Only
   `LIVE` is ever visible to buyers; every search query hard-codes that.
 - **`price`** is `numeric(14,2)` with a transformer, because `pg` returns numerics
   as strings. Same pattern on `SearchQuery.confidence`.
-- **`specs jsonb`** — schemaless per-type attributes (`body_type`, `seats`,
+- **`specs jsonb`** - schemaless per-type attributes (`body_type`, `seats`,
   `load_capacity_kg`, …). Kept out of columns because a bike has no body type and
   a lorry has a load capacity nothing else does.
-- **`normalization jsonb`** — FR-42.1 provenance written *only* by ingestion's Load
+- **`normalization jsonb`** - FR-42.1 provenance written *only* by ingestion's Load
   stage: per-field `{source: rule|dictionary|raw|groq, confidence, reasoning?}` plus
   a `rowConfidence`. Null for every manually created listing. This service reads it
   (to sort the dealer review queue) and never writes it.
-- **`needs_manual_review` / `review_reason`** — FR-35.2, set by ingestion's Enrich
+- **`needs_manual_review` / `review_reason`** - FR-35.2, set by ingestion's Enrich
   stage when a row has no registration number and therefore got no automated image
   match.
-- **`search_text`** — the generated text that feeds the embedding.
-- **`embedding`** — `vector(384)`, `select: false` so it never ships in a response.
-- **`search_vector`** — tsvector maintained by a DB trigger; marked
+- **`search_text`** - the generated text that feeds the embedding.
+- **`embedding`** - `vector(384)`, `select: false` so it never ships in a response.
+- **`search_vector`** - tsvector maintained by a DB trigger; marked
   `insert: false, update: false` so application code cannot fight the trigger.
 
 ---
@@ -158,9 +158,9 @@ The dealer-side write surface. `ListingController` (`@Controller('listings')`):
 | Route | Guard | Purpose |
 |---|---|---|
 | `POST /listings` | DEALER, ADMIN | Create |
-| `GET /listings` | — public | All `LIVE` listings |
+| `GET /listings` | - public | All `LIVE` listings |
 | `GET /listings/mine` | DEALER | Own inventory, every status |
-| `GET /listings/:id` | — public | One listing, 404 unless `LIVE` |
+| `GET /listings/:id` | - public | One listing, 404 unless `LIVE` |
 | `PATCH /listings/:id` | DEALER, ADMIN | Edit |
 | `PATCH /listings/:id/deactivate` | DEALER, ADMIN | → `ARCHIVED` |
 | `PATCH /listings/:id/unarchive` | DEALER, ADMIN | `ARCHIVED` → `LIVE` |
@@ -168,31 +168,31 @@ The dealer-side write surface. `ListingController` (`@Controller('listings')`):
 | `DELETE /listings/:id` | DEALER, ADMIN | Hard delete, restricted statuses |
 | `POST /listings/:id/images` | DEALER, ADMIN | Replace image set (≤10 files) |
 
-`/mine` is declared **before** `/:id` — otherwise Nest matches `"mine"` as a UUID param.
+`/mine` is declared **before** `/:id` - otherwise Nest matches `"mine"` as a UUID param.
 
-### `services/listing.service.ts` — the rules
+### `services/listing.service.ts` - the rules
 
 - **Create is open to every dealer type, verified-only.** `assertManualUploadAllowed()`
   rejects `verificationStatus !== 'VERIFIED'`, regardless of `dealerType`. Business
-  dealers can create a manual listing here in addition to bulk upload — the two paths
+  dealers can create a manual listing here in addition to bulk upload - the two paths
   are not mutually exclusive. Since auth-user-service now lets unverified dealers *log
   in*, this check is the only thing between an unverified dealer and a live listing.
-- **Ownership** (`assertOwnership`) — ADMIN bypasses; otherwise `dealerId` must match
+- **Ownership** (`assertOwnership`) - ADMIN bypasses; otherwise `dealerId` must match
   the JWT subject. The forbidden message is deliberately identical to the not-found
   message so the endpoint cannot be used to probe which listing IDs exist.
 - **`dealerId` is always taken from the token**, never the body. On update it is
-  explicitly stripped — reassigning ownership is not an edit.
-- **Duplicate guard** — an identical create from the same dealer within 2 minutes
+  explicitly stripped - reassigning ownership is not an edit.
+- **Duplicate guard** - an identical create from the same dealer within 2 minutes
   returns the existing listing instead of creating a twin (handles double-click /
   client timeout retry).
-- **404 vs 409 discipline** — a missing listing is 404; a *real* listing in the wrong
+- **404 vs 409 discipline** - a missing listing is 404; a *real* listing in the wrong
   state for the action (approve a LIVE listing, unarchive a DRAFT) is 409, so the UI
   can tell the two apart. Every one of these methods re-checks after the write and
   maps a lost race to 409.
 - **Delete is restricted to `DRAFT`/`PENDING_REVIEW`/`REJECTED`.** Anything that was
   or is `LIVE`/`SOLD`/`ARCHIVED` can only be archived, because a buyer's favourite
   pointing at a vanished listing is worse than one pointing at an archived one.
-- **Image upload replaces the whole set**, not appends — a re-submission means "here
+- **Image upload replaces the whole set**, not appends - a re-submission means "here
   is the current set".
 - `withDealer()` degrades to `dealer: null` on lookup failure but logs missing-dealer
   and query-failure differently, so a DB outage does not look like missing data.
@@ -210,12 +210,12 @@ ETL rows surface first and manually-created rows (no provenance) sink to the bot
 ### `services/listing-search-index.service.ts`
 Builds `{searchText, embedding}` from a vehicle. Caches the MiniLM embedder as a
 process singleton (~90MB ONNX model). Honours `EMBEDDING_DISABLED=true` (keeps the
-text, skips the vector) and **never fails a write** — an unavailable model logs a
+text, skips the vector) and **never fails a write** - an unavailable model logs a
 warning and saves the listing with a null embedding.
 
 ---
 
-## 6. Module: search (`src/modules/search/`) — the largest subsystem
+## 6. Module: search (`src/modules/search/`) - the largest subsystem
 
 Two entirely separate entry paths that converge on one SQL executor.
 
@@ -239,7 +239,7 @@ Two entirely separate entry paths that converge on one SQL executor.
 Everything is public except alias promotion, which is guarded per-method rather than
 per-class precisely because it writes to shared reference data the ETL also reads.
 
-### 6.2 Path A — filter search
+### 6.2 Path A - filter search
 
 ```
 GET /search/filters?vehicleType=CAR&fuelType=HYBRID&maxPrice=5000000
@@ -253,8 +253,8 @@ GET /search/filters?vehicleType=CAR&fuelType=HYBRID&maxPrice=5000000
    → FilterSearchResponseDto
 ```
 
-**`filters/filter-query.builder.ts`** is a pure function — no DB access, fully
-unit-testable — and the only place SQL fragments are written:
+**`filters/filter-query.builder.ts`** is a pure function - no DB access, fully
+unit-testable - and the only place SQL fragments are written:
 
 - Always emits `v.status = $1` (`'LIVE'`) first. Every relevant index leads with
   `status`.
@@ -272,14 +272,14 @@ unit-testable — and the only place SQL fragments are written:
 
 **`repositories/vehicle-search.repository.ts`** executes it. `verifiedDealersOnly`
 is handled here, not in the builder, because it changes the `FROM` clause (a join to
-`auth.dealer_profiles`) rather than the `WHERE` — keeping the builder pure. Three
+`auth.dealer_profiles`) rather than the `WHERE` - keeping the builder pure. Three
 public methods plus `findById`:
-- `search()` — page of rows, with a `LEFT JOIN` for the primary image and dealer
+- `search()` - page of rows, with a `LEFT JOIN` for the primary image and dealer
   verification flag, then per-row image URL resolution in parallel.
-- `count()` — pagination total and the zero-result trigger.
-- `facets()` — five `GROUP BY` queries in parallel, each **dropping its own
+- `count()` - pagination total and the zero-result trigger.
+- `facets()` - five `GROUP BY` queries in parallel, each **dropping its own
   dimension's filter** so "Make" counts stay meaningful while a make is selected.
-- `findById()` — detail row, gated on `status = 'LIVE'`, with all image paths
+- `findById()` - detail row, gated on `status = 'LIVE'`, with all image paths
   aggregated (primary first) and dealer contact details.
 
 **`services/filter-search.service.ts`** owns the **relaxation ladder**. On zero
@@ -295,9 +295,9 @@ that returns rows:
 **Price is never relaxed.** If relaxation succeeded while a `maxPrice` was set, the
 response carries `relaxation.priceCeilingExceeded: true` and a message, rather than
 silently exceeding the budget. Every search is logged to `search_queries`
-fire-and-forget — a logging failure can never fail a search.
+fire-and-forget - a logging failure can never fail a search.
 
-### 6.3 Path B — natural-language search
+### 6.3 Path B - natural-language search
 
 `services/nl-search.service.ts` orchestrates five stages:
 
@@ -314,11 +314,11 @@ q = "toyota corola hybrid under 5m low mileage"
 **`parser/deterministic-parser.ts`** runs four ordered stages over tokens, each
 marking tokens consumed so later stages cannot re-read them:
 
-1. `stagePhrases` — multi-word exact hits (up to 3 tokens), min length 2.
-2. `extractNumericSpecs` then `extractNumeric` — seats/doors/airbags, then
+1. `stagePhrases` - multi-word exact hits (up to 3 tokens), min length 2.
+2. `extractNumericSpecs` then `extractNumeric` - seats/doors/airbags, then
    price/year/mileage ranges.
-3. `stageExact` — single-token exact: makes, then models, then closed enums/body types.
-4. `stageFuzzy` — trigram matching for misspellings, rejecting digit-adjacent tokens.
+3. `stageExact` - single-token exact: makes, then models, then closed enums/body types.
+4. `stageFuzzy` - trigram matching for misspellings, rejecting digit-adjacent tokens.
 
 Cross-field inference is built in: a model implies its parent make, and implies a
 vehicle type when the model maps to exactly one. A model is only accepted if it is
@@ -326,14 +326,14 @@ consistent with an already-resolved make.
 
 **Confidence = consumed meaningful tokens / total meaningful tokens**, rounded to 2dp.
 Below `CONFIDENCE_THRESHOLD = 0.6` the parse is flagged `needsGroqFallback`.
-Unconsumed tokens become `semanticText` — the input to embedding/trigram ranking.
+Unconsumed tokens become `semanticText` - the input to embedding/trigram ranking.
 
 **`parser/types.ts`** pins the shared thresholds: `TRIGRAM_THRESHOLD = 0.45` and
 `AMBIGUITY_MARGIN = 0.05`. The margin is why "Corola" scoring 0.72/Corolla vs
 0.71/Corsa resolves to *nothing* rather than a coin flip. Ingestion pins the same
 numbers; a parity test exists to catch drift.
 
-**Groq fallback (`groq/`)** — only fires when confidence is low *and* `GROQ_API_KEY`
+**Groq fallback (`groq/`)** - only fires when confidence is low *and* `GROQ_API_KEY`
 is set. `llama-3.1-8b-instant`, `temperature: 0`, JSON response format, 1.5s timeout,
 one retry on 429/5xx/timeout. The safety model is layered:
 - The prompt ships the *allowed* vocabulary inline and forbids inventing values.
@@ -342,7 +342,7 @@ one retry on 429/5xx/timeout. The safety model is layered:
   (year 1980–2100, price ≤ 500M, mileage ≤ 2M), specs against `KNOWN_SPEC_KEYS`,
   and `consumedTokens` against the actual unresolved token list. Anything else is
   dropped and logged.
-- `mergeFilters()` — **rules always win**; Groq only fills gaps (ADR-004).
+- `mergeFilters()` - **rules always win**; Groq only fills gaps (ADR-004).
 - Any failure at all (unconfigured, HTTP error, timeout, unparseable) logs a warning
   and returns the rules-only parse. The LLM can never break a search.
 
@@ -358,12 +358,12 @@ The distance cutoff is word-count-scaled (`maxEmbeddingDistanceFor`): 1 word →
 2 → 0.78, 3+ → 0.7. A single word embeds noisily; measured against seed data, a fixed
 cutoff could not serve both "sporty" and "family friendly vehicle".
 
-### 6.4 Alias promotion — the learning loop
+### 6.4 Alias promotion - the learning loop
 
 `POST /search/aliases/promote` (ADMIN) closes the loop between failed searches and
 the dictionary:
 
-1. `findAliasCandidates(5)` — tokens appearing in ≥5 searches' `unresolved_tokens`.
+1. `findAliasCandidates(5)` - tokens appearing in ≥5 searches' `unresolved_tokens`.
 2. Trigram-score each against every canonical dictionary value.
 3. Promote **only** when: token length ≥ 4, not already a canonical/alias, best score
    ≥ **0.6**, and best beats runner-up by ≥ 0.05.
@@ -374,20 +374,20 @@ every dealer upload the ETL normalises.
 
 ### 6.5 Supporting search files
 
-- `constants/vehicle-attributes.constants.ts` — the canonical enum lists
+- `constants/vehicle-attributes.constants.ts` - the canonical enum lists
   (`VEHICLE_TYPES` ×11, `FUEL_TYPES`, `TRANSMISSION_TYPES`, `CONDITIONS`,
   `SORT_OPTIONS`, `SEARCHABLE_STATUS='LIVE'`, page-size limits). Nothing else may
-  hardcode these — `create-listing.dto.ts` derives its enums from here after a real
+  hardcode these - `create-listing.dto.ts` derives its enums from here after a real
   bug where the DTO fell five vehicle types behind the database.
-- `constants/known-spec-keys.constants.ts` — the `specs` JSONB schema: `body_type`,
+- `constants/known-spec-keys.constants.ts` - the `specs` JSONB schema: `body_type`,
   `seats`, `doors`, `drive_type`, `sunroof`, `airbags`, `engine_class`,
   `load_capacity_kg`, each with type and range.
-- `services/search-options.service.ts` — dropdown data with a 5-minute in-process
+- `services/search-options.service.ts` - dropdown data with a 5-minute in-process
   cache keyed by vehicle type, plus cached landing-page stats. Type-scoped makes
   (`vehicle_types @> ARRAY['BIKE']`) so a bike dropdown never offers Toyota.
-- `filters/sort-clause.ts` — `SortOption` → `ORDER BY`. `relevance` resolves in
+- `filters/sort-clause.ts` - `SortOption` → `ORDER BY`. `relevance` resolves in
   priority order to embedding distance, then trigram, then `ts_rank`, then recency.
-- `dto/filter-search.dto.ts` — the whitelist. `specs` is a flat
+- `dto/filter-search.dto.ts` - the whitelist. `specs` is a flat
   `?specs=body_type:SUV,seats:5` string parsed by a custom `@Transform`, deliberately
   *not* a nested validated array: nested DTOs interact badly with `whitelist: true`.
 
@@ -405,20 +405,20 @@ every dealer upload the ETL normalises.
 
 ## 7. Module: images (`src/modules/images/`)
 
-- **`services/image-url-resolver.service.ts`** — stored key → fetchable URL, per the
+- **`services/image-url-resolver.service.ts`** - stored key → fetchable URL, per the
   three-mode config. In `s3` mode `getSignedUrl` computes a SigV4 signature
   **locally, with no AWS round trip**, which is what makes per-row resolution on a
   20-result page acceptable. In `demo` mode it returns `null` deliberately rather
-  than the raw key — a null triggers the frontend's placeholder, a raw key produces
+  than the raw key - a null triggers the frontend's placeholder, a raw key produces
   a visibly broken `<img>`. A presign failure degrades one card, never the response.
   A missing bucket warns exactly once per process.
-- **`services/image-upload.service.ts`** — writes uploaded bytes (S3 or local
+- **`services/image-upload.service.ts`** - writes uploaded bytes (S3 or local
   storage) and replaces the vehicle's image rows.
-- **`controllers/local-images.controller.ts`** — `GET /images/local/*key`, dev-only.
+- **`controllers/local-images.controller.ts`** - `GET /images/local/*key`, dev-only.
   Refuses to serve unless the resolved mode is `local`, even though nothing links
   here otherwise. Uses `*key` (path-to-regexp v8 catch-all) because object keys are
   multi-segment; Nest 11 hands the param back as `string[]`, hence the join.
-- **`safe-local-path.ts`** — path-traversal guard. A traversal attempt and a
+- **`safe-local-path.ts`** - path-traversal guard. A traversal attempt and a
   malformed key both surface as a plain 404, never a stack trace exposing the
   storage root.
 
@@ -433,7 +433,7 @@ A **read-only projection** of the `auth` schema. `DealerRepository.findById()` j
 Routes (`@Controller('dealers')`): `GET /:id/profile`, `GET /:id`, `PUT /:id/profile`.
 
 Two things to know:
-- **`PUT /:id/profile` deliberately throws `NotImplementedException`** — dealer
+- **`PUT /:id/profile` deliberately throws `NotImplementedException`** - dealer
   profile writes belong to auth-user-service. The DTO exists but is unused.
 - **None of these routes is guarded.** Dealer profile data (company name, city,
   contact number) is treated as public catalogue information, consistent with it
@@ -443,7 +443,7 @@ Two things to know:
 
 ## 9. Module: favourites (`src/modules/favourites/`)
 
-Class-level `@UseGuards(JwtAuthGuard, RolesGuard)` — every route needs a token; no
+Class-level `@UseGuards(JwtAuthGuard, RolesGuard)` - every route needs a token; no
 `@Roles` means any authenticated role. `POST /favourites/:vehicleId`,
 `GET /favourites`, `DELETE /favourites/:vehicleId`.
 
@@ -461,7 +461,7 @@ referenced by class resolve against the declaring module.
 `GET /recommendations/vehicles/:vehicleId?limit=6` (public, limit clamped 1–20).
 404s if the vehicle does not exist.
 
-`RecommendationsRepository.findSimilarVehicles()` is a single scored SQL query —
+`RecommendationsRepository.findSimilarVehicles()` is a single scored SQL query -
 no ML, no embeddings. Additive score out of 100:
 
 | Signal | Points |
@@ -481,23 +481,23 @@ Images resolve through the same `ImageUrlResolverService`.
 **This directory is duplicated byte-for-byte in ingestion-service and must stay
 that way.**
 
-- `constants.ts` — `EMBEDDING_MODEL_ID = 'Xenova/all-MiniLM-L6-v2'`,
+- `constants.ts` - `EMBEDDING_MODEL_ID = 'Xenova/all-MiniLM-L6-v2'`,
   `EMBEDDING_DIMENSIONS = 384` (must match the `vector(384)` column).
-- `embedder.ts` — lazy `@xenova/transformers` pipeline, mean pooling, L2-normalised.
+- `embedder.ts` - lazy `@xenova/transformers` pipeline, mean pooling, L2-normalised.
   Honours `EMBEDDING_MODEL_CACHE_DIR` so the Lambda image reads a baked-in model
   instead of downloading from the hub on cold start.
-- `search-text.ts` — builds the embedded text. The key insight: **numbers are
+- `search-text.ts` - builds the embedded text. The key insight: **numbers are
   replaced by phrases**. MiniLM tokenises `3500000` into meaningless digit fragments,
   so price becomes `"budget affordable low price"` / `"mid range"` / `"luxury high
   end"`, mileage becomes `"low mileage lightly used"`, and age becomes a relative
   band. Exact numeric matching is SQL's job; the embedding carries what SQL cannot
   express.
-- `vector.ts` — dimension assertion, L2 normalisation, `toPgVector()`.
+- `vector.ts` - dimension assertion, L2 normalisation, `toPgVector()`.
 
 **Change procedure** (from the file's own header): edit both copies identically →
 add any new field to `SEARCHABLE_FIELDS` in `listing.repository.ts` → re-run
 `database && npm run seed:embeddings` → note it in the plan-b §9A drift checklist.
-Divergence produces no error, no failing test and no log line — just permanently
+Divergence produces no error, no failing test and no log line - just permanently
 badly-ranked bulk-uploaded listings.
 
 ---
@@ -530,7 +530,7 @@ GET /search/nl?q="toyota corola hybrid under 5m"
                               usedSemanticRanking, unresolvedTokens)
 ```
 Unresolved tokens land in `search_queries.unresolved_tokens`, which later feeds
-alias promotion — the loop that makes the parser better over time.
+alias promotion - the loop that makes the parser better over time.
 
 ### C. Dealer creates a manual listing (any dealer type)
 ```
@@ -538,7 +538,7 @@ POST /listings  (Bearer token)
   → JwtAuthGuard: verify + re-read user from auth.users (active, verified)
   → RolesGuard: DEALER or ADMIN
   → ValidationPipe → CreateListingDto (enums derived from search constants)
-  → assertManualUploadAllowed: status='VERIFIED' (any dealerType — business
+  → assertManualUploadAllowed: status='VERIFIED' (any dealerType - business
     dealers may also use bulk upload, the two paths are not exclusive)
   → duplicate guard (same payload, same dealer, < 2 min)
   → buildSearchText + MiniLM embed  (never fatal)
@@ -552,7 +552,7 @@ POST /listings/:id/images
 ingestion-service ETL
   → writes vehicles rows: status='PENDING_REVIEW',
     normalization{fields,rowConfidence}, needs_manual_review, search_text, embedding
-  ↓  (invisible to every buyer-facing query — they all gate on status='LIVE')
+  ↓  (invisible to every buyer-facing query - they all gate on status='LIVE')
 GET /listings/mine?sort=confidence_asc
   → least-confident rows first, NULLS LAST
   → dealer reviews, PATCHes corrections
@@ -582,7 +582,7 @@ POST /favourites/:id       → authenticated, 409 if already saved
 The default `jest` config explicitly excludes `test/integration` and `test/e2e`, so
 a bare `npm test` runs unit specs only. Unit coverage mirrors the source tree almost
 one-to-one, with the heaviest concentration on the search parser, Groq whitelist and
-query builder — the places where a regression is both likely and invisible.
+query builder - the places where a regression is both likely and invisible.
 
 ---
 
@@ -599,7 +599,7 @@ These are factual notes from reading the code, not prescriptions.
 3. **`GET /dealers/:id` and `GET /dealers/:id/profile` are unauthenticated** and
    return `email` in the `DealerSummary`. Worth confirming that is intended, given
    the rest of the profile is genuinely public catalogue data.
-4. **`PUT /dealers/:id/profile` always 501s** — dead route plus an unused DTO.
+4. **`PUT /dealers/:id/profile` always 501s** - dead route plus an unused DTO.
 5. **One user-lookup query per authenticated request** (`JwtStrategy.validate`). A
    deliberate trade for immediate revocation, but it is the per-request cost floor.
 6. **The embedder is a per-process singleton with a ~90MB model.** In Lambda this
@@ -607,5 +607,5 @@ These are factual notes from reading the code, not prescriptions.
    mitigates the download but not the load.
 7. **`src/tools/reset-test-data.ts`** ships in `src/` and is compiled into `dist`.
 8. **Many empty `.gitkeep`-only directories** (`common/guards`, `common/pipes`,
-   `search/pgvector`, `search/trigram`, …) — scaffolding that was never filled,
+   `search/pgvector`, `search/trigram`, …) - scaffolding that was never filled,
    which can mislead a reader looking for where something lives.

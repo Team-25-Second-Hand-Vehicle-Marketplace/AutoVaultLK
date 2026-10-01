@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 /**
  * How admin-service resolves a stored verification-document key
  * (DealerProfileView.verificationDocuments) into a URL an admin's browser
- * can fetch. Mirrors auth-user-service's config of the same name exactly —
+ * can fetch. Mirrors auth-user-service's config of the same name exactly -
  * duplicated rather than shared because these are separate deployables, the
  * same reason marketplace-service and auth-user-service each carry their own
  * copy of the equivalent image-serving config.

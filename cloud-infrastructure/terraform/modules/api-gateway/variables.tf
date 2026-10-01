@@ -32,7 +32,7 @@ variable "public_lambda_integrations" {
   default     = {}
 }
 
-# Same shape, for the internal (east-west) API — e.g.
+# Same shape, for the internal (east-west) API - e.g.
 # { notifications = notification_invoke_arn, internal = auth_invoke_arn }
 variable "internal_lambda_integrations" {
   type        = map(string)

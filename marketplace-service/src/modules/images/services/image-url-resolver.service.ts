@@ -10,16 +10,16 @@ import {
 /**
  * Turns a stored object key (`images/{jobId}/{vehicleId}/0-x.jpg`, as written
  * by ingestion-service's image-processing stage) into something a browser can
- * actually fetch — or into nothing, deliberately, when there is nothing
+ * actually fetch - or into nothing, deliberately, when there is nothing
  * honest to return.
  *
  * NFR-19: "Vehicle images shall not be publicly writable; access shall be
  * via signed URLs." Before this existed, vehicle-search.repository.ts and
  * recommendations.repository.ts handed the raw key straight to the frontend
- * as `imageUrl`, which an <img src> cannot resolve — see FR-Traceability's
+ * as `imageUrl`, which an <img src> cannot resolve - see FR-Traceability's
  * "Empty until image upload is wired up" note on the DTO.
  *
- * **`s3` mode signs locally.** `getSignedUrl` computes a SigV4 signature —
+ * **`s3` mode signs locally.** `getSignedUrl` computes a SigV4 signature -
  * it never calls AWS. That is what makes it safe to call once per image on
  * every search result row: it costs a small amount of CPU, not a network
  * round trip, so resolving 20 rows' worth of images inline in a search
@@ -34,7 +34,7 @@ export class ImageUrlResolverService {
   constructor(private readonly config: ConfigService) {}
 
   /**
-   * Resolves one stored key, or passes through `null` unchanged — a vehicle
+   * Resolves one stored key, or passes through `null` unchanged - a vehicle
    * with no image is not an error at any layer, all the way out to the
    * frontend's own placeholder fallback (VehicleCard.tsx already does
    * `imageUrl ?? demoImageFor(...)`, so returning null here is what makes
@@ -47,7 +47,7 @@ export class ImageUrlResolverService {
 
     switch (cfg.mode) {
       case 'demo':
-        // Deliberately not "return key" — an un-presigned S3 key or a raw
+        // Deliberately not "return key" - an un-presigned S3 key or a raw
         // filesystem path is not a URL a browser can fetch either way, and
         // returning it here would be a *worse* failure than null: an <img>
         // that visibly 404s instead of falling back to a placeholder photo.
@@ -66,7 +66,7 @@ export class ImageUrlResolverService {
   }
 
   /**
-   * Points at the streaming route this module's controller exposes — see
+   * Points at the streaming route this module's controller exposes - see
    * images.controller.ts, which reads MARKETPLACE_IMAGES_LOCAL_ROOT itself
    * rather than this service needing it. Encoded because a dealer-supplied
    * filename (sanitizeKeyPart aside) can still contain characters a raw path
@@ -81,7 +81,7 @@ export class ImageUrlResolverService {
     cfg: Extract<ImageServeConfig, { mode: 's3' }>,
   ): Promise<string | null> {
     if (!cfg.bucket) {
-      // Logged once per process rather than once per request — a missing
+      // Logged once per process rather than once per request - a missing
       // bucket name is a deployment misconfiguration, not a per-row event,
       // and a search response returning 20 identical warnings would drown
       // out everything else in the log.
@@ -102,7 +102,7 @@ export class ImageUrlResolverService {
       });
     } catch (err) {
       // A presign failure (bad credentials, SDK misconfiguration) must not
-      // fail the whole search response — one vehicle photo among twenty
+      // fail the whole search response - one vehicle photo among twenty
       // failing to sign should degrade to that one card's placeholder, not
       // a 500 for every dealer's listing.
       const message = err instanceof Error ? err.message : String(err);

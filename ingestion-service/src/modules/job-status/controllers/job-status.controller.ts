@@ -38,7 +38,7 @@ export class JobStatusController {
   }
 
   /**
-   * The dealer's own upload history — lets the Bulk Upload area point back at
+   * The dealer's own upload history - lets the Bulk Upload area point back at
    * a past job's rejection report after the dealer has navigated away, not
    * just the one that happens to still be running. Registered before ':id'
    * for the same reason as 'active': Nest would otherwise parse "mine" as a
@@ -62,7 +62,7 @@ export class JobStatusController {
 
   /**
    * FR-57: the row-level error report behind the aggregate counts on
-   * GET /jobs/{id}. Paginated — a file where every row failed would otherwise
+   * GET /jobs/{id}. Paginated - a file where every row failed would otherwise
    * return the entire batch in one response.
    */
   @Get(':id/rejections')

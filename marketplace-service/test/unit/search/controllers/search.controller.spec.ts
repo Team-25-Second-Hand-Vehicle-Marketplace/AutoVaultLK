@@ -6,7 +6,7 @@ import { FilterSearchDto } from '../../../../src/modules/search/dto/filter-searc
  * Controller-level contract: which collaborator each route delegates to, and
  * the HTTP shape it produces.
  *
- * The routing decisions here are deliberate and easy to regress —
+ * The routing decisions here are deliberate and easy to regress -
  * /search/facets goes straight to the repository specifically to avoid the
  * full search path, and /search/vehicles/:id must convert a null into a 404
  * rather than returning an empty body. Both are asserted below.
@@ -56,7 +56,7 @@ function makeController() {
   };
 }
 
-describe('SearchController — GET /search/filters', () => {
+describe('SearchController - GET /search/filters', () => {
   it('delegates to the search service with the validated dto', async () => {
     const { controller, filterSearchService } = makeController();
     const dto: FilterSearchDto = { make: ['Toyota'], maxPrice: 5_000_000 };
@@ -75,7 +75,7 @@ describe('SearchController — GET /search/filters', () => {
   });
 });
 
-describe('SearchController — GET /search/facets', () => {
+describe('SearchController - GET /search/facets', () => {
   it('goes straight to the repository, bypassing the full search path', async () => {
     const { controller, repository, filterSearchService } = makeController();
 
@@ -89,7 +89,7 @@ describe('SearchController — GET /search/facets', () => {
   });
 });
 
-describe('SearchController — GET /search/vehicles/:id', () => {
+describe('SearchController - GET /search/vehicles/:id', () => {
   const ID = '11111111-1111-4111-8111-111111111111';
 
   it('returns the vehicle when one is found', async () => {
@@ -117,7 +117,7 @@ describe('SearchController — GET /search/vehicles/:id', () => {
   });
 });
 
-describe('SearchController — GET /search/options', () => {
+describe('SearchController - GET /search/options', () => {
   it('passes the vehicle type through for type-scoped dropdowns', async () => {
     const { controller, optionsService } = makeController();
 
@@ -135,7 +135,7 @@ describe('SearchController — GET /search/options', () => {
   });
 });
 
-describe('SearchController — GET /search/stats', () => {
+describe('SearchController - GET /search/stats', () => {
   it('delegates to the options service', async () => {
     const { controller, optionsService } = makeController();
     const stats = { vehicleCount: 87, dealerCount: 5 };

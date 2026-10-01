@@ -10,7 +10,7 @@ export type NotifyOutput = AggregateOutput & {
  * Step Functions state: Notify. Tells the dealer their upload finished.
  *
  * **Never throws.** Every row is already in marketplace.vehicles by the time
- * this runs, so a notification-service outage must not fail the execution —
+ * this runs, so a notification-service outage must not fail the execution -
  * that would mark a successful upload FAILED and invite the dealer to upload
  * again, duplicating work that already landed. Failure is recorded as a
  * DEGRADED stage log carrying the reason, and the job's own status is left
@@ -53,7 +53,7 @@ export const handler = async (input: AggregateOutput): Promise<NotifyOutput> => 
 
     return { ...input, notified: result.metrics.sent };
   } catch (err) {
-    // Reaching here means something outside the client failed — a database
+    // Reaching here means something outside the client failed - a database
     // read, most likely. Still not a reason to fail the execution.
     await log
       .finish(logId, 'DEGRADED', {

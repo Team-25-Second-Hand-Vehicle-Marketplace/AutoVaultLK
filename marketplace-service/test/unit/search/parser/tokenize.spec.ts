@@ -33,7 +33,7 @@ describe('tokenize', () => {
   });
 
   it('skips over stopwords when looking for the nearest meaningful neighbour', () => {
-    // "car" ... "for" (stopword) ... "500k" — "for" should not block car from
+    // "car" ... "for" (stopword) ... "500k" - "for" should not block car from
     // seeing 500k, but car itself is two tokens away so digitAdjacent should
     // reflect the true nearest non-stopword token, not the immediate one.
     const tokens = tokenize('car for 500k');

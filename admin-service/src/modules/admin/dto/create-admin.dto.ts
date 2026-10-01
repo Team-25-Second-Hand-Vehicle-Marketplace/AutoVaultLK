@@ -1,7 +1,7 @@
 import { IsEmail, IsNotEmpty, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 
 /**
- * Body for POST /admin/users — FR-12's "or an authenticated Administrator"
+ * Body for POST /admin/users - FR-12's "or an authenticated Administrator"
  * provisioning path. There is no public registration route for ADMIN.
  *
  * The password rules mirror FR-06 as enforced at registration. Validating

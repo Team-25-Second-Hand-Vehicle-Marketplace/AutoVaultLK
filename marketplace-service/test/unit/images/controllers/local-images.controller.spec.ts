@@ -112,7 +112,7 @@ describe('LocalImagesController', () => {
 
   it('joins multi-segment wildcard params back into the original key', async () => {
     // NestJS 11's *key wildcard hands back one array entry per path
-    // segment, not the joined string — this is the behaviour the resolver
+    // segment, not the joined string - this is the behaviour the resolver
     // (ImageUrlResolverService) relies on to reconstruct the object key it
     // originally built the URL from.
     const file = await controller().stream([

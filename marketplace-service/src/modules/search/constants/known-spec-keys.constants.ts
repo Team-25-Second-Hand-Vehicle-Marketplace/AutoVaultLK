@@ -38,12 +38,12 @@ export const KNOWN_SPEC_KEYS = {
   // in bulk uploads ("full option", "alloy wheels") and as words in buyer
   // queries; declaring them here is what makes them filterable at all, since
   // filter-query.builder.ts rejects any key absent from this table. Applies
-  // to any vehicle_type — a van or truck can have a sunroof too, so these are
+  // to any vehicle_type - a van or truck can have a sunroof too, so these are
   // not gated by category the way the keys below are (ingestion-service's
   // enrich.stage.ts CAR_SUV/BIKE/VAN_BUS/TRUCK tables).
   //
   // Anything a dealer supplies that is NOT listed here is appended to the
-  // listing's description instead of being dropped — see
+  // listing's description instead of being dropped - see
   // ingestion-service .../enrich.stage.ts. It stays searchable as text without
   // adding an unqueryable key to specs.
   full_option: { type: 'bool' },
@@ -55,7 +55,7 @@ export const KNOWN_SPEC_KEYS = {
 
   // Category-specific attributes (SRS Appendix B.2). Each is only ever
   // written by enrich.stage.ts when the row's vehicle_type matches the
-  // category it describes — a CAR row with an axle_count column does not get
+  // category it describes - a CAR row with an axle_count column does not get
   // this key, so a search facet offering "Axle count" never applies to a car.
   // CAR/SUV's own category keys (seats, doors, drive_type, sunroof, airbags,
   // body_type) are already declared above, shared with the general list.

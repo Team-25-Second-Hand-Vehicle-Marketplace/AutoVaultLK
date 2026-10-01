@@ -50,7 +50,7 @@ variable "existing_oidc_provider_arn" {
 
 variable "ecr_repository_arns" {
   type        = list(string)
-  description = "The 4 service ECR repo ARNs — from each modules.lambda instance's output"
+  description = "The 4 service ECR repo ARNs - from each modules.lambda instance's output"
 }
 
 variable "lambda_function_arns" {
@@ -60,7 +60,7 @@ variable "lambda_function_arns" {
 
 variable "zip_lambda_function_arns" {
   type        = list(string)
-  description = "Zip-packaged Lambda function ARNs (deployed via S3 upload + UpdateFunctionCode --s3-bucket/--s3-key) — same UpdateFunctionCode/GetFunction grant as lambda_function_arns, just a separate list since they come from a different pipeline"
+  description = "Zip-packaged Lambda function ARNs (deployed via S3 upload + UpdateFunctionCode --s3-bucket/--s3-key) - same UpdateFunctionCode/GetFunction grant as lambda_function_arns, just a separate list since they come from a different pipeline"
   default     = []
 }
 

@@ -18,7 +18,7 @@ function renderNginxCorsBlock(config) {
   const methods = config.allowMethods.join(',');
 
   return [
-    '    # BEGIN CORS (generated from config/cors.json — run: npm run sync:cors)',
+    '    # BEGIN CORS (generated from config/cors.json - run: npm run sync:cors)',
     `    add_header Access-Control-Allow-Origin ${origin} always;`,
     `    add_header Access-Control-Allow-Credentials ${config.allowCredentials} always;`,
     `    add_header Access-Control-Allow-Headers "${headers}" always;`,

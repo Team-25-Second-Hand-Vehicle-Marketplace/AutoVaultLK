@@ -8,14 +8,14 @@ terraform {
 }
 
 # -----------------------------------------------------------------------------
-# One RDS Postgres instance (pgvector + pg_trgm — both are regular CREATE
+# One RDS Postgres instance (pgvector + pg_trgm - both are regular CREATE
 # EXTENSION statements on RDS, no custom parameter group needed) behind RDS
 # Proxy. The master password is AWS-managed (manage_master_user_password),
-# not a Terraform variable — apps read connection details from that
+# not a Terraform variable - apps read connection details from that
 # Secrets Manager secret, output below as master_user_secret_arn.
 #
 # Extensions and schema come from database/'s existing migrations
-# (`npm run migration:run` + `npm run grants`) — run once against
+# (`npm run migration:run` + `npm run grants`) - run once against
 # db_instance_endpoint after this applies. Terraform only provisions the
 # instance, not its contents.
 # -----------------------------------------------------------------------------
@@ -104,7 +104,7 @@ resource "aws_db_proxy" "this" {
     secret_arn  = aws_db_instance.this.master_user_secret[0].secret_arn
   }
 
-  # One auth block per service role — the proxy has no other way to know
+  # One auth block per service role - the proxy has no other way to know
   # these roles exist. Each secret must hold {username, password} JSON (see
   # modules/secrets' db_password secret version); a bare password string
   # isn't enough for the proxy to identify which role it's authenticating.

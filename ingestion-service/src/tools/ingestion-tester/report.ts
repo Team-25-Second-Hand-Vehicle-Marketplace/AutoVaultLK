@@ -4,8 +4,8 @@
  * reason), and every image's original-vs-compressed size with an embedded
  * preview of both.
  *
- * Queries mirror run-pipeline.ts's report()/reportPerRow() — same tables,
- * same row-number-to-registration matching — extended with per-image byte
+ * Queries mirror run-pipeline.ts's report()/reportPerRow() - same tables,
+ * same row-number-to-registration matching - extended with per-image byte
  * sizes (originalBytes tracked by the caller at generation time; processed/
  * thumbnail sizes read back from the object store here) and provenance from
  * vehicles.normalization (groqProvenance()'s shape: {source, confidence,
@@ -154,7 +154,7 @@ export async function buildReport(input: BuildReportInput): Promise<void> {
 
     const vehicle = reg ? loadedByRegistration.get(reg) : undefined;
     if (!vehicle) {
-      rowSections.push(rejectedRowHtml(rowNumber, raw, 'not found in either rejected_records or vehicles — check row offsets'));
+      rowSections.push(rejectedRowHtml(rowNumber, raw, 'not found in either rejected_records or vehicles - check row offsets'));
       continue;
     }
 
@@ -231,7 +231,7 @@ function escapeHtml(value: unknown): string {
 }
 
 function formatBytes(bytes: number | undefined): string {
-  if (bytes === undefined) return '—';
+  if (bytes === undefined) return '-';
   if (bytes < 1024) return `${bytes} B`;
   return `${(bytes / 1024).toFixed(1)} KB`;
 }
@@ -264,7 +264,7 @@ function fieldCell(vehicle: LoadedVehicle, field: string, label: string, value: 
         ? `<span class="badge badge--${escapeHtml(source)}">${escapeHtml(source)}</span>`
         : '';
 
-  return `<div class="field"><span class="field__label">${label}</span><span class="field__value">${escapeHtml(value ?? '—')}</span>${badge}</div>`;
+  return `<div class="field"><span class="field__label">${label}</span><span class="field__value">${escapeHtml(value ?? '-')}</span>${badge}</div>`;
 }
 
 function loadedRowHtml(rowNumber: number, vehicle: LoadedVehicle, imageRows: string[]): string {
@@ -371,7 +371,7 @@ function pageHtml(params: {
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Ingestion test report — ${escapeHtml(jobId)}</title>
+<title>Ingestion test report - ${escapeHtml(jobId)}</title>
 <style>
   :root { color-scheme: light dark; }
   body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 1100px; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }
@@ -421,7 +421,7 @@ function pageHtml(params: {
 
   <div class="notice">
     Vehicles land as <strong>PENDING_REVIEW</strong>, exactly like a real dealer bulk upload.
-    They will not appear in marketplace search or the public listing feed until approved —
+    They will not appear in marketplace search or the public listing feed until approved -
     open <strong>My Listings</strong> as this dealer and click Approve, or query the DB directly,
     before expecting to see them live.
   </div>
@@ -442,7 +442,7 @@ function pageHtml(params: {
     <thead><tr><th>Stage</th><th>Status</th><th>Chunks</th></tr></thead>
     <tbody>${stageRows}</tbody>
   </table>
-  <p>Job status: <strong>${escapeHtml(job.status)}</strong> — ${job.valid_records} valid / ${job.invalid_records} invalid of ${job.total_records}</p>
+  <p>Job status: <strong>${escapeHtml(job.status)}</strong> - ${job.valid_records} valid / ${job.invalid_records} invalid of ${job.total_records}</p>
 
   <h2>Rows</h2>
   ${rowSections.join('')}

@@ -12,9 +12,9 @@ export function parseAllowedOrigins(value?: string): string[] {
 /**
  * Mirrors auth-user-service's allowlist (configure-http-security.ts) instead
  * of the bare app.enableCors() this service used to run. In every deployed
- * environment this is belt-and-suspenders — API Gateway's own
+ * environment this is belt-and-suspenders - API Gateway's own
  * cors_configuration already terminates CORS for all public traffic before a
- * request reaches this Lambda — but it's what actually governs CORS for
+ * request reaches this Lambda - but it's what actually governs CORS for
  * local dev (api-gateway/local/nginx.conf passes requests straight through)
  * and for anything that ever bypasses the gateway.
  */

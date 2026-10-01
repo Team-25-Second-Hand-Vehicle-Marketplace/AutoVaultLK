@@ -4,7 +4,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * Extends vehicle_type beyond the original six.
  *
  * ⚠️ FOUR PLACES MUST AGREE (plan-b §risk-4). Changing this CHECK alone is
- * not enough — ingestion-service writes to marketplace.vehicles without
+ * not enough - ingestion-service writes to marketplace.vehicles without
  * importing marketplace's entities, so a mismatch fails at the database
  * with no compile-time warning:
  *   1. this CHECK constraint

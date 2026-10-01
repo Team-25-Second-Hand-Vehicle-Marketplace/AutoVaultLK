@@ -59,7 +59,7 @@ export class VerificationEmailService {
       }
       return true;
     } catch (err) {
-      // The token is in `link` — never log it.
+      // The token is in `link` - never log it.
       const reason = err instanceof Error ? err.message : String(err);
       this.logger.error(`Verification email to ${to} failed: ${reason}`);
       return false;

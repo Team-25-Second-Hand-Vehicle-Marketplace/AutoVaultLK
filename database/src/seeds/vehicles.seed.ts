@@ -158,7 +158,7 @@ async function seed() {
       `INSERT INTO auth.users (email, password_hash, name, role, is_active)
        VALUES ($1, $2, $3, 'DEALER', true)
        ON CONFLICT (email) DO NOTHING`,
-      // Not a real hash — these accounts are never logged into. Seed data only.
+      // Not a real hash - these accounts are never logged into. Seed data only.
       [d.email, 'SEEDED_ACCOUNT_NOT_LOGGABLE', d.name],
     );
 

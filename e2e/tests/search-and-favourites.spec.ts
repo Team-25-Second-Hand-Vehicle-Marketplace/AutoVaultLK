@@ -13,13 +13,13 @@ import { VerifyEmailPage } from '../pages/VerifyEmailPage';
  * Uses filtered search (a direct /search?... URL) rather than the
  * HeroSearch NL box: NL search runs through Groq when GROQ_API_KEY is set,
  * or the deterministic parser otherwise (marketplace-service's
- * groq-fallback.service.ts) — either path is a parsing/ranking concern
+ * groq-fallback.service.ts) - either path is a parsing/ranking concern
  * already covered at the unit and API-level test suites. This journey is
  * about navigation and the save/favourite round-trip, which filtered search
  * exercises without depending on parser confidence or an external LLM call.
  *
  * The local catalogue is seeded (database/src/seeds/vehicles.seed.ts, run
- * manually, not CI-enforced) — confirmed non-empty via a direct API probe
+ * manually, not CI-enforced) - confirmed non-empty via a direct API probe
  * before writing this. No fixture is created here; the test asserts a
  * result exists rather than assuming a specific listing, so it stays valid
  * however the seed data is regenerated.
@@ -71,7 +71,7 @@ test('buyer can search, open a listing, save it, and find it on their saved page
   await searchPage.gotoWithFilters({ page: '1', limit: '20' });
 
   const firstResult = await searchPage.firstResult();
-  await expect(firstResult, 'search returned no results — is the local catalogue seeded?').toBeVisible();
+  await expect(firstResult, 'search returned no results - is the local catalogue seeded?').toBeVisible();
 
   const titleLink = firstResult.locator('.nx-card__title a');
   const title = (await titleLink.textContent())?.trim() ?? '';

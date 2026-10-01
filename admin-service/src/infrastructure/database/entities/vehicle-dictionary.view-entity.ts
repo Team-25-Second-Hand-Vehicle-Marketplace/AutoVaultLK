@@ -2,7 +2,7 @@ import { Column, Entity, PrimaryColumn } from 'typeorm';
 
 /**
  * Read-only projection of marketplace.vehicle_dictionaries.
- * admin_service_role holds SELECT only on the marketplace schema —
+ * admin_service_role holds SELECT only on the marketplace schema -
  * marketplace-service owns all writes, reached here through its
  * internal/dictionary API (MarketplaceInternalClient), not this connection.
  */

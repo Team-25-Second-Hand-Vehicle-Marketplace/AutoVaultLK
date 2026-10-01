@@ -5,7 +5,7 @@ export type SearchRankOptions = {
   queryEmbedding?: number[];
 
   embeddingWhere?: boolean;
-  /** Cutoff paired with embeddingWhere — see maxEmbeddingDistanceFor. */
+  /** Cutoff paired with embeddingWhere - see maxEmbeddingDistanceFor. */
   maxEmbeddingDistance?: number;
   /** Leftover text ranked with pg_trgm word_similarity (filter + trigram). */
   trigramQuery?: string;
@@ -18,13 +18,13 @@ export const LAST_RESORT_WORD_SIMILARITY = 0.3;
 export const MAX_EMBEDDING_DISTANCE = 0.7;
 
 /**
- * A one-word query embeds far more noisily than a full sentence — there is
+ * A one-word query embeds far more noisily than a full sentence - there is
  * simply less context for the model to place it precisely in vector space.
  * Measured directly against this catalog's seed data: the query "sporty"
  * sits at distance 0.811 from a listing whose own description says "Sporty
  * hatch, responsive steering" (the actually-relevant result), while
  * "family friendly vehicle" sits at 0.595 from an UNRELATED listing. A
- * single fixed cutoff cannot fit both — 0.7 is right for multi-word queries
+ * single fixed cutoff cannot fit both - 0.7 is right for multi-word queries
  * (tight enough to keep "family friendly" from returning motorbikes, per
  * the existing test) but wrongly excludes the best possible match for a
  * bare single word.

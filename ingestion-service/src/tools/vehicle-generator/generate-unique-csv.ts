@@ -3,7 +3,7 @@
 // result back out. vehicle-generator's own generateRegistration() returns
 // WP-0001, WP-0002... starting from 1 in EVERY invocation (confirmed by
 // reading its source), so two separately-generated files always collide on
-// marketplace.vehicles' real unique constraint on registration_number —
+// marketplace.vehicles' real unique constraint on registration_number -
 // this is what k6's dealer-ingestion-volume.js already works around at
 // upload time for CSV-only tests; the CSV+ZIP volume test needs the
 // uniqueness baked in at generation time instead, since the ZIP's image

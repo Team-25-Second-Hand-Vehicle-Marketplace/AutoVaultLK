@@ -1,10 +1,10 @@
 name: Load Test - Notification Delivery (manual)
 
-# Manual trigger only — same reasoning as load-test.yml. 15 concurrent VUs
+# Manual trigger only - same reasoning as load-test.yml. 15 concurrent VUs
 # each send one uniquely-keyed notification event plus a deliberately
 # shared idempotency key, to verify FR-53's "never send twice" guarantee
 # holds under real concurrency (04-load-testing.md section 4.5g). SES is
-# not exercised — SES_FROM_EMAIL is left empty, so delivery is logged
+# not exercised - SES_FROM_EMAIL is left empty, so delivery is logged
 # locally rather than attempted for real, same as the local run.
 on:
   workflow_dispatch:

@@ -16,7 +16,7 @@ export function saveSession(session: StoredSession): void {
   localStorage.setItem(ACCESS_TOKEN_KEY, session.accessToken)
   localStorage.setItem(USER_KEY, JSON.stringify(session.user))
   // The refresh token itself lives only in an httpOnly cookie the browser
-  // manages — this flag just records that one was issued, so the client
+  // manages - this flag just records that one was issued, so the client
   // knows a silent refresh is worth attempting. It carries no security
   // weight; the cookie (and the server-side token it points to) does that.
   localStorage.setItem(HAS_SESSION_KEY, '1')
@@ -48,7 +48,7 @@ export function getStoredUser(): AuthUser | null {
 }
 
 /**
- * Overwrites just the stored user (tokens untouched) — for after a
+ * Overwrites just the stored user (tokens untouched) - for after a
  * self-service profile edit (e.g. name), so a page refresh still shows the
  * new value instead of the one from login/registration.
  */

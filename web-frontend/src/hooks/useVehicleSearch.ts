@@ -218,7 +218,7 @@ export function useVehicleSearch() {
     [applyToUrl],
   )
 
-  // Sort acts immediately — it is a CONTROL_KEY, not a staged sidebar filter.
+  // Sort acts immediately - it is a CONTROL_KEY, not a staged sidebar filter.
   const setSort = useCallback(
     (sort: SortOption) => {
       applyToUrl({ ...appliedFilters, sort })
@@ -265,7 +265,7 @@ export function useVehicleSearch() {
     draft,
     updateDraft,
     updateDraftMany,
-    // Applied — bind result rendering, chips, and sort/pagination to these.
+    // Applied - bind result rendering, chips, and sort/pagination to these.
     appliedFilters,
     result,
     loading,

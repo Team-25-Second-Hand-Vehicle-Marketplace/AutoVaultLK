@@ -8,7 +8,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 export class SearchIndexes1735000014000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     // HNSW for cosine distance. Matches ORDER BY embedding <=> $1.
-    // Slow to build on large tables — expected.
+    // Slow to build on large tables - expected.
     await queryRunner.query(`
       CREATE INDEX idx_vehicles_embedding_hnsw
       ON marketplace.vehicles
@@ -16,21 +16,21 @@ export class SearchIndexes1735000014000 implements MigrationInterface {
       WITH (m = 16, ef_construction = 64)
     `);
 
-    // Keyword-exact layer (dealer names, trim codes) — the third of
+    // Keyword-exact layer (dealer names, trim codes) - the third of
     // "three layers, three jobs" alongside trgm and pgvector.
     await queryRunner.query(`
       CREATE INDEX idx_vehicles_search_vector
       ON marketplace.vehicles USING gin (search_vector)
     `);
 
-    // Trigram on search_text — ONLY for the gated last-resort retrieval
+    // Trigram on search_text - ONLY for the gated last-resort retrieval
     // path (when nothing resolved). Never for re-matching resolved values.
     await queryRunner.query(`
       CREATE INDEX idx_vehicles_search_text_trgm
       ON marketplace.vehicles USING gin (search_text gin_trgm_ops)
     `);
 
-    // specs JSONB — supports specFilters lookups (body_type, seats,
+    // specs JSONB - supports specFilters lookups (body_type, seats,
     // sunroof, airbags, etc.) via specs->>'key' filter clauses.
     await queryRunner.query(`
       CREATE INDEX idx_vehicles_specs ON marketplace.vehicles USING gin (specs)

@@ -11,7 +11,7 @@ import { getContext, stageContext } from './bootstrap';
  * belongs to the pipeline lives in the stage or in `asChunkStage`, so
  * `LocalOrchestrator` and Step Functions run identical code.
  *
- * Errors propagate. ASL's Retry and Catch are what handle them — a handler
+ * Errors propagate. ASL's Retry and Catch are what handle them - a handler
  * that swallowed a failure would return a well-formed envelope claiming the
  * stage succeeded, and the state machine would carry on with rows that were
  * never written.

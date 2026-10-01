@@ -2,14 +2,35 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toErrorMessage } from '../../api/client'
 import { buildTemplateCsv, getActiveJob, uploadInventory } from '../../api/ingestion.api'
-import { COLUMN_HELP, TEMPLATE_HEADER, isRequired } from '../../api/ingestion.template'
-import { KnownValuesReference } from '../../components/dealers/KnownValuesReference'
+import { BulkUploadFieldsDialog } from '../../components/dealers/BulkUploadFieldsDialog'
+import { BulkUploadGuide } from '../../components/dealers/BulkUploadGuide'
+import { KnownValuesDialog } from '../../components/dealers/KnownValuesDialog'
 import { Button } from '../../components/ui/Button'
 import { ErrorBanner } from '../../components/ui/ErrorBanner'
 
 /** Matches INGESTION_MAX_UPLOAD_MB, so an oversize file fails here, not after the upload. */
 const MAX_UPLOAD_MB = 25
 const MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024
+
+const GUIDE_DISMISSED_KEY = 'autovault.bulkUploadGuideDismissed'
+
+// Storage can be unavailable (private windows, blocked site data); the guide
+// then simply shows every visit, which is the safe direction to fail.
+function guideDismissed(): boolean {
+  try {
+    return localStorage.getItem(GUIDE_DISMISSED_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function rememberGuideDismissed() {
+  try {
+    localStorage.setItem(GUIDE_DISMISSED_KEY, '1')
+  } catch {
+    /* nothing to do */
+  }
+}
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -54,13 +75,17 @@ export function BulkUploadPage() {
   const [progress, setProgress] = useState(0)
   // Gates the form so it never flashes before a redirect to an active job.
   const [checkingActive, setCheckingActive] = useState(true)
+  // Opens on arrival unless the dealer opted out; the header button reopens it.
+  const [guideOpen, setGuideOpen] = useState(() => !guideDismissed())
+  const [fieldsOpen, setFieldsOpen] = useState(false)
+  const [knownOpen, setKnownOpen] = useState(false)
 
   const csvInput = useRef<HTMLInputElement>(null)
   const zipInput = useRef<HTMLInputElement>(null)
 
   // A dealer who submitted, then navigated away while it was still
   // PENDING/PROCESSING, otherwise has no way back to that job's status short
-  // of the URL they were on — this sends them straight there instead of a
+  // of the URL they were on - this sends them straight there instead of a
   // blank form they could resubmit into.
   useEffect(() => {
     const controller = new AbortController()
@@ -76,7 +101,7 @@ export function BulkUploadPage() {
         setCheckingActive(false)
       },
       () => {
-        // A failed check should not block uploading a new file — worst case
+        // A failed check should not block uploading a new file - worst case
         // the dealer double-submits, which the pipeline already tolerates.
         if (!cancelled) setCheckingActive(false)
       },
@@ -126,6 +151,11 @@ export function BulkUploadPage() {
     URL.revokeObjectURL(url)
   }
 
+  const closeGuide = (dontShowAgain: boolean) => {
+    if (dontShowAgain) rememberGuideDismissed()
+    setGuideOpen(false)
+  }
+
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
     if (!csv || uploading) return
@@ -137,7 +167,7 @@ export function BulkUploadPage() {
     try {
       const accepted = await uploadInventory(csv, zip, setProgress)
       // The pipeline runs asynchronously, so there is nothing to wait for here
-      // — the status page polls from this point.
+      // - the status page polls from this point.
       navigate(`/dealer/uploads/${accepted.jobId}`, { replace: true })
     } catch (err) {
       setError(toErrorMessage(err, 'Upload failed. Please try again.'))
@@ -157,9 +187,14 @@ export function BulkUploadPage() {
 
   return (
     <div className="dealer-page">
-      <header className="dealer-page__header">
-        <h1>Bulk upload</h1>
-        <p>Upload your inventory as a CSV, with an optional archive of photos.</p>
+      <header className="dealer-page__header dealer-page__header--split">
+        <div>
+          <h1>Bulk upload</h1>
+          <p>Upload your inventory as a CSV, with an optional archive of photos.</p>
+        </div>
+        <Button variant="ghost" size="sm" onClick={() => setGuideOpen(true)}>
+          Instructions
+        </Button>
       </header>
 
       <ErrorBanner message={error} />
@@ -168,9 +203,17 @@ export function BulkUploadPage() {
         <section className="upload-card">
           <div className="upload-card__head">
             <h2>1. Inventory file</h2>
-            <Button variant="ghost" size="sm" onClick={downloadTemplate}>
-              Download template
-            </Button>
+            <div className="upload-card__tools">
+              <Button variant="ghost" size="sm" onClick={() => setFieldsOpen(true)}>
+                View fields
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setKnownOpen(true)}>
+                Known makes &amp; models
+              </Button>
+              <Button variant="ghost" size="sm" onClick={downloadTemplate}>
+                Download template
+              </Button>
+            </div>
           </div>
 
           <label className="upload-field" htmlFor="csv-input">
@@ -227,38 +270,15 @@ export function BulkUploadPage() {
         </div>
       </form>
 
-      <KnownValuesReference />
-
-      <section className="upload-card">
-        <h2>Columns</h2>
-        <p className="dealer-muted">
-          Only the required columns must be present. Common header spellings are
-          recognised automatically, so an export from your own system usually works
-          unedited.
-        </p>
-
-        <div className="upload-columns">
-          <table className="upload-columns__table">
-            <thead>
-              <tr>
-                <th scope="col">Column</th>
-                <th scope="col">Notes</th>
-              </tr>
-            </thead>
-            <tbody>
-              {TEMPLATE_HEADER.map((column) => (
-                <tr key={column}>
-                  <th scope="row">
-                    <code>{column}</code>
-                    {isRequired(column) && <span className="upload-required"> required</span>}
-                  </th>
-                  <td>{COLUMN_HELP[column]}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <BulkUploadGuide
+        open={guideOpen}
+        onClose={closeGuide}
+        onViewFields={() => setFieldsOpen(true)}
+        onViewKnown={() => setKnownOpen(true)}
+        onDownloadTemplate={downloadTemplate}
+      />
+      <BulkUploadFieldsDialog open={fieldsOpen} onClose={() => setFieldsOpen(false)} />
+      <KnownValuesDialog open={knownOpen} onClose={() => setKnownOpen(false)} />
     </div>
   )
 }

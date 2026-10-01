@@ -32,7 +32,7 @@ describe('Terraform API Gateway module', () => {
 
   it('drives public and internal routes/integrations from their respective lambda-integration variable maps', () => {
     // One integration + two routes (bare and {proxy+}) per for_each map, for
-    // each of the public and internal APIs — matching nginx's `location
+    // each of the public and internal APIs - matching nginx's `location
     // /prefix/` also serving an exact hit on `/prefix`.
     for (const boundary of ['public', 'internal']) {
       const integrationRe = new RegExp(

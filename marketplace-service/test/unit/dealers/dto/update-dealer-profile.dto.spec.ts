@@ -8,7 +8,7 @@ function validate(body: Record<string, unknown>) {
 }
 
 describe('UpdateDealerProfileDto', () => {
-  it('accepts an empty body — every field is optional', () => {
+  it('accepts an empty body - every field is optional', () => {
     expect(validate({})).toHaveLength(0);
   });
 

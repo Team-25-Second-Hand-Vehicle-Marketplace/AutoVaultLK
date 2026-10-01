@@ -1,6 +1,6 @@
 name: Load Test - Admin Service (manual)
 
-# Manual trigger only — same reasoning as load-test.yml. 10 concurrent
+# Manual trigger only - same reasoning as load-test.yml. 10 concurrent
 # sessions sharing one real admin login, hitting dashboard/users/uploads/
 # audit-logs for ~80 seconds.
 on:

@@ -7,7 +7,7 @@
  * reuses in-process, not by shelling out) and run-pipeline.ts (whose job
  * creation / orchestrator invocation this also reuses). Built because manual
  * testing so far meant three separate commands plus reading a wall of
- * console.table output — this exists to make one full pipeline pass
+ * console.table output - this exists to make one full pipeline pass
  * reviewable as a single artifact.
  *
  *   npx ts-node src/tools/ingestion-tester/ingestion-tester.ts --count 50
@@ -15,10 +15,10 @@
  *   npx ts-node src/tools/ingestion-tester/ingestion-tester.ts --count 50 --images-per-vehicle 3
  *   npx ts-node src/tools/ingestion-tester/ingestion-tester.ts --count 50 --no-images
  *
- * Run with ts-node, not tsx — see run-pipeline.ts's comment: Nest's DI needs
+ * Run with ts-node, not tsx - see run-pipeline.ts's comment: Nest's DI needs
  * emitDecoratorMetadata's type-checking pass, which tsx skips.
  *
- * Vehicles land as PENDING_REVIEW, exactly like a real dealer's bulk upload —
+ * Vehicles land as PENDING_REVIEW, exactly like a real dealer's bulk upload -
  * this tool does not auto-approve them to LIVE. The report says so plainly so
  * "not visible in marketplace search yet" is never mistaken for a bug.
  */
@@ -111,7 +111,7 @@ function runFolderName(): string {
 
 /**
  * Registrations from generateVehicle collide across runs (deterministic
- * WP-0001.. sequence) — the same problem worked around by hand with a prefix
+ * WP-0001.. sequence) - the same problem worked around by hand with a prefix
  * swap in earlier manual testing. Each run gets its own short random prefix
  * instead, so re-running this tool never collides with a previous run's rows
  * still sitting in the database.
@@ -176,7 +176,7 @@ async function main(): Promise<void> {
     console.log(`zip      ${zipPath} (${generatedImages.length} images)`);
   }
 
-  // 3. Run the real pipeline, in-process — same providers, same connection
+  // 3. Run the real pipeline, in-process - same providers, same connection
   // pool run-pipeline.ts uses, so this proves what production code actually
   // does, not a hand-rolled subset of it.
   const app = await NestFactory.createApplicationContext(AppModule, {

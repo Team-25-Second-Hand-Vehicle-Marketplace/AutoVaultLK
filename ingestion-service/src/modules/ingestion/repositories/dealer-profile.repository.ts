@@ -23,7 +23,7 @@ export class DealerProfileRepository {
 
   /**
    * True only for a VERIFIED business dealer. A missing profile is false, not
-   * an error — a BUYER holding a valid JWT simply has no dealer profile, and
+   * an error - a BUYER holding a valid JWT simply has no dealer profile, and
    * the caller turns that into 403 rather than 500.
    */
   async isVerifiedBusinessDealer(userId: string): Promise<boolean> {

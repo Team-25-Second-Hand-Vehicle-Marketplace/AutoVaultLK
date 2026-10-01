@@ -16,8 +16,9 @@ import { BarRow } from '../../components/admin/BarRow'
 import { LineChart } from '../../components/admin/LineChart'
 import { PieChart } from '../../components/admin/PieChart'
 import { formatDate } from '../../utils/format'
+import { humanizeEnum } from '../../components/search/vehicle-format'
 
-/** A status's reserved app color, by CSS custom property name — the same
+/** A status's reserved app color, by CSS custom property name - the same
  * tokens the Pill component already uses, so a "failed" bar and a "failed"
  * pill never disagree with each other. */
 const LISTING_STATUS_COLOR: Record<string, string> = {
@@ -42,7 +43,7 @@ const reportsError = (err: unknown) => toErrorMessage(err, 'Could not load repor
 const activityError = (err: unknown) => toErrorMessage(err, 'Could not load recent activity.')
 const timeSeriesError = (err: unknown) => toErrorMessage(err, 'Could not load daily activity.')
 
-/** The window the "by the numbers" sections summarise — matches the default AdminReportsPage opens with. */
+/** The window the "by the numbers" sections summarise - matches the default AdminReportsPage opens with. */
 const REPORT_WINDOW_DAYS = 30
 
 interface AsyncSlice<T> {
@@ -53,7 +54,7 @@ interface AsyncSlice<T> {
 
 /**
  * The dashboard's markup, taking its three data sources as plain props
- * rather than fetching them itself — AdminDashboardPage below is the only
+ * rather than fetching them itself - AdminDashboardPage below is the only
  * real caller, wiring these to useAsyncData, but keeping this half
  * fetch-free is what lets AdminDashboardPreviewPage render the exact same
  * page from fixed mock data, with no login and no backend, for a quick
@@ -71,7 +72,7 @@ export function AdminDashboardView({
   timeSeries: AsyncSlice<AdminTimeSeries>
 }) {
   // Tone reflects what the number means: a healthy count is --success, a
-  // queue that needs action is --warning-text (only while it's non-empty —
+  // queue that needs action is --warning-text (only while it's non-empty -
   // an empty queue is not a warning), and a plain informational count stays
   // the neutral --accent. Same reserved tokens the charts already use.
   const kpis = [
@@ -258,7 +259,7 @@ export function AdminDashboardView({
                 <div className="admin-trend">
                   <h3 className="admin-trend__title">Upload success rate</h3>
                   <PieChart
-                    // jobRates gives a rate, not a count — the pie's legend
+                    // jobRates gives a rate, not a count - the pie's legend
                     // shows each slice's raw value beside its percentage, and
                     // a raw 0.95 next to "95%" reads as a confusing repeat of
                     // the same number. Recovering the whole-job count back
@@ -288,7 +289,7 @@ export function AdminDashboardView({
                       ]
                     })()}
                     // Warning, not danger: a partial job still loaded most of
-                    // its rows — the same distinction UPLOAD_STATUS_COLOR
+                    // its rows - the same distinction UPLOAD_STATUS_COLOR
                     // already draws between PARTIAL and FAILED.
                     colors={['var(--success)', 'var(--warning-text)']}
                   />
@@ -318,9 +319,9 @@ export function AdminDashboardView({
             <ul className="activity-feed">
               {activity.data.slice(0, 6).map((log) => (
                 <li key={log.id} className="activity-feed__item">
-                  <Pill>{log.action}</Pill>
+                  <Pill>{humanizeEnum(log.action)}</Pill>
                   <span className="activity-feed__entity">
-                    {log.entityType}
+                    {humanizeEnum(log.entityType)}
                     {log.entityId ? ` · ${log.entityId.slice(0, 8)}…` : ''}
                   </span>
                   <span className="activity-feed__when">{formatDate(log.createdAt)}</span>
@@ -346,7 +347,7 @@ export function AdminDashboardPage() {
   const reports = useAsyncData<AdminReports>(fetchReports, reportsError)
 
   // The audit page's own endpoint already returns most-recent-first, capped
-  // at 200 server-side — this just takes the first handful for a preview.
+  // at 200 server-side - this just takes the first handful for a preview.
   const fetchActivity = useCallback((signal: AbortSignal) => searchAuditLogs({}, signal), [])
   const activity = useAsyncData<AdminAuditLog[]>(fetchActivity, activityError)
 

@@ -28,7 +28,7 @@ export type DictionaryEntrySummary = {
  * Read/write for the admin "New vehicle types" tab.
  *
  * The candidate query and the dictionary lookup both read across schemas
- * admin_service_role only holds SELECT on (ingestion, marketplace) — this
+ * admin_service_role only holds SELECT on (ingestion, marketplace) - this
  * repository never writes to either; `dismiss` is the only write, and it
  * lands in admin's own schema. Promoting a candidate into the real
  * dictionary goes through MarketplaceInternalClient instead, the same way
@@ -53,7 +53,7 @@ export class DictionaryCandidatesRepository {
    * an admin previously dismissed.
    *
    * `reason LIKE` matches validateRows.stage.ts's `missing()` helper exactly
-   * (`make "X" could not be recognised`) — the one place in the pipeline
+   * (`make "X" could not be recognised`) - the one place in the pipeline
    * that produces this message. `raw_data->>'make'` is read directly rather
    * than parsed back out of the reason string, since it is the same value
    * structured rather than embedded in prose.

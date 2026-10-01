@@ -147,14 +147,14 @@ export class FilterSearchService {
             droppedFilters,
             priceCeilingExceeded,
             message: priceCeilingExceeded
-              ? `No exact matches — showing results after relaxing ${what}. Some results may exceed your budget.`
-              : `No exact matches — showing results after relaxing ${what}.`,
+              ? `No exact matches - showing results after relaxing ${what}. Some results may exceed your budget.`
+              : `No exact matches - showing results after relaxing ${what}.`,
           },
         };
       }
     }
 
-    return null; // truly nothing matches, even fully relaxed — return the empty result as-is
+    return null; // truly nothing matches, even fully relaxed - return the empty result as-is
   }
 
   private async logSearch(
@@ -196,7 +196,7 @@ function widen(value: number | undefined, fraction: number): number | undefined 
   return Math.round(value * (1 + fraction));
 }
 
-/** "a", "a and b", "a, b and c" — for the buyer-facing relaxation message. */
+/** "a", "a and b", "a, b and c" - for the buyer-facing relaxation message. */
 function formatList(items: string[]): string {
   if (items.length <= 1) return items[0] ?? '';
   return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;

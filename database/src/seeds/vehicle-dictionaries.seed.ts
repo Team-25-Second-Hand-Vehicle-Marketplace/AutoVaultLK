@@ -333,7 +333,7 @@ const MAKES: MakeSeed[] = [
 ];
 
 /**
- * Body types are a flat dictionary — no parent, no type scoping. "jeep" is
+ * Body types are a flat dictionary - no parent, no type scoping. "jeep" is
  * an alias for SUV here rather than a vehicle_type value, because locally it
  * describes a body style, not a category buyers filter on separately.
  */
@@ -371,13 +371,13 @@ async function seed() {
     // Conflict target is uq_vehicle_dictionaries_value_null_parent, NOT the
     // 3-column uq_vehicle_dictionaries_value. MAKE rows always have
     // parent_id = NULL, and Postgres never treats two NULLs as equal in a
-    // unique constraint, so the 3-column target never matches — the row
+    // unique constraint, so the 3-column target never matches - the row
     // reaches the partial index and raises 23505 instead, which is why
     // re-running this seed used to fail. A conflict target must name the
     // columns the index is built on plus its WHERE clause (migration 22000).
     //
     // RETURNING gives nothing on a conflict, so re-select to get the id on
-    // a re-run. Needed either way — models require the parent id.
+    // a re-run. Needed either way - models require the parent id.
     await ds.query(
       `INSERT INTO marketplace.vehicle_dictionaries
          (dictionary_type, parent_id, canonical_value, aliases, vehicle_types)
@@ -409,7 +409,7 @@ async function seed() {
 
   
   for (const body of BODY_TYPES) {
-    // parent_id = NULL, same as MAKE — partial-index conflict target.
+    // parent_id = NULL, same as MAKE - partial-index conflict target.
     await ds.query(
       `INSERT INTO marketplace.vehicle_dictionaries
          (dictionary_type, parent_id, canonical_value, aliases, vehicle_types)

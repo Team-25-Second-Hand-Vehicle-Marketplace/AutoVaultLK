@@ -53,7 +53,7 @@ export class UploadJobRepository {
     );
   }
 
-  /** Unscoped — pipeline use only. Dealer-facing reads go through JobStatusRepository. */
+  /** Unscoped - pipeline use only. Dealer-facing reads go through JobStatusRepository. */
   async findById(id: string): Promise<UploadJob | null> {
     return this.repo.findOne({ where: { id } });
   }

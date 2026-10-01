@@ -9,7 +9,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 
 /**
- * East-west client into marketplace-service (ADR-005) — a copy of
+ * East-west client into marketplace-service (ADR-005) - a copy of
  * AuthInternalClient's shape, since marketplace_service_role is the only
  * role with write access to marketplace.vehicle_dictionaries and
  * admin_service_role holds SELECT there only.

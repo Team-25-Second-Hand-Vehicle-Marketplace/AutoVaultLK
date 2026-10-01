@@ -43,7 +43,7 @@ export class JobStatusRepository {
    * The dealer's own most recent job that has not settled yet, if any.
    *
    * Lets the Bulk Upload page notice "you already have one running" on load
-   * rather than showing a blank form a dealer could resubmit into — a dealer
+   * rather than showing a blank form a dealer could resubmit into - a dealer
    * who submits, navigates away mid-processing, and comes back otherwise has
    * no way back to that job's status short of the URL they were on.
    */
@@ -59,7 +59,7 @@ export class JobStatusRepository {
   }
 
   /**
-   * The dealer's own upload history, newest first — lets a dealer find a past
+   * The dealer's own upload history, newest first - lets a dealer find a past
    * job's rejection report again after navigating away. Before this there was
    * no way back to a settled job's page short of the URL from right after it
    * finished; `getActiveJob` only ever covers the one still running.
@@ -97,7 +97,7 @@ export class JobStatusRepository {
    * who guesses a job id reads another dealer's rows if the ownership test is
    * ever moved, reordered or short-circuited. Joining through `upload_jobs` on
    * `dealer_id` makes a non-owner match zero rows by construction, which is the
-   * same answer a missing job gives — see the 404-not-403 note on the service.
+   * same answer a missing job gives - see the 404-not-403 note on the service.
    *
    * Ordered by row number so the report reads in file order. `stage` breaks the
    * tie: row 0 is the whole-file rejection and several stages can each record

@@ -40,13 +40,13 @@ const DEFAULTS: Required<ImageProcessingOptions> = {
 };
 
 // Sharp/libvips has no built-in timeout: decoding a genuinely malformed or
-// non-image buffer (corrupt upload, or — as found via k6 load testing —
+// non-image buffer (corrupt upload, or - as found via k6 load testing -
 // large random-byte content) can hang indefinitely rather than failing
 // fast, blocking this whole stage forever since callers await one image at
 // a time (process-job-images.service.ts's `for` loop). Bounding each
 // image's processing here turns that hang into an ordinary per-image
 // failure, which process-job-images.service.ts already knows how to skip
-// and continue past (isImageProcessingFailure/'failed' outcome) — so the
+// and continue past (isImageProcessingFailure/'failed' outcome) - so the
 // fix belongs at this layer, not the caller's.
 const DEFAULT_IMAGE_PROCESSING_TIMEOUT_MS = 15_000;
 

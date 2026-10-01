@@ -1,4 +1,4 @@
-# AutoVaultLK — User Evaluation Guide and SUS Task Sheet
+# AutoVaultLK - User Evaluation Guide and SUS Task Sheet
 
 ## 1. What AutoVaultLK Is
 
@@ -37,7 +37,7 @@ delete another user's data. If a section is unavailable for your account
 available** and continue.
 
 If you are testing the **dealer bulk-upload** task, use only the sample CSV
-file supplied by the evaluator — do not upload a real inventory file.
+file supplied by the evaluator - do not upload a real inventory file.
 
 ## 3. The Walkthrough
 
@@ -45,7 +45,7 @@ Work through the tasks below in order, for whichever role(s) you were given.
 If a task's account or feature was not provided to you, mark it **Not
 available** and move to the next one.
 
-### Part A — Buyer
+### Part A - Buyer
 
 1. **[Browser] Sign in as a buyer:** Open the system link and log in (or
    register a new account if you were not given one). Note whether it is
@@ -59,7 +59,7 @@ available** and move to the next one.
    removable chips.
 4. **[Browser] Search by typing a sentence:** In the search box, type a
    plain-language request such as *"toyota corolla under 8 million petrol"*
-   (a small typo is fine — try misspelling the make on purpose, e.g.
+   (a small typo is fine - try misspelling the make on purpose, e.g.
    *"toyata"*). Confirm relevant results still appear.
 5. **[Browser] Open a listing:** Click into a vehicle's detail page. Identify
    the price, specs, dealer information, and photos (or the placeholder
@@ -74,7 +74,7 @@ available** and move to the next one.
    page.
 9. **[Browser] Sign out.**
 
-### Part B — Dealer (if a dealer account was provided)
+### Part B - Dealer (if a dealer account was provided)
 
 10. **[Browser] Sign in at the dealer login page** (a different login page
     from the buyer one). Note whether it is clear this is a separate area.
@@ -96,7 +96,7 @@ available** and move to the next one.
     details page and note whether your verification status is clearly shown.
 17. **[Browser] Sign out.**
 
-### Part C — Admin (if an admin account was provided)
+### Part C - Admin (if an admin account was provided)
 
 18. **[Browser] Sign in at the admin login page.**
 19. **[Browser] Review the dashboard:** Identify the summary numbers shown.

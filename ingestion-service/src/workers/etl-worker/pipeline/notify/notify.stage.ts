@@ -36,7 +36,7 @@ export type NotifyResult = {
  * which it follows in the graph.
  */
 export async function runNotifyStage(input: NotifyInput): Promise<NotifyResult> {
-  // No key is the normal local and CI state — the pipeline is working as
+  // No key is the normal local and CI state - the pipeline is working as
   // designed, so this is SKIPPED rather than a warning.
   if (!isNotificationConfigured()) {
     return { outcome: 'SKIPPED', metrics: { type: null, sent: false } };
@@ -79,7 +79,7 @@ export async function runNotifyStage(input: NotifyInput): Promise<NotifyResult> 
  * PARTIAL maps to UPLOAD_COMPLETED, not UPLOAD_FAILED.
  *
  * The intake vocabulary has only the two, and a job that loaded most of its
- * rows is far closer to completed than to failed — the counts in the payload
+ * rows is far closer to completed than to failed - the counts in the payload
  * carry the nuance. Mapping it to UPLOAD_FAILED would tell a dealer whose 34
  * of 40 rows loaded that nothing worked.
  */
@@ -99,7 +99,7 @@ function summaryFor(input: NotifyInput): string {
   if (status === 'PARTIAL') {
     return (
       `${listings} from ${fileName} were created and are awaiting review. ` +
-      `${invalidRecords} row${invalidRecords === 1 ? ' was' : 's were'} skipped — ` +
+      `${invalidRecords} row${invalidRecords === 1 ? ' was' : 's were'} skipped - ` +
       'check the upload page for the reasons.'
     );
   }

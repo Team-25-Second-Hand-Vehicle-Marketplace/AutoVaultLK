@@ -1,15 +1,15 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 /**
- * Reference data — Option B (see plan-b-reads-cross-schemas.md §9). Owned
+ * Reference data - Option B (see plan-b-reads-cross-schemas.md §9). Owned
  * solely by marketplace-service. ingestion-service gets read-only access
  * (database/src/grants.sql) and caches a snapshot in memory rather than
  * querying per row. Alias promotion from ingestion goes through
- * marketplace's API, not a direct write — this keeps the platform to one
+ * marketplace's API, not a direct write - this keeps the platform to one
  * cross-schema write exception (ETL -> vehicles/vehicle_images) instead
  * of two.
  *
- * These are the backing tables for the make/model "dictionaries" — the
+ * These are the backing tables for the make/model "dictionaries" - the
  * large, typo-prone vocabularies that a hardcoded array can't handle and
  * that need pg_trgm fuzzy matching. Small closed enums (fuel_type,
  * transmission_type, condition, status) stay as hardcoded arrays + CHECK
@@ -47,7 +47,7 @@ export class MarketplaceReferenceData1735000007500 implements MigrationInterface
     `);
 
     // Polymorphic: entity_id points at makes.id or models.id depending on
-    // entity_type. No FK — Postgres can't express a conditional reference
+    // entity_type. No FK - Postgres can't express a conditional reference
     // across two tables. Integrity here is an application-level concern.
     await queryRunner.query(`
       CREATE TABLE marketplace.aliases (

@@ -3,7 +3,7 @@ import { Column, Entity, PrimaryColumn } from 'typeorm';
 /**
  * Read-only projection of marketplace.vehicles, for the admin dashboard
  * (listing counts, moderation queue). admin_service_role holds SELECT
- * only — approving/rejecting a listing goes through marketplace-service's
+ * only - approving/rejecting a listing goes through marketplace-service's
  * API, never a direct write here.
  */
 @Entity({ schema: 'marketplace', name: 'vehicles', synchronize: false })

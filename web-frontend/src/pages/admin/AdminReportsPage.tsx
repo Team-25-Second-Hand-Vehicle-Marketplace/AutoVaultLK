@@ -43,7 +43,7 @@ export function AdminReportsPage() {
   const initial = defaultRange()
   // Draft state (bound to the inputs) is separate from applied state (what's
   // actually fetched) so typing in a date field doesn't refetch on every
-  // keystroke — only "Run report" commits a draft into applied.
+  // keystroke - only "Run report" commits a draft into applied.
   const [draftFrom, setDraftFrom] = useState(initial.from)
   const [draftTo, setDraftTo] = useState(initial.to)
   const [appliedFrom, setAppliedFrom] = useState(initial.from)
@@ -51,7 +51,7 @@ export function AdminReportsPage() {
 
   // Auto-loads on mount for free: useAsyncData always fetches once on first
   // render, and appliedFrom/appliedTo already hold the default range at that
-  // point — no separate "run on mount" code path needed, which is exactly
+  // point - no separate "run on mount" code path needed, which is exactly
   // what the old ad-hoc useState-plus-onSubmit version below it was missing.
   const fetchReport = useCallback(
     (signal: AbortSignal) => getReports(toStartIso(appliedFrom), toEndIso(appliedTo), signal),
@@ -65,7 +65,7 @@ export function AdminReportsPage() {
     setAppliedTo(draftTo)
   }
 
-  // Rates, not counts — uploads.jobs (the one absolute count this DTO gives)
+  // Rates, not counts - uploads.jobs (the one absolute count this DTO gives)
   // recovers real job counts back out of them, the same derivation used for
   // the dashboard's upload-outcome pies, so the pie's legend shows something
   // an admin can act on instead of a raw 0.05 repeating the % beside it.
@@ -125,7 +125,7 @@ export function AdminReportsPage() {
       {data && (
         <article className="report-doc">
           <header className="report-doc__header">
-            <h2>AutoVault LK — Marketplace Report</h2>
+            <h2>AutoVault LK - Marketplace Report</h2>
             <p className="admin-muted">
               {formatDateLabel(appliedFrom)} – {formatDateLabel(appliedTo)} · Generated{' '}
               {new Date().toLocaleDateString('en-LK', {

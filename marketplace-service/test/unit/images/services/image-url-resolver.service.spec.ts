@@ -20,8 +20,8 @@ const configWith = (values: Record<string, string>): ConfigService =>
 /**
  * NFR-19: "Vehicle images shall not be publicly writable; access shall be
  * via signed URLs." What this guards is that every mode resolves a stored
- * key into something a browser can actually fetch — or, deliberately,
- * into nothing at all when there is nothing honest to return — rather than
+ * key into something a browser can actually fetch - or, deliberately,
+ * into nothing at all when there is nothing honest to return - rather than
  * handing the raw storage key straight through as if it were a URL (the
  * defect this whole module exists to fix).
  */
@@ -168,7 +168,7 @@ describe('ImageUrlResolverService', () => {
     });
 
     // A missing bucket is a real deployment misconfiguration, not a reason
-    // to 500 a search response — the whole page should still render, with
+    // to 500 a search response - the whole page should still render, with
     // this vehicle's card falling back to the frontend's placeholder.
     it('returns null rather than throwing when the bucket is unset', async () => {
       const resolver = new ImageUrlResolverService(

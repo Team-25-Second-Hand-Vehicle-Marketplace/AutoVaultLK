@@ -21,7 +21,7 @@ describe('RecommendationsService', () => {
   });
 
   it('404s for a vehicle that does not exist', async () => {
-    // Distinguishes "no such vehicle" from "no similar vehicles" — the second
+    // Distinguishes "no such vehicle" from "no similar vehicles" - the second
     // is a legitimate empty list, and conflating them would show an error page
     // for a rare car.
     repository.vehicleExists.mockResolvedValue(false);

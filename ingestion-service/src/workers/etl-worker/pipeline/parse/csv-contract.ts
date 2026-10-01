@@ -1,5 +1,5 @@
 /**
- * The dealer CSV contract — the single definition of what a bulk upload file
+ * The dealer CSV contract - the single definition of what a bulk upload file
  * must look like.
  *
  * This is a shared boundary, not an implementation detail: validateFile checks
@@ -13,7 +13,7 @@
 
 /**
  * Columns a file must carry to be processable at all. Their absence is a file
- * defect, not a row defect — there is no per-row rejection that could describe
+ * defect, not a row defect - there is no per-row rejection that could describe
  * "this file has no price column", so validateFile fails the whole job.
  *
  * `registration_number` is deliberately NOT required: unregistered imports are
@@ -25,6 +25,21 @@
  * updated SRS Appendix A: a listing missing any of these was judged too thin
  * for a buyer to evaluate, so a dealer file predating this column set is
  * rejected at the file gate rather than silently loading incomplete rows.
+ *
+ * `condition` joined them later: New / Used / Reconditioned is the first thing
+ * a buyer filters on, and relying on the USED default meant a dealer who never
+ * thought about the column quietly listed new stock as used. The column must
+ * exist; a blank cell in it is still defaulted to USED by the enrich stage
+ * rather than rejecting the row, the same way a blank is treated everywhere
+ * else the pipeline can infer a value.
+ *
+ * `vehicle_type` is the latest addition, for the same reason: leaving it to a
+ * silent default listed a bike or a lorry as a car, and the category-specific
+ * columns (stroke type, axle count, ...) are only read for the matching type,
+ * so a wrong type also lost those values. The column must exist. A blank cell
+ * is still filled from the matched make/model where that is unambiguous (a
+ * Hilux is a pickup), and a row whose type cannot be worked out either way is
+ * rejected by validateRows, with the reason, rather than guessed.
  */
 export const REQUIRED_COLUMNS = [
   'make',
@@ -38,40 +53,34 @@ export const REQUIRED_COLUMNS = [
   'engine_capacity_cc',
   'owners_count',
   'location_district',
+  'condition',
+  'vehicle_type',
 ] as const;
 
 /**
  * Every column the pipeline reads as a field or a spec.
  *
- * A column outside this set is not an error — dealers export from their own
+ * A column outside this set is not an error - dealers export from their own
  * DMS and routinely carry fields we have no schema for. Those are appended to
  * the listing's description by the enrich stage rather than dropped, so they
  * stay readable and searchable without adding an unqueryable key to specs.
  */
 export const KNOWN_COLUMNS = [
   ...REQUIRED_COLUMNS,
-  // Not in REQUIRED_COLUMNS: an absent/unrecognised value leaves
-  // Vehicle.vehicleType at its schema default ('CAR') via deriveVehicleType's
-  // dictionary fallback (parse-normalize.stage.ts) rather than failing the
-  // row — the SRS/SAD Appendix A table lists this as a required relational
-  // column, but making it a hard CSV requirement would reject every dealer
-  // file that predates this column for no benefit over the existing default.
-  'vehicle_type',
   'registration_number',
-  // fuel_type, transmission, color, engine_capacity_cc, owners_count and
-  // location_district already arrive via the REQUIRED_COLUMNS spread above —
+  // fuel_type, transmission, color, engine_capacity_cc, owners_count,
+  // location_district, condition and vehicle_type already arrive via the REQUIRED_COLUMNS spread above -
   // repeating them here would duplicate the column in every downloadable
   // template and in TEMPLATE_HEADER, which is exactly the header a dealer's
   // upload gets checked against.
   'body_type',
-  'condition',
   'location_city',
   'chassis_number',
   'description',
   'is_negotiable',
   'registration_year',
   // Spec columns. These land in specs jsonb via the enrich stage, and each has
-  // a matching entry in marketplace-service's KNOWN_SPEC_KEYS — without one the
+  // a matching entry in marketplace-service's KNOWN_SPEC_KEYS - without one the
   // value would be unqueryable.
   'seats',
   'doors',
@@ -85,7 +94,7 @@ export const KNOWN_COLUMNS = [
   'leather_seats',
   'power_steering',
   'air_conditioning',
-  // Category-gated columns (SRS Appendix B.2) — read into specs only when
+  // Category-gated columns (SRS Appendix B.2) - read into specs only when
   // the row's vehicle_type matches the category each one describes (BIKE,
   // VAN/BUS, TRUCK/LORRY/PICKUP). See enrich.stage.ts's CAR_SUV/BIKE/
   // VAN_BUS/TRUCK tables.
@@ -154,7 +163,7 @@ const HEADER_ALIASES: Record<string, KnownColumn> = {
  * Folds a raw header cell to its canonical column name.
  *
  * Excel writes a UTF-8 BOM at the start of the first cell, which would make
- * `﻿make` miss an exact comparison against `make` — a failure that is
+ * `﻿make` miss an exact comparison against `make` - a failure that is
  * invisible in every editor and reads as "the file has no make column". Strip
  * it here, once, rather than debugging it per dealer.
  */
@@ -172,7 +181,7 @@ export function normalizeHeader(header: string): string {
 /**
  * The header row of the downloadable dealer template (§B5).
  *
- * Every KNOWN_COLUMNS entry, in the same order — the template is a complete
+ * Every KNOWN_COLUMNS entry, in the same order - the template is a complete
  * reference of what the pipeline accepts, not just the minimum to pass
  * validateFile. Only REQUIRED_COLUMNS + registration_number are mandatory;
  * everything else may be left blank, but showing dealers the full set means

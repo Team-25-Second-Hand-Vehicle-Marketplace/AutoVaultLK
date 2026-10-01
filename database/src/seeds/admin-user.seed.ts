@@ -19,7 +19,7 @@ function assertPasswordMeetsPolicy(password: string): void {
 
   if (failures.length > 0) {
     throw new Error(
-      `ADMIN_SEED_PASSWORD does not meet the password policy — needs ${failures.join(', ')}.`,
+      `ADMIN_SEED_PASSWORD does not meet the password policy - needs ${failures.join(', ')}.`,
     );
   }
 }
@@ -71,7 +71,7 @@ async function seed() {
 
     throw new Error(
       `${email} already exists with role ${row.role}, not ADMIN. Refusing to ` +
-        'change the role of an existing account — use a different ' +
+        'change the role of an existing account - use a different ' +
         'ADMIN_SEED_EMAIL, or promote this user deliberately.',
     );
   }
@@ -81,7 +81,7 @@ async function seed() {
   if (wasExisting) {
     console.log(
       `Administrator ${email} already existed (id ${row.id}). Password NOT ` +
-        'changed — re-running this seed does not rotate credentials. Use the ' +
+        'changed - re-running this seed does not rotate credentials. Use the ' +
         'password reset flow to change it.',
     );
   } else {

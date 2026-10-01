@@ -1,11 +1,11 @@
 /**
- * Dice coefficient over padded trigram sets — a copy of
+ * Dice coefficient over padded trigram sets - a copy of
  * marketplace-service/src/modules/search/parser/trigram.ts.
  *
  * Kept byte-identical on purpose: ingestion and search must fold a dealer's
  * misspelling to the same canonical make. If the two used different similarity
  * functions, a row could ingest as "Toyota" and fail to match a query the
- * search side resolves to "Toyota" — the same class of silent divergence the
+ * search side resolves to "Toyota" - the same class of silent divergence the
  * normalize-embed parity test guards against.
  *
  * The padding (`  value `) mirrors Postgres pg_trgm's convention, so scores

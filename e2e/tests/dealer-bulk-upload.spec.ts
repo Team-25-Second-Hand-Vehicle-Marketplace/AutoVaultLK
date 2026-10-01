@@ -14,8 +14,8 @@ import { VerifyEmailPage } from '../pages/VerifyEmailPage';
  * Dealer bulk upload -> job-progress observation -> rejections review.
  *
  * Bulk upload is business-dealer-only (RequireDealerType type="business"
- * gates /dealer/upload — see App.tsx), so this registers a BUSINESS dealer
- * (with a real, tiny document upload — auth-user-service's
+ * gates /dealer/upload - see App.tsx), so this registers a BUSINESS dealer
+ * (with a real, tiny document upload - auth-user-service's
  * DocumentUploadService validates mimetype/size only, not real image
  * content, so a 68-byte 1x1 PNG fixture is sufficient) rather than reusing
  * the individual-dealer path from dealer-registration.spec.ts.
@@ -28,7 +28,7 @@ import { VerifyEmailPage } from '../pages/VerifyEmailPage';
  * listed") rather than exercising the single-row VALIDATE_ROWS rejection
  * this test is actually about.
  *
- * Row 1 is fully valid; row 2 has price=-100 — a guaranteed VALIDATE_ROWS
+ * Row 1 is fully valid; row 2 has price=-100 - a guaranteed VALIDATE_ROWS
  * rejection ("price must be greater than 0, got -100") with a single,
  * unambiguous failure reason, so the terminal status is predictably
  * PARTIAL and the rejections table has exactly one row to assert against.
@@ -68,9 +68,9 @@ test('verified business dealer can bulk upload, watch job progress, and review a
   const regA = `E2E-${randomUUID().slice(0, 8).toUpperCase()}`;
   const regB = `E2E-${randomUUID().slice(0, 8).toUpperCase()}`;
   const csv = [
-    'registration_number,make,model,year,price,mileage,fuel_type,transmission,color,engine_capacity_cc,owners_count,location_district',
-    `${regA},Toyota,Corolla,2020,5500000,45000,Petrol,Automatic,White,1500,1,Colombo`,
-    `${regB},Honda,Civic,2018,-100,30000,Petrol,Manual,Black,1600,2,Gampaha`,
+    'registration_number,make,model,year,price,mileage,fuel_type,transmission,color,engine_capacity_cc,owners_count,location_district,condition,vehicle_type',
+    `${regA},Toyota,Corolla,2020,5500000,45000,Petrol,Automatic,White,1500,1,Colombo,Used,Car`,
+    `${regB},Honda,Civic,2018,-100,30000,Petrol,Manual,Black,1600,2,Gampaha,Used,Car`,
     '',
   ].join('\n');
   const csvDir = path.join(os.tmpdir(), 'autovault-e2e');

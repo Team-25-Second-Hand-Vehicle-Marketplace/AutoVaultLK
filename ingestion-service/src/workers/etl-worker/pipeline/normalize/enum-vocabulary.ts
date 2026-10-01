@@ -7,7 +7,7 @@ import { compact } from './trigram';
  * Copied from marketplace-service/src/modules/search/parser/vocabulary.ts for
  * the same reason trigram.ts is: ingestion and search must fold the same word
  * to the same value. If a dealer uploads "deisel" and we store DIESEL, a buyer
- * typing "deisel" has to reach that row — and search already accepts these
+ * typing "deisel" has to reach that row - and search already accepts these
  * misspellings. Diverging here would make bulk stock invisible to exactly the
  * queries it should match.
  *
@@ -32,7 +32,7 @@ export type Condition = (typeof CONDITIONS)[number];
 
 /**
  * All 11 values. marketplace-service's CreateListingDto still declares only 6
- * — migration 20000 extended the CHECK constraint and the entity union without
+ * - migration 20000 extended the CHECK constraint and the entity union without
  * widening that DTO. The entity is authoritative: a bulk row typed LORRY is
  * valid in the database, so the ETL accepts it.
  */
@@ -138,13 +138,13 @@ const VEHICLE_TYPE: Record<string, VehicleType> = {
 };
 
 /**
- * Enum coercion is exact-or-nothing — no fuzzy fallback.
+ * Enum coercion is exact-or-nothing - no fuzzy fallback.
  *
  * A closed vocabulary has few members and short words, so trigram matching
  * between them is unreliable in the worst way: "MANUAL" and "AUTOMATIC" are far
  * apart, but a typo landing between two fuel types would silently mislabel a
  * vehicle. Unknown values return null, which parseNormalize records as a
- * confidence miss and routes to Groq — where the whole row gives context a
+ * confidence miss and routes to Groq - where the whole row gives context a
  * three-letter cell cannot.
  */
 export function coerceFuelType(raw: string | undefined): FuelType | null {

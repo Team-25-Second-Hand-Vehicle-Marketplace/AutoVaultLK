@@ -11,7 +11,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  *
  * In-process this never came up: the orchestrator accumulated rejections across
  * stages and wrote them once per chunk. That accumulator cannot exist across
- * Lambdas, so each stage now persists its own — and needs a key to be idempotent
+ * Lambdas, so each stage now persists its own - and needs a key to be idempotent
  * against.
  *
  * (upload_job_id, stage, row_number) is that key. It is partial on
@@ -39,8 +39,8 @@ export class IngestionRejectionStage1735000026000 implements MigrationInterface 
 
     // Must list every EtlStage value that can reject a row. VALIDATE_FILE
     // rejects the whole file as row 0; VALIDATE_ROWS and LOAD reject
-    // individual rows. The others never reject — that is the pipeline's
-    // central rule — but are permitted here so a future stage that does need
+    // individual rows. The others never reject - that is the pipeline's
+    // central rule - but are permitted here so a future stage that does need
     // to does not require a migration.
     await queryRunner.query(`
       ALTER TABLE ingestion.rejected_records

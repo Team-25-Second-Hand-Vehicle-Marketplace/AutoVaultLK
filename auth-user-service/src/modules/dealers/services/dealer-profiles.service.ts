@@ -60,14 +60,14 @@ export class DealerProfilesService {
    * A rejected dealer fixing their details and trying again. Its own action
    * rather than a side effect on the generic `update()` above, so an already
    * VERIFIED dealer editing their address is never silently sent back to
-   * PENDING — only this explicit path can do that, and only from REJECTED.
+   * PENDING - only this explicit path can do that, and only from REJECTED.
    */
   async resubmit(userId: string, data: ResubmitDealerProfileDto) {
     const profile = await this.findByUserId(userId);
 
     if (profile.verificationStatus !== VerificationStatus.REJECTED) {
       throw new ConflictException(
-        `Dealer profile is ${profile.verificationStatus}, not REJECTED — nothing to resubmit`,
+        `Dealer profile is ${profile.verificationStatus}, not REJECTED - nothing to resubmit`,
       );
     }
 
@@ -84,7 +84,7 @@ export class DealerProfilesService {
   }
 
   /**
-   * `isActive` is not touched here — a dealer's ability to authenticate is
+   * `isActive` is not touched here - a dealer's ability to authenticate is
    * decided once, on email verification (see EmailVerificationService), the
    * same as a buyer. Only DealerProfile fields change on approve/reject; see
    * assertManualUploadAllowed (marketplace-service) and

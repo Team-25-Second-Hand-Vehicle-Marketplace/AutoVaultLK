@@ -5,7 +5,7 @@ export class SearchQuery {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  // Nullable — anonymous visitors search too
+  // Nullable - anonymous visitors search too
   @Column({ name: 'user_id', type: 'uuid', nullable: true })
   userId: string | null;
 

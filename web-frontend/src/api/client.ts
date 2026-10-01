@@ -11,7 +11,7 @@ export const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? '',
   timeout: 10000,
   // The refresh/CSRF cookies are cross-origin in every deployed environment
-  // (CloudFront vs API Gateway) — without this, the browser neither stores
+  // (CloudFront vs API Gateway) - without this, the browser neither stores
   // the Set-Cookie from login nor sends the cookie back on later requests.
   withCredentials: true,
 })

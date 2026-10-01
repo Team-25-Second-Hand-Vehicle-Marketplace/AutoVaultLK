@@ -1,11 +1,13 @@
 import type {
   EnrichedRow,
+  NormalizationProvenance,
   StageContext,
   StageResult,
   StageRunner,
   ValidatedRow,
 } from '../types';
 import { coerceInteger, coerceText } from '../normalize/coerce';
+import { coerceVehicleType } from '../normalize/enum-vocabulary';
 
 /**
  * Body types, matching marketplace-service/src/modules/search/constants/
@@ -13,7 +15,7 @@ import { coerceInteger, coerceText } from '../normalize/coerce';
  * database/src/seeds/vehicle-dictionaries.seed.ts.
  *
  * A value outside this set is invisible to the search facet that reads
- * specs.body_type, so it is dropped rather than stored — a spec key nothing
+ * specs.body_type, so it is dropped rather than stored - a spec key nothing
  * can filter on is worse than an absent one, because it looks like data.
  */
 const BODY_TYPES = [
@@ -32,12 +34,12 @@ const BODY_TYPES = [
 /**
  * Category-specific attribute schemas (SRS Appendix B.2), gated by
  * vehicle_type. A column here is only ever read into `specs` for a row whose
- * vehicle_type matches its category — a TRUCK's `axle_count` column on a CAR
+ * vehicle_type matches its category - a TRUCK's `axle_count` column on a CAR
  * row is ignored, not stored, the same way an out-of-range int spec is
  * dropped rather than stored under a misleading key.
  *
  * The universal equipment keys (sunroof, full_option, alloy_wheels,
- * reverse_camera, leather_seats, power_steering, air_conditioning — see
+ * reverse_camera, leather_seats, power_steering, air_conditioning - see
  * BOOL_SPECS below) are the deliberate exception: a van or truck can have a
  * sunroof too, so those apply to every vehicle_type rather than being gated
  * here.
@@ -177,13 +179,58 @@ const MAX_CARRIED_VALUE_LENGTH = 60;
 const MAX_DYNAMIC_SPEC_KEYS = 20;
 const MAX_DYNAMIC_SPEC_VALUE_LENGTH = 200;
 
+/**
+ * Columns that only describe one category of vehicle. A value in one of these
+ * on a row of a different type (stroke type on a car, axle count on a bike) is
+ * ignored, never stored. Mirrors the gating in buildSpecs below.
+ */
+const CATEGORY_COLUMNS: { types: Set<string>; columns: string[] }[] = [
+  { types: CAR_SUV_TYPES, columns: [...Object.keys(CAR_SUV_INT_SPECS), 'drive_type'] },
+  {
+    types: BIKE_TYPES,
+    columns: ['stroke_type', 'cooling_system', 'start_type', ...Object.keys(BIKE_BOOL_SPECS)],
+  },
+  {
+    types: VAN_BUS_TYPES,
+    columns: [...Object.keys(VAN_BUS_INT_SPECS), 'roof_type', 'wheelbase', 'door_configuration'],
+  },
+  { types: TRUCK_TYPES, columns: [...Object.keys(TRUCK_INT_SPECS), 'cargo_bed_type'] },
+];
+
+/**
+ * Cabin comfort equipment makes no sense on these types (a sunroof on a motor
+ * bike), so a "yes" there is ignored. Alloy wheels stay allowed: bikes and
+ * three-wheelers have them. Van, truck, tractor and machinery rows keep every
+ * equipment column, since a cab can have air conditioning or a sunroof.
+ */
+const NO_COMFORT_EQUIPMENT_TYPES = new Set(['BIKE', 'THREE_WHEELER']);
+const COMFORT_EQUIPMENT_KEYS = new Set([
+  'sunroof',
+  'full_option',
+  'reverse_camera',
+  'leather_seats',
+  'power_steering',
+  'air_conditioning',
+]);
+
+/**
+ * How little confidence an ignored-value note carries. Below the review UI's
+ * low-confidence line (0.6), so the listing is flagged for a second look, and
+ * low enough to sort it to the top of "lowest confidence first".
+ */
+const INAPPLICABLE_CONFIDENCE = 0.3;
+
+/** Same idea for a vehicle type the dealer wrote that we could not read. */
+const UNREADABLE_TYPE_CONFIDENCE = 0.4;
+const MAX_NOTE_LENGTH = 500;
+
 /** marketplace.vehicles.condition defaults to USED; stated here rather than relied on. */
 export const DEFAULT_CONDITION = 'USED';
 
 /**
  * marketplace.vehicles.review_reason (migration 30000). A short machine code
  * rather than a sentence, so the review UI can branch on it without parsing
- * text — see the migration's own comment for why this is a separate column
+ * text - see the migration's own comment for why this is a separate column
  * from `status`.
  */
 export const REVIEW_REASON_NO_REGISTRATION_NUMBER = 'NO_REGISTRATION_NUMBER';
@@ -195,14 +242,14 @@ export const REVIEW_REASON_NO_REGISTRATION_NUMBER = 'NO_REGISTRATION_NUMBER';
  * stage does can make one invalid. It only adds.
  *
  * **`specs.body_type` must be set before embed runs.** buildSearchText reads
- * it (shared/normalize-embed/search-text.ts) — a bulk row without it produces
+ * it (shared/normalize-embed/search-text.ts) - a bulk row without it produces
  * a shorter search text than the equivalent manual listing, and a different
  * text embeds to a different vector. That is FR-22.1 drift arriving through
  * the side door, so body type is resolved here and not left to Load.
  *
  * Known spec keys (body_type, seats, sunroof, etc.) are validated and typed
  * before being written, because search facets query them against
- * KNOWN_SPEC_KEYS — a malformed or out-of-range value there would be
+ * KNOWN_SPEC_KEYS - a malformed or out-of-range value there would be
  * unqueryable weight, or worse, a facet that silently returns nothing.
  *
  * Everything else the dealer's CSV carries is NOT discarded (FR-15 /
@@ -210,7 +257,7 @@ export const REVIEW_REASON_NO_REGISTRATION_NUMBER = 'NO_REGISTRATION_NUMBER';
  * under its own header name, preserving the dealer's data even though no
  * facet can filter on it yet, AND appended to `description` so it still
  * reaches the embedding through buildSearchText. A dealer writing
- * "Warranty: 2 years" is describing the vehicle either way — specs keeps the
+ * "Warranty: 2 years" is describing the vehicle either way - specs keeps the
  * structured fact, description keeps it readable and searchable.
  */
 export const enrichStage: StageRunner<ValidatedRow[], StageResult<EnrichedRow>> = {
@@ -228,7 +275,7 @@ function enrichRow(ctx: StageContext, row: ValidatedRow): EnrichedRow {
   const normalized = { ...row.normalized };
 
   // parseNormalize deliberately leaves condition absent when unrecognised so
-  // the default lives in exactly one place — here.
+  // the default lives in exactly one place - here.
   if (!normalized.condition) normalized.condition = DEFAULT_CONDITION;
   if (normalized.isNegotiable === undefined) normalized.isNegotiable = false;
 
@@ -247,7 +294,97 @@ function enrichRow(ctx: StageContext, row: ValidatedRow): EnrichedRow {
   const description = carryUnmappedColumns(row, normalized.description ?? null);
   if (description) normalized.description = description;
 
-  return { ...row, normalized };
+  // Values the dealer filled in that do not fit this vehicle type were left out
+  // above. Say so on the listing, in the dealer's review queue, rather than let
+  // them vanish: a bike marked "sunroof: yes" is almost always a slip in a
+  // shared template, and the dealer is the one who can tell which side is wrong
+  // (the value, or the vehicle type).
+  const ignored = findInapplicableColumns(row);
+  const typeNote = describeUnreadableType(row);
+  if (ignored.length === 0 && !typeNote) return { ...row, normalized };
+
+  const provenance: NormalizationProvenance = { ...(row.provenance ?? {}) };
+  let confidence = row.confidence;
+
+  if (typeNote) {
+    provenance.vehicleType = {
+      source: 'dictionary',
+      confidence: UNREADABLE_TYPE_CONFIDENCE,
+      reasoning: typeNote,
+    };
+    confidence = Math.min(confidence, UNREADABLE_TYPE_CONFIDENCE);
+  }
+
+  if (ignored.length > 0) {
+    provenance.specs = {
+      source: 'rule',
+      confidence: INAPPLICABLE_CONFIDENCE,
+      reasoning: describeIgnored(row.normalized.vehicleType, ignored),
+    };
+    confidence = Math.min(confidence, INAPPLICABLE_CONFIDENCE);
+  }
+
+  return { ...row, normalized, provenance, confidence };
+}
+
+/**
+ * A vehicle_type cell the dealer filled in but we could not read ("Hoverboard",
+ * a typo). parseNormalize falls back to the type implied by the make and model,
+ * which is usually right, but doing it without a word would hide that the
+ * dealer's own value was thrown away. Said on the listing instead, so the dealer
+ * can confirm the type or fix it.
+ */
+function describeUnreadableType(row: ValidatedRow): string | null {
+  const cell = coerceText(row.raw['vehicle_type']);
+  if (!cell || coerceVehicleType(cell)) return null;
+
+  const type = row.normalized.vehicleType.replace(/_/g, ' ').toLowerCase();
+  return (
+    `Vehicle type "${truncate(cell)}" was not recognised, so "${type}" was used, ` +
+    'taken from the make and model. Check it is right, or correct the vehicle type.'
+  );
+}
+
+/**
+ * Columns with a real value on a row they do not apply to. Blank cells and a
+ * plain "no" are not reported: a shared template leaves most columns empty, and
+ * "sunroof: no" on a bike is true, not a mistake.
+ */
+function findInapplicableColumns(row: ValidatedRow): string[] {
+  const vehicleType = row.normalized.vehicleType;
+  const ignored: string[] = [];
+
+  const hasValue = (column: string): boolean => {
+    const value = coerceText(row.raw[column]);
+    return value !== null && value !== undefined && coerceBooleanSpec(row.raw[column]) !== false;
+  };
+
+  for (const group of CATEGORY_COLUMNS) {
+    if (group.types.has(vehicleType)) continue;
+    for (const column of group.columns) {
+      if (hasValue(column)) ignored.push(column);
+    }
+  }
+
+  if (NO_COMFORT_EQUIPMENT_TYPES.has(vehicleType)) {
+    for (const [column, key] of Object.entries(BOOL_SPECS)) {
+      if (COMFORT_EQUIPMENT_KEYS.has(key) && coerceBooleanSpec(row.raw[column]) === true) {
+        ignored.push(column);
+      }
+    }
+  }
+
+  return ignored;
+}
+
+function describeIgnored(vehicleType: string, columns: string[]): string {
+  const labels = columns.map((c) => humanize(c).toLowerCase());
+  const type = vehicleType.replace(/_/g, ' ').toLowerCase();
+  const note =
+    `Ignored for a ${type}: ${labels.join(', ')}. ` +
+    `${labels.length === 1 ? 'It does' : 'They do'} not apply to this vehicle type. ` +
+    'Edit the listing if it matters, or correct the vehicle type if that is the slip.';
+  return note.length > MAX_NOTE_LENGTH ? `${note.slice(0, MAX_NOTE_LENGTH - 1)}…` : note;
 }
 
 function buildSpecs(ctx: StageContext, row: ValidatedRow): Record<string, unknown> {
@@ -291,9 +428,18 @@ function buildSpecs(ctx: StageContext, row: ValidatedRow): Record<string, unknow
     applyEnumSpec(specs, row, 'cargo_bed_type', CARGO_BED_TYPES);
   }
 
-  // Universal equipment: applies regardless of vehicle_type, since a van or
-  // truck can have a sunroof or full option just as a car can.
+  // Equipment: applies to every type except the ones in NO_COMFORT_EQUIPMENT_TYPES,
+  // since a van or truck can have a sunroof or full option just as a car can.
   for (const [column, key] of Object.entries(BOOL_SPECS)) {
+    // Comfort equipment is not stored on a bike or three-wheeler; see
+    // findInapplicableColumns, which reports it.
+    if (
+      vehicleType &&
+      NO_COMFORT_EQUIPMENT_TYPES.has(vehicleType) &&
+      COMFORT_EQUIPMENT_KEYS.has(key)
+    ) {
+      continue;
+    }
     const value = coerceBooleanSpec(row.raw[column]);
     // First column wins: "alloys" and "alloy_wheels" in the same file map to
     // one key, and a later blank must not overwrite an earlier true.
@@ -339,13 +485,13 @@ function applyEnumSpec(
  *
  * Deliberately separate from the known-key blocks above: those validate type
  * and range because a search facet queries them, while this preserves
- * whatever the dealer's own DMS export happened to carry — a raw string, not
+ * whatever the dealer's own DMS export happened to carry - a raw string, not
  * a typed/bounded value; no facet queries these keys, so there is nothing to
  * protect them from except unbounded size (MAX_DYNAMIC_SPEC_KEYS/VALUE).
  *
  * A column already written by the known-key blocks (specs.body_type,
  * specs.sunroof, ...) is skipped here via CONSUMED_COLUMNS, which lists
- * every column those blocks read from — so a value never gets written twice
+ * every column those blocks read from - so a value never gets written twice
  * under two different keys for the same column.
  */
 function addDynamicSpecs(row: ValidatedRow, specs: Record<string, unknown>): void {
@@ -414,7 +560,7 @@ function truncate(value: string): string {
 
 /**
  * Resolves body type through the BODY_TYPE dictionary first, so the seed's
- * aliases apply — "saloon" is SEDAN and "jeep" is SUV in Sri Lankan usage, and
+ * aliases apply - "saloon" is SEDAN and "jeep" is SUV in Sri Lankan usage, and
  * both are already in the seed. Falls back to a direct match on the canonical
  * list so the stage still works against a snapshot with no BODY_TYPE rows.
  */

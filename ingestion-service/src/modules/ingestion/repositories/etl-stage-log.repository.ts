@@ -12,7 +12,7 @@ import type { StageLogger } from '../../../workers/etl-worker/pipeline/types';
 const MAX_ERROR_LENGTH = 2000;
 
 /**
- * Writes ingestion.etl_stage_logs — the per-stage, per-chunk audit trail that
+ * Writes ingestion.etl_stage_logs - the per-stage, per-chunk audit trail that
  * GET /jobs/{id} reports progress from.
  *
  * `forJob` yields a StageLogger bound to one upload job, so pipeline stages log
@@ -75,7 +75,7 @@ export class EtlStageLogRepository {
     );
   }
 
-  /** Every stage log for a job, oldest first — feeds job-status progress. */
+  /** Every stage log for a job, oldest first - feeds job-status progress. */
   async findForJob(uploadJobId: string): Promise<EtlStageLog[]> {
     return this.repo.find({
       where: { uploadJobId },
@@ -89,7 +89,7 @@ export class EtlStageLogRepository {
    * The orchestrator skips these on a retry. That matters most for LOAD: rows
    * carrying a registration number are protected by the partial unique index on
    * (upload_job_id, registration_number), so re-running upserts them harmlessly
-   * — but rows with a NULL registration number (legitimate for unregistered
+   * - but rows with a NULL registration number (legitimate for unregistered
    * imports) match no unique index and would be inserted a second time. Skipping
    * already-succeeded chunks is what makes a retry idempotent for those rows.
    */

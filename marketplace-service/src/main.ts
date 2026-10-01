@@ -16,11 +16,11 @@ async function bootstrap() {
   app.useGlobalFilters(new ProductionExceptionFilter());
 
   // Enforces every class-validator decorator across all DTOs (FilterSearchDto
-  // included) and — critically — transform: true actually mutates incoming
+  // included) and - critically - transform: true actually mutates incoming
   // query-string values via @Type(), so "true" becomes boolean true and
   // "2015" becomes number 2015 before any service code sees them. Without
   // this, validation runs against the string representation and passes, but
-  // the values stay strings all the way through — which is why
+  // the values stay strings all the way through - which is why
   // dealerVerified and appliedFilters were showing quoted "true"/"2015".
   app.useGlobalPipes(
     new ValidationPipe({

@@ -54,7 +54,7 @@ describeWithDatabase('NotificationsRepository (integration)', () => {
 
   describe('grants', () => {
     // If this fails, grants.sql has not granted notification_service_role
-    // SELECT on auth — sending a notification (it needs the recipient's
+    // SELECT on auth - sending a notification (it needs the recipient's
     // email) would 500 in the running service.
     it('can read auth.users as notification_service_role', async () => {
       const count = await ds.getRepository(AuthUserView).count();
@@ -85,7 +85,7 @@ describeWithDatabase('NotificationsRepository (integration)', () => {
     });
 
     // idempotency_key is a real unique constraint (nullable, but unique when
-    // present) — this is what makes a replayed queue message a no-op instead
+    // present) - this is what makes a replayed queue message a no-op instead
     // of a duplicate send.
     it('rejects a second row with the same idempotency_key', async () => {
       if (!someUserId) {
@@ -151,7 +151,7 @@ describeWithDatabase('NotificationsRepository (integration)', () => {
       expect(row!.lastError!.length).toBeLessThanOrEqual(500);
     });
 
-    it('scheduleRetry keeps status PENDING — a retry is not a failure', async () => {
+    it('scheduleRetry keeps status PENDING - a retry is not a failure', async () => {
       if (!someUserId) {
         console.warn('[skipped: no auth.users row in the seed]');
         return;
@@ -213,7 +213,7 @@ describeWithDatabase('NotificationsRepository (integration)', () => {
 
     // FR-53's exactly-once guarantee under more than one replica rests
     // entirely on SKIP LOCKED. Two concurrent claimers racing for the same
-    // due row must partition it between them, never both receive it — a
+    // due row must partition it between them, never both receive it - a
     // unit test cannot observe locking behaviour at all, only a real
     // Postgres transaction can.
     it('splits due rows between two concurrent claimers with no overlap', async () => {
