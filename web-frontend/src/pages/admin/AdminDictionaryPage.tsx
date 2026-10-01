@@ -16,7 +16,7 @@ import { AdminTable } from '../../components/ui/AdminTable'
 
 /**
  * FR-?? (dictionary review): a dealer's make text that never resolved during
- * bulk upload — some of it is a genuinely new vehicle type (a brand this
+ * bulk upload - some of it is a genuinely new vehicle type (a brand this
  * marketplace has never catalogued), most of it is noise (a typo, a blank, a
  * placeholder). The backend already filters out anything a one-off row
  * produced and scores each candidate against the existing dictionary, so
@@ -45,7 +45,7 @@ export function AdminDictionaryPage() {
     try {
       await action()
       toast.success(success)
-      // Removes the row locally instead of a full reload — the mutation
+      // Removes the row locally instead of a full reload - the mutation
       // already tells us the one thing that changed (this candidate is
       // handled), and refetching the whole aggregation query just to learn
       // that is a visible loading flash for zero new information.
@@ -114,7 +114,7 @@ export function AdminDictionaryPage() {
         rows={rows}
         loading={candidates.loading}
         loadingLabel="Loading unresolved makes…"
-        emptyLabel="Nothing to review — every recent make either resolved or has been handled."
+        emptyLabel="Nothing to review - every recent make either resolved or has been handled."
         renderRow={(row) => {
           const busy = busyValue === row.rawValue
 
@@ -139,12 +139,12 @@ export function AdminDictionaryPage() {
               </td>
               <td>
                 {row.samples.length === 0 ? (
-                  <span className="admin-muted">—</span>
+                  <span className="admin-muted">-</span>
                 ) : (
                   <ul className="admin-sample-list">
                     {row.samples.map((sample, i) => (
                       <li key={i}>
-                        {[sample.model, sample.description].filter(Boolean).join(' — ') || (
+                        {[sample.model, sample.description].filter(Boolean).join(' - ') || (
                           <span className="admin-muted">no model or description</span>
                         )}
                       </li>

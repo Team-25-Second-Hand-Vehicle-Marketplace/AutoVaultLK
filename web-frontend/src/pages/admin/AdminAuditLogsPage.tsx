@@ -8,6 +8,7 @@ import { ErrorBanner } from '../../components/ui/ErrorBanner'
 import { Pill } from '../../components/ui/Pill'
 import { AdminTable } from '../../components/ui/AdminTable'
 import { formatDate } from '../../utils/format'
+import { humanizeEnum } from '../../components/search/vehicle-format'
 
 function toStartIso(date: string): string | undefined {
   if (!date) return undefined
@@ -40,7 +41,8 @@ export function AdminAuditLogsPage() {
     (signal: AbortSignal) =>
       searchAuditLogs(
         {
-          action: applied.action || undefined,
+          // Typed as words ("dealer approved"), stored as DEALER_APPROVED.
+          action: applied.action.trim().replace(/\s+/g, '_').toUpperCase() || undefined,
           entityType: applied.entityType || undefined,
           actorId: applied.actorId || undefined,
           from: toStartIso(applied.from),
@@ -72,7 +74,7 @@ export function AdminAuditLogsPage() {
           <input
             value={action}
             onChange={(e) => setAction(e.target.value)}
-            placeholder="e.g. DEALER_APPROVED"
+            placeholder="e.g. Dealer approved"
           />
         </label>
         <label className="admin-toolbar__field">
@@ -114,20 +116,20 @@ export function AdminAuditLogsPage() {
           <tr key={row.id}>
             <td>{formatDate(row.createdAt)}</td>
             <td>
-              <Pill>{row.action}</Pill>
+              <Pill>{humanizeEnum(row.action)}</Pill>
             </td>
             <td>
               <div>
-                {row.entityType}
+                {humanizeEnum(row.entityType)}
                 {row.entityId ? (
                   <span className="admin-muted"> · {row.entityId.slice(0, 8)}…</span>
                 ) : null}
               </div>
             </td>
             <td>
-              <span className="admin-mono">{row.actorId ?? '—'}</span>
+              <span className="admin-mono">{row.actorId ?? '-'}</span>
             </td>
-            <td>{row.ipAddress ?? '—'}</td>
+            <td>{row.ipAddress ?? '-'}</td>
           </tr>
         )}
       />

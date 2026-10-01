@@ -170,7 +170,7 @@ describe('AdminDashboardPage', () => {
 
     renderPage()
 
-    expect(await screen.findByText('DEALER_APPROVED')).toBeInTheDocument()
+    expect(await screen.findByText('DEALER APPROVED')).toBeInTheDocument()
     expect(screen.getByText(/dealer-1/)).toBeInTheDocument()
   })
 

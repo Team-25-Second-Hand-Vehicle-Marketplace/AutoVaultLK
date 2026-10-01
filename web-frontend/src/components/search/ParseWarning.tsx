@@ -27,7 +27,7 @@ export function ParseWarning({ parse }: { parse: NlParse }) {
                 <strong>{token}</strong>
               </span>
             ))}
-            . Those words were ignored — check the filters above, or refine them in the sidebar.
+            . Those words were ignored - check the filters above, or refine them in the sidebar.
           </>
         ) : (
           <>

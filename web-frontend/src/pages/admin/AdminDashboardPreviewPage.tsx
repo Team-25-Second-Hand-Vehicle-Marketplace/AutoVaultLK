@@ -7,12 +7,12 @@ import type {
 } from '../../api/admin.types'
 
 /**
- * Renders the real dashboard against fixed mock data — no login, no backend
+ * Renders the real dashboard against fixed mock data - no login, no backend
  * required. For checking a local dashboard change in the browser before
  * pushing it; not linked from anywhere in the app.
  *
  * Only mounted in dev (see the `import.meta.env.DEV` guard around its route
- * in App.tsx) — `npm run build` never includes this route or this file's
+ * in App.tsx) - `npm run build` never includes this route or this file's
  * code in what ships.
  */
 
@@ -77,7 +77,7 @@ const MOCK_ACTIVITY: AdminAuditLog[] = [
 ]
 
 /**
- * A deterministic-but-varied 30-day series — a flat mock line would hide
+ * A deterministic-but-varied 30-day series - a flat mock line would hide
  * whether the chart actually reads shape and trend correctly.
  */
 function buildMockSeries(base: number, amplitude: number, days = 30): { date: string; count: number }[] {
@@ -111,7 +111,7 @@ export function AdminDashboardPreviewPage() {
           textAlign: 'center',
         }}
       >
-        Preview only — fixed mock data, dev build only, not part of the app's real navigation.
+        Preview only - fixed mock data, dev build only, not part of the app's real navigation.
       </div>
       <AdminDashboardView
         data={MOCK_DASHBOARD}

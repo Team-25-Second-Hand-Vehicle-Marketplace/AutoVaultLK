@@ -14,7 +14,7 @@ import { VehicleCardSkeleton } from './VehicleCardSkeleton'
  * asked for. The listing itself is the content; this is an addition to it.
  */
 
-/** Never surfaced — the section hides itself instead. */
+/** Never surfaced - the section hides itself instead. */
 const swallow = () => ''
 
 export function RecommendationsSection({ vehicleId }: { vehicleId: string }) {

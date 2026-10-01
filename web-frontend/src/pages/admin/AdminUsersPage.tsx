@@ -16,6 +16,7 @@ import { ErrorBanner } from '../../components/ui/ErrorBanner'
 import { Pill } from '../../components/ui/Pill'
 import { AdminTable } from '../../components/ui/AdminTable'
 import { formatDate } from '../../utils/format'
+import { humanizeEnum } from '../../components/search/vehicle-format'
 
 type Tab = 'all' | 'pending'
 
@@ -118,7 +119,7 @@ export function AdminUsersPage() {
               <td>{row.name}</td>
               <td>{row.email}</td>
               <td>
-                <Pill>{row.role}</Pill>
+                <Pill>{humanizeEnum(row.role)}</Pill>
               </td>
               <td>
                 <Pill variant={row.isActive ? 'ok' : 'danger'}>
@@ -130,7 +131,7 @@ export function AdminUsersPage() {
                   <>
                     <div>{row.dealer.companyName}</div>
                     <span className="admin-muted">
-                      {row.dealer.city} · {row.dealer.verificationStatus}
+                      {row.dealer.city} · {humanizeEnum(row.dealer.verificationStatus)}
                     </span>
                     {row.dealer.verificationDocumentUrl && (
                       <>
@@ -146,7 +147,7 @@ export function AdminUsersPage() {
                     )}
                   </>
                 ) : (
-                  <span className="admin-muted">—</span>
+                  <span className="admin-muted">-</span>
                 )}
               </td>
               <td>{formatDate(row.createdAt)}</td>
@@ -175,7 +176,7 @@ export function AdminUsersPage() {
                         disabled={busy}
                         onClick={() => {
                           // The dealer sees this reason on their resubmit screen
-                          // once logged back in — an empty rejection tells them
+                          // once logged back in - an empty rejection tells them
                           // nothing to fix, so this asks rather than skipping
                           // straight to rejectDealer(dealerId) with no reason.
                           const reason = window.prompt(

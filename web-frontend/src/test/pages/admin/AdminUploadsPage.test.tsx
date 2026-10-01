@@ -64,7 +64,7 @@ function renderPage() {
   )
 }
 
-describe('AdminUploadsPage — row-level rejection reasons', () => {
+describe('AdminUploadsPage - row-level rejection reasons', () => {
   beforeEach(() => {
     mockListUploads.mockReset()
     mockGetRejections.mockReset()

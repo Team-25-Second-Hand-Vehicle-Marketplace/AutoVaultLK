@@ -1,3 +1,5 @@
+import { humanizeEnum } from './vehicle-format'
+
 interface Props {
   label: string
   options: readonly string[]
@@ -22,7 +24,7 @@ export function RadioFacetGroup({ label, options, selected, onChange }: Props) {
               if (selected === option) onChange(undefined)
             }}
           />
-          {option}
+          {humanizeEnum(option)}
         </label>
       ))}
     </fieldset>

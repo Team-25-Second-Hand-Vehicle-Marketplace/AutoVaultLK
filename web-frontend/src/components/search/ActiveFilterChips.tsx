@@ -1,4 +1,5 @@
 import type { FilterSearchParams } from '../../api/search.types'
+import { humanizeEnum } from './vehicle-format'
 
 interface Props {
   appliedFilters: FilterSearchParams
@@ -31,7 +32,7 @@ function describeFilter(key: string, value: unknown): { label: string; removeKey
     case 'locationCity':
     case 'locationDistrict': {
       const values = Array.isArray(value) ? value : [value]
-      return { label: values.join(', '), removeKeys: [key] }
+      return { label: values.map((v) => humanizeEnum(String(v))).join(', '), removeKeys: [key] }
     }
     case 'maxMileage':
       return { label: `Under ${formatCurrency(value as number)} km`, removeKeys: [key] }
@@ -50,7 +51,7 @@ function describeFilter(key: string, value: unknown): { label: string; removeKey
       return { label: specs.map((s) => s.value).join(', '), removeKeys: [key] }
     }
     default:
-      return { label: `${key}: ${String(value)}`, removeKeys: [key] }
+      return { label: `${key}: ${humanizeEnum(String(value))}`, removeKeys: [key] }
   }
 }
 
@@ -72,7 +73,7 @@ export function ActiveFilterChips({ appliedFilters, onRemove, onClearAll }: Prop
   if (appliedFilters.minYear !== undefined || appliedFilters.maxYear !== undefined) {
     const min = appliedFilters.minYear as number | undefined
     const max = appliedFilters.maxYear as number | undefined
-    // A bare "2015" doesn't say whether it's a floor or a ceiling — spell it
+    // A bare "2015" doesn't say whether it's a floor or a ceiling - spell it
     // out for the one-sided cases.
     const label =
       min !== undefined && max !== undefined
@@ -98,7 +99,7 @@ export function ActiveFilterChips({ appliedFilters, onRemove, onClearAll }: Prop
         <button
           key={chip.key}
           className="filter-chip"
-          // One call with every key this chip owns — see Props.onRemove.
+          // One call with every key this chip owns - see Props.onRemove.
           onClick={() => onRemove(chip.removeKeys)}
           aria-label={`Remove filter: ${chip.label}`}
         >

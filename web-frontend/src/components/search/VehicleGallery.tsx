@@ -2,8 +2,8 @@ import { useState, type KeyboardEvent } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 /**
- * The detail page's photo viewer. Every photo is a thumbnail — the main one
- * included — and clicking one (or the arrows, or ←/→ with the gallery focused)
+ * The detail page's photo viewer. Every photo is a thumbnail - the main one
+ * included - and clicking one (or the arrows, or ←/→ with the gallery focused)
  * swaps it into the large frame. Before this, the thumbnails were a dead strip
  * of the *other* photos: you could see there were more, but not open them.
  *
@@ -42,7 +42,7 @@ export function VehicleGallery({ images, alt }: { images: string[]; alt: string 
       <div className="detail-gallery__stage">
         <img
           src={images[current]}
-          alt={`${alt} — photo ${current + 1} of ${count}`}
+          alt={`${alt} - photo ${current + 1} of ${count}`}
           className="detail-gallery__primary"
         />
 

@@ -156,19 +156,19 @@ export function VehicleDetailPage() {
               {vehicle.condition && (
                 <div>
                   <dt>Condition</dt>
-                  <dd>{vehicle.condition}</dd>
+                  <dd>{humanizeEnum(vehicle.condition)}</dd>
                 </div>
               )}
               {vehicle.fuelType && (
                 <div>
                   <dt>Fuel</dt>
-                  <dd>{vehicle.fuelType}</dd>
+                  <dd>{humanizeEnum(vehicle.fuelType)}</dd>
                 </div>
               )}
               {vehicle.transmissionType && (
                 <div>
                   <dt>Transmission</dt>
-                  <dd>{vehicle.transmissionType}</dd>
+                  <dd>{humanizeEnum(vehicle.transmissionType)}</dd>
                 </div>
               )}
               {vehicle.color && (
@@ -216,7 +216,7 @@ export function VehicleDetailPage() {
             </div>
 
             {/* The facts a buyer scans first, so the box is never just a name
-                and a price. Location only when there is one — no bare dash. */}
+                and a price. Location only when there is one - no bare dash. */}
             <ul className="detail-summary__facts">
               <li>
                 <YearDisplay result={vehicle} />
