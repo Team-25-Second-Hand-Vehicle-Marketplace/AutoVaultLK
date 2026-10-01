@@ -15,9 +15,10 @@ const NAV = [
   { to: '/dealer/profile', end: false, label: 'Business details' },
 ] as const
 
-// Bulk upload is for business dealers only (the API rejects individuals), so
-// it is added below only once the profile says so.
+// Bulk upload (and its history) is for business dealers only (the API
+// rejects individuals), so both are added below only once the profile says so.
 const BULK_UPLOAD_NAV = { to: '/dealer/upload', end: false, label: 'Bulk upload' } as const
+const UPLOAD_HISTORY_NAV = { to: '/dealer/uploads', end: false, label: 'Upload history' } as const
 
 const profileError = (err: unknown) => toErrorMessage(err, 'Could not load your dealer profile.')
 
@@ -37,7 +38,7 @@ export function DealerLayout() {
   const navItems = !verified
     ? []
     : profile.data?.dealerType === 'business'
-      ? [...NAV, BULK_UPLOAD_NAV]
+      ? [...NAV, BULK_UPLOAD_NAV, UPLOAD_HISTORY_NAV]
       : NAV
 
   const onSignOut = async () => {

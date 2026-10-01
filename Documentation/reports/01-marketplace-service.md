@@ -172,11 +172,11 @@ The dealer-side write surface. `ListingController` (`@Controller('listings')`):
 
 ### `services/listing.service.ts` — the rules
 
-- **Create is individual-dealers-only and verified-only.** `assertManualUploadAllowed()`
-  rejects `dealerType !== 'individual'` (business dealers must use bulk upload) and
-  `verificationStatus !== 'VERIFIED'`. Since auth-user-service now lets unverified
-  dealers *log in*, this check is the only thing between an unverified dealer and a
-  live listing.
+- **Create is open to every dealer type, verified-only.** `assertManualUploadAllowed()`
+  rejects `verificationStatus !== 'VERIFIED'`, regardless of `dealerType`. Business
+  dealers can create a manual listing here in addition to bulk upload — the two paths
+  are not mutually exclusive. Since auth-user-service now lets unverified dealers *log
+  in*, this check is the only thing between an unverified dealer and a live listing.
 - **Ownership** (`assertOwnership`) — ADMIN bypasses; otherwise `dealerId` must match
   the JWT subject. The forbidden message is deliberately identical to the not-found
   message so the endpoint cannot be used to probe which listing IDs exist.
@@ -532,13 +532,14 @@ GET /search/nl?q="toyota corola hybrid under 5m"
 Unresolved tokens land in `search_queries.unresolved_tokens`, which later feeds
 alias promotion — the loop that makes the parser better over time.
 
-### C. Individual dealer creates a listing
+### C. Dealer creates a manual listing (any dealer type)
 ```
 POST /listings  (Bearer token)
   → JwtAuthGuard: verify + re-read user from auth.users (active, verified)
   → RolesGuard: DEALER or ADMIN
   → ValidationPipe → CreateListingDto (enums derived from search constants)
-  → assertManualUploadAllowed: dealerType='individual' AND status='VERIFIED'
+  → assertManualUploadAllowed: status='VERIFIED' (any dealerType — business
+    dealers may also use bulk upload, the two paths are not exclusive)
   → duplicate guard (same payload, same dealer, < 2 min)
   → buildSearchText + MiniLM embed  (never fatal)
   → INSERT, status defaults to 'LIVE'

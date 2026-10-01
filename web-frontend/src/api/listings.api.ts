@@ -135,6 +135,21 @@ export async function deleteListing(id: string, signal?: AbortSignal): Promise<v
   await apiClient.delete(`/marketplace/listings/${id}`, { signal })
 }
 
+/**
+ * DELETE /marketplace/listings/:id/images/:imageId — FR-58. Removes one
+ * photo, leaving the rest in place. Distinct from `uploadListingImages`,
+ * which replaces the whole set: the edit form has no File object for a photo
+ * it only knows as a stored URL, so removing one without resending every
+ * other photo needs its own route.
+ */
+export async function deleteListingImage(
+  id: string,
+  imageId: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  await apiClient.delete(`/marketplace/listings/${id}/images/${imageId}`, { signal })
+}
+
 /** Every images route answers `{ message, data }` with an array of rows. */
 interface ImagesEnvelope {
   message: string

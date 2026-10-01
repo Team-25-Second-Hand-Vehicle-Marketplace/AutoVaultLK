@@ -43,12 +43,20 @@ const JOB = {
 // endpoint and its rejection report are the same controller and the same
 // guard, so standing them up twice would only duplicate the wiring.
 let app: INestApplication;
-let repository: { findById: jest.Mock; findRejectedRecords: jest.Mock };
+let repository: {
+  findById: jest.Mock;
+  findRejectedRecords: jest.Mock;
+  findByDealer: jest.Mock;
+};
 let stageLogRepository: { findForJob: jest.Mock };
 let authenticated = true;
 
 beforeAll(async () => {
-  repository = { findById: jest.fn(), findRejectedRecords: jest.fn() };
+  repository = {
+    findById: jest.fn(),
+    findRejectedRecords: jest.fn(),
+    findByDealer: jest.fn(),
+  };
   stageLogRepository = { findForJob: jest.fn() };
 
   const moduleRef: TestingModule = await Test.createTestingModule({
@@ -198,6 +206,78 @@ describe('GET /jobs/:id (e2e)', () => {
     await request(app.getHttpServer()).get(`/jobs/${JOB_ID}`).expect(403);
 
     expect(repository.findById).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * The dealer's upload history — same controller, same guard, and the same
+ * "mine" pattern as GET /jobs/active, registered ahead of :id so Nest never
+ * tries to parse it as a job id.
+ */
+describe('GET /jobs/mine (e2e)', () => {
+  beforeEach(() => {
+    repository.findByDealer.mockResolvedValue({ rows: [], total: 0 });
+  });
+
+  it("returns the dealer's own upload history", async () => {
+    repository.findByDealer.mockResolvedValue({ rows: [JOB], total: 1 });
+
+    const response = await request(app.getHttpServer())
+      .get('/jobs/mine')
+      .expect(200);
+
+    expect(response.body).toMatchObject({
+      total: 1,
+      page: 1,
+      limit: 20,
+      totalPages: 1,
+      items: [
+        {
+          id: JOB_ID,
+          status: 'PARTIAL',
+          fileName: 'stock.csv',
+          totalRecords: 40,
+          validRecords: 34,
+          invalidRecords: 6,
+        },
+      ],
+    });
+  });
+
+  it('scopes the lookup to the caller', async () => {
+    await request(app.getHttpServer()).get('/jobs/mine').expect(200);
+
+    expect(repository.findByDealer).toHaveBeenCalledWith(DEALER_ID, 1, 20);
+  });
+
+  it('accepts page and limit', async () => {
+    await request(app.getHttpServer())
+      .get('/jobs/mine?page=2&limit=10')
+      .expect(200);
+
+    expect(repository.findByDealer).toHaveBeenCalledWith(DEALER_ID, 2, 10);
+  });
+
+  it('returns an empty page for a dealer with no uploads', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/jobs/mine')
+      .expect(200);
+
+    expect(response.body).toMatchObject({ items: [], total: 0, totalPages: 0 });
+  });
+
+  it('400s a limit above the page-size cap', async () => {
+    await request(app.getHttpServer()).get('/jobs/mine?limit=5000').expect(400);
+
+    expect(repository.findByDealer).not.toHaveBeenCalled();
+  });
+
+  it('refuses an unauthenticated caller', async () => {
+    authenticated = false;
+
+    await request(app.getHttpServer()).get('/jobs/mine').expect(403);
+
+    expect(repository.findByDealer).not.toHaveBeenCalled();
   });
 });
 

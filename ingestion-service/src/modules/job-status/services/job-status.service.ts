@@ -6,6 +6,8 @@ import {
   JobStatusResponseDto,
   StageProgressDto,
 } from '../dto/job-status-response.dto';
+import { DEFAULT_JOBS_PAGE_SIZE, JobsQueryDto } from '../dto/jobs-query.dto';
+import { JobSummaryDto, JobsResponseDto } from '../dto/jobs-response.dto';
 import {
   DEFAULT_REJECTIONS_PAGE_SIZE,
   RejectionsQueryDto,
@@ -15,6 +17,7 @@ import type {
   RejectionsResponseDto,
 } from '../dto/rejections-response.dto';
 import { JobStatusRepository } from '../repositories/job-status.repository';
+import type { UploadJob } from '../../../infrastructure/database/entities/upload-job.entity';
 
 /**
  * Columns of the dealer's own row echoed back per rejection. A rejection report
@@ -34,7 +37,8 @@ export class JobStatusService {
 
   /** Null means no active job — the caller (Bulk Upload page) shows the form. */
   async getActiveJob(dealerId: string): Promise<{ id: string } | null> {
-    const job = await this.jobStatusRepository.findLatestActiveForDealer(dealerId);
+    const job =
+      await this.jobStatusRepository.findLatestActiveForDealer(dealerId);
     return job ? { id: job.id } : null;
   }
 
@@ -60,6 +64,33 @@ export class JobStatusService {
       createdAt: job.createdAt,
       updatedAt: job.updatedAt,
       stages: stageLogs.map(toStageProgressDto),
+    };
+  }
+
+  /**
+   * The dealer's own upload history, newest first — the list a dealer finds
+   * their way back to a past job's rejection report from, rather than only
+   * being able to reach it right after that upload finished.
+   */
+  async listJobs(
+    dealerId: string,
+    query: JobsQueryDto,
+  ): Promise<JobsResponseDto> {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? DEFAULT_JOBS_PAGE_SIZE;
+
+    const { rows, total } = await this.jobStatusRepository.findByDealer(
+      dealerId,
+      page,
+      limit,
+    );
+
+    return {
+      items: rows.map((row) => toJobSummaryDto(row)),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
     };
   }
 
@@ -101,6 +132,19 @@ export class JobStatusService {
       totalPages: Math.ceil(total / limit),
     };
   }
+}
+
+function toJobSummaryDto(job: UploadJob): JobSummaryDto {
+  return {
+    id: job.id,
+    status: job.status,
+    fileName: job.fileName,
+    totalRecords: job.totalRecords,
+    validRecords: job.validRecords,
+    invalidRecords: job.invalidRecords,
+    createdAt: job.createdAt,
+    updatedAt: job.updatedAt,
+  };
 }
 
 function toStageProgressDto(log: EtlStageLog): StageProgressDto {

@@ -44,12 +44,32 @@ describe('getJobRejections', () => {
     )
   })
 
+  // The CSV export asks for the largest page the backend allows rather than
+  // paging through the report's smaller on-screen default.
+  it('passes the requested limit through when given', async () => {
+    await getJobRejections('job-1', 1, 200)
+
+    expect(get).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ params: { page: 1, limit: 200 } }),
+    )
+  })
+
+  it('omits limit from the query when not given', async () => {
+    await getJobRejections('job-1', 1)
+
+    expect(get).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ params: { page: 1 } }),
+    )
+  })
+
   // The status page aborts in-flight requests on unmount; without the signal
   // a slow report would resolve into a dead component.
   it('forwards the abort signal', async () => {
     const controller = new AbortController()
 
-    await getJobRejections('job-1', 1, controller.signal)
+    await getJobRejections('job-1', 1, undefined, controller.signal)
 
     expect(get).toHaveBeenCalledWith(
       expect.any(String),

@@ -6,6 +6,7 @@ import {
   Injectable,
   InternalServerErrorException,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -110,6 +111,37 @@ export class ImageUploadService {
     );
 
     return this.imageRepo.save(rows);
+  }
+
+  /**
+   * FR-58's counterpart to replaceImages for editing an existing listing:
+   * removes one photo without touching the rest. replaceImages can't do this
+   * on its own — it requires resending every file, but the dealer's browser
+   * only ever has a File object for a *new* photo, never for one it only
+   * knows as a stored URL. If the removed photo was primary, the next one by
+   * display order is promoted so a listing with remaining photos is never
+   * left without one.
+   */
+  async deleteImage(vehicleId: string, imageId: string): Promise<void> {
+    const image = await this.imageRepo.findOne({
+      where: { id: imageId, vehicleId },
+    });
+    if (!image) {
+      throw new NotFoundException(`Image ${imageId} not found on this listing`);
+    }
+
+    await this.imageRepo.delete({ id: imageId });
+
+    if (image.isPrimary) {
+      const [next] = await this.imageRepo.find({
+        where: { vehicleId },
+        order: { displayOrder: 'ASC' },
+        take: 1,
+      });
+      if (next) {
+        await this.imageRepo.update({ id: next.id }, { isPrimary: true });
+      }
+    }
   }
 
   private assertUploadable(files: UploadedImageFile[]): void {

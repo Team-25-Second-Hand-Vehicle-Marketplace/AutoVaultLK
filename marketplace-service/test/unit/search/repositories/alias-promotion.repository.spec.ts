@@ -62,14 +62,22 @@ describe('AliasPromotionRepository', () => {
     describe('alias parsing', () => {
       const withAliases = async (aliases: unknown): Promise<string[]> => {
         dataSource.query.mockResolvedValue([
-          { id: '1', dictionary_type: 'MAKE', canonical_value: 'Toyota', aliases },
+          {
+            id: '1',
+            dictionary_type: 'MAKE',
+            canonical_value: 'Toyota',
+            aliases,
+          },
         ]);
         const [row] = await repository.findDictionaryEntries();
         return row.aliases;
       };
 
       it('passes a real array through', async () => {
-        await expect(withAliases(['toyata', 'toyta'])).resolves.toEqual(['toyata', 'toyta']);
+        await expect(withAliases(['toyata', 'toyta'])).resolves.toEqual([
+          'toyata',
+          'toyta',
+        ]);
       });
 
       it('parses a JSON string', async () => {
@@ -90,7 +98,9 @@ describe('AliasPromotionRepository', () => {
       it('drops non-string members', async () => {
         // The service calls normalize() on every alias; a number there would
         // throw mid-run.
-        await expect(withAliases(['toyata', 5, null])).resolves.toEqual(['toyata']);
+        await expect(withAliases(['toyata', 5, null])).resolves.toEqual([
+          'toyata',
+        ]);
       });
     });
   });
@@ -99,8 +109,13 @@ describe('AliasPromotionRepository', () => {
     it('reports true when a row was updated', async () => {
       dataSource.query.mockResolvedValue([{ id: 'mk-toyota' }]);
 
-      await expect(repository.addAlias('mk-toyota', 'toyotta')).resolves.toBe(true);
-      expect(dataSource.query.mock.calls[0][1]).toEqual(['mk-toyota', 'toyotta']);
+      await expect(repository.addAlias('mk-toyota', 'toyotta')).resolves.toBe(
+        true,
+      );
+      expect(dataSource.query.mock.calls[0][1]).toEqual([
+        'mk-toyota',
+        'toyotta',
+      ]);
     });
 
     it('reports false when the alias was already present', async () => {
@@ -109,7 +124,9 @@ describe('AliasPromotionRepository', () => {
       // rather than promoted.
       dataSource.query.mockResolvedValue([]);
 
-      await expect(repository.addAlias('mk-toyota', 'toyotta')).resolves.toBe(false);
+      await expect(repository.addAlias('mk-toyota', 'toyotta')).resolves.toBe(
+        false,
+      );
     });
 
     it('guards against adding a duplicate case-insensitively', async () => {
@@ -117,7 +134,45 @@ describe('AliasPromotionRepository', () => {
 
       await repository.addAlias('mk-toyota', 'Toyotta');
 
-      expect(sqlOf(dataSource.query)).toContain('LOWER(existing.value) = LOWER($2)');
+      expect(sqlOf(dataSource.query)).toContain(
+        'LOWER(existing.value) = LOWER($2)',
+      );
+    });
+  });
+
+  describe('createEntry', () => {
+    it('rejects a duplicate canonical value before inserting', async () => {
+      dataSource.query.mockResolvedValueOnce([{ id: 'dict-existing' }]);
+
+      await expect(repository.createEntry('MAKE', 'Toyota')).rejects.toThrow(
+        /already exists in the MAKE dictionary/,
+      );
+      expect(dataSource.query).toHaveBeenCalledTimes(1);
+    });
+
+    it('checks for a duplicate case-insensitively', async () => {
+      dataSource.query.mockResolvedValueOnce([]);
+      dataSource.query.mockResolvedValueOnce([{ id: 'dict-new' }]);
+
+      await repository.createEntry('MAKE', 'byd');
+
+      expect(sqlOf(dataSource.query, 0)).toContain(
+        'LOWER(canonical_value) = LOWER($2)',
+      );
+      expect(dataSource.query.mock.calls[0][1]).toEqual(['MAKE', 'byd']);
+    });
+
+    it('inserts and returns the new id when no duplicate exists', async () => {
+      dataSource.query.mockResolvedValueOnce([]);
+      dataSource.query.mockResolvedValueOnce([{ id: 'dict-new' }]);
+
+      await expect(repository.createEntry('MAKE', 'BYD')).resolves.toEqual({
+        id: 'dict-new',
+      });
+      expect(sqlOf(dataSource.query, 1)).toContain(
+        'INSERT INTO marketplace.vehicle_dictionaries',
+      );
+      expect(dataSource.query.mock.calls[1][1]).toEqual(['MAKE', 'BYD']);
     });
   });
 });

@@ -26,6 +26,7 @@ describe('ListingService', () => {
   };
   const imageUploadService = {
     replaceImages: jest.fn(),
+    deleteImage: jest.fn(),
   };
   const imageUrlResolver = {
     resolve: jest.fn().mockResolvedValue(null),
@@ -150,19 +151,23 @@ describe('ListingService', () => {
       );
     });
 
-    it('forbids a business dealer from creating a manual listing (they use bulk upload)', async () => {
+    it('allows a verified business dealer to create a manual listing (in addition to bulk upload)', async () => {
       dealerService.getDealerById.mockResolvedValue(BUSINESS_DEALER_SUMMARY);
+      listingRepository.create.mockResolvedValue(vehicle());
 
-      await expect(
-        service.createListing({ make: 'Toyota' } as never, DEALER),
-      ).rejects.toThrow(ForbiddenException);
-      expect(listingRepository.create).not.toHaveBeenCalled();
+      await service.createListing({ make: 'Toyota' } as never, DEALER);
+
+      expect(listingRepository.create).toHaveBeenCalledWith(
+        expect.anything(),
+        'LIVE',
+      );
     });
 
     // A dealer can now log in while PENDING or REJECTED (approval no longer
     // gates login — see auth-user-service). This is the check that stands
-    // between that and a real LIVE listing.
-    it('forbids an individual dealer who is not yet VERIFIED', async () => {
+    // between that and a real LIVE listing. Applies regardless of dealer
+    // type, since manual listing is no longer restricted by dealerType.
+    it('forbids a dealer of any type who is not yet VERIFIED', async () => {
       dealerService.getDealerById.mockResolvedValue(UNVERIFIED_DEALER_SUMMARY);
 
       await expect(
@@ -695,6 +700,63 @@ describe('ListingService', () => {
       ).rejects.toThrow();
 
       expect(imageUploadService.replaceImages).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('deleteImage (FR-58)', () => {
+    it('404s when the listing does not exist', async () => {
+      listingRepository.findById.mockResolvedValue(null);
+
+      await expect(
+        service.deleteImage('missing', 'img-1', DEALER),
+      ).rejects.toThrow(NotFoundException);
+      expect(imageUploadService.deleteImage).not.toHaveBeenCalled();
+    });
+
+    it('forbids a non-owning dealer from deleting a photo', async () => {
+      listingRepository.findById.mockResolvedValue(
+        vehicle({ dealerId: DEALER.id }),
+      );
+
+      await expect(
+        service.deleteImage('v-1', 'img-1', OTHER_DEALER),
+      ).rejects.toThrow(ForbiddenException);
+      expect(imageUploadService.deleteImage).not.toHaveBeenCalled();
+    });
+
+    it('allows the owning dealer to delete a photo from their own listing', async () => {
+      listingRepository.findById.mockResolvedValue(
+        vehicle({ dealerId: DEALER.id }),
+      );
+
+      await service.deleteImage('v-1', 'img-1', DEALER);
+
+      expect(imageUploadService.deleteImage).toHaveBeenCalledWith(
+        'v-1',
+        'img-1',
+      );
+    });
+
+    it('allows ADMIN to delete a photo from any listing', async () => {
+      listingRepository.findById.mockResolvedValue(
+        vehicle({ dealerId: DEALER.id }),
+      );
+
+      await expect(
+        service.deleteImage('v-1', 'img-1', ADMIN),
+      ).resolves.toBeDefined();
+    });
+
+    it('checks ownership before calling the delete', async () => {
+      listingRepository.findById.mockResolvedValue(
+        vehicle({ dealerId: DEALER.id }),
+      );
+
+      await expect(
+        service.deleteImage('v-1', 'img-1', OTHER_DEALER),
+      ).rejects.toThrow();
+
+      expect(imageUploadService.deleteImage).not.toHaveBeenCalled();
     });
   });
 });

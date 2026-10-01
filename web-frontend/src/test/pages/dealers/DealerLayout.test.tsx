@@ -42,10 +42,14 @@ describe('DealerLayout navigation', () => {
       'href',
       '/dealer/upload',
     )
+    expect(screen.getByRole('link', { name: 'Upload history' })).toHaveAttribute(
+      'href',
+      '/dealer/uploads',
+    )
     expect(screen.getByRole('link', { name: 'My listings' })).toBeInTheDocument()
   })
 
-  it('does not show Bulk upload to a verified individual dealer, but keeps My listings', async () => {
+  it('does not show Bulk upload or Upload history to a verified individual dealer, but keeps My listings', async () => {
     getProfile.mockResolvedValue({
       dealerType: 'individual',
       verificationStatus: 'VERIFIED',
@@ -58,6 +62,7 @@ describe('DealerLayout navigation', () => {
     await act(async () => {})
 
     expect(screen.queryByRole('link', { name: 'Bulk upload' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Upload history' })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'My listings' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Dashboard' })).toBeInTheDocument()
   })

@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import {
   BadRequestException,
   InternalServerErrorException,
+  NotFoundException,
 } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import {
@@ -45,6 +46,9 @@ describe('ImageUploadService', () => {
     delete: jest.fn(),
     create: jest.fn((data: Record<string, unknown>) => data),
     save: jest.fn((rows: unknown[]) => Promise.resolve(rows)),
+    findOne: jest.fn(),
+    find: jest.fn(),
+    update: jest.fn(),
   };
 
   beforeEach(() => {
@@ -299,6 +303,70 @@ describe('ImageUploadService', () => {
 
       expect(rows[0].processedPath).toBeNull();
       expect(rows[0].thumbnailPath).toBeNull();
+    });
+  });
+
+  describe('deleteImage', () => {
+    const service = () =>
+      new ImageUploadService(
+        configWith({
+          IMAGE_SERVE_MODE: 's3',
+          MARKETPLACE_IMAGES_BUCKET: 'bucket',
+        }),
+        imageRepo as never,
+      );
+
+    it('404s when the image does not belong to this vehicle', async () => {
+      imageRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service().deleteImage('v-1', 'img-1'),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(imageRepo.delete).not.toHaveBeenCalled();
+    });
+
+    it('deletes the row by id', async () => {
+      imageRepo.findOne.mockResolvedValue({ id: 'img-1', isPrimary: false });
+
+      await service().deleteImage('v-1', 'img-1');
+
+      expect(imageRepo.delete).toHaveBeenCalledWith({ id: 'img-1' });
+    });
+
+    it('promotes the next image by display order when the primary is removed', async () => {
+      imageRepo.findOne.mockResolvedValue({ id: 'img-1', isPrimary: true });
+      imageRepo.find.mockResolvedValue([{ id: 'img-2' }]);
+
+      await service().deleteImage('v-1', 'img-1');
+
+      expect(imageRepo.find).toHaveBeenCalledWith({
+        where: { vehicleId: 'v-1' },
+        order: { displayOrder: 'ASC' },
+        take: 1,
+      });
+      expect(imageRepo.update).toHaveBeenCalledWith(
+        { id: 'img-2' },
+        { isPrimary: true },
+      );
+    });
+
+    it('does nothing extra when a non-primary image is removed', async () => {
+      imageRepo.findOne.mockResolvedValue({ id: 'img-1', isPrimary: false });
+
+      await service().deleteImage('v-1', 'img-1');
+
+      expect(imageRepo.find).not.toHaveBeenCalled();
+      expect(imageRepo.update).not.toHaveBeenCalled();
+    });
+
+    it('leaves no images to promote when the last photo is removed', async () => {
+      imageRepo.findOne.mockResolvedValue({ id: 'img-1', isPrimary: true });
+      imageRepo.find.mockResolvedValue([]);
+
+      await expect(
+        service().deleteImage('v-1', 'img-1'),
+      ).resolves.toBeUndefined();
+      expect(imageRepo.update).not.toHaveBeenCalled();
     });
   });
 });
