@@ -68,7 +68,9 @@ export function DealerLayout() {
     <div className="dealer-shell">
       <aside className="dealer-shell__sidebar">
         <div className="dealer-shell__brand">
-          <BrandMark to="/dealer" />
+          {/* The logo leads back to the public landing page, like every other logo on
+              the site; the dashboard is the first item in the nav below. */}
+          <BrandMark to="/" />
           <span className="dealer-shell__badge">Dealer</span>
         </div>
 

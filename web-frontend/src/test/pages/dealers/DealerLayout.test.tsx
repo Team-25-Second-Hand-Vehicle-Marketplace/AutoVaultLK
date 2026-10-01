@@ -31,6 +31,19 @@ describe('DealerLayout navigation', () => {
     getProfile.mockReset()
   })
 
+  it('links the logo to the landing page, not the dashboard', async () => {
+    getProfile.mockResolvedValue({
+      dealerType: 'business',
+      verificationStatus: 'VERIFIED',
+    } as DealerProfile)
+    renderLayout()
+    await screen.findByRole('link', { name: 'Bulk upload' })
+
+    expect(screen.getByRole('link', { name: /AutoVault/ })).toHaveAttribute('href', '/')
+    // The dashboard stays reachable from the nav.
+    expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('href', '/dealer')
+  })
+
   it('shows Bulk upload to a verified business dealer', async () => {
     getProfile.mockResolvedValue({
       dealerType: 'business',
