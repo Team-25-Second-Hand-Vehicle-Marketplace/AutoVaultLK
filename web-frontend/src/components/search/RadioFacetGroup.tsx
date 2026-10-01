@@ -15,7 +15,12 @@ export function RadioFacetGroup({ label, options, selected, onChange }: Props) {
             type="radio"
             name={label}
             checked={selected === option}
-            onChange={() => onChange(selected === option ? undefined : option)}
+            onChange={() => onChange(option)}
+            // A browser never fires `change` when an already-selected radio is
+            // clicked, so deselecting has to be handled on click instead.
+            onClick={() => {
+              if (selected === option) onChange(undefined)
+            }}
           />
           {option}
         </label>
