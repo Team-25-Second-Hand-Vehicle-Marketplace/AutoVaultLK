@@ -40,7 +40,7 @@ function ColumnTable({ columns }: { columns: readonly string[] }) {
 }
 
 /**
- * The CSV columns, required ones first. The optional ones stay hidden until the
+ * The CSV columns / JSON fields, required ones first. The optional ones stay hidden until the
  * dealer asks for them: most files only need the required set, and a table of
  * forty-odd columns up front buries that.
  */
@@ -59,13 +59,14 @@ export function BulkUploadFieldsDialog({ open, onClose }: Props) {
     <Modal
       open={open}
       onClose={close}
-      title="CSV columns"
+      title="CSV/JSON fields"
       size="lg"
       footer={<Button onClick={close}>Done</Button>}
     >
       <p className="dealer-muted">
-        Your file needs a header row with these {required.length} columns. Common spellings
-        are recognised automatically, so an export from your own system usually works unedited.
+        A CSV needs a header row with these {required.length} columns, and a JSON file uses them
+        as the keys of each vehicle. Common spellings are recognised automatically, so an export
+        from your own system usually works unedited.
       </p>
 
       <h3 className="modal__subhead">Required columns</h3>

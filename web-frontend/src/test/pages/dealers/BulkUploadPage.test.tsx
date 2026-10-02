@@ -80,7 +80,7 @@ describe('BulkUploadPage - instructions and column list', () => {
     await openPage()
 
     const guide = screen.getByRole('dialog', { name: 'How to prepare your upload' })
-    expect(within(guide).getByText(/Inventory file \(CSV, required\)/)).toBeInTheDocument()
+    expect(within(guide).getByText(/Inventory file \(CSV\/JSON, required\)/)).toBeInTheDocument()
     expect(within(guide).getByText(/Photos \(ZIP, optional\)/)).toBeInTheDocument()
   })
 
@@ -129,7 +129,7 @@ describe('BulkUploadPage - instructions and column list', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'View fields' }))
 
-    const dialog = screen.getByRole('dialog', { name: 'CSV columns' })
+    const dialog = screen.getByRole('dialog', { name: 'CSV/JSON fields' })
     expect(within(dialog).getByText('Required columns')).toBeInTheDocument()
     expect(within(dialog).getByText('make')).toBeInTheDocument()
     expect(within(dialog).getByText('condition')).toBeInTheDocument()
@@ -141,7 +141,7 @@ describe('BulkUploadPage - instructions and column list', () => {
     localStorage.setItem(DISMISSED_KEY, '1')
     await openPage()
     await userEvent.click(screen.getByRole('button', { name: 'View fields' }))
-    const dialog = screen.getByRole('dialog', { name: 'CSV columns' })
+    const dialog = screen.getByRole('dialog', { name: 'CSV/JSON fields' })
 
     await userEvent.click(within(dialog).getByRole('button', { name: /Optional columns/ }))
     expect(within(dialog).getByText('abs_equipped')).toBeInTheDocument()
@@ -158,7 +158,7 @@ describe('BulkUploadPage - instructions and column list', () => {
     await userEvent.click(within(guide).getByRole('button', { name: 'View fields' }))
 
     expect(screen.queryByRole('dialog', { name: 'How to prepare your upload' })).not.toBeInTheDocument()
-    expect(screen.getByRole('dialog', { name: 'CSV columns' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'CSV/JSON fields' })).toBeInTheDocument()
   })
 
   it('keeps Download template next to View fields', async () => {

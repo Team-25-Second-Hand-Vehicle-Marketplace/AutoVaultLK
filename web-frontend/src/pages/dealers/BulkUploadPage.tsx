@@ -46,7 +46,7 @@ function formatSize(bytes: number): string {
  */
 function validateCsv(file: File): string | null {
   if (!file.name.toLowerCase().endsWith('.csv')) {
-    return `"${file.name}" is not a CSV. Export your inventory as CSV (UTF-8) and try again.`
+    return `"${file.name}" is not a CSV/JSON file. Export your inventory as CSV (UTF-8) or JSON and try again.`
   }
   if (file.size === 0) return 'That file is empty.'
   if (file.size > MAX_UPLOAD_BYTES) {
@@ -190,7 +190,7 @@ export function BulkUploadPage() {
       <header className="dealer-page__header dealer-page__header--split">
         <div>
           <h1>Bulk upload</h1>
-          <p>Upload your inventory as a CSV, with an optional archive of photos.</p>
+          <p>Upload your inventory as a CSV/JSON file, with an optional archive of photos.</p>
         </div>
         <Button variant="ghost" size="sm" onClick={() => setGuideOpen(true)}>
           Instructions
@@ -226,7 +226,7 @@ export function BulkUploadPage() {
               onChange={(e) => pickCsv(e.target.files?.[0] ?? null)}
             />
             <span className="upload-field__hint">
-              {csv ? `${csv.name} · ${formatSize(csv.size)}` : 'Choose a CSV file (required)'}
+              {csv ? `${csv.name} · ${formatSize(csv.size)}` : 'Choose a CSV/JSON file (required)'}
             </span>
           </label>
         </section>

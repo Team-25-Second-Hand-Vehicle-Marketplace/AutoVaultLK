@@ -53,17 +53,22 @@ export function BulkUploadGuide({
 
       <section className="guide-step">
         <h3>
-          <span className="guide-step__num">1</span> Inventory file (CSV, required)
+          <span className="guide-step__num">1</span> Inventory file (CSV/JSON, required)
         </h3>
         <ul>
-          <li>One row per vehicle, with a header row naming each column.</li>
           <li>
-            Save as <strong>CSV (UTF-8)</strong>. Excel's "Save As CSV" also works. A spreadsheet
-            saved as .xlsx does not.
+            <strong>CSV:</strong> one row per vehicle, with a header row naming each column.{' '}
+            <strong>JSON:</strong> one object per vehicle, all inside a single array, with the same
+            names as keys.
           </li>
           <li>
-            Thirteen columns are required: make, model, year, price, mileage, fuel type,
-            transmission, colour, engine capacity, owners, district, condition and vehicle type.
+            Save as <strong>CSV (UTF-8)</strong> or as a <strong>UTF-8 JSON</strong> file. Excel's
+            "Save As CSV" also works. A spreadsheet saved as .xlsx does not.
+          </li>
+          <li>
+            Thirteen columns (JSON keys) are required: make, model, year, price, mileage, fuel
+            type, transmission, colour, engine capacity, owners, district, condition and vehicle
+            type.
           </li>
           <li>
             Check make and model spelling with the Known makes &amp; models button. Close
@@ -111,10 +116,10 @@ export function BulkUploadGuide({
           </li>
           <li>JPG, PNG or WebP. Up to 2,000 photos and 25 MB in the archive.</li>
           <li>
-            A vehicle with no registration number in the CSV cannot be matched to photos. Add
+            A vehicle with no registration number in your file cannot be matched to photos. Add
             those from My listings instead.
           </li>
-          <li>Photos for a registration number that is not in your CSV are skipped.</li>
+          <li>Photos for a registration number that is not in your file are skipped.</li>
         </ul>
       </section>
 
