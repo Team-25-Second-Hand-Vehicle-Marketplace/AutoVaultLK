@@ -140,8 +140,9 @@ Write entities (the cross-schema exception): `VehicleWriteEntity`,
 
 ## 5. Upload API (`src/modules/ingestion/`)
 
-`POST /ingest/upload` - `@Roles('DEALER')`, `202 Accepted`, multipart with `csv`
-(required) and `zip` (optional).
+`POST /ingest/upload` - `@Roles('DEALER')`, `202 Accepted`, multipart with `format`
+(required: `csv` or `json`), `file` (required) and `zip` (optional). The dealer chooses
+the format on the upload page; it is never defaulted or guessed from the extension.
 
 `IngestionUploadService.upload()`:
 
@@ -149,11 +150,17 @@ Write entities (the cross-schema exception): `VehicleWriteEntity`,
    dealers may bulk upload. Manual listing creation (marketplace-service) is open to
    verified dealers of any type, including business dealers - a business dealer may use
    either or both paths; bulk upload is not their only option, just an additional one.
-2. **Validate the CSV** - non-empty, ≤25MB, `.csv` extension, MIME in an allowlist.
-   Extension *and* MIME are both checked; the browser-supplied MIME alone is not trusted.
+2. **Validate the file against the declared format** - non-empty, ≤25MB, extension
+   matches the format (`.csv` / `.json`), MIME in that format's allowlist. Extension *and*
+   MIME are both checked; the browser-supplied MIME alone is not trusted. A mismatch (a
+   `.csv` sent with `format=json`) is a `400` at upload time, before any job exists, with a
+   message naming the fix. A missing or unknown `format` is also a `400`. The rules live in
+   one `FORMAT_RULES` table in the service.
 3. **Validate the ZIP** if present - non-empty, ≤250MB, `.zip`, MIME allowlist.
 4. **Create the job row first**, so storage keys can be tied to a stable job id.
-5. Write `raw/{jobId}/{safeName}` for each file, then update the job's paths.
+5. Write `raw/{jobId}/{safeName}` for each file (the inventory file under its format's
+   content type), then update the job's paths. The job row records `file_format`
+   (migration `1735000033000`), which the worker reads to pick the matching reader.
 6. **Publish `{ jobId }`** and return.
 
 On any failure after job creation the job is marked `FAILED` and the caller gets a
@@ -161,7 +168,7 @@ On any failure after job creation the job is marked `FAILED` and the caller gets
 
 > **Note:** the size limits here are hardcoded class fields (25MB / 250MB), while
 > `pipeline.config.ts` exposes `maxUploadBytes()` reading `INGESTION_MAX_UPLOAD_MB`.
-> The service does not use that helper, so the env var has no effect on CSV size.
+> The service does not use that helper, so the env var has no effect on inventory-file size.
 
 ---
 
@@ -221,7 +228,35 @@ Deliberate details:
   extraction - a zip-bomb defence. A malformed archive fails the whole job with one
   clear message rather than surfacing as an "images failed" footnote after rows loaded.
 
+### 6.2a File formats (`pipeline/parse/file-format.ts`)
+
+Everything format-specific sits behind a `FormatReader` - `inspect()` (file-level checks,
+returns the canonical columns) and `rows()` (one string record per row). `validateFile`
+and `splitChunks` pick the reader from the job's `file_format`; from the first chunk onward
+a CSV job and a JSON job are indistinguishable, because both write the same `RawRow`
+chunks. The required-column check, the photo-archive check and everything after
+`splitChunks` are shared.
+
+- **CSV reader** - the original logic, unchanged: UTF-8 with a Windows-1252 fallback and
+  re-encode, header row, duplicate-column check, streamed `csv-parse`.
+- **JSON reader** - a top-level **array of flat objects**, using the CSV column names.
+  Streamed by `json-array-stream.ts`, a small dependency-free scanner that holds one element
+  at a time (the same footprint guarantee as CSV). Keys go through `normalizeHeader`, so
+  aliases work; every value becomes a string (`2018` -> `"2018"`, `true` -> `"true"`,
+  `null` -> blank), so `parseNormalize` sees the same input either way. There is no header
+  row, so the column set is the union of keys across all records and `inspect()` reads the
+  whole file once. UTF-8 only - JSON has no legacy-encoding fallback.
+
+JSON structural defects fail the **whole file** with one message naming the record, the
+same way a duplicate CSV column does: not an array, never closed, trailing comma, invalid
+UTF-8, a non-object element, a **nested object or list** (flat only - one contract for both
+formats), two keys that fold to the same column, or no records at all. A required column
+that appears in *no* record fails the file; one missing from some records is left to
+`validateRows`, as a blank CSV cell is.
+
 ### 6.3 The CSV contract (`pipeline/parse/csv-contract.ts`)
+
+The contract is shared by both formats - a JSON key is a CSV header.
 
 A shared boundary read by three consumers: `validateFile`, `splitChunks`, and the
 dealer-facing downloadable template.

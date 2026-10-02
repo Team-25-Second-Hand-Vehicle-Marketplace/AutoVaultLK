@@ -1,5 +1,39 @@
+import type { UploadFileFormat } from './ingestion.types'
+
 /**
- * The dealer CSV columns, mirroring ingestion-service's
+ * What differs between the two upload formats, in one place so the file picker,
+ * the validation message, the template download and the instructions cannot
+ * disagree about what "JSON" means.
+ */
+export const UPLOAD_FORMATS: Record<
+  UploadFileFormat,
+  {
+    label: string
+    extension: string
+    /** The file input's `accept`, so the picker filters to the right type. */
+    accept: string
+    mime: string
+    templateFileName: string
+  }
+> = {
+  csv: {
+    label: 'CSV',
+    extension: '.csv',
+    accept: '.csv,text/csv',
+    mime: 'text/csv;charset=utf-8',
+    templateFileName: 'autovault-inventory-template.csv',
+  },
+  json: {
+    label: 'JSON',
+    extension: '.json',
+    accept: '.json,application/json',
+    mime: 'application/json;charset=utf-8',
+    templateFileName: 'autovault-inventory-template.json',
+  },
+}
+
+/**
+ * The dealer upload columns, shared by both formats, mirroring ingestion-service's
  * `src/workers/etl-worker/pipeline/parse/csv-contract.ts`.
  *
  * Kept as a copy rather than an import because the two services build

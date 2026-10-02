@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { buildRejectionsCsv, buildTemplateCsv } from '../../api/ingestion.api'
+import {
+  buildRejectionsCsv,
+  buildTemplate,
+  buildTemplateCsv,
+  buildTemplateJson,
+} from '../../api/ingestion.api'
 import {
   REQUIRED_COLUMNS,
   TEMPLATE_HEADER,
@@ -87,6 +92,61 @@ describe('CSV template', () => {
     // The example row must have one cell per column, or a dealer editing it
     // shifts every value into the wrong field.
     expect(example.split(',')).toHaveLength(TEMPLATE_HEADER.length)
+  })
+})
+
+describe('JSON template', () => {
+  const parse = () => JSON.parse(buildTemplateJson()) as Record<string, unknown>[]
+
+  it('is an array holding one example vehicle', () => {
+    const vehicles = parse()
+
+    expect(Array.isArray(vehicles)).toBe(true)
+    expect(vehicles).toHaveLength(1)
+  })
+
+  it('has every template column as a key, in the contract order, matching the CSV header', () => {
+    // The two templates are built from one column list; pinned so neither can
+    // drift from the other or from the parser.
+    expect(Object.keys(parse()[0])).toEqual([...TEMPLATE_HEADER])
+  })
+
+  it('writes numeric columns as numbers and unfilled columns as null', () => {
+    const [vehicle] = parse()
+
+    expect(vehicle).toMatchObject({
+      make: 'Toyota',
+      year: 2015,
+      price: 3500000,
+      mileage: 45000,
+      engine_capacity_cc: 1500,
+      owners_count: 1,
+    })
+    expect(vehicle.sunroof).toBeNull()
+  })
+
+  it('is flat - the server rejects nested values', () => {
+    for (const value of Object.values(parse()[0])) {
+      expect(typeof value === 'object' && value !== null).toBe(false)
+    }
+  })
+
+  it('carries the same example data as the CSV template', () => {
+    const [header, example] = buildTemplateCsv().trim().split('\n')
+    const columns = header.split(',')
+    const cells = example.split(',')
+    const vehicle = parse()[0]
+
+    columns.forEach((column, index) => {
+      const csvValue = cells[index]
+      const jsonValue = vehicle[column]
+      expect(jsonValue === null ? '' : String(jsonValue)).toBe(csvValue)
+    })
+  })
+
+  it('buildTemplate picks the builder by format', () => {
+    expect(buildTemplate('csv')).toBe(buildTemplateCsv())
+    expect(buildTemplate('json')).toBe(buildTemplateJson())
   })
 })
 

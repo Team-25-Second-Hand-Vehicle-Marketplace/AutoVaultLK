@@ -105,7 +105,8 @@ describe('POST /ingest/upload (e2e)', () => {
     it('accepts a CSV and returns 202 with the job id', async () => {
       const response = await request(app.getHttpServer())
         .post('/ingest/upload')
-        .attach('csv', Buffer.from(CSV), 'stock.csv')
+        .field('format', 'csv')
+        .attach('file', Buffer.from(CSV), 'stock.csv')
         .expect(202);
 
       expect(response.body).toMatchObject({
@@ -118,7 +119,8 @@ describe('POST /ingest/upload (e2e)', () => {
     it('stores the file under raw/{jobId}/ before publishing', async () => {
       await request(app.getHttpServer())
         .post('/ingest/upload')
-        .attach('csv', Buffer.from(CSV), 'stock.csv')
+        .field('format', 'csv')
+        .attach('file', Buffer.from(CSV), 'stock.csv')
         .expect(202);
 
       expect(store.put).toHaveBeenCalledWith(
@@ -133,7 +135,8 @@ describe('POST /ingest/upload (e2e)', () => {
       // ETL would time out on any real file.
       await request(app.getHttpServer())
         .post('/ingest/upload')
-        .attach('csv', Buffer.from(CSV), 'stock.csv')
+        .field('format', 'csv')
+        .attach('file', Buffer.from(CSV), 'stock.csv')
         .expect(202);
 
       expect(queue.publish).toHaveBeenCalledWith({ jobId: 'job-1' });
@@ -142,7 +145,8 @@ describe('POST /ingest/upload (e2e)', () => {
     it('accepts an optional image archive alongside the CSV', async () => {
       await request(app.getHttpServer())
         .post('/ingest/upload')
-        .attach('csv', Buffer.from(CSV), 'stock.csv')
+        .field('format', 'csv')
+        .attach('file', Buffer.from(CSV), 'stock.csv')
         .attach('zip', Buffer.from('PK\u0003\u0004fake'), 'photos.zip')
         .expect(202);
 
@@ -154,13 +158,117 @@ describe('POST /ingest/upload (e2e)', () => {
     });
   });
 
+  describe('declared format', () => {
+    const JSON_BODY = '[{"make":"Toyota","model":"Vitz","year":2015}]';
+
+    it('accepts a JSON file declared as json and records the format', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/ingest/upload')
+        .field('format', 'json')
+        .attach('file', Buffer.from(JSON_BODY), 'stock.json')
+        .expect(202);
+
+      expect(response.body).toMatchObject({ jobId: 'job-1', format: 'json' });
+      expect(uploadJobs.create).toHaveBeenCalledWith(
+        expect.objectContaining({ fileFormat: 'json', fileName: 'stock.json' }),
+      );
+      expect(store.put).toHaveBeenCalledWith(
+        'raw/job-1/stock.json',
+        expect.any(Buffer),
+        'application/json',
+      );
+    });
+
+    it('accepts a CSV on the new `file` field when declared as csv', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/ingest/upload')
+        .field('format', 'csv')
+        .attach('file', Buffer.from(CSV), 'stock.csv')
+        .expect(202);
+
+      expect(response.body).toMatchObject({ format: 'csv' });
+    });
+
+    it('400s when no format is sent, rather than defaulting', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/ingest/upload')
+        .attach('file', Buffer.from(CSV), 'stock.csv')
+        .expect(400);
+
+      expect(response.body.message).toMatch(/format is required/i);
+      expect(uploadJobs.create).not.toHaveBeenCalled();
+      expect(store.put).not.toHaveBeenCalled();
+    });
+
+    it('accepts the format case-insensitively', async () => {
+      await request(app.getHttpServer())
+        .post('/ingest/upload')
+        .field('format', 'JSON')
+        .attach('file', Buffer.from(JSON_BODY), 'stock.json')
+        .expect(202);
+    });
+
+    it('400s a .csv file when the dealer selected json, naming both', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/ingest/upload')
+        .field('format', 'json')
+        .attach('file', Buffer.from(CSV), 'stock.csv')
+        .expect(400);
+
+      expect(response.body.message).toMatch(/selected JSON.*is a CSV file/i);
+      // Rejected before any job row or object exists.
+      expect(uploadJobs.create).not.toHaveBeenCalled();
+      expect(store.put).not.toHaveBeenCalled();
+    });
+
+    it('400s a .json file when the dealer selected csv', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/ingest/upload')
+        .field('format', 'csv')
+        .attach('file', Buffer.from(JSON_BODY), 'stock.json')
+        .expect(400);
+
+      expect(response.body.message).toMatch(/selected CSV.*is a JSON file/i);
+      expect(store.put).not.toHaveBeenCalled();
+    });
+
+    it('400s an unrecognised format value', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/ingest/upload')
+        .field('format', 'xml')
+        .attach('file', Buffer.from(CSV), 'stock.csv')
+        .expect(400);
+
+      expect(response.body.message).toMatch(/unsupported format/i);
+    });
+
+    it('does not treat inherited object keys as formats', async () => {
+      await request(app.getHttpServer())
+        .post('/ingest/upload')
+        .field('format', 'constructor')
+        .attach('file', Buffer.from(CSV), 'stock.csv')
+        .expect(400);
+    });
+
+    it('400s an empty JSON file with a JSON-specific message', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/ingest/upload')
+        .field('format', 'json')
+        .attach('file', Buffer.alloc(0), 'stock.json')
+        .expect(400);
+
+      expect(response.body.message).toMatch(/JSON file is empty/i);
+    });
+  });
+
   describe('authorisation', () => {
     it('401s without a token', async () => {
       authenticated = false;
 
       await request(app.getHttpServer())
         .post('/ingest/upload')
-        .attach('csv', Buffer.from(CSV), 'stock.csv')
+        .field('format', 'csv')
+        .attach('file', Buffer.from(CSV), 'stock.csv')
         .expect(403); // Nest returns 403 when canActivate returns false
 
       expect(store.put).not.toHaveBeenCalled();
@@ -173,7 +281,8 @@ describe('POST /ingest/upload (e2e)', () => {
 
       const response = await request(app.getHttpServer())
         .post('/ingest/upload')
-        .attach('csv', Buffer.from(CSV), 'stock.csv')
+        .field('format', 'csv')
+        .attach('file', Buffer.from(CSV), 'stock.csv')
         .expect(403);
 
       expect(response.body.message).toMatch(/verified business dealers/i);
@@ -184,42 +293,58 @@ describe('POST /ingest/upload (e2e)', () => {
   });
 
   describe('file validation', () => {
-    it('400s when no CSV is attached', async () => {
+    it('400s when no file is attached', async () => {
       const response = await request(app.getHttpServer())
         .post('/ingest/upload')
+        .field('format', 'csv')
         .expect(400);
 
-      expect(response.body.message).toMatch(/csv file is required/i);
+      expect(response.body.message).toMatch(/inventory file is required/i);
     });
 
     it('400s a non-CSV extension', async () => {
       const response = await request(app.getHttpServer())
         .post('/ingest/upload')
-        .attach('csv', Buffer.from(CSV), 'stock.xlsx')
+        .field('format', 'csv')
+        .attach('file', Buffer.from(CSV), 'stock.xlsx')
         .expect(400);
 
       expect(response.body.message).toMatch(/must be a CSV/i);
     });
 
+    it('400s the retired `csv` field name', async () => {
+      // `csv` was the inventory field before JSON support. It is gone, so an
+      // old client is told so by multer rather than quietly mis-parsed.
+      const response = await request(app.getHttpServer())
+        .post('/ingest/upload')
+        .field('format', 'csv')
+        .attach('csv', Buffer.from(CSV), 'stock.csv')
+        .expect(400);
+
+      expect(response.body.message).toMatch(/unexpected (file )?field/i);
+      expect(store.put).not.toHaveBeenCalled();
+    });
+
     it('400s an empty CSV', async () => {
       const response = await request(app.getHttpServer())
         .post('/ingest/upload')
-        .attach('csv', Buffer.alloc(0), 'stock.csv')
+        .field('format', 'csv')
+        .attach('file', Buffer.alloc(0), 'stock.csv')
         .expect(400);
 
       expect(response.body.message).toMatch(/empty/i);
     });
 
     it('400s a field the interceptor does not declare', async () => {
-      // FileFieldsInterceptor declares only `csv` and `zip`. Multer rejects
-      // anything else outright rather than dropping it, so a frontend using
-      // the wrong field name gets "Unexpected file field" - not the friendlier
-      // "csv file is required". Pinned because that message is what a
-      // developer debugging a failed upload will search for. (Older multer
-      // versions worded this "Unexpected field"; the regex covers both.)
+      // FileFieldsInterceptor declares only `file` and `zip`. Multer
+      // rejects anything else outright rather than dropping it, so a frontend
+      // using the wrong field name gets "Unexpected file field" - not the
+      // friendlier "inventory file is required". Pinned because that message
+      // is what a developer debugging a failed upload will search for. (Older
+      // multer versions worded this "Unexpected field"; the regex covers both.)
       const response = await request(app.getHttpServer())
         .post('/ingest/upload')
-        .attach('file', Buffer.from(CSV), 'stock.csv')
+        .attach('inventory', Buffer.from(CSV), 'stock.csv')
         .expect(400);
 
       expect(response.body.message).toMatch(/unexpected (file )?field/i);
@@ -235,7 +360,8 @@ describe('POST /ingest/upload (e2e)', () => {
 
       await request(app.getHttpServer())
         .post('/ingest/upload')
-        .attach('csv', Buffer.from(CSV), 'stock.csv')
+        .field('format', 'csv')
+        .attach('file', Buffer.from(CSV), 'stock.csv')
         .expect(500);
 
       expect(uploadJobs.updateStatus).toHaveBeenCalledWith('job-1', 'FAILED');

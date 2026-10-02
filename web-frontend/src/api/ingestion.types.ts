@@ -6,11 +6,16 @@ export type UploadJobStatus =
   | 'PARTIAL'
   | 'FAILED'
 
+/** Mirrors ingestion-service's UploadFileFormat: what the dealer declares at upload. */
+export type UploadFileFormat = 'csv' | 'json'
+
 /** 202 body from POST /ingest/upload. */
 export type UploadAccepted = {
   jobId: string
   status: UploadJobStatus
   fileName: string
+  format: UploadFileFormat
+  /** Historical name: holds the stored inventory file, whichever the format. */
   csvS3Path: string
   zipS3Path: string | null
 }

@@ -12,7 +12,7 @@ export type CreateUploadJobInput = {
   fileName: string;
   csvS3Path: string;
   zipS3Path?: string | null;
-  /** Defaults to 'csv', the only format before JSON support. */
+  /** Defaults to 'csv' (the pre-JSON behaviour) for callers that omit it. */
   fileFormat?: UploadFileFormat;
 };
 

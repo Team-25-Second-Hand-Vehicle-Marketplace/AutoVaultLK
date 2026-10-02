@@ -1,5 +1,12 @@
 import { apiClient } from './client'
-import type { JobsPage, JobStatus, RejectedRecord, RejectionsPage, UploadAccepted } from './ingestion.types'
+import type {
+  JobsPage,
+  JobStatus,
+  RejectedRecord,
+  RejectionsPage,
+  UploadAccepted,
+  UploadFileFormat,
+} from './ingestion.types'
 import { TEMPLATE_HEADER } from './ingestion.template'
 
 /**
@@ -13,19 +20,25 @@ const UPLOAD_TIMEOUT_MS = 5 * 60 * 1000
 export type UploadProgress = (percent: number) => void
 
 /**
- * Field names are `csv` and `zip` to match the FileFieldsInterceptor on
- * ingestion-service's IngestionController. Multer rejects any other field
- * outright - a wrong name returns 400 "Unexpected field", not the friendlier
- * "csv file is required".
+ * Field names are `file`, `format` and `zip` to match the FileFieldsInterceptor
+ * on ingestion-service's IngestionController. Multer rejects any other file
+ * field outright - a wrong name returns 400 "Unexpected field", not the
+ * friendlier "inventory file is required".
+ *
+ * `format` is appended before the files: the server reads text fields from the
+ * same multipart stream, and sending the declared format first keeps it
+ * available however the body is parsed.
  */
 export async function uploadInventory(
-  csv: File,
+  format: UploadFileFormat,
+  file: File,
   zip: File | null,
   onProgress?: UploadProgress,
   signal?: AbortSignal,
 ): Promise<UploadAccepted> {
   const form = new FormData()
-  form.append('csv', csv)
+  form.append('format', format)
+  form.append('file', file)
   if (zip) form.append('zip', zip)
 
   const { data } = await apiClient.post<UploadAccepted>('/ingest/upload', form, {
@@ -125,6 +138,32 @@ const EXAMPLE_ROW: Record<string, string> = {
 export function buildTemplateCsv(): string {
   const example = TEMPLATE_HEADER.map((column) => EXAMPLE_ROW[column] ?? '')
   return `${TEMPLATE_HEADER.join(',')}\n${example.join(',')}\n`
+}
+
+/** Columns a JSON file writes as numbers, the way a real export would. */
+const JSON_NUMERIC_COLUMNS = new Set(['year', 'price', 'mileage', 'engine_capacity_cc', 'owners_count'])
+
+/**
+ * The JSON counterpart of buildTemplateCsv: an array holding one example
+ * vehicle, with every column the pipeline accepts present as a key.
+ *
+ * Columns with no example are `null`, which the pipeline reads as a blank
+ * cell - so the dealer sees every field that exists, and can delete the ones
+ * they do not use. Built from the same TEMPLATE_HEADER and EXAMPLE_ROW as the
+ * CSV, so the two templates cannot drift apart.
+ */
+export function buildTemplateJson(): string {
+  const vehicle: Record<string, string | number | null> = {}
+  for (const column of TEMPLATE_HEADER) {
+    const example = EXAMPLE_ROW[column]
+    if (example === undefined) vehicle[column] = null
+    else vehicle[column] = JSON_NUMERIC_COLUMNS.has(column) ? Number(example) : example
+  }
+  return `${JSON.stringify([vehicle], null, 2)}\n`
+}
+
+export function buildTemplate(format: UploadFileFormat): string {
+  return format === 'json' ? buildTemplateJson() : buildTemplateCsv()
 }
 
 /**

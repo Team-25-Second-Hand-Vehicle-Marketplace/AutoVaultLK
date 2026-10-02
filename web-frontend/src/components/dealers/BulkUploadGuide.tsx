@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
+import type { UploadFileFormat } from '../../api/ingestion.types'
 
 interface Props {
   open: boolean
+  /** The format the dealer chose; step 1 describes that format's file. */
+  format?: UploadFileFormat
   /** `dontShowAgain` reflects the checkbox at the moment the guide was closed. */
   onClose: (dontShowAgain: boolean) => void
   /** Opens the columns dialog; the guide closes first so the two never stack. */
@@ -19,6 +22,7 @@ interface Props {
  */
 export function BulkUploadGuide({
   open,
+  format = 'csv',
   onClose,
   onViewFields,
   onViewKnown,
@@ -53,18 +57,46 @@ export function BulkUploadGuide({
 
       <section className="guide-step">
         <h3>
-          <span className="guide-step__num">1</span> Inventory file (CSV, required)
+          <span className="guide-step__num">1</span> Inventory file (
+          {format === 'json' ? 'JSON' : 'CSV'}, required)
         </h3>
         <ul>
-          <li>One row per vehicle, with a header row naming each column.</li>
-          <li>
-            Save as <strong>CSV (UTF-8)</strong>. Excel's "Save As CSV" also works. A spreadsheet
-            saved as .xlsx does not.
-          </li>
-          <li>
-            Thirteen columns are required: make, model, year, price, mileage, fuel type,
-            transmission, colour, engine capacity, owners, district, condition and vehicle type.
-          </li>
+          {format === 'json' ? (
+            <>
+              <li>
+                One flat object per vehicle, all inside a single array:{' '}
+                <code>[ {'{ "make": "Toyota", … }'}, {'{ … }'} ]</code>. Download the template to
+                see it.
+              </li>
+              <li>
+                Save as <strong>UTF-8</strong> with a <code>.json</code> extension. Numbers can be
+                written as numbers (<code>2018</code>) or as text.
+              </li>
+              <li>
+                Keep every field flat. Nested objects and lists are not accepted: write{' '}
+                <code>"sunroof": true</code>, not <code>"specs": {'{ … }'}</code>.
+              </li>
+              <li>
+                The field names are the same as the CSV columns, and the same thirteen are required
+                on every vehicle: make, model, year, price, mileage, fuel type, transmission,
+                colour, engine capacity, owners, district, condition and vehicle type. Use{' '}
+                <code>null</code> or leave a field out when you do not have the value.
+              </li>
+            </>
+          ) : (
+            <>
+              <li>One row per vehicle, with a header row naming each column.</li>
+              <li>
+                Save as <strong>CSV (UTF-8)</strong>. Excel's "Save As CSV" also works. A
+                spreadsheet saved as .xlsx does not.
+              </li>
+              <li>
+                Thirteen columns are required: make, model, year, price, mileage, fuel type,
+                transmission, colour, engine capacity, owners, district, condition and vehicle
+                type.
+              </li>
+            </>
+          )}
           <li>
             Check make and model spelling with the Known makes &amp; models button. Close
             misspellings are corrected, but an unrecognised make or model is rejected.

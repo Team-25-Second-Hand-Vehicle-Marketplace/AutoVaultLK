@@ -462,8 +462,11 @@ paths:
         - ingest
       summary: Bulk upload intake (business dealer, verified)
       description: >
-        Accepts a dealer inventory CSV and an optional ZIP of vehicle photos,
-        stores both, creates an upload job and returns immediately. The ETL
+        Accepts a dealer inventory file, as CSV or JSON, and an optional ZIP of
+        vehicle photos, stores both, creates an upload job and returns
+        immediately. The dealer declares the format with `format`, and the
+        file's extension must match it; a mismatch is rejected here with a 400,
+        not later in the pipeline. The ETL
         pipeline runs asynchronously; poll GET /jobs/{jobId} for progress.
 
 
@@ -479,13 +482,22 @@ paths:
             schema:
               type: object
               required:
-                - csv
+                - format
+                - file
               properties:
-                csv:
+                format:
+                  type: string
+                  enum: [csv, json]
+                  description: >
+                    Format of the inventory file, chosen by the dealer. There
+                    is no default and it is not guessed from the extension.
+                file:
                   type: string
                   format: binary
                   description: >
-                    Inventory CSV, UTF-8, max 25 MB. Required columns are make,
+                    Inventory file, UTF-8, max 25 MB. For `csv`, a header
+                    row; for `json`, a top-level array of flat objects. Both
+                    use the same column names. Required columns are make,
                     model, year, price and mileage; registration_number is
                     optional but is what photos are matched on. Common header
                     spellings are folded automatically.
@@ -496,8 +508,8 @@ paths:
                     Optional archive of photos named after each vehicle's
                     registration number, e.g. CAB-1234_1.jpg. Max 250 MB.
             encoding:
-              csv:
-                contentType: text/csv
+              file:
+                contentType: text/csv, application/json
               zip:
                 contentType: application/zip
       responses:
@@ -511,8 +523,10 @@ paths:
                 $ref: '#/components/schemas/JobAccepted'
         '400':
           description: >
-            Missing or empty CSV, a non-CSV extension, an unrecognised MIME
-            type, or a form field other than `csv` and `zip`.
+            No inventory file; a missing or unrecognised `format`; an empty
+            file; a file whose extension does not match the declared format
+            (e.g. `.csv` sent with `format=json`); an unrecognised MIME type;
+            or a form field other than `file`, `format` and `zip`.
           content:
             application/json:
               schema:
@@ -957,9 +971,15 @@ components:
         fileName:
           type: string
           example: stock.csv
+        format:
+          type: string
+          enum: [csv, json]
+          description: Format the upload was accepted as.
         csvS3Path:
           type: string
-          description: Object-store key of the stored CSV.
+          description: >
+            Object-store key of the stored inventory file. The name is
+            historical; it holds a JSON file when `format` is `json`.
           example: raw/9a8b7c6d-5e4f-4a3b-9c8d-7e6f5a4b3c2d/stock.csv
         zipS3Path:
           type: string

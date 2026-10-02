@@ -362,6 +362,47 @@
   margin: 0;
 }
 
+/* CSV | JSON choice. A real radio group, so it is keyboard and screen-reader
+   operable; the visual is a segmented control. */
+.upload-format {
+  border: 0;
+  display: flex;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+  padding: 0;
+}
+
+.upload-format legend {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-bottom: 0.4rem;
+  padding: 0;
+}
+
+.upload-format__option {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: inline-flex;
+  gap: 0.4rem;
+  padding: 0.4rem 0.9rem;
+}
+
+.upload-format__option:has(input:checked) {
+  background: var(--accent-bg);
+  border-color: var(--accent);
+}
+
+.upload-format__option:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.upload-format__option:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .upload-field {
   border: 1px dashed var(--border);
   border-radius: var(--radius-sm);

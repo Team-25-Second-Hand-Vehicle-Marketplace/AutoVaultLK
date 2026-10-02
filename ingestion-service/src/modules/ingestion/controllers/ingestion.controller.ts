@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   HttpCode,
   HttpStatus,
@@ -51,7 +52,7 @@ export class IngestionController {
   @UseInterceptors(
     FileFieldsInterceptor([
       {
-        name: 'csv',
+        name: 'file',
         maxCount: 1,
       },
       {
@@ -65,22 +66,25 @@ export class IngestionController {
 
     @UploadedFiles()
     files: {
-      csv?: Express.Multer.File[];
+      file?: Express.Multer.File[];
       zip?: Express.Multer.File[];
     },
+
+    @Body('format') format?: string,
   ) {
-    const csv = files?.csv?.[0];
+    const file = files?.file?.[0];
     const zip = files?.zip?.[0];
 
-    if (!csv) {
+    if (!file) {
       throw new BadRequestException(
-        'csv file is required',
+        'Inventory file is required (multipart field `file`)',
       );
     }
 
     return this.uploadService.upload(
       user.id,
-      csv,
+      file,
+      format,
       zip,
     );
   }

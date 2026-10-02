@@ -179,7 +179,8 @@ export default function (data) {
   const underRes = http.post(
     `${INGESTION_BASE_URL}/ingest/upload`,
     {
-      csv: http.file(CSV_CONTENT, 'inventory.csv', 'text/csv'),
+      format: 'csv',
+      file: http.file(CSV_CONTENT, 'inventory.csv', 'text/csv'),
       zip: http.file(ZIP_UNDER_CAP, 'images-245mb.zip', 'application/zip'),
     },
     {
@@ -199,7 +200,8 @@ export default function (data) {
   const overRes = http.post(
     `${INGESTION_BASE_URL}/ingest/upload`,
     {
-      csv: http.file(CSV_CONTENT, 'inventory.csv', 'text/csv'),
+      format: 'csv',
+      file: http.file(CSV_CONTENT, 'inventory.csv', 'text/csv'),
       zip: http.file(ZIP_OVER_CAP, 'images-260mb-overcap.zip', 'application/zip'),
     },
     {

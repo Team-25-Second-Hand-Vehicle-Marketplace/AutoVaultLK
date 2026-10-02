@@ -14,8 +14,14 @@ export class BulkUploadPage {
     );
   }
 
+  /** CSV is the default format, so no selection is needed first. */
   async chooseCsv(path: string): Promise<void> {
-    await this.page.locator('input#csv-input').setInputFiles(path);
+    await this.page.locator('input#file-input').setInputFiles(path);
+  }
+
+  async chooseJson(path: string): Promise<void> {
+    await this.page.getByRole('radio', { name: 'JSON' }).check();
+    await this.page.locator('input#file-input').setInputFiles(path);
   }
 
   async chooseZip(path: string): Promise<void> {

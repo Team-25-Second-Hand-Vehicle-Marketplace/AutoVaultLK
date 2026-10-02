@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toErrorMessage } from '../../api/client'
-import { buildTemplateCsv, getActiveJob, uploadInventory } from '../../api/ingestion.api'
+import { buildTemplate, getActiveJob, uploadInventory } from '../../api/ingestion.api'
+import { UPLOAD_FORMATS } from '../../api/ingestion.template'
+import type { UploadFileFormat } from '../../api/ingestion.types'
 import { BulkUploadFieldsDialog } from '../../components/dealers/BulkUploadFieldsDialog'
 import { BulkUploadGuide } from '../../components/dealers/BulkUploadGuide'
 import { KnownValuesDialog } from '../../components/dealers/KnownValuesDialog'
@@ -38,15 +40,27 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
+const FORMATS = Object.keys(UPLOAD_FORMATS) as UploadFileFormat[]
+
 /**
  * Rejects locally what the server would reject anyway.
  *
- * The extension check mirrors validateFile's; catching it before a 25 MB
- * transfer saves the dealer a slow round trip to learn they picked an .xlsx.
+ * The extension check mirrors the server's: it must match the format the dealer
+ * selected, and catching it before a 25 MB transfer saves a slow round trip to
+ * learn they picked an .xlsx - or a .csv while JSON was selected.
  */
-function validateCsv(file: File): string | null {
-  if (!file.name.toLowerCase().endsWith('.csv')) {
-    return `"${file.name}" is not a CSV. Export your inventory as CSV (UTF-8) and try again.`
+function validateInventory(file: File, format: UploadFileFormat): string | null {
+  const wanted = UPLOAD_FORMATS[format]
+  const name = file.name.toLowerCase()
+
+  if (!name.endsWith(wanted.extension)) {
+    const actual = FORMATS.find((other) => name.endsWith(UPLOAD_FORMATS[other].extension))
+    if (actual) {
+      return `You selected ${wanted.label}, but "${file.name}" is a ${UPLOAD_FORMATS[actual].label} file. Choose a ${wanted.extension} file, or switch the format to ${UPLOAD_FORMATS[actual].label}.`
+    }
+    return format === 'json'
+      ? `"${file.name}" is not a JSON file. Export your inventory as a JSON array (UTF-8) and try again.`
+      : `"${file.name}" is not a CSV. Export your inventory as CSV (UTF-8) and try again.`
   }
   if (file.size === 0) return 'That file is empty.'
   if (file.size > MAX_UPLOAD_BYTES) {
@@ -68,7 +82,8 @@ function validateZip(file: File): string | null {
 export function BulkUploadPage() {
   const navigate = useNavigate()
 
-  const [csv, setCsv] = useState<File | null>(null)
+  const [format, setFormat] = useState<UploadFileFormat>('csv')
+  const [inventory, setInventory] = useState<File | null>(null)
   const [zip, setZip] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
@@ -80,7 +95,7 @@ export function BulkUploadPage() {
   const [fieldsOpen, setFieldsOpen] = useState(false)
   const [knownOpen, setKnownOpen] = useState(false)
 
-  const csvInput = useRef<HTMLInputElement>(null)
+  const inventoryInput = useRef<HTMLInputElement>(null)
   const zipInput = useRef<HTMLInputElement>(null)
 
   // A dealer who submitted, then navigated away while it was still
@@ -113,18 +128,28 @@ export function BulkUploadPage() {
     }
   }, [navigate])
 
-  const pickCsv = (file: File | null) => {
+  const pickInventory = (file: File | null) => {
     setError(null)
-    if (!file) return setCsv(null)
+    if (!file) return setInventory(null)
 
-    const problem = validateCsv(file)
+    const problem = validateInventory(file, format)
     if (problem) {
       setError(problem)
-      setCsv(null)
-      if (csvInput.current) csvInput.current.value = ''
+      setInventory(null)
+      if (inventoryInput.current) inventoryInput.current.value = ''
       return
     }
-    setCsv(file)
+    setInventory(file)
+  }
+
+  // A file chosen under one format is wrong under the other, so switching
+  // clears it rather than leaving a stale selection that would fail on submit.
+  const chooseFormat = (next: UploadFileFormat) => {
+    if (next === format) return
+    setFormat(next)
+    setInventory(null)
+    setError(null)
+    if (inventoryInput.current) inventoryInput.current.value = ''
   }
 
   const pickZip = (file: File | null) => {
@@ -142,11 +167,11 @@ export function BulkUploadPage() {
   }
 
   const downloadTemplate = () => {
-    const blob = new Blob([buildTemplateCsv()], { type: 'text/csv;charset=utf-8' })
+    const blob = new Blob([buildTemplate(format)], { type: UPLOAD_FORMATS[format].mime })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = 'autovault-inventory-template.csv'
+    link.download = UPLOAD_FORMATS[format].templateFileName
     link.click()
     URL.revokeObjectURL(url)
   }
@@ -158,14 +183,14 @@ export function BulkUploadPage() {
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
-    if (!csv || uploading) return
+    if (!inventory || uploading) return
 
     setUploading(true)
     setError(null)
     setProgress(0)
 
     try {
-      const accepted = await uploadInventory(csv, zip, setProgress)
+      const accepted = await uploadInventory(format, inventory, zip, setProgress)
       // The pipeline runs asynchronously, so there is nothing to wait for here
       // - the status page polls from this point.
       navigate(`/dealer/uploads/${accepted.jobId}`, { replace: true })
@@ -190,7 +215,7 @@ export function BulkUploadPage() {
       <header className="dealer-page__header dealer-page__header--split">
         <div>
           <h1>Bulk upload</h1>
-          <p>Upload your inventory as a CSV, with an optional archive of photos.</p>
+          <p>Upload your inventory as a CSV or JSON file, with an optional archive of photos.</p>
         </div>
         <Button variant="ghost" size="sm" onClick={() => setGuideOpen(true)}>
           Instructions
@@ -216,17 +241,35 @@ export function BulkUploadPage() {
             </div>
           </div>
 
-          <label className="upload-field" htmlFor="csv-input">
+          <fieldset className="upload-format" disabled={uploading}>
+            <legend>File format</legend>
+            {FORMATS.map((option) => (
+              <label key={option} className="upload-format__option">
+                <input
+                  type="radio"
+                  name="inventory-format"
+                  value={option}
+                  checked={format === option}
+                  onChange={() => chooseFormat(option)}
+                />
+                {UPLOAD_FORMATS[option].label}
+              </label>
+            ))}
+          </fieldset>
+
+          <label className="upload-field" htmlFor="file-input">
             <input
-              id="csv-input"
-              ref={csvInput}
+              id="file-input"
+              ref={inventoryInput}
               type="file"
-              accept=".csv,text/csv"
+              accept={UPLOAD_FORMATS[format].accept}
               disabled={uploading}
-              onChange={(e) => pickCsv(e.target.files?.[0] ?? null)}
+              onChange={(e) => pickInventory(e.target.files?.[0] ?? null)}
             />
             <span className="upload-field__hint">
-              {csv ? `${csv.name} · ${formatSize(csv.size)}` : 'Choose a CSV file (required)'}
+              {inventory
+                ? `${inventory.name} · ${formatSize(inventory.size)}`
+                : `Choose a ${UPLOAD_FORMATS[format].label} file (required)`}
             </span>
           </label>
         </section>
@@ -264,7 +307,7 @@ export function BulkUploadPage() {
         )}
 
         <div className="dealer-page__actions">
-          <Button type="submit" disabled={!csv || uploading}>
+          <Button type="submit" disabled={!inventory || uploading}>
             {uploading ? 'Uploading…' : 'Upload inventory'}
           </Button>
         </div>
@@ -272,12 +315,17 @@ export function BulkUploadPage() {
 
       <BulkUploadGuide
         open={guideOpen}
+        format={format}
         onClose={closeGuide}
         onViewFields={() => setFieldsOpen(true)}
         onViewKnown={() => setKnownOpen(true)}
         onDownloadTemplate={downloadTemplate}
       />
-      <BulkUploadFieldsDialog open={fieldsOpen} onClose={() => setFieldsOpen(false)} />
+      <BulkUploadFieldsDialog
+        open={fieldsOpen}
+        format={format}
+        onClose={() => setFieldsOpen(false)}
+      />
       <KnownValuesDialog open={knownOpen} onClose={() => setKnownOpen(false)} />
     </div>
   )
