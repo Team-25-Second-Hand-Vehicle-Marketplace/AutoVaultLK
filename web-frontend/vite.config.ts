@@ -25,6 +25,14 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (p) => p.replace(/^\/marketplace/, ""),
       },
+      // Vehicle photos in IMAGE_SERVE_MODE=local. The API returns root-relative
+      // URLs (/images/local/...) that the browser requests from this origin;
+      // without this entry Vite answers with index.html and every <img> breaks.
+      // Prefix PRESERVED - the service mounts @Controller('images/local') itself.
+      "/images": {
+        target: "http://localhost:3002",
+        changeOrigin: true,
+      },
       // nginx: location /auth/ -> auth_user_service/auth/ (prefix PRESERVED -
       // the service mounts its own @Controller('auth'), unlike marketplace).
       "/auth": {
