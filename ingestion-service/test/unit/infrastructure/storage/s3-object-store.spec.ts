@@ -12,6 +12,7 @@ jest.mock('@aws-sdk/client-s3', () => {
     GetObjectCommand: class extends MockCommand {},
     HeadObjectCommand: class extends MockCommand {},
     ListObjectsV2Command: class extends MockCommand {},
+    PutObjectCommand: class extends MockCommand {},
   };
 });
 
@@ -21,6 +22,11 @@ jest.mock('@aws-sdk/lib-storage', () => ({
     uploadDone(args);
     return { done: jest.fn().mockResolvedValue(undefined) };
   }),
+}));
+
+const getSignedUrl = jest.fn();
+jest.mock('@aws-sdk/s3-request-presigner', () => ({
+  getSignedUrl: (...args: unknown[]): unknown => getSignedUrl(...args),
 }));
 
 const config = (...args: [] | [string | undefined]) => {
@@ -41,6 +47,40 @@ describe('S3ObjectStore', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     send.mockResolvedValue({});
+  });
+
+  describe('getUploadTarget', () => {
+    it('signs a PUT for the given key and content type, locally (no AWS call)', async () => {
+      getSignedUrl.mockResolvedValue('https://bucket.s3.amazonaws.com/raw/job-1/stock.csv?X-Amz-Signature=abc');
+
+      const target = await store().getUploadTarget('raw/job-1/stock.csv', 'text/csv', 900);
+
+      expect(target.url).toBe(
+        'https://bucket.s3.amazonaws.com/raw/job-1/stock.csv?X-Amz-Signature=abc',
+      );
+      expect(target.headers).toEqual({ 'Content-Type': 'text/csv' });
+      // getSignedUrl computes a local SigV4 signature - it never opens a
+      // connection to AWS the way S3Client.send would.
+      expect(send).not.toHaveBeenCalled();
+
+      const [, command, options] = getSignedUrl.mock.calls[0] as [
+        unknown,
+        { input: Record<string, unknown> },
+        { expiresIn: number },
+      ];
+      expect(command.input).toEqual({
+        Bucket: 'test-bucket',
+        Key: 'raw/job-1/stock.csv',
+        ContentType: 'text/csv',
+      });
+      expect(options.expiresIn).toBe(900);
+    });
+
+    it('rejects an invalid key', async () => {
+      await expect(store().getUploadTarget('', 'text/csv', 900)).rejects.toThrow(
+        /Invalid object key/,
+      );
+    });
   });
 
   describe('construction', () => {

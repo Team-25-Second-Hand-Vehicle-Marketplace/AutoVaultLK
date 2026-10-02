@@ -6,13 +6,26 @@ export type UploadJobStatus =
   | 'PARTIAL'
   | 'FAILED'
 
-/** 202 body from POST /ingest/upload. */
+/** 202 body from POST /ingest/upload, and from POST /ingest/upload/{jobId}/complete. */
 export type UploadAccepted = {
   jobId: string
   status: UploadJobStatus
   fileName: string
   csvS3Path: string
   zipS3Path: string | null
+}
+
+/** One file's presigned direct-upload target. */
+export type PresignedUploadTarget = {
+  uploadUrl: string
+  headers: Record<string, string>
+}
+
+/** 200 body from POST /ingest/presign. */
+export type PresignedUpload = {
+  jobId: string
+  csv: PresignedUploadTarget
+  zip: PresignedUploadTarget | null
 }
 
 /** Mirrors ingestion-service's EtlStage union. */

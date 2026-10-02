@@ -8,9 +8,11 @@ import { KnownValuesDialog } from '../../components/dealers/KnownValuesDialog'
 import { Button } from '../../components/ui/Button'
 import { ErrorBanner } from '../../components/ui/ErrorBanner'
 
-/** Matches INGESTION_MAX_UPLOAD_MB, so an oversize file fails here, not after the upload. */
-const MAX_UPLOAD_MB = 25
-const MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024
+/** Matches IngestionUploadService's maxCsvSize/maxZipSize, so an oversize file fails here, not after the upload. */
+const MAX_CSV_MB = 25
+const MAX_CSV_BYTES = MAX_CSV_MB * 1024 * 1024
+const MAX_ZIP_MB = 250
+const MAX_ZIP_BYTES = MAX_ZIP_MB * 1024 * 1024
 
 const GUIDE_DISMISSED_KEY = 'autovault.bulkUploadGuideDismissed'
 
@@ -49,8 +51,8 @@ function validateCsv(file: File): string | null {
     return `"${file.name}" is not a CSV. Export your inventory as CSV (UTF-8) and try again.`
   }
   if (file.size === 0) return 'That file is empty.'
-  if (file.size > MAX_UPLOAD_BYTES) {
-    return `That file is ${formatSize(file.size)}; the limit is ${MAX_UPLOAD_MB} MB.`
+  if (file.size > MAX_CSV_BYTES) {
+    return `That file is ${formatSize(file.size)}; the limit is ${MAX_CSV_MB} MB.`
   }
   return null
 }
@@ -59,8 +61,8 @@ function validateZip(file: File): string | null {
   if (!file.name.toLowerCase().endsWith('.zip')) {
     return `"${file.name}" is not a ZIP archive.`
   }
-  if (file.size > MAX_UPLOAD_BYTES) {
-    return `That archive is ${formatSize(file.size)}; the limit is ${MAX_UPLOAD_MB} MB.`
+  if (file.size > MAX_ZIP_BYTES) {
+    return `That archive is ${formatSize(file.size)}; the limit is ${MAX_ZIP_MB} MB.`
   }
   return null
 }

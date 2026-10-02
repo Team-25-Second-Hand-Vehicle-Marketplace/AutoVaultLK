@@ -1,6 +1,14 @@
 import { createReadStream, type Dirent } from 'node:fs';
 import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
-import { dirname, isAbsolute, join, posix, relative, resolve, sep } from 'node:path';
+import {
+  dirname,
+  isAbsolute,
+  join,
+  posix,
+  relative,
+  resolve,
+  sep,
+} from 'node:path';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { ObjectStore } from '../ports/object-store.port';
@@ -21,7 +29,9 @@ export class LocalObjectStore implements ObjectStore {
   private readonly root: string;
 
   constructor(config: ConfigService) {
-    this.root = resolve(config.get<string>('INGESTION_STORAGE_ROOT') ?? '.storage');
+    this.root = resolve(
+      config.get<string>('INGESTION_STORAGE_ROOT') ?? '.storage',
+    );
     this.logger.log(`Local object store rooted at ${this.root}`);
   }
 
@@ -59,6 +69,29 @@ export class LocalObjectStore implements ObjectStore {
     }
   }
 
+  /**
+   * No real signing involved - dev-only, pointing back at this same
+   * process's own IngestionController.putLocalObject, which writes straight
+   * through `put()`. Exists purely so the frontend can use one upload flow
+   * (ask for a target, PUT to it) in both local dev and production, rather
+   * than branching on environment.
+   */
+  getUploadTarget(
+    key: string,
+    contentType: string,
+    expirySeconds: number,
+  ): Promise<{ url: string; headers?: Record<string, string> }> {
+    // Nothing here actually expires - there's no signature, just a path on
+    // local disk - so this goes unused; kept only to satisfy ObjectStore's
+    // shared signature. Nothing to await either.
+    void expirySeconds;
+
+    return Promise.resolve({
+      url: `/ingest/local-object/${encodeURIComponent(key)}`,
+      headers: { 'Content-Type': contentType },
+    });
+  }
+
   /** Recursive, to match S3's flat-namespace prefix listing. Returns keys. */
   async list(prefix: string): Promise<string[]> {
     const base = this.pathFor(prefix);
@@ -67,7 +100,9 @@ export class LocalObjectStore implements ObjectStore {
     const walk = async (dir: string): Promise<void> => {
       let entries: Dirent<string>[];
       try {
-        entries = (await readdir(dir, { withFileTypes: true })) as Dirent<string>[];
+        entries = await readdir(dir, {
+          withFileTypes: true,
+        });
       } catch {
         // A prefix that matches nothing is an empty listing in S3, not an error.
         return;

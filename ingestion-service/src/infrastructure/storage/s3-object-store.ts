@@ -3,10 +3,12 @@ import {
   GetObjectCommand,
   HeadObjectCommand,
   ListObjectsV2Command,
+  PutObjectCommand,
   S3Client,
   type _Object,
 } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { ObjectStore } from '../ports/object-store.port';
@@ -56,7 +58,11 @@ export class S3ObjectStore implements ObjectStore {
    * multipart upload above 5 MB on its own, and a dealer's 25 MB CSV is past
    * the point where a single PUT is a good idea.
    */
-  async put(key: string, body: Buffer | string, contentType?: string): Promise<string> {
+  async put(
+    key: string,
+    body: Buffer | string,
+    contentType?: string,
+  ): Promise<string> {
     assertKey(key);
 
     await new Upload({
@@ -112,7 +118,9 @@ export class S3ObjectStore implements ObjectStore {
     if (body instanceof Readable) return body;
 
     // A web ReadableStream - the shape the SDK returns outside Node.
-    return Readable.fromWeb(body as unknown as Parameters<typeof Readable.fromWeb>[0]);
+    return Readable.fromWeb(
+      body as unknown as Parameters<typeof Readable.fromWeb>[0],
+    );
   }
 
   /**
@@ -123,7 +131,9 @@ export class S3ObjectStore implements ObjectStore {
     assertKey(key);
 
     try {
-      await this.client.send(new HeadObjectCommand({ Bucket: this.bucket, Key: key }));
+      await this.client.send(
+        new HeadObjectCommand({ Bucket: this.bucket, Key: key }),
+      );
       return true;
     } catch (err) {
       if (isNotFound(err)) return false;
@@ -164,6 +174,31 @@ export class S3ObjectStore implements ObjectStore {
     // the two drivers cannot disagree.
     return keys.sort();
   }
+
+  /**
+   * Signs locally (SigV4) - never calls AWS, so this costs a little CPU, not
+   * a network round trip. The browser must send the exact same Content-Type
+   * back as a header, or S3 rejects the PUT with a signature mismatch -
+   * that's what pins the upload to the type the dealer actually picked.
+   */
+  async getUploadTarget(
+    key: string,
+    contentType: string,
+    expirySeconds: number,
+  ): Promise<{ url: string; headers?: Record<string, string> }> {
+    assertKey(key);
+
+    const command = new PutObjectCommand({
+      Bucket: this.bucket,
+      Key: key,
+      ContentType: contentType,
+    });
+    const url = await getSignedUrl(this.client, command, {
+      expiresIn: expirySeconds,
+    });
+
+    return { url, headers: { 'Content-Type': contentType } };
+  }
 }
 
 /**
@@ -179,8 +214,8 @@ function assertKey(key: string): void {
 
 function isNotFound(err: unknown): boolean {
   const name = (err as { name?: string } | null)?.name;
-  const status = (err as { $metadata?: { httpStatusCode?: number } } | null)?.$metadata
-    ?.httpStatusCode;
+  const status = (err as { $metadata?: { httpStatusCode?: number } } | null)
+    ?.$metadata?.httpStatusCode;
 
   return name === 'NotFound' || name === 'NoSuchKey' || status === 404;
 }
