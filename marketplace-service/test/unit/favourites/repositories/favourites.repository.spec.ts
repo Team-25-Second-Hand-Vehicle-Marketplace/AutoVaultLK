@@ -7,6 +7,7 @@ describe('FavouritesRepository', () => {
     findOne: jest.fn(),
     find: jest.fn(),
     delete: jest.fn(),
+    manager: { query: jest.fn() },
   };
   const repository = new FavouritesRepository(repo as never);
 
@@ -86,6 +87,44 @@ describe('FavouritesRepository', () => {
       repo.delete.mockResolvedValue({ affected: 0 });
 
       await expect(repository.deleteFavourite('buyer-1', 'v-1')).resolves.toBeUndefined();
+    });
+  });
+
+  describe('findPrimaryImagePaths', () => {
+    it('returns an empty map without querying when there are no vehicles', async () => {
+      await expect(repository.findPrimaryImagePaths([])).resolves.toEqual(new Map());
+      expect(repo.manager.query).not.toHaveBeenCalled();
+    });
+
+    it('asks for one primary image per vehicle, in a single statement', async () => {
+      repo.manager.query.mockResolvedValue([]);
+
+      await repository.findPrimaryImagePaths(['v-1', 'v-2']);
+
+      expect(repo.manager.query).toHaveBeenCalledTimes(1);
+      const [sql, params] = repo.manager.query.mock.calls[0] as [string, unknown[]];
+      expect(sql).toMatch(/DISTINCT ON \(vi\.vehicle_id\)/);
+      // Primary first, then display order: the same choice search makes.
+      expect(sql).toMatch(/ORDER BY vi\.vehicle_id, vi\.is_primary DESC, vi\.display_order ASC/);
+      expect(sql).toMatch(/COALESCE\(vi\.processed_path, vi\.s3_path\)/);
+      expect(params).toEqual([['v-1', 'v-2']]);
+    });
+
+    it('maps rows to paths keyed by vehicle id', async () => {
+      repo.manager.query.mockResolvedValue([
+        { vehicle_id: 'v-1', image_path: 'images/a.jpg', thumbnail_path: 'images/a-t.jpg' },
+        { vehicle_id: 'v-2', image_path: 'images/b.jpg', thumbnail_path: null },
+      ]);
+
+      const result = await repository.findPrimaryImagePaths(['v-1', 'v-2', 'v-3']);
+
+      expect(result.get('v-1')).toEqual({
+        imagePath: 'images/a.jpg',
+        thumbnailPath: 'images/a-t.jpg',
+      });
+      expect(result.get('v-2')).toEqual({ imagePath: 'images/b.jpg', thumbnailPath: null });
+      // No row for a vehicle with no photo - the caller treats absence as "no photo".
+      expect(result.has('v-3')).toBe(false);
     });
   });
 });
