@@ -7,6 +7,7 @@ import { FavouritesController } from './controllers/favourites.controller';
 import { FavouritesRepository } from './repositories/favourites.repository';
 import { FavouritesService } from './services/favourites.service';
 import { JwtAuthModule } from '../auth/jwt-auth.module';
+import { ImageUrlResolverService } from '../images/services/image-url-resolver.service';
 
 @Module({
   // FavouritesController is class-level @UseGuards(JwtAuthGuard, RolesGuard).
@@ -23,9 +24,13 @@ import { JwtAuthModule } from '../auth/jwt-auth.module';
     FavouritesController,
   ],
 
+  // ImageUrlResolverService is provided here directly rather than by importing
+  // ImagesModule: it needs only ConfigService, and ImagesModule would also pull
+  // in its TypeORM feature registration and upload controller for no benefit.
   providers: [
     FavouritesRepository,
     FavouritesService,
+    ImageUrlResolverService,
   ],
 
   exports: [
