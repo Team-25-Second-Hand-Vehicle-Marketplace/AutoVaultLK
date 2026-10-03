@@ -241,7 +241,7 @@ module "auth_lambda" {
     AUTH_USE_REFRESH_COOKIES         = "true"
     AUTH_REFRESH_TOKEN_IN_BODY       = "false"
     AUTH_RETURN_VERIFICATION_TOKEN   = tostring(var.auth_return_verification_token)
-    AUTH_RETURN_PASSWORD_RESET_TOKEN = tostring(var.auth_return_verification_token)
+    AUTH_RETURN_PASSWORD_RESET_TOKEN = tostring(var.auth_return_password_reset_token)
     SES_FROM_EMAIL                   = coalesce(var.ses_sender_email, var.ses_domain_name != null ? "no-reply@${var.ses_domain_name}" : "")
     GOOGLE_CLIENT_ID                 = var.google_client_id
     NOTIFICATION_INTERNAL_URL        = local.internal_api_base

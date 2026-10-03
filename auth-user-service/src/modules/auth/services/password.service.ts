@@ -16,6 +16,7 @@ import { AUTH_SECURITY_MESSAGES } from '../constants/auth-security.constants';
 import { PasswordHistoryRepository } from '../repositories/password-history.repository';
 import { PasswordResetTokensRepository } from '../repositories/password-reset-tokens.repository';
 import { RefreshTokensRepository } from '../repositories/refresh-tokens.repository';
+import { VerificationEmailService } from './verification-email.service';
 
 @Injectable()
 export class PasswordService {
@@ -28,6 +29,7 @@ export class PasswordService {
     private readonly passwordHistoryRepository: PasswordHistoryRepository,
     private readonly refreshTokensRepository: RefreshTokensRepository,
     private readonly dataSource: DataSource,
+    private readonly verificationEmail: VerificationEmailService,
   ) {}
 
   async issueResetToken(user: User) {
@@ -63,6 +65,8 @@ export class PasswordService {
     }
 
     const issued = await this.issueResetToken(user);
+    // Awaited for the same Lambda-freeze reason as verification; send() never throws.
+    await this.verificationEmail.sendPasswordReset(user.email, issued.rawToken);
     return {
       message: AUTH_SECURITY_MESSAGES.PASSWORD_RESET_RECEIVED,
       ...(issued.includeInResponse ? { resetToken: issued.rawToken } : {}),
