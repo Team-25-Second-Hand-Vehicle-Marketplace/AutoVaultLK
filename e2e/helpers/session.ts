@@ -5,6 +5,10 @@ import { type BrowserContext, type Page } from '@playwright/test';
  * client.ts's real expiry path deterministically, without waiting out the
  * real 15m access-token TTL.
  *
+ * The refresh token lives only in an httpOnly cookie (localStorage holds just
+ * the access token, user and a hasSession flag), so there is no stored
+ * refresh token to corrupt.
+ *
  * Corrupting localStorage alone is not enough. auth-user-service's
  * POST /auth/refresh prefers a `refresh_token` cookie over the body field
  * (RefreshTokenCookieService.extractRefreshToken: `cookieToken ?? bodyToken`)
@@ -24,7 +28,6 @@ export async function corruptStoredSession(
 ): Promise<void> {
   await page.evaluate(() => {
     localStorage.setItem('autovault.accessToken', 'not-a-real-jwt');
-    localStorage.setItem('autovault.refreshToken', 'not-a-real-refresh-token');
   });
   await context.clearCookies({ name: 'refresh_token' });
 }
@@ -33,6 +36,7 @@ export async function hasStoredSession(page: Page): Promise<boolean> {
   return page.evaluate(
     () =>
       localStorage.getItem('autovault.accessToken') !== null ||
-      localStorage.getItem('autovault.refreshToken') !== null,
+      localStorage.getItem('autovault.hasSession') !== null ||
+      localStorage.getItem('autovault.user') !== null,
   );
 }
