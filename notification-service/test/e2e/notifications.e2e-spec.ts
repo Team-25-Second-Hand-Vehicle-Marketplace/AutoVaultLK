@@ -5,20 +5,8 @@ import request from 'supertest';
 import { InternalServiceGuard } from '../../src/common/guards/internal-service.guard';
 import { SqsPublisher } from '../../src/infrastructure/aws/sqs/sqs.publisher';
 import { NotificationsController } from '../../src/modules/notifications/controllers/notifications.controller';
+import { NotificationEventHandler } from '../../src/modules/notifications/services/notification-event.handler';
 
-/**
- * Exercises POST /notifications/events the way admin-service and
- * ingestion-service call it: real routing, the real InternalServiceGuard and
- * the same ValidationPipe main.ts installs, with only the SQS publisher
- * stubbed.
- *
- * **The guard runs for real here**, against a ConfigService stubbed to hold a
- * known key. This endpoint accepts an arbitrary userId and queues an email to
- * whoever that is, so the shared-secret check is the only thing preventing it
- * from being used to send mail to any user in the system. A unit test can
- * assert the guard's own logic; only this suite proves it is actually attached
- * to the route.
- */
 
 const INTERNAL_KEY = 'test-internal-service-key';
 const HEADER = 'x-internal-service-key';
@@ -33,15 +21,18 @@ const VALID_EVENT = {
 
 describe('POST /notifications/events (e2e)', () => {
   let app: INestApplication;
-  let publisher: { publish: jest.Mock };
+  let publisher: { publish: jest.Mock; isConfigured: jest.Mock };
+  let handler: { handle: jest.Mock };
 
   beforeAll(async () => {
-    publisher = { publish: jest.fn() };
+    publisher = { publish: jest.fn(), isConfigured: jest.fn() };
+    handler = { handle: jest.fn() };
 
     const moduleRef: TestingModule = await Test.createTestingModule({
       controllers: [NotificationsController],
       providers: [
         { provide: SqsPublisher, useValue: publisher },
+        { provide: NotificationEventHandler, useValue: handler },
         InternalServiceGuard,
         {
           provide: ConfigService,
@@ -70,6 +61,7 @@ describe('POST /notifications/events (e2e)', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    publisher.isConfigured.mockReturnValue(true);
     publisher.publish.mockResolvedValue(undefined);
   });
 
@@ -139,6 +131,22 @@ describe('POST /notifications/events (e2e)', () => {
       expect(publisher.publish).toHaveBeenCalledWith(
         expect.objectContaining({ type: 'DEALER_VERIFIED', userId: USER_ID }),
       );
+    });
+
+    // No queue configured (the Lambda deployment): the event is delivered in
+    // the request by NotificationEventHandler instead of being published.
+    it('handles the event in-request when no queue is configured', async () => {
+      publisher.isConfigured.mockReturnValue(false);
+      handler.handle.mockResolvedValue({ status: 'SENT' });
+
+      const response = await authed().send(VALID_EVENT).expect(202);
+
+      expect(response.body).toEqual({
+        queued: false,
+        status: 'SENT',
+        idempotencyKey: VALID_EVENT.idempotencyKey,
+      });
+      expect(publisher.publish).not.toHaveBeenCalled();
     });
 
     // 202, not 201: the handler has queued the event, not delivered the email.
