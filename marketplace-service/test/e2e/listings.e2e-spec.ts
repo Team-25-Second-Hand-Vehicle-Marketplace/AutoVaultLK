@@ -5,6 +5,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { ListingModule } from '../../src/modules/listings/listing.module';
 import { ListingService } from '../../src/modules/listings/services/listing.service';
+import { ListingLifecycleService } from '../../src/modules/listings/services/listing-lifecycle.service';
+import { ListingReminderService } from '../../src/modules/listings/services/listing-reminder.service';
 import { Vehicle } from '../../src/infrastructure/database/entities/vehicle.entity';
 import { VehicleImage } from '../../src/infrastructure/database/entities/vehicle-image.entity';
 import { AuthUserView } from '../../src/infrastructure/database/entities/auth-user.view-entity';
@@ -94,6 +96,11 @@ describe('listings (e2e)', () => {
       .useValue({ findOne: jest.fn() })
       .overrideProvider(getRepositoryToken(DealerProfileView))
       .useValue({ findOne: jest.fn() })
+      // The expiry jobs need a DataSource; they are covered by unit tests.
+      .overrideProvider(ListingLifecycleService)
+      .useValue({ runDailyJobs: jest.fn() })
+      .overrideProvider(ListingReminderService)
+      .useValue({ sendExpiryReminders: jest.fn() })
       .overrideProvider(JwtStrategy)
       .useValue({})
       .overrideGuard(JwtAuthGuard)
@@ -274,6 +281,7 @@ describe('listings (e2e)', () => {
       expect(listingService.getMyListings).toHaveBeenCalledWith(
         expect.anything(),
         undefined,
+        undefined,
       );
     });
 
@@ -285,6 +293,7 @@ describe('listings (e2e)', () => {
       expect(listingService.getMyListings).toHaveBeenCalledWith(
         expect.anything(),
         'confidence_asc',
+        undefined,
       );
     });
 
