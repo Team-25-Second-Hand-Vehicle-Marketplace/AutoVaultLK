@@ -5,6 +5,7 @@ import {
 } from '../../../src/workers/etl-worker/pipeline/parse/csv-contract';
 import {
   convertToCsv,
+  convertToJson,
   generateVehicle,
   type GenerationMode,
 } from '../../../src/tools/vehicle-generator/vehicle-generator';
@@ -55,4 +56,33 @@ describe('vehicle generator vs. the dealer CSV template', () => {
       expect(Object.keys(vehicle).sort()).toEqual([...TEMPLATE_HEADER].sort());
     },
   );
+});
+
+describe('vehicle generator JSON output', () => {
+  const clean = Array.from({ length: 20 }, (_, i) => generateVehicle(i + 1, 'clean'));
+  const records: Record<string, unknown>[] = JSON.parse(convertToJson(clean));
+
+  it('writes one flat object per vehicle, using only template columns', () => {
+    expect(records).toHaveLength(20);
+    for (const record of records) {
+      for (const [key, value] of Object.entries(record)) {
+        expect(TEMPLATE_HEADER).toContain(key);
+        expect(['string', 'number', 'boolean']).toContain(typeof value);
+      }
+    }
+  });
+
+  it('carries every required column on every clean vehicle', () => {
+    for (const record of records) {
+      for (const column of REQUIRED_COLUMNS) expect(record).toHaveProperty(column);
+    }
+  });
+
+  it('writes numbers as numbers and flags as booleans, and omits blanks', () => {
+    const [first] = records;
+    expect(typeof first.year).toBe('number');
+    expect(typeof first.price).toBe('number');
+    expect(typeof first.is_negotiable).toBe('boolean');
+    expect(Object.values(first)).not.toContain('');
+  });
 });

@@ -51,7 +51,8 @@ export function BulkUploadGuide({
       }
     >
       <p className="dealer-muted">
-        Two files, one required and one optional. Reopen these notes any time with the
+        Two files, one required (a CSV or a JSON inventory file) and one optional (a ZIP of photos).
+        Pick the format at the top of the page. Reopen these notes any time with the
         Instructions button at the top of the page.
       </p>
 
@@ -143,10 +144,13 @@ export function BulkUploadGuide({
           </li>
           <li>JPG, PNG or WebP. Up to 2,000 photos and 25 MB in the archive.</li>
           <li>
-            A vehicle with no registration number in the CSV cannot be matched to photos. Add
-            those from My listings instead.
+            A vehicle with no registration number in the {format === 'json' ? 'JSON file' : 'CSV'}{' '}
+            cannot be matched to photos. Add those from My listings instead.
           </li>
-          <li>Photos for a registration number that is not in your CSV are skipped.</li>
+          <li>
+            Photos for a registration number that is not in your {format === 'json' ? 'JSON file' : 'CSV'}{' '}
+            are skipped.
+          </li>
         </ul>
       </section>
 
