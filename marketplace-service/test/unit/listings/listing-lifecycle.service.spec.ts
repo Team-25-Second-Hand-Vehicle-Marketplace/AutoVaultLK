@@ -14,7 +14,7 @@ describe('ListingLifecycleService', () => {
         .mockResolvedValueOnce(rows(LIFECYCLE_BATCH_SIZE))
         .mockResolvedValueOnce(rows(7)),
     };
-    const service = new ListingLifecycleService(dataSource as never);
+    const service = new ListingLifecycleService(dataSource as never, { sendExpiryReminders: jest.fn().mockResolvedValue({ batches: 0, singles: 0, sent: 0, failed: 0 }) } as never);
 
     await expect(service.archiveExpired(now)).resolves.toBe(LIFECYCLE_BATCH_SIZE + 7);
     expect(dataSource.query).toHaveBeenCalledTimes(2);
@@ -23,7 +23,7 @@ describe('ListingLifecycleService', () => {
 
   it('purges snapshots in the same batched way', async () => {
     const dataSource = { query: jest.fn().mockResolvedValueOnce(rows(3)) };
-    const service = new ListingLifecycleService(dataSource as never);
+    const service = new ListingLifecycleService(dataSource as never, { sendExpiryReminders: jest.fn().mockResolvedValue({ batches: 0, singles: 0, sent: 0, failed: 0 }) } as never);
 
     await expect(service.purgeSnapshots(now)).resolves.toBe(3);
     expect(dataSource.query.mock.calls[0][0]).toContain('deleted_listing_snapshots');
@@ -36,8 +36,8 @@ describe('ListingLifecycleService', () => {
         .mockResolvedValueOnce(rows(2)) // archive batch
         .mockResolvedValueOnce(rows(1)), // purge batch
     };
-    const service = new ListingLifecycleService(dataSource as never);
+    const service = new ListingLifecycleService(dataSource as never, { sendExpiryReminders: jest.fn().mockResolvedValue({ batches: 0, singles: 0, sent: 0, failed: 0 }) } as never);
 
-    await expect(service.runDailyJobs(now)).resolves.toEqual({ archived: 2, purged: 1 });
+    await expect(service.runDailyJobs(now)).resolves.toMatchObject({ archived: 2, purged: 1 });
   });
 });

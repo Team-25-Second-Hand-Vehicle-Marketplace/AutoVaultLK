@@ -5,6 +5,8 @@ import { Vehicle } from '../../infrastructure/database/entities/vehicle.entity';
 import { ListingController } from './controllers/listing.controller';
 import { InternalListingLifecycleController } from './controllers/internal-listing-lifecycle.controller';
 import { ListingLifecycleService } from './services/listing-lifecycle.service';
+import { ListingReminderService } from './services/listing-reminder.service';
+import { NotificationInternalClient } from './clients/notification-internal.client';
 import { InternalServiceGuard } from '../../common/guards/internal-service.guard';
 import { ListingService } from './services/listing.service';
 import { ListingSearchIndexService } from './services/listing-search-index.service';
@@ -27,6 +29,8 @@ import { JwtAuthModule } from '../auth/jwt-auth.module';
     ListingRepository,
     ListingSearchIndexService,
     ListingLifecycleService,
+    ListingReminderService,
+    NotificationInternalClient,
     InternalServiceGuard,
   ],
   exports: [ListingService],

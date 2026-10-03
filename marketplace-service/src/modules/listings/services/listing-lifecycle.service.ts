@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
+import { ListingReminderService } from './listing-reminder.service';
+
 /** Rows touched per statement, so a large backlog never holds locks for long. */
 export const LIFECYCLE_BATCH_SIZE = 500;
 
@@ -8,15 +10,24 @@ export const LIFECYCLE_BATCH_SIZE = 500;
 export class ListingLifecycleService {
   private readonly logger = new Logger(ListingLifecycleService.name);
 
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly reminders: ListingReminderService,
+  ) {}
 
-  /** The daily run: archive listings past their expiry, then purge old snapshots. */
+  /**
+   * The daily run: archive listings past their expiry, purge old snapshots,
+   * then send the renewal reminders for listings expiring within five days.
+   */
   async runDailyJobs(now: Date) {
     const archived = await this.archiveExpired(now);
     const purged = await this.purgeSnapshots(now);
+    const reminders = await this.reminders.sendExpiryReminders(now);
 
-    this.logger.log(`Listing lifecycle: archived ${archived}, purged ${purged} snapshot(s)`);
-    return { archived, purged };
+    this.logger.log(
+      `Listing lifecycle: archived ${archived}, purged ${purged} snapshot(s), reminders sent ${reminders.sent} of ${reminders.sent + reminders.failed}`,
+    );
+    return { archived, purged, reminders };
   }
 
   /** Archives LIVE listings whose term has ended, in batches. */
