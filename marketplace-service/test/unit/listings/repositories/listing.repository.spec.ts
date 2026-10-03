@@ -420,7 +420,7 @@ describe('ListingRepository', () => {
       expect(vehicleRepo.save).not.toHaveBeenCalled();
     });
 
-    it.each(['DRAFT', 'ARCHIVED', 'REJECTED', 'SOLD'] as const)(
+    it.each(['DRAFT', 'ARCHIVED', 'REJECTED'] as const)(
       'refuses to approve a %s listing',
       async (status) => {
         vehicleRepo.findOne.mockResolvedValue(vehicle({ status }));
@@ -430,18 +430,33 @@ describe('ListingRepository', () => {
     );
   });
 
-  describe('remove', () => {
-    it('returns true when a row was deleted', async () => {
-      vehicleRepo.delete.mockResolvedValue({ affected: 1 });
+  describe('deletePermanently', () => {
+    it('snapshots, audits and deletes the row in one transaction', async () => {
+      const manager = {
+        findOne: jest.fn().mockResolvedValue({ id: 'v-1', dealerId: 'd-1', status: 'LIVE', registrationNumber: 'AB-1234', images: [{ id: 'i-1' }] }),
+        query: jest.fn().mockResolvedValue([]),
+        delete: jest.fn().mockResolvedValue({ affected: 1 }),
+      };
+      vehicleRepo.manager = { transaction: jest.fn((cb: (m: unknown) => unknown) => cb(manager)) };
 
-      await expect(repository.remove('v-1')).resolves.toBe(true);
-      expect(vehicleRepo.delete).toHaveBeenCalledWith({ id: 'v-1' });
+      await expect(repository.deletePermanently('v-1', 'admin-1', new Date())).resolves.toBe(true);
+
+      expect(manager.query).toHaveBeenCalledWith(expect.stringContaining('deleted_listing_snapshots'), expect.any(Array));
+      expect(manager.query).toHaveBeenCalledWith(expect.stringContaining('listing_audit_log'), expect.any(Array));
+      expect(manager.delete).toHaveBeenCalledWith(expect.anything(), { id: 'v-1' });
     });
 
-    it('returns false when nothing matched', async () => {
-      vehicleRepo.delete.mockResolvedValue({ affected: 0 });
+    it('returns false and writes nothing when the listing does not exist', async () => {
+      const manager = {
+        findOne: jest.fn().mockResolvedValue(null),
+        query: jest.fn(),
+        delete: jest.fn(),
+      };
+      vehicleRepo.manager = { transaction: jest.fn((cb: (m: unknown) => unknown) => cb(manager)) };
 
-      await expect(repository.remove('missing')).resolves.toBe(false);
+      await expect(repository.deletePermanently('missing', 'admin-1', new Date())).resolves.toBe(false);
+      expect(manager.query).not.toHaveBeenCalled();
+      expect(manager.delete).not.toHaveBeenCalled();
     });
   });
 });

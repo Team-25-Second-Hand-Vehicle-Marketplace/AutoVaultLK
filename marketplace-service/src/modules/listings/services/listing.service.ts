@@ -331,19 +331,11 @@ export class ListingService {
   }
 
   /**
-   * Permanently removes a listing - distinct from `deactivateListing`, which
-   * only hides it from the public feed and keeps the row. Restricted to
-   * DRAFT, PENDING_REVIEW and REJECTED: those never went live, so nothing
-   * external (a buyer's favourite, a recommendation, search history) should
-   * reasonably reference one. LIVE, SOLD and ARCHIVED listings can only be
-   * archived, never hard-deleted, because they may already be referenced -
-   * ON DELETE CASCADE on vehicle_images/favourites would remove those
-   * references cleanly, but a buyer who favourited a listing that then
-   * vanishes without a trace is a worse experience than one that stays
-   * visible as archived.
+   * Permanently removes a listing the dealer owns, in any status. Distinct from
+   * `deactivateListing`, which only archives it and keeps the row. The
+   * repository writes a snapshot and an audit entry in the same transaction, so
+   * a dispute can still be reviewed after the listing is gone.
    */
-  private static readonly DELETABLE_STATUSES = ['DRAFT', 'PENDING_REVIEW', 'REJECTED'] as const;
-
   async deleteListing(id: string, actor: AuthenticatedUser) {
     const existing = await this.listingRepository.findById(id);
 
@@ -353,14 +345,7 @@ export class ListingService {
 
     this.assertOwnership(existing, actor);
 
-    if (!(ListingService.DELETABLE_STATUSES as readonly string[]).includes(existing.status)) {
-      throw new ConflictException(
-        `Vehicle listing ${id} is ${existing.status} and can only be archived, not deleted. ` +
-          `Delete is only available for ${ListingService.DELETABLE_STATUSES.join(', ')} listings.`,
-      );
-    }
-
-    const removed = await this.listingRepository.remove(id);
+    const removed = await this.listingRepository.deletePermanently(id, actor.id, new Date());
 
     if (!removed) {
       // The findById above already confirmed it exists; only a race with

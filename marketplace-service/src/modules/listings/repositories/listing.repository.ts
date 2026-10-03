@@ -9,7 +9,12 @@ import {
 import { CreateListingDto } from '../dto/create-listing.dto';
 import type { ListingSortOption } from '../dto/my-listings-query.dto';
 import { ListingSearchIndexService } from '../services/listing-search-index.service';
-import { LISTING_TERM_DAYS, termFrom } from '../listing-expiry';
+import {
+  addDays,
+  DELETED_SNAPSHOT_DAYS,
+  LISTING_TERM_DAYS,
+  termFrom,
+} from '../listing-expiry';
 
 // Editing any of these fields changes what buildSearchText() produces, so
 // search_text/embedding must be recomputed - not just the plain column.
@@ -287,20 +292,61 @@ export class ListingRepository {
   }
 
   /**
-   * Permanently removes a listing - distinct from `deactivate`, which only
-   * hides it. Restricted by the service to DRAFT/PENDING_REVIEW/REJECTED:
-   * nothing external (favourites, recommendations, search history) should
-   * reasonably reference a listing that was never LIVE, but a listing that
-   * was or is LIVE/SOLD might already be, so those stay Archive-only.
+   * Permanently removes a listing, in one transaction: a snapshot kept for
+   * dispute review, an audit entry, then the row itself. Any status the dealer
+   * owns can be deleted.
    *
    * `vehicle_images` cascades on `vehicle_id` (migration 7000) and
    * `favourites` cascades on `vehicle_id` (migration 10000), so this needs no
    * manual cleanup of either - the FK constraints do it in the same
    * transaction as the DELETE.
    */
-  async remove(id: string): Promise<boolean> {
-    const result = await this.vehicleRepo.delete({ id });
-    return (result.affected ?? 0) > 0;
+  async deletePermanently(id: string, actorId: string, now: Date): Promise<boolean> {
+    return this.vehicleRepo.manager.transaction(async (manager) => {
+      const vehicle = await manager.findOne(Vehicle, {
+        where: { id },
+        relations: ['images'],
+      });
+
+      if (!vehicle) {
+        return false;
+      }
+
+      const { embedding: _embedding, searchText: _searchText, searchVector: _searchVector, ...fields } =
+        vehicle;
+
+      await manager.query(
+        `INSERT INTO marketplace.deleted_listing_snapshots
+           (vehicle_id, dealer_id, registration_number, snapshot, deleted_by, deleted_at, purge_after)
+         VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7)`,
+        [
+          vehicle.id,
+          vehicle.dealerId,
+          vehicle.registrationNumber,
+          JSON.stringify(fields),
+          actorId,
+          now,
+          addDays(now, DELETED_SNAPSHOT_DAYS),
+        ],
+      );
+
+      await manager.query(
+        `INSERT INTO marketplace.listing_audit_log
+           (action, vehicle_id, dealer_id, registration_number, actor_id, details, created_at)
+         VALUES ('LISTING_DELETED', $1, $2, $3, $4, $5::jsonb, $6)`,
+        [
+          vehicle.id,
+          vehicle.dealerId,
+          vehicle.registrationNumber,
+          actorId,
+          JSON.stringify({ status: vehicle.status, imageCount: vehicle.images?.length ?? 0 }),
+          now,
+        ],
+      );
+
+      const result = await manager.delete(Vehicle, { id });
+      return (result.affected ?? 0) > 0;
+    });
   }
 
   /** Sets the expiry of a LIVE listing. Returns null when it is no longer LIVE. */

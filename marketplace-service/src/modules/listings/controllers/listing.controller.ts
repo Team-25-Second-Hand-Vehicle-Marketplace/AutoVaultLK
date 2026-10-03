@@ -144,9 +144,8 @@ export class ListingController {
   }
 
   /**
-   * Permanently removes a listing - distinct from `deactivate`, which only
-   * hides it. Only DRAFT/PENDING_REVIEW/REJECTED listings qualify; see
-   * ListingService.deleteListing for why LIVE/SOLD/ARCHIVED are 409s here.
+   * Permanently removes a listing the dealer owns, in any status - distinct
+   * from `deactivate`, which only archives it. See ListingService.deleteListing.
    */
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)

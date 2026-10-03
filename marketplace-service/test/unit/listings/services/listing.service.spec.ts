@@ -21,7 +21,7 @@ describe('ListingService', () => {
     approveAllPending: jest.fn(),
     approveSelected: jest.fn(),
     unarchive: jest.fn(),
-    remove: jest.fn(),
+    deletePermanently: jest.fn(),
   };
   const dealerService = {
     getDealerById: jest.fn(),
@@ -640,42 +640,30 @@ describe('ListingService', () => {
       );
     });
 
-    it.each(['DRAFT', 'PENDING_REVIEW', 'REJECTED'] as const)(
+    it.each(['DRAFT', 'PENDING_REVIEW', 'REJECTED', 'LIVE', 'ARCHIVED'] as const)(
       'allows the owning dealer to permanently delete a %s listing',
       async (status) => {
         listingRepository.findById.mockResolvedValue(
           vehicle({ dealerId: DEALER.id, status }),
         );
-        listingRepository.remove.mockResolvedValue(true);
+        listingRepository.deletePermanently.mockResolvedValue(true);
 
         await expect(service.deleteListing('v-1', DEALER)).resolves.toMatchObject({
           message: expect.stringContaining('deleted'),
         });
-        expect(listingRepository.remove).toHaveBeenCalledWith('v-1');
+        expect(listingRepository.deletePermanently).toHaveBeenCalledWith(
+          'v-1',
+          DEALER.id,
+          expect.any(Date),
+        );
       },
     );
 
-    // LIVE, SOLD and ARCHIVED listings may already be referenced by a
-    // favourite or a recommendation; only Archive is offered for those.
-    it.each(['LIVE', 'SOLD', 'ARCHIVED'] as const)(
-      '409s a %s listing rather than deleting it',
-      async (status) => {
-        listingRepository.findById.mockResolvedValue(
-          vehicle({ dealerId: DEALER.id, status }),
-        );
-
-        await expect(service.deleteListing('v-1', DEALER)).rejects.toThrow(
-          ConflictException,
-        );
-        expect(listingRepository.remove).not.toHaveBeenCalled();
-      },
-    );
-
-    it('allows ADMIN to delete any dealer\'s DRAFT/PENDING_REVIEW/REJECTED listing', async () => {
+    it("allows ADMIN to delete any dealer's listing", async () => {
       listingRepository.findById.mockResolvedValue(
         vehicle({ dealerId: DEALER.id, status: 'PENDING_REVIEW' }),
       );
-      listingRepository.remove.mockResolvedValue(true);
+      listingRepository.deletePermanently.mockResolvedValue(true);
 
       await expect(service.deleteListing('v-1', ADMIN)).resolves.toBeDefined();
     });
@@ -687,7 +675,7 @@ describe('ListingService', () => {
       listingRepository.findById.mockResolvedValue(
         vehicle({ dealerId: DEALER.id, status: 'DRAFT' }),
       );
-      listingRepository.remove.mockResolvedValue(false);
+      listingRepository.deletePermanently.mockResolvedValue(false);
 
       await expect(service.deleteListing('v-1', DEALER)).rejects.toThrow(
         NotFoundException,
