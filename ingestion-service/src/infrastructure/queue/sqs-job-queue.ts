@@ -3,22 +3,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { JobQueue, UploadJobMessage } from '../ports/job-queue.port';
 
-/**
- * SQS-backed JobQueue for deployment (ADR-007).
- *
- * **Publish only, deliberately.** InProcessJobQueue carries a `setHandler`
- * because locally the same process must also consume; in AWS, the deployed
- * MVP path (see production/main.tf's ingestion-service note) has
- * etl-worker.ts consume this queue directly via a Lambda SQS event source
- * mapping and run LocalOrchestrator.run(jobId) - not this class. A
- * `setHandler` here would be a method that silently does nothing - worse
- * than its absence, because the absence is a compile error and the no-op is
- * a support ticket.
- *
- * The message stays just the job id, exactly as the port documents: the
- * pipeline re-reads the job row rather than trusting a payload, so a redelivered
- * or replayed message cannot resurrect stale field values.
- */
 @Injectable()
 export class SqsJobQueue implements JobQueue {
   private readonly logger = new Logger(SqsJobQueue.name);
@@ -42,16 +26,6 @@ export class SqsJobQueue implements JobQueue {
     this.logger.log(`SQS job queue using ${redactQueueUrl(this.queueUrl)}`);
   }
 
-  /**
-   * Resolves once SQS has accepted the message, not once the pipeline
-   * finishes - the port's contract, and what lets POST /ingest/upload answer
-   * 202 immediately (FR-32).
-   *
-   * A send failure propagates. The caller has already stored the file and
-   * created the job row, so a swallowed error would leave a PENDING job that
-   * nothing will ever process, and a dealer polling a status that never
-   * changes.
-   */
   async publish(message: UploadJobMessage): Promise<void> {
     await this.client.send(
       new SendMessageCommand({

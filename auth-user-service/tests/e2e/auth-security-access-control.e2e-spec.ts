@@ -10,22 +10,6 @@ import {
   seedVerifiedAdmin,
 } from '../../test/helpers/auth-e2e.harness';
 
-/**
- * Systematic access-control coverage beyond auth-security.e2e-spec.ts's
- * existing, incidental sample (one admin-route block, one dealer-route
- * block, one IDOR case on GET /users/:id). This file targets three gaps
- * identified by enumerating every @Roles()/@ResourceOwner()-protected route
- * and every @UseGuards(InternalServiceGuard) controller in this service,
- * rather than testing routes already covered elsewhere again:
- *
- * 1. IDOR on every @ResourceOwner('userId') dealer-profile route - the
- *    concrete mechanism behind the Test Plan's own S1-severity example
- *    ("one dealer able to read or mutate another dealer's listings").
- * 2. InternalServiceGuard rejection on both internal-only controllers
- *    (internal-dealers.controller.ts, internal-users.controller.ts) - proof
- *    an external caller cannot reach a route meant only for service-to-
- *    service calls, regardless of role/JWT.
- */
 describe('Access control - IDOR (e2e)', () => {
   let context: AuthE2eContext;
 

@@ -8,14 +8,6 @@ import {
 
 const LAMBDA_DIR = resolve(__dirname, '../../../src/lambda');
 
-/**
- * Every stage the pipeline declares must have a handler, or the state machine
- * references a Lambda that does not exist - and the failure appears at deploy
- * time, or worse at run time, rather than here.
- *
- * The reverse direction matters too: a handler with no stage is dead code that
- * still gets packaged, deployed and paid for.
- */
 describe('lambda handlers', () => {
   const owned = [...FILE_STAGES, ...CHUNK_STAGES];
 

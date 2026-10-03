@@ -9,15 +9,6 @@ import type {
 import { coerceInteger, coerceText } from '../normalize/coerce';
 import { coerceVehicleType } from '../normalize/enum-vocabulary';
 
-/**
- * Body types, matching marketplace-service/src/modules/search/constants/
- * known-spec-keys.constants.ts and the BODY_TYPES list in
- * database/src/seeds/vehicle-dictionaries.seed.ts.
- *
- * A value outside this set is invisible to the search facet that reads
- * specs.body_type, so it is dropped rather than stored - a spec key nothing
- * can filter on is worse than an absent one, because it looks like data.
- */
 const BODY_TYPES = [
   'SEDAN',
   'HATCHBACK',
@@ -31,19 +22,6 @@ const BODY_TYPES = [
   'MOTORBIKE',
 ] as const;
 
-/**
- * Category-specific attribute schemas (SRS Appendix B.2), gated by
- * vehicle_type. A column here is only ever read into `specs` for a row whose
- * vehicle_type matches its category - a TRUCK's `axle_count` column on a CAR
- * row is ignored, not stored, the same way an out-of-range int spec is
- * dropped rather than stored under a misleading key.
- *
- * The universal equipment keys (sunroof, full_option, alloy_wheels,
- * reverse_camera, leather_seats, power_steering, air_conditioning - see
- * BOOL_SPECS below) are the deliberate exception: a van or truck can have a
- * sunroof too, so those apply to every vehicle_type rather than being gated
- * here.
- */
 const CAR_SUV_TYPES = new Set(['CAR', 'SUV']);
 const BIKE_TYPES = new Set(['BIKE']);
 const VAN_BUS_TYPES = new Set(['VAN', 'BUS']);
@@ -79,18 +57,6 @@ const TRUCK_INT_SPECS: Record<string, { column: string; min: number; max: number
 
 const DRIVE_TYPES = ['FWD', 'RWD', 'AWD', '4WD'] as const;
 
-/**
- * Boolean spec keys, and the header spellings dealers use for them.
- *
- * Every target key must exist in marketplace-service's KNOWN_SPEC_KEYS or the
- * value is unqueryable: filter-query.builder.ts rejects any key absent from
- * that table, so an unknown key is weight on every row that still looks like
- * data to anyone reading it.
- *
- * The aliases matter as much as the keys. A dealer writes "full option",
- * "fulloption" or "full_option" for the same thing, and the header has already
- * been folded to snake_case by csv-contract.ts before it reaches here.
- */
 const BOOL_SPECS: Record<string, string> = {
   sunroof: 'sunroof',
   moonroof: 'sunroof',
@@ -168,14 +134,6 @@ const CONSUMED_COLUMNS = new Set([
 const MAX_CARRIED_COLUMNS = 8;
 const MAX_CARRIED_VALUE_LENGTH = 60;
 
-/**
- * Cap on how many unmapped columns may be written into `specs` verbatim.
- * Distinct from MAX_CARRIED_COLUMNS (the description cap) because a column
- * lands in *both* places: specs preserves the dealer's own field name/value
- * pair as structured data (FR-15 / Appendix B.2), while description carries
- * it as prose the embedding can read. A dealer export with dozens of DMS
- * columns should not turn `specs` into an unbounded bag either.
- */
 const MAX_DYNAMIC_SPEC_KEYS = 20;
 const MAX_DYNAMIC_SPEC_VALUE_LENGTH = 200;
 
@@ -235,31 +193,6 @@ export const DEFAULT_CONDITION = 'USED';
  */
 export const REVIEW_REASON_NO_REGISTRATION_NUMBER = 'NO_REGISTRATION_NUMBER';
 
-/**
- * Fills in what the dealer did not supply and builds the `specs` jsonb.
- *
- * Runs after validateRows, so every row here is loadable and nothing this
- * stage does can make one invalid. It only adds.
- *
- * **`specs.body_type` must be set before embed runs.** buildSearchText reads
- * it (shared/normalize-embed/search-text.ts) - a bulk row without it produces
- * a shorter search text than the equivalent manual listing, and a different
- * text embeds to a different vector. That is FR-22.1 drift arriving through
- * the side door, so body type is resolved here and not left to Load.
- *
- * Known spec keys (body_type, seats, sunroof, etc.) are validated and typed
- * before being written, because search facets query them against
- * KNOWN_SPEC_KEYS - a malformed or out-of-range value there would be
- * unqueryable weight, or worse, a facet that silently returns nothing.
- *
- * Everything else the dealer's CSV carries is NOT discarded (FR-15 /
- * Appendix B.2): a truly unmapped column is written into `specs` verbatim
- * under its own header name, preserving the dealer's data even though no
- * facet can filter on it yet, AND appended to `description` so it still
- * reaches the embedding through buildSearchText. A dealer writing
- * "Warranty: 2 years" is describing the vehicle either way - specs keeps the
- * structured fact, description keeps it readable and searchable.
- */
 export const enrichStage: StageRunner<ValidatedRow[], StageResult<EnrichedRow>> = {
   stage: 'ENRICH',
 
@@ -479,21 +412,6 @@ function applyEnumSpec(
   }
 }
 
-/**
- * Writes truly unmapped columns into `specs` verbatim, under their own
- * (already snake_case, per csv-contract's normalizeHeader) header name.
- *
- * Deliberately separate from the known-key blocks above: those validate type
- * and range because a search facet queries them, while this preserves
- * whatever the dealer's own DMS export happened to carry - a raw string, not
- * a typed/bounded value; no facet queries these keys, so there is nothing to
- * protect them from except unbounded size (MAX_DYNAMIC_SPEC_KEYS/VALUE).
- *
- * A column already written by the known-key blocks (specs.body_type,
- * specs.sunroof, ...) is skipped here via CONSUMED_COLUMNS, which lists
- * every column those blocks read from - so a value never gets written twice
- * under two different keys for the same column.
- */
 function addDynamicSpecs(row: ValidatedRow, specs: Record<string, unknown>): void {
   let added = 0;
 
@@ -511,18 +429,6 @@ function addDynamicSpecs(row: ValidatedRow, specs: Record<string, unknown>): voi
   }
 }
 
-/**
- * Appends columns the pipeline has no field for to the description.
- *
- * A dealer's export carries whatever their own system tracks. Most of it is
- * noise, but "Warranty: 2 years" or "Extras: body kit, spoiler" is real
- * information a buyer would search for, and dropping it silently loses the
- * only place it existed.
- *
- * Rendered as "Key: value" so the text reads naturally in a listing and gives
- * the embedding a term to latch onto. Capped, because a dealer export with
- * forty internal columns would otherwise bury whatever they actually wrote.
- */
 function carryUnmappedColumns(row: ValidatedRow, description: string | null): string | null {
   const extras: string[] = [];
 

@@ -4,21 +4,6 @@ import { LoginPage } from '../pages/LoginPage';
 import { RegisterPage } from '../pages/RegisterPage';
 import { VerifyEmailPage } from '../pages/VerifyEmailPage';
 
-/**
- * Session expiry -> re-authentication.
- *
- * The real access-token TTL is 15 minutes (JWT_ACCESS_EXPIRES_IN) - far too
- * long to wait out in a test. Instead this corrupts BOTH stored tokens
- * in-browser after a real login (see helpers/session.ts for why both, not
- * just the access token) and triggers a real authenticated request by
- * navigating to /saved, which is wrapped in RequireAuth and calls
- * GET /marketplace/favourites on mount. That exercises client.ts's real
- * request interceptor: isAccessTokenExpired() -> refreshAccessToken() ->
- * the corrupted refresh token is rejected server-side -> clearSession() +
- * onSessionExpired() -> AuthContext's user becomes null -> RequireAuth
- * redirects to /login with the originally-requested path stashed in
- * location state, same as an anonymous visitor hitting a protected route.
- */
 
 async function registerAndLoginBuyer(page: import('@playwright/test').Page) {
   const stamp = Date.now();

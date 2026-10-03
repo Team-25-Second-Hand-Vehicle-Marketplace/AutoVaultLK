@@ -155,17 +155,6 @@ export class AdminReadsRepository {
     return this.uploads.findOne({ where: { id } });
   }
 
-  /**
-   * Unscoped by dealer - unlike ingestion-service's own equivalent, which is
-   * ownership-checked for a dealer calling it about their own job. An admin
-   * reviewing any job is the point here, not a gap.
-   *
-   * Uses TypeORM's typed find options (`order: { rowNumber: ... }`), not a
-   * raw query-builder string, specifically to avoid the property-name-vs-
-   * column-name mixup that broke this exact query's sibling in
-   * ingestion-service's JobStatusRepository.findRejectedRecords - typed
-   * options can't take the wrong one, there's no string to get wrong.
-   */
   async findRejectionsForJob(
     uploadJobId: string,
     page: number,
@@ -238,19 +227,6 @@ export class AdminReadsRepository {
     };
   }
 
-  /**
-   * One row per calendar day that had at least one row - days with none are
-   * simply absent, not zero; time-series.mapper.ts fills those in. Grouped
-   * by DATE_TRUNC('day', ...) rather than a plain DATE cast so it stays a
-   * timestamptz comparable across the query, not a plain date.
-   *
-   * `v.createdAt`, not `v.created_at`: TypeORM's query builder rewrites the
-   * entity property name (createdAt) to the quoted real column inside a raw
-   * clause like this - handing it the DB column name instead silently skips
-   * that rewrite and breaks in ways that only show up at query time (see
-   * ingestion-service's JobStatusRepository.findRejectedRecords for the
-   * exact failure mode this avoids).
-   */
   async loadDailySeries(from: Date, to: Date): Promise<TimeSeriesRaw> {
     const [listingRows, userRows, uploadRows] = await Promise.all([
       this.vehicles

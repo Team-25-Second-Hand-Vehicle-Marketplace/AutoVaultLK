@@ -1,16 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { JobQueue, UploadJobMessage } from '../ports/job-queue.port';
 
-/**
- * Stands in for SQS → Step Functions locally (ADR-007). publish() hands the job
- * to the orchestrator on the next tick and returns immediately, so
- * POST /ingest/upload can answer 202 without waiting for the ETL run.
- *
- * The handler is registered after construction rather than injected: the
- * orchestrator depends on repositories that themselves sit downstream of this
- * module, and setHandler breaks that cycle without threading a forwardRef
- * through the whole graph.
- */
 @Injectable()
 export class InProcessJobQueue implements JobQueue {
   private readonly logger = new Logger(InProcessJobQueue.name);

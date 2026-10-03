@@ -17,15 +17,6 @@ export type ValidateFileInput = {
    * CSV, which is what every job was before JSON support existed.
    */
   format?: UploadFileFormat;
-  /**
-   * ObjectStore key of the dealer's photo archive, `raw/{jobId}/{zipFileName}`.
-   * Optional: a dealer may upload inventory with no photos at all, which is
-   * legitimate (FR-35.2 covers rows with no registration match). When present,
-   * its structure is inspected here rather than only at extraction time deep
-   * in the images branch - a malformed archive should fail the whole job with
-   * one clear message before any CSV row is processed, not surface as an
-   * "images failed" side-note after rows are already loaded.
-   */
   zipKey?: string;
 };
 
@@ -51,15 +42,6 @@ const MAX_ZIP_ENTRIES = 2000;
 /** Guards against a crafted archive whose declared uncompressed size is huge. */
 const MAX_ZIP_UNCOMPRESSED_BYTES = 2 * 1024 * 1024 * 1024;
 
-/**
- * Gate between an uploaded blob and the pipeline: extension, non-emptiness,
- * a readable structure, and the required columns.
- *
- * Everything that depends on the file's format - how it is decoded, where its
- * column names come from - is the reader's job (parse/file-format.ts). This
- * stage owns only what is true of every format: the extension matches, the
- * object exists, the required columns are present, the photo archive is sane.
- */
 export const validateFileStage: StageRunner<
   ValidateFileInput,
   ValidateFileOutput
@@ -104,23 +86,6 @@ function extensionOf(fileName: string): string {
   return dot === -1 ? '' : fileName.slice(dot).toLowerCase();
 }
 
-/**
- * Structural check on the dealer's photo archive: is it actually a ZIP,
- * does its central directory list a sane number of entries at a sane total
- * size, does every entry stay inside the archive root, and is every entry
- * an image extractFn already knows how to handle.
- *
- * Reads only the central directory (unzipper.Open.buffer parses the
- * directory record at the end of the file; it does not decompress entry
- * bodies), so this stays cheap even for a large archive - the same
- * `unzipper.Open.buffer` call extractImagesStage makes, but without ever
- * calling `entry.buffer()`.
- *
- * A dealer with no non-image entries and no photos at all is not a defect:
- * the CSV rows still load, they simply carry no automated image match
- * (FR-35.2). This check only rejects a ZIP that cannot be trusted to open
- * safely, not one that happens to be empty or partial.
- */
 async function assertValidZip(
   ctx: StageContext,
   zipKey: string,

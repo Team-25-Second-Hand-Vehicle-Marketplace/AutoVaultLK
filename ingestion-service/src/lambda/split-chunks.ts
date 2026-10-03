@@ -18,18 +18,6 @@ export type SplitChunksOutput = {
   zipKey: string | null;
 };
 
-/**
- * Step Functions state: SplitChunks. Streams the file into per-chunk JSON on
- * the object store and produces the Map state's input.
- *
- * **The output is envelopes, not rows.** Each is ~200 bytes, so a 50-chunk job
- * hands the Map about 10KB - comfortably inside the 256KB state-payload cap
- * that made this whole pointer design necessary.
- *
- * A file with more than a few hundred chunks would eventually approach that
- * cap even with pointers. At chunkSize 250 that is 100,000+ rows, well past
- * INGESTION_MAX_UPLOAD_MB, so the file-size limit is what bounds it.
- */
 export const handler = async (input: ValidateFileOutput): Promise<SplitChunksOutput> => {
   const ctx = await getContext();
   const log = ctx.stageLogs.forJob(input.jobId);

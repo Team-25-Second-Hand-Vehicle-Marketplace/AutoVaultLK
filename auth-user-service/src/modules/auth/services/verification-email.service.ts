@@ -8,20 +8,6 @@ const DEFAULT_FRONTEND_URL = 'http://localhost:5173';
 
 type Message = { from: string; to: string; subject: string; text: string; html: string };
 
-/**
- * Emails the account-verification link.
- *
- * Deliberately never throws: a mail outage must not fail registration or the
- * resend endpoint (the user can request another email), and both callers'
- * responses must look the same whether or not delivery worked. Callers get
- * `false` and a log line instead.
- *
- * Two transports, same as notification-service's SesAdapter: SMTP when
- * SMTP_HOST is set (no SES sandbox exit or verified domain needed),
- * otherwise SES. With neither configured (local dev, CI) nothing is sent. The Lambda must await send():
- * the runtime freezes as soon as the response returns, so a fire-and-forget
- * promise would usually never complete.
- */
 @Injectable()
 export class VerificationEmailService {
   private readonly logger = new Logger(VerificationEmailService.name);

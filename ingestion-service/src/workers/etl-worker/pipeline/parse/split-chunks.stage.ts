@@ -16,24 +16,6 @@ export type SplitChunksOutput = {
   totalRecords: number;
 };
 
-/**
- * Splits the validated file into fixed-size chunks on the ObjectStore, so the
- * rest of the pipeline fans out over chunks rather than rows.
- *
- * The format-specific part - decoding the file into one string record per row -
- * is the reader's (parse/file-format.ts). From here on a CSV job and a JSON job
- * are indistinguishable: both write the same RawRow chunks.
- *
- * Streamed end to end: rows accumulate only up to `config.chunkSize` before
- * being flushed and dropped. A 25 MB upload therefore costs one chunk of
- * memory, not 25 MB - and under MaxConcurrency 10 that difference is the
- * whole footprint of the worker.
- *
- * Chunk files are the unit of retry. The orchestrator skips chunks already
- * logged as succeeded (EtlStageLogRepository.succeededChunks), which is what
- * keeps a re-run from double-inserting rows whose registration_number is null
- * and therefore missed by both partial unique indexes.
- */
 export const splitChunksStage: StageRunner<SplitChunksInput, SplitChunksOutput> = {
   stage: 'SPLIT_CHUNKS',
 

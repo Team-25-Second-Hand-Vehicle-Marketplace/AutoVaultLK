@@ -3,16 +3,6 @@ import { validateSync } from 'class-validator';
 import { BadRequestException } from '@nestjs/common';
 import { FilterSearchDto } from '../../../../src/modules/search/dto/filter-search.dto';
 
-/**
- * The DTO is the security boundary: NestJS's global ValidationPipe runs these
- * decorators before any controller body executes, and anything not declared
- * here is rejected outright.
- *
- * These tests exercise it exactly as the pipe does - plainToInstance with
- * transform semantics, then validateSync - so a decorator that silently stops
- * working (the `specs` whitelist interaction documented in the DTO is a real
- * instance of that) fails here rather than in production.
- */
 
 /** Mirrors the ValidationPipe options registered in main.ts. */
 function transform(query: Record<string, unknown>): FilterSearchDto {

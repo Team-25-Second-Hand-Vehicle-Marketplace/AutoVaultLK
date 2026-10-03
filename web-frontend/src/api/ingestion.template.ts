@@ -32,16 +32,6 @@ export const UPLOAD_FORMATS: Record<
   },
 }
 
-/**
- * The dealer upload columns, shared by both formats, mirroring ingestion-service's
- * `src/workers/etl-worker/pipeline/parse/csv-contract.ts`.
- *
- * Kept as a copy rather than an import because the two services build
- * independently and the frontend has no path into ingestion-service's source.
- * If that file's TEMPLATE_HEADER or REQUIRED_COLUMNS change, change these too -
- * a template that no longer matches the parser hands dealers a file that fails
- * validation, which is worse than offering no template at all.
- */
 export const TEMPLATE_HEADER = [
   'make',
   'model',

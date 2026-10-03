@@ -260,15 +260,6 @@ export class AuthService {
     }
   }
 
-  /**
-   * "Continue with Google" - the ID-token flow, not a redirect: the frontend
-   * gets a signed credential directly from Google Identity Services and
-   * hands it here, so there is no redirect URI, no client secret, and no
-   * server-side round trip to Google's authorization endpoint.
-   *
-   * Deliberately excludes ADMIN, same as the password login() method does -
-   * admin sign-in stays on its own dedicated, more tightly controlled path.
-   */
   async loginWithGoogle(data: GoogleLoginDto, session: SessionMetadata = {}) {
     const payload = await this.verifyGoogleIdToken(data.idToken);
 
@@ -669,14 +660,6 @@ export class AuthService {
     );
   }
 
-  /**
-   * Reached only pre-email-verification now: a dealer's isActive is set on
-   * email verification the same as a buyer's (see EmailVerificationService),
-   * so a dealer account no longer stays inactive while PENDING or REJECTED -
-   * that used to be the case, which meant a rejected dealer had no way to log
-   * back in and resubmit. Whether a dealer may create listings is decided
-   * separately by DealerProfile.verificationStatus, not isActive.
-   */
   private throwInactiveAccountError(): never {
     throw new UnauthorizedException('This account is inactive');
   }

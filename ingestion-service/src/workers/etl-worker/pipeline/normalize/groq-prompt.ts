@@ -7,30 +7,6 @@ import {
 } from './enum-vocabulary';
 import { trigramSimilarity } from './trigram';
 
-/**
- * The system prompt for whole-row repair.
- *
- * Originally scoped to make/model only. Widened because the six fields
- * validateRows now requires (fuel_type, transmission, color,
- * engine_capacity_cc, owners_count, location_district - SRS Appendix A) can
- * arrive misspelled ("manul"), blank, or only ever stated in free-text
- * description ("1.5L turbo petrol hybrid"), and none of that is fixable by
- * enum-vocabulary.ts's exact-match lookup or make/model's dictionary fuzzy
- * match. Those are structurally different failure modes needing a model that
- * can read across fields, which is exactly the "AI is for ambiguous data, not
- * dirty data" split rules-only normalization cannot make.
- *
- * Still narrow within that: the model returns a value ONLY when confident,
- * chooses only from the allowed enum lists supplied per row, and returns null
- * rather than guess - validateRows runs after this stage precisely so a field
- * the model correctly refuses to invent still fails the mandatory check with
- * an actionable reason, instead of carrying a fabricated value into the
- * database forever.
- *
- * Deliberately NOT reusing marketplace's groq-prompt.ts: that one validates
- * *query filters* from buyer text, a different shape with a different failure
- * mode.
- */
 export const SYSTEM_PROMPT = `You repair vehicle listing data from a Sri Lankan dealer's inventory spreadsheet. The rules-based parser could not confidently resolve one or more fields on each row you are given.
 
 You will receive a JSON array of rows. Each row has an id, the raw text the dealer typed for make/model/fuel_type/transmission/color/engine_capacity_cc/owners_count/location_district, and the free-text description column verbatim.
@@ -92,30 +68,6 @@ const MAX_CANDIDATE_MAKES = 8;
  */
 const CANDIDATE_MAKE_THRESHOLD = 0.3;
 
-/**
- * Builds the user payload: the rows to repair plus the makes and models they
- * are allowed to resolve to. Every other field's allowed vocabulary is fixed
- * and already stated in SYSTEM_PROMPT, so only make/model need a per-request
- * candidate list.
- *
- * **The allowed list is scoped to candidate makes, not the whole
- * dictionary.** This used to be true only in the doc comment - every call
- * actually sent the full ~30-make, ~140-model vocabulary regardless of what
- * the batch needed, which was the dominant cost in a real 429/413 against
- * Groq's free-tier 8,000 TPM limit: ~30 makes and their full model lists ran
- * to roughly 700-900 tokens on their own, before a single row's data. Now
- * each batch's candidate list is the union of, per row, the makes whose
- * canonical name or alias trigram-matches the dealer's raw text above
- * CANDIDATE_MAKE_THRESHOLD - the same floor the deterministic fuzzy match
- * uses - capped at MAX_CANDIDATE_MAKES. A make nothing in the batch is even
- * close to typing is not a candidate Groq needs to see; sending it anyway
- * both costs tokens and invites the model to pattern-match toward something
- * unrelated to what the dealer wrote.
- *
- * Falls back to the full make list only when nothing in the batch scores
- * above the threshold against anything - better to offer every option than
- * none when the raw text is too garbled to narrow down at all.
- */
 export function buildUserPayload(
   rows: NormalizedRow[],
   dictionary: DictionarySnapshot,
@@ -153,14 +105,6 @@ export function buildUserPayload(
   });
 }
 
-/**
- * The makes worth sending for this batch: every allowed make whose trigram
- * similarity to any row's raw make text clears CANDIDATE_MAKE_THRESHOLD,
- * ranked by best score across the batch and capped at MAX_CANDIDATE_MAKES.
- * Falls back to the full list when nothing scores above the threshold at
- * all - a batch of raw text too garbled to narrow down gets every option
- * rather than an empty (and useless) candidate list.
- */
 function selectCandidateMakes(
   rows: NormalizedRow[],
   allowedMakes: readonly string[],
@@ -208,16 +152,6 @@ export type GroqRepair = {
   reasoning?: string;
 };
 
-/**
- * Reads the model's response into a typed shape, discarding anything malformed.
- *
- * Tolerant by design: a single bad entry drops that row's repair rather than
- * failing the batch, because the rows still carry their deterministic values
- * and are no worse off than if Groq had been unreachable. Enum-shaped fields
- * are read as raw strings here - applyRepairs is what checks them against
- * enum-vocabulary.ts before anything is written, exactly as make/model are
- * checked against the dictionary rather than trusted as typed here.
- */
 export function parseRepairs(parsed: unknown): GroqRepair[] {
   const rows = (parsed as { rows?: unknown })?.rows;
   if (!Array.isArray(rows)) return [];

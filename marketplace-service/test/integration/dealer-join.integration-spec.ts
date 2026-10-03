@@ -13,20 +13,6 @@ import {
   queryRows,
 } from './test-database';
 
-/**
- * The cross-schema reads into `auth`.
- *
- * FR-18.1 specifies a local read model fed by DealerApproved events. The code
- * reads `auth.dealer_profiles` directly instead - a deliberate choice recorded
- * in Documentation/plan-b-reads-cross-schemas.md, and the reason this suite
- * earns its place: marketplace now depends on another service's schema and on
- * grants it does not own. Neither dependency is visible to a unit test, and
- * both break silently.
- *
- * Connecting as `marketplace_service_role` rather than the owner is what makes
- * the grant half of that real: as the owner these queries would pass whether or
- * not database/src/grants.sql had ever run.
- */
 describeWithDatabase('cross-schema dealer reads (integration)', () => {
   let ds: DataSource;
   let repository: VehicleSearchRepository;

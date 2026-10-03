@@ -16,16 +16,6 @@ import type {
   UserRole,
 } from '../../src/modules/auth/types/authenticated-user.type';
 
-/**
- * The listings controller mixes public browse routes with DEALER/ADMIN-guarded
- * writes, and its unit spec only proves each handler delegates. This exercises
- * the two things that live above the handler and are untested anywhere else:
- * the @Roles wiring, and the route ordering that makes `GET /listings/mine`
- * resolve to its own handler rather than to `GET /listings/:id`.
- *
- * ListingService is overridden wholesale - the service's own logic has its own
- * spec, and what is under test here is routing and authorization.
- */
 
 const VEHICLE_ID = '9a8b7c6d-5e4f-4a3b-9c8d-7e6f5a4b3c2d';
 

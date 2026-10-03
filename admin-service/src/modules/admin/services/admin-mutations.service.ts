@@ -126,14 +126,6 @@ export class AdminMutationsService {
     return { user, audit };
   }
 
-  /**
-   * "New vehicle types" tab, path 1: the raw text names something genuinely
-   * not in the dictionary yet. Dismissing the candidate after a successful
-   * add is what stops it reappearing in the review queue - the historical
-   * rejected_records rows behind it never go away, so without this the same
-   * candidate would resurface every time the tab is reopened even though an
-   * admin already acted on it.
-   */
   async addDictionaryMake(
     rawValue: string,
     canonicalValue: string,

@@ -7,15 +7,6 @@ import { RecommendationsModule } from '../../src/modules/recommendations/recomme
 import { RecommendationsRepository } from '../../src/modules/recommendations/repositories/recommendations.repository';
 import { VehicleImage } from '../../src/infrastructure/database/entities/vehicle-image.entity';
 
-/**
- * GET /recommendations/vehicles/:vehicleId is public - no guards - so this
- * exercises the HTTP layer only: ParseIntPipe on the optional `limit`, the
- * clamp the controller applies on top of it, and the 404 the service raises for
- * an unknown vehicle.
- *
- * The clamp matters at this boundary specifically: `limit` is caller-supplied,
- * and without it `?limit=10000` turns one page view into a full table scan.
- */
 
 const VEHICLE_ID = '9a8b7c6d-5e4f-4a3b-9c8d-7e6f5a4b3c2d';
 

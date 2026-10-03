@@ -42,14 +42,6 @@ function ColumnTable({ columns }: { columns: readonly string[] }) {
   )
 }
 
-/**
- * The upload columns, required ones first. The optional ones stay hidden until
- * the dealer asks for them: most files only need the required set, and a table
- * of forty-odd columns up front buries that.
- *
- * CSV and JSON share one column set - a JSON key is a CSV header - so only the
- * title and the lead sentence change with the format.
- */
 export function BulkUploadFieldsDialog({ open, onClose, format = 'csv' }: Props) {
   const [showOptional, setShowOptional] = useState(false)
 

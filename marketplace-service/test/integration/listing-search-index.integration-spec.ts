@@ -8,20 +8,6 @@ import {
   queryRows,
 } from './test-database';
 
-/**
- * Writing and reading back the search index columns (FR-13.1 / FR-13.2).
- *
- * ListingSearchIndexService produces a `[0.1,0.2,...]` string for a `vector`
- * column. Whether Postgres accepts that string, stores 384 dimensions, and
- * still ranks it afterwards is not something a mocked repository can answer:
- * a malformed literal or a dimension mismatch raises only on the real INSERT.
- *
- * The embedder itself is not exercised here - loading the ~90MB MiniLM ONNX
- * model would make the suite slow and dependent on a model download. What
- * matters for the SQL is the *shape* of the value it emits, so these use a
- * synthetic vector of the same dimensionality. The embedder's own behaviour is
- * covered by test/unit/listings/services/listing-search-index.service.spec.ts.
- */
 describeWithDatabase('listing search index (integration)', () => {
   let ds: DataSource;
   let dealerId: string | null = null;

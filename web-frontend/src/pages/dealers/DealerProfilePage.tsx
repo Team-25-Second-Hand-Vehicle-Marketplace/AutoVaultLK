@@ -39,14 +39,6 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
-/**
- * Self-service edit for the details a dealer gave at registration: their own
- * name (User.name) plus the business fields (DealerProfile). Deliberately
- * does not include verification documents (a bigger, separate flow - re-upload
- * would need its own re-verification step, see DealerVerificationGate) or
- * dealerType/email (not part of UpdateDealerProfileDto; the backend fixes
- * dealer type at registration, and email changes aren't exposed anywhere yet).
- */
 export function DealerProfilePage() {
   const { user, updateUser } = useAuth()
   const profile = useDealerProfile()

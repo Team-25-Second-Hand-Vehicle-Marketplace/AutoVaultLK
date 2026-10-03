@@ -5,25 +5,6 @@ type Expect = 'value-or-end' | 'value' | 'comma-or-end';
 const isWhitespace = (c: string): boolean =>
   c === ' ' || c === '\n' || c === '\r' || c === '\t';
 
-/**
- * Yields each element of a top-level JSON array as it is parsed, without ever
- * holding the whole document.
- *
- * Only one element is buffered at a time: the scanner tracks string and
- * bracket state across chunk boundaries and hands each completed element to
- * JSON.parse. A 25 MB upload therefore costs one record of memory, which is
- * the same footprint guarantee splitChunks gives the CSV path.
- *
- * Deliberately strict about structure, because a lenient reader here would
- * turn a broken export into silently-missing rows: the root must be an array,
- * elements must be separated by commas with none trailing, and the document
- * must be closed. Anything else is a FileValidationError - a defect in the file
- * as a whole, not in one row.
- *
- * Input must be UTF-8. JSON is defined as UTF-8, so unlike CSV there is no
- * legacy-encoding fallback: a byte sequence that is not valid UTF-8 is
- * reported rather than decoded into replacement characters.
- */
 export async function* iterateJsonArray(
   source: AsyncIterable<Buffer | string>,
 ): AsyncGenerator<unknown> {

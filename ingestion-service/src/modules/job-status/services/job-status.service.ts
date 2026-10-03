@@ -94,15 +94,6 @@ export class JobStatusService {
     };
   }
 
-  /**
-   * FR-57: the row-level half of the dealer's upload report.
-   *
-   * A job with no rejections is an empty page, not a 404 - a clean upload is
-   * the expected case, and 404 here would read as "your job is gone". The 404
-   * is reserved for a job that is not the caller's or does not exist, and the
-   * ownership check is the same dealer-scoped query the rows come from, so
-   * both answers are indistinguishable to a caller probing ids.
-   */
   async getRejectedRecords(
     id: string,
     dealerId: string,

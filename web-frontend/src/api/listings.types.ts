@@ -53,14 +53,6 @@ export interface DealerListingImage {
   thumbnailUrl: string | null
 }
 
-/**
- * A row from GET /marketplace/listings/mine - the dealer's own inventory across
- * every status, not the public search-result shape.
- *
- * The repository returns the whole `Vehicle` entity with no `select`, so the
- * editable fields below arrive with the list. That is what lets the edit form
- * pre-fill without a second request per listing.
- */
 export interface DealerListing {
   id: string
   status: ListingStatus
@@ -133,17 +125,6 @@ export interface UploadedVehicleImage {
   displayOrder: number
 }
 
-/**
- * The vehicle types the manual listing form offers - all eleven the database
- * accepts, matching `VehicleTypeValue`.
- *
- * This was six until `CreateListingDto` was fixed. Migration 20000 extended
- * vehicle_type to eleven values and updated the entity, the ingestion
- * write-entity and the search constants, but not that DTO - so a dealer could
- * bulk-upload a lorry and not create one by hand. The DTO now derives its
- * vocabulary from the same canonical list, and `listings-contract.test.ts`
- * fails the build if the two ever diverge again.
- */
 export const LISTABLE_VEHICLE_TYPES = [
   'CAR',
   'BIKE',

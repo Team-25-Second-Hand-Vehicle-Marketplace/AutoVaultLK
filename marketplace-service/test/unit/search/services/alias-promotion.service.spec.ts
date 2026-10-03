@@ -1,17 +1,5 @@
 import { AliasPromotionService } from '../../../../src/modules/search/services/alias-promotion.service';
 
-/**
- * Guards the one process in the platform that writes permanently to
- * marketplace.vehicle_dictionaries - reference data the ingestion ETL loads a
- * snapshot of on every run, and that every search facet filters against. A
- * wrong promotion is not a bad result set; it is a permanent alias nobody
- * remembers adding.
- *
- * `findBestMatch` is private, so these drive it through `promoteAliases` with
- * controlled repository returns. The trigram scores quoted in comments are
- * measured, not assumed - `trigramSimilarity` is real here, and using fitted
- * fixtures would test the fixtures rather than the thresholds.
- */
 
 const entry = (id: string, canonicalValue: string, aliases: string[] = []) => ({
   id,

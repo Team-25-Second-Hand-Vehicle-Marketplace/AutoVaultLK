@@ -12,17 +12,6 @@ interface Props {
   onClose: () => void
 }
 
-/**
- * The makes, models and values the pipeline recognises. A dealer typing these
- * into a spreadsheet has no other way to know what will be accepted until the
- * upload comes back with rows rejected for "make could not be recognised", so
- * this puts the same reference data the manual listing form already constrains
- * a dealer to (GET /search/options, which the public search sidebar uses too)
- * one click away from the upload page.
- *
- * Mounted only while open, so the list - a few hundred rows - is fetched when a
- * dealer actually asks for it rather than on every visit to the page.
- */
 function KnownValuesBody() {
   const fetchOptions = useCallback((signal: AbortSignal) => getSearchOptions(undefined, signal), [])
   const options = useAsyncData(fetchOptions, optionsError)

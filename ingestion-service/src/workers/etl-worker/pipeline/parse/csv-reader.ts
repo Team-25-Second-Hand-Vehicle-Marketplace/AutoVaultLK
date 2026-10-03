@@ -16,16 +16,6 @@ const BOM = '﻿';
  */
 const MAX_HEADER_BYTES = 64 * 1024;
 
-/**
- * The CSV reader: a decodable encoding, a parseable header row, no duplicate
- * columns, then a streamed parse into string records.
- *
- * Reads only the first MAX_HEADER_BYTES to inspect a file rather than the whole
- * object. A 25 MB upload buffered whole, across MaxConcurrency jobs, is a
- * footprint worth avoiding for a check that only ever looks at line one -
- * except in the rare case the file needs re-encoding, where the whole object is
- * read once more; see reencodeWholeFile.
- */
 export const csvReader: FormatReader = {
   extension: '.csv',
 
@@ -96,22 +86,6 @@ type DecodedHead = {
   reencoded: boolean;
 };
 
-/**
- * Windows-1252 is identical to Latin-1 everywhere except these 32 bytes,
- * where Latin-1 has unprintable C1 control codes and Windows-1252 has the
- * typographic punctuation Word/Excel's autocorrect actually inserts - smart
- * quotes, en/em dashes, an ellipsis. This is the one range a decode needs to
- * get right; every other byte (0x00-0x7F and 0xA0-0xFF) maps to itself in
- * both encodings, which is exactly what Buffer's built-in 'latin1' encoding
- * already does with no ICU dependency at all.
- *
- * Deliberately NOT `TextDecoder('windows-1252')`: on this Node build (full
- * ICU, v22.14) that silently decodes every byte as its own code point -
- * identical to Latin-1 - instead of applying this table, despite correctly
- * reporting `encoding: 'windows-1252'` on introspection. A dependency this
- * silently wrong on the one range that matters is worse than not having it;
- * this table has no runtime to be wrong about.
- */
 const WINDOWS_1252_HIGH_RANGE: Readonly<Record<number, string>> = {
   0x80: '€',
   0x82: '‚',
@@ -151,18 +125,6 @@ function decodeWindows1252(buffer: Buffer): string {
   return chars.join('');
 }
 
-/**
- * Decodes strictly as UTF-8 first, since a wrong guess there would otherwise
- * decode to replacement characters and fail later as a mystery dictionary
- * miss on every row, rather than here as one comprehensible message. Falls
- * back to Windows-1252 rather than rejecting outright: it is what Excel's
- * default "Save As CSV" writes on Windows, which is the single most common
- * reason a dealer's otherwise-fine file fails this check, and - being a
- * single-byte encoding with a character at every value - it can never throw
- * the way a wrong guess at UTF-16 or a genuinely binary file still will. A
- * file that is neither still gets caught below, just by the header/column
- * checks instead of a specific encoding complaint.
- */
 function decodeText(buffer: Buffer): DecodedHead {
   try {
     return {
@@ -174,18 +136,6 @@ function decodeText(buffer: Buffer): DecodedHead {
   }
 }
 
-/**
- * Rewrites the object at `key` as UTF-8, translating from the Windows-1252
- * bytes Excel wrote. Every stage after this one - csv-parse in splitChunks
- * chief among them - reads this same key assuming UTF-8; without this, a
- * dealer's file would pass validation only to have every accented letter,
- * curly quote or dash silently turn into "�" the moment a row is actually
- * parsed, which is a worse outcome than the clean rejection this replaces.
- *
- * Only reached on the encoding-mismatch path, so the whole-object read this
- * needs - as opposed to readHead's early-stop streaming - only ever costs
- * something for the rare file that actually needs re-encoding.
- */
 async function reencodeWholeFile(
   ctx: StageContext,
   key: string,
@@ -272,15 +222,6 @@ function assertNoDuplicates(headers: string[]): void {
   }
 }
 
-/**
- * Every value is carried as a string. Coercion to number/enum belongs to
- * parseNormalize, which can attach a per-field confidence and a rejection
- * reason; doing it here would throw that context away.
- *
- * relaxColumnCount gives extra cells the key `undefined`, and a header cell
- * that normalized to empty gives `''` - neither is a real column, so both are
- * dropped rather than travelling into rejected_records.raw_data as noise.
- */
 function toStringRecord(
   record: Record<string, unknown>,
 ): Record<string, string> {

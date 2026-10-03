@@ -7,35 +7,6 @@ import {
   type ImageServeConfig,
 } from '../../../config/image-serve.config';
 
-/**
- * Turns a stored object key (`images/{jobId}/{vehicleId}/0-x.jpg`, as written
- * by ingestion-service's image-processing stage) into something a browser can
- * actually fetch - or into nothing, deliberately, when there is nothing
- * honest to return.
- *
- * NFR-19: "Vehicle images shall not be publicly writable; access shall be
- * via signed URLs." Before this existed, vehicle-search.repository.ts and
- * recommendations.repository.ts handed the raw key straight to the frontend
- * as `imageUrl`, which an <img src> cannot resolve - see FR-Traceability's
- * "Empty until image upload is wired up" note on the DTO.
- *
- * **`s3` mode signs locally.** `getSignedUrl` computes a SigV4 signature -
- * it never calls AWS. That is what makes it safe to call once per image on
- * every search result row: it costs a small amount of CPU, not a network
- * round trip, so resolving 20 rows' worth of images inline in a search
- * response is not 20 API calls.
- *
- * **Signed URLs are cached per key, not re-minted every call.** Without this,
- * the same photo got a brand-new query string (new signature) on every
- * request, so even reloading the same dashboard a minute later produced a
- * byte-identical image at a different URL - the browser's HTTP cache keys on
- * the full URL, so it could never recognize "I already have this" and
- * re-fetched every image, every time. Caching the signed URL for most of its
- * validity window (with a safety margin so a client never receives one about
- * to expire mid-fetch) lets the same <img src> repeat across requests, so the
- * browser's own cache - backed by the Cache-Control this now also sends -
- * actually gets to do its job.
- */
 @Injectable()
 export class ImageUrlResolverService {
   private readonly logger = new Logger(ImageUrlResolverService.name);

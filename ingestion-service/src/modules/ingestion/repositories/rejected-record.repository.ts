@@ -19,22 +19,6 @@ export class RejectedRecordRepository {
     private readonly repo: Repository<RejectedRecord>,
   ) {}
 
-  /**
-   * Records the rejections one stage produced for one job.
-   *
-   * **Idempotent by (job, stage, row).** Under Step Functions each stage is its
-   * own Lambda and ASL retries a failed state by re-invoking it; a stage that
-   * rejected rows before failing would otherwise insert them twice, and the
-   * dealer would see one bad row listed as two with no way to tell.
-   *
-   * The upsert replaces rather than skips: a retry that produces a *different*
-   * reason for the same row - a transient dependency recovering, say - should
-   * show the newer reason, not the stale one.
-   *
-   * Reasons must already be clamped to varchar(500) - use the `rejection()`
-   * helper in pipeline/types.ts rather than building the object by hand, or an
-   * over-long message throws here and takes the whole batch with it.
-   */
   async insertMany(
     uploadJobId: string,
     stage: EtlStage,

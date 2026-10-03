@@ -1,15 +1,3 @@
-/**
- * One row of a horizontal bar list: a label, a bar sized against the group's
- * own max (never against an absolute scale - these are small counts, and a
- * bar scaled 0–1000 would render every real value as a sliver), and the
- * value at the bar's tip rather than inside it (these counts are often too
- * small for the bar to comfortably hold a label without clipping).
- *
- * `colorVar` takes a CSS custom property name (e.g. "--success"), not a raw
- * hex - every color here is one of the app's own reserved tokens, the same
- * ones the status Pill already uses, not a new palette invented for this
- * chart.
- */
 export function BarRow({
   label,
   value,

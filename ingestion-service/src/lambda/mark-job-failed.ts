@@ -6,17 +6,6 @@ export type MarkJobFailedInput = {
   error?: { Error?: string; Cause?: string };
 };
 
-/**
- * Step Functions state: MarkJobFailed. The terminal failure path.
- *
- * Reached only when a whole-file state fails or Aggregate cannot record the
- * outcome - never for a bad row or a failed chunk, both of which produce
- * PARTIAL through Aggregate instead.
- *
- * Without this state a dealer polls GET /jobs/{id} forever on a job stuck at
- * PROCESSING: the execution shows as failed in the console, but nothing the
- * dealer can see ever changes.
- */
 export const handler = async (input: MarkJobFailedInput): Promise<{ jobId: string }> => {
   const ctx = await getContext();
 

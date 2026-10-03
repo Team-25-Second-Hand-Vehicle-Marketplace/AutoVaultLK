@@ -38,27 +38,6 @@ export type UploadedImageFile = {
   buffer: Buffer;
 };
 
-/**
- * FR-58's manual listing path never had an image field - a dealer creating
- * one vehicle at a time (as opposed to bulk upload) had no way to attach a
- * photo at all. This is the write side; ImageUrlResolverService is the read
- * side that turns what gets stored here back into something a browser can
- * fetch.
- *
- * Writes under `images/manual/{vehicleId}/...` - a distinct prefix from
- * ingestion's `images/{jobId}/{vehicleId}/...` (image-processing.stage.ts),
- * so a manual upload and a bulk-pipeline upload for the same vehicle can
- * never collide on the same key, and s3-images/main.tf's lifecycle rule
- * (which only touches `staging/`) leaves this alone exactly like it leaves
- * the pipeline's own `images/` prefix alone.
- *
- * No Sharp resize/compress here, unlike the ETL pipeline's image-processing
- * stage - a dealer uploading one photo at a time through a web form is a
- * different cost profile than a bulk job processing hundreds, and adding
- * that dependency to marketplace-service for a handful of manual uploads a
- * day is not a trade this endpoint needs to make. Revisit if upload volume
- * or storage cost ever makes it worth it.
- */
 @Injectable()
 export class ImageUploadService {
   private readonly logger = new Logger(ImageUploadService.name);
@@ -113,15 +92,6 @@ export class ImageUploadService {
     return this.imageRepo.save(rows);
   }
 
-  /**
-   * FR-58's counterpart to replaceImages for editing an existing listing:
-   * removes one photo without touching the rest. replaceImages can't do this
-   * on its own - it requires resending every file, but the dealer's browser
-   * only ever has a File object for a *new* photo, never for one it only
-   * knows as a stored URL. If the removed photo was primary, the next one by
-   * display order is promoted so a listing with remaining photos is never
-   * left without one.
-   */
   async deleteImage(vehicleId: string, imageId: string): Promise<void> {
     const image = await this.imageRepo.findOne({
       where: { id: imageId, vehicleId },

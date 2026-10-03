@@ -33,14 +33,6 @@ const file = (
   ...overrides,
 });
 
-/**
- * FR-58: the manual listing form never had an image field before this. What
- * these guard is validation (a dealer must get a clear 400, not a stray
- * server error, for a bad file), the demo-mode refusal (uploads must not
- * silently disappear into a mode that can never serve them back), and that
- * a re-upload replaces the vehicle's image set rather than appending stale
- * photos from an earlier attempt.
- */
 describe('ImageUploadService', () => {
   const imageRepo = {
     delete: jest.fn(),

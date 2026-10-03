@@ -13,16 +13,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { ObjectStore } from '../ports/object-store.port';
 
-/**
- * Filesystem-backed ObjectStore for local development and CI (ADR-007). Keys
- * map to paths beneath INGESTION_STORAGE_ROOT.
- *
- * Keys are built from dealer-supplied filenames, so every key is resolved and
- * re-checked against the root before any I/O. A key like `../../etc/passwd` is
- * inert in an S3 bucket - the flat namespace has no parent directories - but on
- * a real filesystem it escapes. That asymmetry is the whole reason this class
- * validates and S3ObjectStore will not need to.
- */
 @Injectable()
 export class LocalObjectStore implements ObjectStore {
   private readonly logger = new Logger(LocalObjectStore.name);

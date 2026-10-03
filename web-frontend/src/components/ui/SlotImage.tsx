@@ -10,16 +10,6 @@ interface Props {
   priority?: boolean
 }
 
-/**
- * A design photo slot. Renders `/images/<slot>.jpg` when it exists, otherwise a
- * labelled placeholder that says what belongs there (see assets/image-slots.ts).
- *
- * Fades in on load rather than popping in once the file arrives - the popping
- * in is what read as "not smooth" on a fresh page load, on top of the images
- * themselves being heavier than they needed to be (see scripts/optimize-images.mjs).
- * `priority` images (the first hero photo) skip the fade so the very first
- * thing the page shows isn't itself an animation.
- */
 export function SlotImage({ slot, alt = '', className = '', priority = false }: Props) {
   const [missing, setMissing] = useState(false)
   const [loaded, setLoaded] = useState(false)

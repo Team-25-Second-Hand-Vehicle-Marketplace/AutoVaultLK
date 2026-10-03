@@ -22,6 +22,7 @@
 
 .admin-auth__panel-body {
   max-width: 360px;
+  margin-top: 120px;
 }
 
 .admin-auth__eyebrow {
@@ -94,6 +95,7 @@
 
   .admin-auth__panel-body {
     max-width: none;
+    margin-top: 0;
   }
 
   .admin-auth__panel h1 {

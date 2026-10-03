@@ -34,16 +34,6 @@ import { formatMileage, formatPrice, sentenceCase } from '../../components/searc
 import { ListingColumnHeader } from '../../components/dealers/ListingColumnHeader'
 import { nextColumnSort, sortListings, type ColumnKey, type ColumnSort } from '../../components/dealers/listing-sort'
 
-/**
- * Manual listing management (FR-58), plus the bulk-upload review queue
- * (FR-42/FR-42.1).
- *
- * The three CRUD routes behind this have existed and been guarded since the
- * listings module landed; until now nothing in the UI called them, so a
- * dealer could only add stock through bulk upload. Approval had a status
- * (PENDING_REVIEW) describing the wait but no action ending it - a bulk
- * upload landed every row here and nothing let a dealer move one forward.
- */
 
 const listingsError = (err: unknown) => toErrorMessage(err, 'Could not load your listings.')
 

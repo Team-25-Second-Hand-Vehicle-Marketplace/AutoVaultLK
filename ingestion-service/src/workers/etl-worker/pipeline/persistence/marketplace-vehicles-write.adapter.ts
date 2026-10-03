@@ -4,26 +4,6 @@ import { DataSource } from 'typeorm';
 import type { EmbeddedRow, NormalizationPayload, Rejection } from '../types';
 import { rejection } from '../types';
 
-/**
- * ═══════════════════════════════════════════════════════════════════════════
- *  THE ONE CROSS-SCHEMA WRITE IN THE PLATFORM (ADR-002)
- * ═══════════════════════════════════════════════════════════════════════════
- *
- * ingestion_service_role holds SELECT + INSERT + UPDATE on marketplace.vehicles
- * and marketplace.vehicle_images - and DELETE on neither. That grant is the
- * single documented exception to schema ownership (database/src/grants.sql,
- * Documentation/plan-b-reads-cross-schemas.md §6), and the exception is only
- * defensible while it is confined to one class.
- *
- * **No other file in ingestion-service may write marketplace.\*.** If you need
- * a new cross-schema write - images, spec backfill, anything - add a method
- * here. A second writer does not break a test; it dissolves the architectural
- * claim the whole design rests on, silently.
- *
- * NEVER emit DELETE. The role lacks the grant, so it fails at runtime rather
- * than review - but the reason it lacks the grant is that ETL must not be able
- * to destroy a dealer's manually created listings.
- */
 @Injectable()
 export class MarketplaceVehiclesWriteAdapter {
   private readonly logger = new Logger(MarketplaceVehiclesWriteAdapter.name);
@@ -60,14 +40,6 @@ export class MarketplaceVehiclesWriteAdapter {
     }
   }
 
-  /**
-   * How many vehicles this job has actually landed.
-   *
-   * The orchestrator counts from here rather than tallying its own outcomes,
-   * because a resumed run loads nothing new - the rows belong to the previous
-   * run - and tallying this run alone would report zero and downgrade a
-   * finished job to FAILED.
-   */
   async countForJob(jobId: string): Promise<number> {
     const [row] = (await this.dataSource.query(
       `SELECT count(*)::int AS count FROM marketplace.vehicles WHERE upload_job_id = $1`,
@@ -204,15 +176,6 @@ export type UpsertResult = {
   rejections: Rejection[];
 };
 
-/**
- * status is always PENDING_REVIEW: bulk stock is reviewed before going live
- * (FR-33), and a dealer CSV must not be able to publish listings directly.
- *
- * search_vector is absent by design - trg_vehicles_search_vector fills it
- * BEFORE INSERT OR UPDATE OF search_text (migration 14000). Writing the column
- * here would either be overwritten by the trigger or, worse, drift from
- * search_text if the trigger were ever dropped.
- */
 const INSERT_SQL = `
   INSERT INTO marketplace.vehicles (
     dealer_id, upload_job_id, vehicle_type, make, model, condition,
@@ -223,15 +186,6 @@ const INSERT_SQL = `
     needs_manual_review, review_reason, status
   )`;
 
-/**
- * The upsert key is the composite partial index from migration 19000, so the
- * conflict target must repeat its WHERE clause - a partial index only matches
- * an ON CONFLICT that names the same predicate.
- *
- * DO UPDATE, never DO NOTHING: a dealer re-uploading a corrected file expects
- * the corrections to land. updated_at is set explicitly because ON CONFLICT
- * bypasses TypeORM's @UpdateDateColumn.
- */
 const ON_CONFLICT_SQL = `
   ON CONFLICT (upload_job_id, registration_number)
     WHERE upload_job_id IS NOT NULL AND registration_number IS NOT NULL

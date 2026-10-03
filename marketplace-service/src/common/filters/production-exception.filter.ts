@@ -9,21 +9,6 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 
-/**
- * Catches every exception a controller/guard/strategy throws, including ones
- * that were never meant to be an HTTP response - a DB call inside
- * JwtStrategy.validate() throwing, say - and turns it into a JSON body
- * instead of whatever Nest's bare default renders. Without this, an
- * unexpected error anywhere in the request path (not just a deliberate
- * BadRequestException) surfaces to the client as a bodyless/differently-
- * shaped 500, which is what a dealer's browser was seeing as a plain
- * "Internal server error" with no indication of what actually happened.
- *
- * Mirrors auth-user-service's ProductionExceptionFilter (same shape, same
- * behavior) - duplicated rather than shared because each service is a
- * separate deployable with no common package between them, the same reason
- * csv-contract.ts and safe-local-path.ts are each copied per service.
- */
 @Injectable()
 @Catch()
 export class ProductionExceptionFilter implements ExceptionFilter {

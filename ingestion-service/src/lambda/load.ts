@@ -4,18 +4,6 @@ import { createLoadStage } from '../workers/etl-worker/pipeline/persistence/load
 import type { EmbeddedRow } from '../workers/etl-worker/pipeline/types';
 import { getContext, stageContext } from './bootstrap';
 
-/**
- * Step Functions state: Load. The one cross-schema write in the platform.
- *
- * Does not use runChunkStage: Load terminates the chain and writes no rows
- * file, so its envelope carries `key: null` rather than a pointer to output
- * nothing will read.
- *
- * **No retry loop here.** ASL owns it - a Retry block with exponential backoff
- * and jitter, which is better than the fixed 250ms the in-process orchestrator
- * uses and costs no code. That is the one behavioural difference between the
- * two executors, and it is a deliberate improvement rather than drift.
- */
 export const handler = async (envelope: ChunkEnvelope): Promise<ChunkEnvelope> => {
   const ctx = await getContext();
   const log = ctx.stageLogs.forJob(envelope.jobId);

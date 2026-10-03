@@ -11,21 +11,6 @@ import { JwtAuthGuard } from '../../src/modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../src/modules/auth/guards/roles.guard';
 import type { AuthenticatedUser } from '../../src/modules/auth/types/authenticated-user.type';
 
-/**
- * Exercises the real HTTP -> guards -> multipart interceptor -> controller ->
- * service path for POST /ingest/upload, wired the way main.ts wires it
- * (including the global ValidationPipe).
- *
- * The seams that need a database or a filesystem are stubbed - the
- * repositories, the ObjectStore and the JobQueue - because what this suite is
- * for is the contract the gateway and the dealer frontend depend on: which
- * status code comes back, and what the body looks like. The pipeline itself is
- * covered by the integration suite against real Postgres.
- *
- * Auth is stubbed at the guard rather than by minting a JWT: the strategy
- * needs a live `auth.users` lookup, and this suite is about the upload
- * contract, not about token verification.
- */
 
 const DEALER: AuthenticatedUser = {
   id: '3f6f6b4e-1c2d-4a5b-8c9d-0e1f2a3b4c5d',

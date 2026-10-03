@@ -15,14 +15,6 @@ import {
   queryRows,
 } from './test-database';
 
-/**
- * The search SQL against a real Postgres.
- *
- * Everything here is a construct the unit suite cannot evaluate: the `::vector`
- * cast and `<=>` distance operator are pgvector's, `word_similarity` is
- * pg_trgm's, and `ts_rank`/`plainto_tsquery` need a real tsvector column. A
- * unit test comparing SQL strings would accept any of them spelled wrongly.
- */
 describeWithDatabase('VehicleSearchRepository (integration)', () => {
   let ds: DataSource;
   let repository: VehicleSearchRepository;

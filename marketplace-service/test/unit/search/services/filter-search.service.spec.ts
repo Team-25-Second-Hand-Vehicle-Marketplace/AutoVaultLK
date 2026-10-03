@@ -4,16 +4,6 @@ import { VehicleSearchRepository } from '../../../../src/modules/search/reposito
 import { DataSource } from 'typeorm';
 import * as builderModuleRef from '../../../../src/modules/search/filters/filter-query.builder';
 
-/**
- * Tests for the zero-result relaxation ladder.
- *
- * The repository and DataSource are stubbed so these stay fast unit tests:
- * what matters here is which filter set the service decides to re-count and
- * what it tells the buyer it did, not what Postgres returns.
- *
- * `counts` maps a predicate over the DTO to a row count, letting each test
- * describe "nothing matches until X is relaxed" declaratively.
- */
 describe('FilterSearchService - relaxation ladder', () => {
   interface Stub {
     service: FilterSearchService;
@@ -46,16 +36,6 @@ describe('FilterSearchService - relaxation ladder', () => {
     return { service, countCalls };
   }
 
-  /**
-   * The service calls buildFilterQuery(dto) and passes the result to
-   * count(), so count() alone cannot tell us which candidate filter set the
-   * ladder is currently evaluating. Tagging each built query with the DTO
-   * that produced it makes that visible without changing production code.
-   *
-   * The service imports buildFilterQuery as a named import, which ts-jest
-   * compiles to a property lookup on the module object - so patching the
-   * module export here is seen by the service at call time.
-   */
   beforeAll(() => {
     const builderModule = builderModuleRef as {
       buildFilterQuery: (dto: FilterSearchDto) => object;

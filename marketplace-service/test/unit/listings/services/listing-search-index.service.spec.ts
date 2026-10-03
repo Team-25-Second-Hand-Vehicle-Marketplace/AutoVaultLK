@@ -3,16 +3,6 @@ import { ListingSearchIndexService } from '../../../../src/modules/listings/serv
 import { buildSearchText, createXenovaEmbedder } from '../../../../src/shared/normalize-embed';
 import type { Vehicle } from '../../../../src/infrastructure/database/entities/vehicle.entity';
 
-/**
- * The FR-22.1 parity point on the manual-listing side: whatever this produces
- * is what a bulk-uploaded row must produce too, or the two land in different
- * regions of the same vector space and rank against each other badly - with no
- * error and no failing test anywhere.
- *
- * Only `createXenovaEmbedder` is mocked. `buildSearchText` and `toPgVector`
- * stay real: faking them would test the mock rather than the thing the parity
- * guarantee rests on.
- */
 jest.mock('../../../../src/shared/normalize-embed', () => ({
   ...jest.requireActual('../../../../src/shared/normalize-embed'),
   createXenovaEmbedder: jest.fn(),

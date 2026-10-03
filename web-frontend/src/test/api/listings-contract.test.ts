@@ -12,23 +12,6 @@ import {
   TRANSMISSION_TYPES,
 } from '../../api/listings.types'
 
-/**
- * Drift guard between the manual listing form's selects and the DTO that
- * validates them.
- *
- * The lists in `listings.types.ts` are a copy - the two services build
- * independently, so the frontend has no import path into
- * `create-listing.dto.ts`. This reads that file off disk and compares. Without
- * it, a backend enum change ships a form whose options produce a 400 the dealer
- * cannot act on, and nothing fails until someone tries it by hand.
- *
- * Uses `node:fs` rather than Vite's `import.meta.glob`, which refuses paths
- * outside the project root. The triple-slash reference keeps Node types local
- * rather than widening tsconfig.app.json for all of src/.
- *
- * Skips itself when the sibling service is absent - a frontend-only checkout,
- * or once the repos split.
- */
 const CONSTANTS = resolve(
   dirname(fileURLToPath(import.meta.url)),
   '../../../../marketplace-service/src/modules/search/constants/vehicle-attributes.constants.ts',

@@ -70,15 +70,6 @@ const stateName = (stage: EtlStage): string =>
     .map((part) => part[0].toUpperCase() + part.slice(1))
     .join('');
 
-/**
- * The drift guard.
- *
- * Two executors run this pipeline - LocalOrchestrator in process and this
- * state machine in AWS - and nothing else would stop them diverging. The
- * failure mode is silent and in the worst direction: local tests pass while
- * the deployed pipeline skips a stage, and the first person to notice is a
- * dealer whose vehicles have no embeddings.
- */
 describe('ETL state machine', () => {
   it('is valid JSON with a start state', () => {
     expect(asl.StartAt).toBe('UnwrapPipesBatch');

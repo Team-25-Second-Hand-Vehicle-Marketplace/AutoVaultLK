@@ -22,19 +22,6 @@ import type { AuthenticatedUser, UserRole } from '../../src/modules/auth/types/a
 })
 class StubDataSourceModule {}
 
-/**
- * POST /search/aliases/promote is the only write route in SearchModule, and it
- * writes to marketplace.vehicle_dictionaries - reference data every search
- * facet filters against and the ingestion ETL loads a snapshot of on every run.
- * An unguarded version would let anyone who can reach /search make a junk token
- * a permanent alias.
- *
- * This exercises the guard through HTTP rather than trusting the decorator:
- * RolesGuard is left REAL so @Roles('ADMIN') is genuinely evaluated, and only
- * JwtAuthGuard is stubbed - the real one needs a live auth.users lookup.
- * JwtStrategy is overridden for the same reason: it reads JWT config at
- * construction time, which CI does not supply.
- */
 
 const user = (role: UserRole): AuthenticatedUser => ({
   id: '3f6f6b4e-1c2d-4a5b-8c9d-0e1f2a3b4c5d',

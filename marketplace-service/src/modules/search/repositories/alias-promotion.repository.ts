@@ -52,20 +52,6 @@ export class AliasPromotionRepository {
     return rows;
   }
 
-  /**
-   * Get active dictionary values that can be used
-   * as possible canonical values for an alias.
-   *
-   * Restricted to the parentless types. MODEL rows hang off a make
-   * (`parent_id`), and search resolves them scoped to it - ingestion's
-   * `resolveModel(raw, makeId)` does the same. A bare search token carries no
-   * make context, so promoting "corrola" would attach it to whichever model
-   * scored highest across every make in the table. Under the wrong parent that
-   * alias can never resolve; under a plausible-looking wrong one it resolves to
-   * a vehicle that does not exist.
-   *
-   * Makes and body types have no parent, so an alias on them is unambiguous.
-   */
   async findDictionaryEntries(): Promise<DictionaryEntry[]> {
     const rows: Array<{
       id: string;
@@ -132,15 +118,6 @@ export class AliasPromotionRepository {
     return rows.length > 0;
   }
 
-  /**
-   * Creates a new canonical dictionary entry - the admin "New vehicle types"
-   * tab's path for a make that genuinely does not exist yet, as opposed to
-   * `addAlias`'s path for one that does under a different spelling.
-   *
-   * Rejects a duplicate canonical value up front rather than letting the
-   * unique constraint 500: two admins reviewing the same candidate list is
-   * the ordinary case this guards, not a rare race.
-   */
   async createEntry(
     dictionaryType: string,
     canonicalValue: string,

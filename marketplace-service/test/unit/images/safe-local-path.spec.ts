@@ -1,14 +1,6 @@
 import { resolve } from 'node:path';
 import { safeLocalPath } from '../../../src/modules/images/safe-local-path';
 
-/**
- * Mirrors ingestion-service's LocalObjectStore.pathFor test coverage
- * exactly (test/unit/infrastructure/storage/local-object-store.spec.ts) -
- * this function is a deliberate copy of that guard, kept because
- * LocalImagesController takes an object key straight from a URL path
- * segment, and a traversal attempt here is not hypothetical: it is the
- * first thing anyone will try against `/images/local/*`.
- */
 describe('safeLocalPath', () => {
   const root = resolve('/tmp/marketplace-images-root');
 

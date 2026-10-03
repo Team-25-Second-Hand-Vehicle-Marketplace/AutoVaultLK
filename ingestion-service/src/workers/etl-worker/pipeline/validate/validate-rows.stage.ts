@@ -37,22 +37,6 @@ const MAX_LENGTHS: Partial<Record<keyof VehicleFields, number>> = {
   chassisNumber: 100,
 };
 
-/**
- * The gate. Every row that reaches Load has passed through here, and every
- * rejection reason in the platform originates here - parseNormalize
- * deliberately rejects nothing so this stays the single list.
- *
- * Two categories of check, for different reasons:
- *
- * 1. **Business rules** mirroring the manual-listing DTO, so a dealer cannot
- *    bulk-upload a vehicle they could not have created through the UI.
- *
- * 2. **Column bounds** - smallint ranges, varchar lengths, numeric precision.
- *    These are not pedantry: an over-long `make` or a year of 99999 raises at
- *    INSERT time, and because Load batches rows, one such value would fail
- *    every good row travelling with it. Catching them here turns a lost batch
- *    into one rejected row with a reason the dealer can act on.
- */
 export const validateRowsStage: StageRunner<
   NormalizedRow[],
   StageResult<ValidatedRow>
