@@ -25,7 +25,7 @@ export type FuelType = 'PETROL' | 'DIESEL' | 'HYBRID' | 'ELECTRIC' | 'CNG';
 export type TransmissionType =
   'MANUAL' | 'AUTOMATIC' | 'CVT' | 'SEMI_AUTOMATIC';
 export type VehicleStatus =
-  'DRAFT' | 'PENDING_REVIEW' | 'LIVE' | 'SOLD' | 'ARCHIVED' | 'REJECTED';
+  'DRAFT' | 'PENDING_REVIEW' | 'LIVE' | 'ARCHIVED' | 'REJECTED';
 
 /**
  * FR-42.1. Mirrors ingestion-service's NormalizationPayload - see the
@@ -200,6 +200,16 @@ export class Vehicle {
 
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt: Date;
+
+  /** Set when the listing goes LIVE; expires_at is published_at + 90 days. */
+  @Column({ name: 'published_at', type: 'timestamptz', nullable: true })
+  publishedAt: Date | null;
+
+  @Column({ name: 'expires_at', type: 'timestamptz', nullable: true })
+  expiresAt: Date | null;
+
+  @Column({ name: 'deleted_at', type: 'timestamptz', nullable: true })
+  deletedAt: Date | null;
 
   @OneToMany(() => VehicleImage, (image) => image.vehicle)
   images?: VehicleImage[];

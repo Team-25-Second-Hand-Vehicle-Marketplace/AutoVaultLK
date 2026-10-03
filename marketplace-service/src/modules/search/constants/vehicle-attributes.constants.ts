@@ -27,7 +27,6 @@ export const VEHICLE_STATUSES = [
   'DRAFT',
   'PENDING_REVIEW',
   'LIVE',
-  'SOLD',
   'ARCHIVED',
   'REJECTED',
 ] as const;

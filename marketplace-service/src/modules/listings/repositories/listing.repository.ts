@@ -9,6 +9,7 @@ import {
 import { CreateListingDto } from '../dto/create-listing.dto';
 import type { ListingSortOption } from '../dto/my-listings-query.dto';
 import { ListingSearchIndexService } from '../services/listing-search-index.service';
+import { termFrom } from '../listing-expiry';
 
 // Editing any of these fields changes what buildSearchText() produces, so
 // search_text/embedding must be recomputed - not just the plain column.
@@ -63,6 +64,7 @@ export class ListingRepository {
       isNegotiable: dto.isNegotiable ?? false,
       description: dto.description ?? null,
       status,
+      ...this.publication(status, new Date()),
       specs: dto.specs ?? {},
     });
 
@@ -222,6 +224,7 @@ export class ListingRepository {
     }
 
     vehicle.status = 'LIVE';
+    Object.assign(vehicle, this.publication('LIVE', new Date()));
     return this.vehicleRepo.save(vehicle);
   }
 
@@ -245,6 +248,7 @@ export class ListingRepository {
     }
 
     vehicle.status = 'LIVE';
+    Object.assign(vehicle, this.publication('LIVE', new Date()));
     return this.vehicleRepo.save(vehicle);
   }
 
@@ -257,9 +261,10 @@ export class ListingRepository {
    * rows.
    */
   async approveAllPending(dealerId: string): Promise<number> {
+    const now = new Date();
     const result = await this.vehicleRepo.update(
       { dealerId, status: 'PENDING_REVIEW' },
-      { status: 'LIVE' },
+      { status: 'LIVE', ...this.publication('LIVE', now) },
     );
     return result.affected ?? 0;
   }
@@ -273,9 +278,10 @@ export class ListingRepository {
    * id list can never touch another dealer's rows.
    */
   async approveSelected(dealerId: string, ids: string[]): Promise<number> {
+    const now = new Date();
     const result = await this.vehicleRepo.update(
       { dealerId, status: 'PENDING_REVIEW', id: In(ids) },
-      { status: 'LIVE' },
+      { status: 'LIVE', ...this.publication('LIVE', now) },
     );
     return result.affected ?? 0;
   }
@@ -295,5 +301,13 @@ export class ListingRepository {
   async remove(id: string): Promise<boolean> {
     const result = await this.vehicleRepo.delete({ id });
     return (result.affected ?? 0) > 0;
+  }
+
+  /** Publish and expiry dates for a status. Only LIVE listings carry a term. */
+  private publication(status: VehicleStatus, now: Date) {
+    if (status !== 'LIVE') {
+      return { publishedAt: null, expiresAt: null };
+    }
+    return { publishedAt: now, expiresAt: termFrom(now) };
   }
 }
