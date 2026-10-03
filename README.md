@@ -1,285 +1,143 @@
-# Cloud-Native Marketplace Platform
+<p align="center">
+  <img src="web-frontend/public/favicon.svg" width="96" alt="AutoVault LK logo" />
+</p>
 
-TypeScript/NestJS microservices for a second-hand vehicle marketplace (Group 25, PID 11). The **database layer** and **auth-user-service** are implemented; marketplace, admin, notification, and ingestion services are in progress.
+<h1 align="center">AutoVault LK</h1>
+
+<p align="center">
+  A second-hand vehicle marketplace for Sri Lanka, with natural-language search,<br/>
+  verified dealers and bulk inventory upload.
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/version-1.0.0-1b5fff" alt="Version 1.0.0" />
+  <img src="https://img.shields.io/badge/backend-NestJS-e0234e" alt="NestJS" />
+  <img src="https://img.shields.io/badge/frontend-React-61dafb" alt="React" />
+  <img src="https://img.shields.io/badge/database-PostgreSQL%2017-336791" alt="PostgreSQL 17" />
+  <img src="https://img.shields.io/badge/cloud-AWS-232f3e" alt="AWS" />
+</p>
+
+---
+
+## Overview
+
+Buying or selling a used vehicle in Sri Lanka usually means scrolling endless
+Facebook groups and guessing keywords on classifieds sites. AutoVault LK adds:
+
+- **Natural-language search** that understands phrases like "family friendly
+  vehicle" or "luxury car under 10 million", with a relaxation step when
+  nothing matches.
+- **Traditional filters** for buyers who prefer dropdowns.
+- **Verified dealers.** Every dealer submits documents and is approved by an admin.
+- **Bulk inventory upload.** Dealers upload a CSV and a ZIP of photos, which an
+  ETL pipeline validates, enriches and publishes.
+- **Favourites and recommendations** for buyers.
+- **Email notifications** for verification, password reset and upload outcomes.
+
+## Architecture
+
+| Service | Responsibility | Port |
+|---|---|---|
+| `web-frontend` | React single-page app (Vite) | 5173 |
+| `auth-user-service` | Sign-up, sign-in, Google sign-in, tokens, dealer profiles | 3001 |
+| `marketplace-service` | Listings, search, favourites, recommendations | 3002 |
+| `ingestion-service` | Bulk upload API, job status, ETL pipeline | 3003 |
+| `admin-service` | Dealer approval, users, uploads, reports, audit logs | 3004 |
+| `notification-service` | Email delivery with retries | 3005 |
+| `api-gateway` | nginx shim for local routing (AWS API Gateway in production) | 8080 |
+| PostgreSQL 17 + pgvector | One database, one schema per service | 5433 |
+
+In production, each NestJS service runs as an AWS Lambda container, behind API
+Gateway, with S3 for files, SQS and Step Functions for the upload pipeline, and
+SES or SMTP for email.
+
+## Prerequisites
+
+- Node.js 22 and npm
+- Docker Desktop (for PostgreSQL and the optional gateway)
+- PowerShell (Windows) or a POSIX shell with `make` (macOS and Linux)
+
+## Quick start
+
+1. **Create your environment file.** Copy `.env.example` to `.env` at the repo
+   root and fill in the values. Secrets stay in this git-ignored file.
+
+   ```powershell
+   copy .env.example .env
+   ```
+
+2. **Start the database and seed it (first time only).**
+
+   ```powershell
+   docker compose up -d
+   cd database
+   npm install
+   npm run db:setup
+   npm run seed:dictionaries
+   npm run seed:vehicles
+   npm run seed:admin
+   cd ..
+   ```
+
+3. **Run the stack.**
+
+   ```powershell
+   .\scripts\start-all.ps1          # Postgres, every service and the frontend
+   .\scripts\stop-all.ps1           # stop everything, keep the data
+   ```
+
+   Then open <http://localhost:5173>.
+
+## Building and testing
+
+| Task | Windows | macOS / Linux |
+|---|---|---|
+| Install and build everything | `.\scripts\build-all.ps1` | `scripts/build-all.sh` |
+| Build without reinstalling | `.\scripts\build-all.ps1 -SkipInstall` | `scripts/build-all.sh --skip-install` |
+| Install / build / test / typecheck / lint | `make install` / `make build` / `make test` / `make typecheck` / `make lint` | same |
+| Unit tests for one service | `npm run test` inside the service | same |
+| End-to-end tests | `npm run test:e2e` inside the service | same |
+
+The e2e suites need the local Postgres container running.
+
+## Repository layout
 
 ```text
 cloud-native-marketplace-org/
-├── api-gateway/              OpenAPI specs + local nginx shim (AWS API Gateway in Terraform)
-├── auth-user-service/        Auth, users, dealer profiles (implemented)
-├── marketplace-service/      Listings API (in progress)
-├── ingestion-service/        ETL scaffold (deferred)
-├── admin-service/            Admin scaffold
-├── notification-service/     Notification scaffold
-├── database/                 Shared TypeORM migrations + grants
-├── cloud-infrastructure/     Terraform (API Gateway module)
-├── web-frontend/
-├── docker-compose.yml          Postgres (port 5433) - default `docker compose up`
-└── docker-compose.dev.yml      Local nginx API gateway shim (port 8080)
+├── web-frontend/             React app
+├── auth-user-service/        Authentication and users
+├── marketplace-service/      Listings, search, favourites, recommendations
+├── ingestion-service/        Bulk upload, job status, ETL worker
+├── admin-service/            Administration
+├── notification-service/     Email notifications
+├── api-gateway/              Local nginx gateway and OpenAPI specs
+├── database/                 Migrations, grants and seed scripts
+├── cloud-infrastructure/     Terraform for AWS
+├── scripts/                  Start, stop and build scripts
+└── performance/              Load and stress test scripts
 ```
 
-## Running the whole stack
+## Configuration
 
-From the repo root, in PowerShell:
+- `.env.example` (root) lists every variable. Each service also has its own
+  `.env.example` with only the variables it reads.
+- Groq (LLM fallback for search) and SMTP or SES (email) are optional locally.
+  Without a key, search uses the rules-based parser and emails are logged, not sent.
+- Never commit `.env` or `*.auto.tfvars`. Both are git-ignored.
 
-```powershell
-.\scripts\start-all.ps1        # Postgres + all 5 services + frontend
-.\scripts\stop-all.ps1         # stop everything (keeps the data volume)
-```
+## Deployment
 
-Then open <http://localhost:5173>.
+- Pushing to `main` runs the **Deploy to production** GitHub Actions workflow.
+  It tests and deploys only the services whose files changed.
+- Infrastructure changes are applied manually with Terraform from
+  `cloud-infrastructure/terraform/environments/production`.
 
-`start-all.ps1` waits on the Postgres container healthcheck before launching
-services, opens each service in its own window, and runs `npm install` for any
-package that is missing `node_modules`. Add `-Gateway` to also start the nginx
-shim on :8080, or `-SkipFrontend` for backend-only.
+## Version
 
-The nginx gateway is **not** needed for frontend work: `web-frontend/vite.config.ts`
-proxies `/auth`, `/users`, `/marketplace`, and `/admin` to the services directly,
-mirroring the same route prefixes nginx uses.
+This is **version 1.0.0**: the first complete release covering authentication,
+marketplace search, dealer verification, bulk upload, administration and
+notifications.
 
-| Service | Port |
-|---|---|
-| web-frontend (Vite) | 5173 |
-| auth-user-service | 3001 |
-| marketplace-service | 3002 |
-| ingestion-service | 3003 |
-| admin-service | 3004 |
-| notification-service | 3005 |
-| Postgres | 5433 |
-| nginx gateway (optional) | 8080 |
+## Team
 
-### First-time setup only
-
-```powershell
-copy .env.example .env          # then set ADMIN_SEED_PASSWORD
-docker compose up -d
-cd database
-npm install; npm run db:setup   # migrations + role grants
-npm run seed:dictionaries; npm run seed:vehicles; npm run seed:admin
-npm run seed:embeddings         # optional: enables vector search ranking
-```
-
-> **Port gotcha:** the root `.env` sets a single `PORT=3001`. `marketplace`,
-> `admin`, and `notification` read their own `*_PORT` variable first, but
-> `auth` and `ingestion` read only `PORT` - so starting ingestion without
-> overriding it makes it collide with auth on 3001. `start-all.ps1` sets
-> `PORT` per service to avoid this; do the same if you start one by hand:
-> `$env:PORT=3003; npm run start:dev`.
-
-## Local Docker Compose files
-
-| File | What it runs | Typical command |
-|---|---|---|
-| `docker-compose.yml` | PostgreSQL (`pgvector/pgvector:pg17` on host port **5433**) | `docker compose up -d` |
-| `docker-compose.dev.yml` | nginx API gateway shim (host port **8080**) | `docker compose -f docker-compose.dev.yml up gateway -d` |
-
-NestJS services run on the host (`npm run start:dev`); they are not in either compose file yet.
-
-**Linux developers:** the gateway nginx config targets `host.docker.internal` to reach those host services. Use `docker-compose.dev.yml` as documented (it adds `extra_hosts` automatically). See [api-gateway/README.md](api-gateway/README.md#linux-hostdockerinternal).
-
-Copy [.env.example](.env.example) to `.env` at the repo root before running services.
-
-## API Gateway
-
-Browser traffic uses **Amazon API Gateway** per the SAD. Locally, an nginx path proxy on **http://localhost:8080** mirrors the same route prefixes (`/auth`, `/marketplace`, `/admin`, etc.). JWT validation runs in each NestJS service, not at the gateway.
-
-See [api-gateway/README.md](api-gateway/README.md). From the repo root:
-
-```powershell
-docker compose up -d                                          # Postgres (docker-compose.yml)
-docker compose -f docker-compose.dev.yml up gateway -d        # Gateway shim (docker-compose.dev.yml)
-```
-
-The existing frontend is also available at `vehicle-marketplace/frontend/` and can later become the `web-frontend` repository.
-
-## Standard NestJS service structure
-
-```text
-service/
-├── src/
-│   ├── config/                 Environment and application configuration
-│   ├── common/                 Shared guards, filters, middleware, pipes, types
-│   ├── infrastructure/         Database and AWS adapters
-│   ├── modules/                Domain modules
-│   │   └── feature/
-│   │       ├── controllers/    HTTP or event entrypoints
-│   │       ├── services/       Application and business use cases
-│   │       ├── repositories/   Persistence abstractions
-│   │       ├── entities/       ORM entities
-│   │       └── dto/             Request, response, and message contracts
-│   ├── health/                 Health and readiness structure
-│   └── lambda/                 Lambda handler entrypoint structure
-├── test/
-│   ├── unit/
-│   ├── integration/
-│   ├── e2e/                    End-to-end test structure
-│   ├── contract/               Event and API contract structure
-│   └── fixtures/
-├── docker/
-├── Dockerfile
-└── .dockerignore
-```
-
-The architecture keeps controllers and handlers thin. Business decisions belong in services, database access belongs in repositories, and AWS SDK usage belongs in infrastructure adapters.
-
-## Auth & User Service
-
-Repository: `auth-user-service`
-
-Domain modules:
-
-- `auth`: registration, login, JWT authentication, refresh tokens, password policies, and roles.
-- `users`: user profiles and account lifecycle.
-- `dealers`: dealer profiles, approval state, and dealer-specific data.
-
-The service contains a Lambda entrypoint structure at `src/lambda/`. The root Dockerfile is prepared for a container-based Lambda deployment.
-
-## Marketplace Service
-
-Repository: `marketplace-service`
-
-Domain modules:
-
-- `listings`: vehicle listings and listing lifecycle.
-- `favourites`: user favourites.
-- `dealers`: marketplace-facing dealer information.
-- `search`: traditional filters, natural-language search, deterministic parsing, pgvector search, and trigram search.
-- `recommendations`: recommendation use cases and ranking.
-
-Search-specific structure:
-
-```text
-src/modules/search/
-├── filters/
-├── natural-language/
-├── deterministic-parser/
-├── pgvector/
-└── trigram/
-```
-
-## Ingestion & ETL Service
-
-Repository: `ingestion-service`
-
-This service contains three separately deployable Lambda entrypoint structures:
-
-```text
-src/lambda/
-├── ingest-api/
-├── job-status-api/
-└── etl-worker/
-```
-
-### Ingest API
-
-The `ingestion` module owns upload requests, S3 object references, upload jobs, CSV/JSON metadata, chunk creation, and SQS publishing.
-
-### Job Status API
-
-The `job-status` module owns dealer polling, upload progress, batch progress, validation errors, and processing statistics.
-
-### ETL Worker
-
-The SQS-triggered worker is structured as independent pipeline stages:
-
-```text
-src/workers/etl-worker/
-├── handler/
-├── processors/
-├── pipeline/
-│   ├── normalize/
-│   ├── validate/
-│   ├── enrich/
-│   ├── embeddings/
-│   ├── image-processing/
-│   └── persistence/
-└── infrastructure/
-```
-
-Responsibilities include normalization, validation, enrichment, metadata extraction, image processing, HuggingFace embedding generation, PostgreSQL/pgvector persistence, status updates, retries, idempotency, and dead-letter handling.
-
-The repository also contains dedicated Dockerfiles:
-
-```text
-docker/
-├── ingest-api.Dockerfile
-├── job-status-api.Dockerfile
-└── etl-worker.Dockerfile
-```
-
-`etl-worker.Dockerfile` is expected to contain the largest dependency set because it may include HuggingFace, TensorFlow or ONNX runtime, image-processing libraries, and data-processing libraries.
-
-## Admin Service
-
-Repository: `admin-service`
-
-Domain modules:
-
-- `users`: administrative user management.
-- `uploads`: upload monitoring.
-- `reports`: report generation structure.
-- `audit`: audit logs and compliance records.
-- `dashboard`: administrative dashboard queries.
-
-## Notification Service
-
-Repository: `notification-service`
-
-The `notifications` module owns event handlers, notification use cases, SES integration, delivery records, and email templates.
-
-Expected domain events include upload completion and upload failure events.
-
-## Infrastructure structure
-
-Repository: `cloud-infrastructure`
-
-```text
-cloud-infrastructure/
-├── terraform/
-│   ├── environments/
-│   │   ├── dev/
-│   │   ├── staging/
-│   │   └── production/
-│   ├── modules/
-│   │   ├── networking/
-│   │   ├── database/
-│   │   ├── lambda/
-│   │   ├── api_gateway/
-│   │   ├── s3/
-│   │   ├── sqs/
-│   │   ├── ses/
-│   │   ├── iam/
-│   │   ├── monitoring/
-│   │   └── secrets/
-│   └── schemas/event_schemas/
-├── policies/
-├── scripts/
-└── docs/
-```
-
-Terraform provisions AWS resources. It does not contain NestJS application code. Service repositories own application migrations and deployment packaging; infrastructure owns AWS resources, IAM, queues, buckets, ECR repositories, Lambda configuration, and environment composition.
-
-## Docker deployment
-
-Each NestJS service has a multi-stage root Dockerfile. The first stage builds the TypeScript application, and the final stage uses the AWS Lambda Node.js 22 base image.
-
-The container entrypoint is selected with the Lambda handler configured in the Dockerfile. The ingestion service has separate Dockerfiles because its three Lambda functions are independently deployed.
-
-Use a separate ECR image and Lambda function for each independently deployed handler. Keep the ETL worker image separate from the HTTP API images so its larger dependencies do not increase API cold starts.
-
-## Git placeholders
-
-`.gitkeep` files are included in empty planned directories so the structure remains visible when pushed to GitHub. They can be removed when real files are added.
-
-## Planned GitHub organization
-
-```text
-your-organization/
-├── web-frontend
-├── auth-user-service
-├── marketplace-service
-├── ingestion-service
-├── admin-service
-├── notification-service
-└── cloud-infrastructure
-```
+Group 25, second-hand vehicle marketplace project.
