@@ -9,7 +9,7 @@ import {
 import { CreateListingDto } from '../dto/create-listing.dto';
 import type { ListingSortOption } from '../dto/my-listings-query.dto';
 import { ListingSearchIndexService } from '../services/listing-search-index.service';
-import { termFrom } from '../listing-expiry';
+import { LISTING_TERM_DAYS, termFrom } from '../listing-expiry';
 
 // Editing any of these fields changes what buildSearchText() produces, so
 // search_text/embedding must be recomputed - not just the plain column.
@@ -301,6 +301,66 @@ export class ListingRepository {
   async remove(id: string): Promise<boolean> {
     const result = await this.vehicleRepo.delete({ id });
     return (result.affected ?? 0) > 0;
+  }
+
+  /** Sets the expiry of a LIVE listing. Returns null when it is no longer LIVE. */
+  async setExpiry(id: string, expiresAt: Date) {
+    const vehicle = await this.findById(id);
+
+    if (!vehicle || vehicle.status !== 'LIVE') {
+      return null;
+    }
+
+    vehicle.expiresAt = expiresAt;
+    return this.vehicleRepo.save(vehicle);
+  }
+
+  /** Brings an ARCHIVED listing back to LIVE with a fresh 90-day term. */
+  async relist(id: string, now: Date) {
+    const vehicle = await this.findById(id);
+
+    if (!vehicle || vehicle.status !== 'ARCHIVED') {
+      return null;
+    }
+
+    vehicle.status = 'LIVE';
+    Object.assign(vehicle, this.publication('LIVE', now));
+    return this.vehicleRepo.save(vehicle);
+  }
+
+  /**
+   * Renews the dealer's LIVE listings in one UPDATE. Each renewed listing gets
+   * renewedExpiry: 90 days from its expiry, or from now if it has already lapsed.
+   * The dealer check and the status check live in the WHERE clause, so a crafted
+   * id list cannot reach another dealer's rows.
+   */
+  async renewMany(
+    dealerId: string,
+    ids: string[] | undefined,
+    expiringWithinDays: number | undefined,
+  ): Promise<number> {
+    const query = this.vehicleRepo
+      .createQueryBuilder()
+      .update(Vehicle)
+      .set({
+        expiresAt: () =>
+          `GREATEST(COALESCE(expires_at, now()), now()) + interval '${LISTING_TERM_DAYS} days'`,
+      })
+      .where('dealer_id = :dealerId', { dealerId })
+      .andWhere('status = :status', { status: 'LIVE' })
+      .andWhere('deleted_at IS NULL');
+
+    if (ids) {
+      query.andWhere('id IN (:...ids)', { ids });
+    }
+    if (expiringWithinDays !== undefined) {
+      query.andWhere(`expires_at <= now() + make_interval(days => :days)`, {
+        days: expiringWithinDays,
+      });
+    }
+
+    const result = await query.execute();
+    return result.affected ?? 0;
   }
 
   /** Publish and expiry dates for a status. Only LIVE listings carry a term. */

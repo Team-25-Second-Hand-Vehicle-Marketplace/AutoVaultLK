@@ -20,3 +20,13 @@ export function addDays(base: Date, days: number): Date {
 export function termFrom(publishedAt: Date): Date {
   return addDays(publishedAt, LISTING_TERM_DAYS);
 }
+
+/**
+ * New expiry when a listing is renewed. The term runs from whichever is later,
+ * the current expiry or now: an expiring listing gains 90 days from its expiry
+ * day, and a listing that has already lapsed starts a fresh term from today.
+ */
+export function renewedExpiry(currentExpiry: Date | null, now: Date): Date {
+  const base = currentExpiry && currentExpiry.getTime() > now.getTime() ? currentExpiry : now;
+  return addDays(base, LISTING_TERM_DAYS);
+}

@@ -14,6 +14,8 @@ import { ImageUrlResolverService } from '../../images/services/image-url-resolve
 import { CreateListingDto } from '../dto/create-listing.dto';
 import type { ListingSortOption } from '../dto/my-listings-query.dto';
 import { UpdateListingDto } from '../dto/update-listing.dto';
+import { RenewListingsDto } from '../dto/renew-listings.dto';
+import { renewedExpiry } from '../listing-expiry';
 import { ListingRepository } from '../repositories/listing.repository';
 import { Vehicle } from '../../../infrastructure/database/entities/vehicle.entity';
 import type { AuthenticatedUser } from '../../auth/types/authenticated-user.type';
@@ -145,6 +147,66 @@ export class ListingService {
     return {
       message: 'Vehicle listing deactivated successfully',
       data: listing,
+    };
+  }
+
+  /**
+   * Renews one listing for another 90 days. A LIVE listing is extended from its
+   * expiry day. An ARCHIVED listing is relisted with a fresh term, which is only
+   * possible while no other active listing holds its registration. Any other
+   * status is a 409: there is no term to renew.
+   */
+  async renewListing(id: string, actor: AuthenticatedUser) {
+    const existing = await this.listingRepository.findById(id);
+
+    if (!existing) {
+      throw new NotFoundException(`Vehicle listing with ID ${id} not found`);
+    }
+
+    this.assertOwnership(existing, actor);
+
+    const now = new Date();
+    let listing: Vehicle | null;
+
+    if (existing.status === 'LIVE') {
+      listing = await this.listingRepository.setExpiry(
+        id,
+        renewedExpiry(existing.expiresAt, now),
+      );
+    } else if (existing.status === 'ARCHIVED') {
+      listing = await this.listingRepository.relist(id, now);
+    } else {
+      throw new ConflictException(
+        `Vehicle listing ${id} is ${existing.status} and cannot be renewed`,
+      );
+    }
+
+    if (!listing) {
+      throw new ConflictException(`Vehicle listing ${id} changed while renewing - try again`);
+    }
+
+    return {
+      message: existing.status === 'ARCHIVED' ? 'Vehicle listing relisted' : 'Vehicle listing renewed',
+      data: listing,
+    };
+  }
+
+  /**
+   * Renews the dealer's LIVE listings in one request: the listed ids, the ones
+   * expiring within `expiringWithinDays`, or all of them when neither is given.
+   * Archived listings are not touched here; relist those one at a time, since
+   * each relist has to clear the registration check.
+   */
+  async renewListings(actor: AuthenticatedUser, dto: RenewListingsDto) {
+    const renewed = await this.listingRepository.renewMany(
+      actor.id,
+      dto.ids,
+      dto.expiringWithinDays,
+    );
+
+    return {
+      message: `${renewed} listing${renewed === 1 ? '' : 's'} renewed for another 90 days`,
+      data: { renewed },
     };
   }
 

@@ -24,6 +24,7 @@ import { ListingService } from '../services/listing.service';
 import { ApproveSelectedDto } from '../dto/approve-selected.dto';
 import { CreateListingDto } from '../dto/create-listing.dto';
 import { MyListingsQueryDto } from '../dto/my-listings-query.dto';
+import { RenewListingsDto } from '../dto/renew-listings.dto';
 import { UpdateListingDto } from '../dto/update-listing.dto';
 
 @Controller('listings')
@@ -103,6 +104,29 @@ export class ListingController {
     @CurrentUser() actor: AuthenticatedUser,
   ) {
     return this.listingService.deactivateListing(id, actor);
+  }
+
+  /**
+   * Renews the dealer's listings in one request: the ids given, the ones
+   * expiring within `expiringWithinDays`, or every LIVE listing when neither is
+   * given. See ListingService.renewListings.
+   */
+  @Post('renew')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('DEALER')
+  renewListings(@CurrentUser() actor: AuthenticatedUser, @Body() dto: RenewListingsDto) {
+    return this.listingService.renewListings(actor, dto);
+  }
+
+  /** Renews one listing for another 90 days. See ListingService.renewListing. */
+  @Post(':id/renew')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('DEALER', 'ADMIN')
+  renewListing(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.listingService.renewListing(id, actor);
   }
 
   /**
