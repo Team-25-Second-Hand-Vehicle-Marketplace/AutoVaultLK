@@ -3,6 +3,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { Vehicle } from '../../infrastructure/database/entities/vehicle.entity';
 import { ListingController } from './controllers/listing.controller';
+import { InternalListingLifecycleController } from './controllers/internal-listing-lifecycle.controller';
+import { ListingLifecycleService } from './services/listing-lifecycle.service';
+import { InternalServiceGuard } from '../../common/guards/internal-service.guard';
 import { ListingService } from './services/listing.service';
 import { ListingSearchIndexService } from './services/listing-search-index.service';
 import { ListingRepository } from './repositories/listing.repository';
@@ -18,8 +21,14 @@ import { JwtAuthModule } from '../auth/jwt-auth.module';
     ImagesModule,
     JwtAuthModule,
   ],
-  controllers: [ListingController],
-  providers: [ListingService, ListingRepository, ListingSearchIndexService],
+  controllers: [ListingController, InternalListingLifecycleController],
+  providers: [
+    ListingService,
+    ListingRepository,
+    ListingSearchIndexService,
+    ListingLifecycleService,
+    InternalServiceGuard,
+  ],
   exports: [ListingService],
 })
 export class ListingModule {}
