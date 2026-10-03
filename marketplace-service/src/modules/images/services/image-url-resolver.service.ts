@@ -24,12 +24,27 @@ import {
  * every search result row: it costs a small amount of CPU, not a network
  * round trip, so resolving 20 rows' worth of images inline in a search
  * response is not 20 API calls.
+ *
+ * **Signed URLs are cached per key, not re-minted every call.** Without this,
+ * the same photo got a brand-new query string (new signature) on every
+ * request, so even reloading the same dashboard a minute later produced a
+ * byte-identical image at a different URL - the browser's HTTP cache keys on
+ * the full URL, so it could never recognize "I already have this" and
+ * re-fetched every image, every time. Caching the signed URL for most of its
+ * validity window (with a safety margin so a client never receives one about
+ * to expire mid-fetch) lets the same <img src> repeat across requests, so the
+ * browser's own cache - backed by the Cache-Control this now also sends -
+ * actually gets to do its job.
  */
 @Injectable()
 export class ImageUrlResolverService {
   private readonly logger = new Logger(ImageUrlResolverService.name);
   private client: S3Client | undefined;
   private warnedMissingBucket = false;
+  private readonly signedUrlCache = new Map<string, { url: string; expiresAt: number }>();
+
+  /** Regenerate this long before actual expiry, so a cached URL never gets handed to a client moments before S3 would start rejecting it. */
+  private static readonly EXPIRY_SAFETY_MARGIN_SECONDS = 30;
 
   constructor(private readonly config: ConfigService) {}
 
@@ -94,12 +109,35 @@ export class ImageUrlResolverService {
       return null;
     }
 
+    const cached = this.signedUrlCache.get(key);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.url;
+    }
+
+    const usableSeconds = Math.max(
+      cfg.presignExpirySeconds - ImageUrlResolverService.EXPIRY_SAFETY_MARGIN_SECONDS,
+      1,
+    );
+
     try {
       const client = this.getClient(cfg.region);
-      const command = new GetObjectCommand({ Bucket: cfg.bucket, Key: key });
-      return await getSignedUrl(client, command, {
+      const command = new GetObjectCommand({
+        Bucket: cfg.bucket,
+        Key: key,
+        // Tells the browser (and anything between it and S3) it may reuse
+        // this response for as long as this specific signed URL stays valid
+        // - without it, S3's response carries no explicit cache lifetime, so
+        // browsers fall back to weaker heuristic caching.
+        ResponseCacheControl: `public, max-age=${usableSeconds}, immutable`,
+      });
+      const url = await getSignedUrl(client, command, {
         expiresIn: cfg.presignExpirySeconds,
       });
+      this.signedUrlCache.set(key, {
+        url,
+        expiresAt: Date.now() + usableSeconds * 1000,
+      });
+      return url;
     } catch (err) {
       // A presign failure (bad credentials, SDK misconfiguration) must not
       // fail the whole search response - one vehicle photo among twenty

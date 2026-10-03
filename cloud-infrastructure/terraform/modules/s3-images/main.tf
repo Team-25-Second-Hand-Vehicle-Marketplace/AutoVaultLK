@@ -64,13 +64,17 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "images" {
   }
 }
 
-# CORS governs the browser's direct GET against the presigned URL - not the
-# Lambda-to-S3 call that mints it, which never leaves AWS's network.
+# CORS governs the browser's direct calls against a presigned URL - not the
+# Lambda-to-S3 call that mints it, which never leaves AWS's network. PUT is
+# here for ingestion-service's direct-to-S3 dealer upload (raw/{jobId}/...,
+# CSV up to 25 MB / ZIP up to 250 MB): API Gateway hard-caps a Lambda-proxied
+# request body at 10 MB, so those can never reliably arrive as part of a
+# normal request - the dealer's browser PUTs the bytes straight here instead.
 resource "aws_s3_bucket_cors_configuration" "images" {
   bucket = aws_s3_bucket.images.id
 
   cors_rule {
-    allowed_methods = ["GET"]
+    allowed_methods = ["GET", "PUT"]
     allowed_origins = var.cors_allowed_origins
     allowed_headers = ["*"]
     max_age_seconds = 3600

@@ -1,22 +1,37 @@
+import axios from 'axios'
 import { apiClient } from './client'
-import type { JobsPage, JobStatus, RejectedRecord, RejectionsPage, UploadAccepted } from './ingestion.types'
+import type {
+  JobsPage,
+  JobStatus,
+  PresignedUpload,
+  PresignedUploadTarget,
+  RejectedRecord,
+  RejectionsPage,
+  UploadAccepted,
+} from './ingestion.types'
 import { TEMPLATE_HEADER } from './ingestion.template'
 
 /**
- * A bulk upload is up to INGESTION_MAX_UPLOAD_MB (25 MB by default) plus an
- * image archive, and the client's 10s default would abort a perfectly healthy
- * upload on a slow connection. The request only has to reach the service -
- * the pipeline itself runs asynchronously and is polled through getJobStatus.
+ * A bulk upload is up to 25 MB plus a 250 MB image archive, and the client's
+ * 10s default would abort a perfectly healthy upload on a slow connection.
  */
 const UPLOAD_TIMEOUT_MS = 5 * 60 * 1000
 
 export type UploadProgress = (percent: number) => void
 
 /**
- * Field names are `csv` and `zip` to match the FileFieldsInterceptor on
- * ingestion-service's IngestionController. Multer rejects any other field
- * outright - a wrong name returns 400 "Unexpected field", not the friendlier
- * "csv file is required".
+ * Three steps, because API Gateway hard-caps a Lambda-proxied request body at
+ * 10 MB (not a configurable quota) - well under either file, so they can
+ * never reliably arrive as part of a normal request to our own API:
+ *
+ *   1. POST /ingest/presign - creates the job, returns a presigned PUT per file.
+ *   2. PUT the file(s) straight to storage - this service never sees the bytes.
+ *   3. POST /ingest/upload/{jobId}/complete - confirms they landed, starts the pipeline.
+ *
+ * If step 2 or 3 fails, step 3 is still attempted (best-effort) so the
+ * backend can mark the job FAILED rather than leave it at PENDING forever -
+ * which getActiveJob() would otherwise treat as still in progress and block
+ * the dealer from trying again.
  */
 export async function uploadInventory(
   csv: File,
@@ -24,23 +39,85 @@ export async function uploadInventory(
   onProgress?: UploadProgress,
   signal?: AbortSignal,
 ): Promise<UploadAccepted> {
-  const form = new FormData()
-  form.append('csv', csv)
-  if (zip) form.append('zip', zip)
+  const presigned = await presignUpload(csv, zip, signal)
 
-  const { data } = await apiClient.post<UploadAccepted>('/ingest/upload', form, {
+  const totalBytes = csv.size + (zip?.size ?? 0)
+  let csvLoaded = 0
+  let zipLoaded = 0
+  const reportProgress = () => {
+    if (!onProgress || totalBytes === 0) return
+    // Capped below 100 until /complete actually succeeds, so the UI's
+    // "Processing…" state only shows once the pipeline has really started.
+    onProgress(Math.min(99, Math.round(((csvLoaded + zipLoaded) / totalBytes) * 100)))
+  }
+
+  try {
+    await putDirect(presigned.csv, csv, signal, (loaded) => {
+      csvLoaded = loaded
+      reportProgress()
+    })
+
+    if (zip && presigned.zip) {
+      await putDirect(presigned.zip, zip, signal, (loaded) => {
+        zipLoaded = loaded
+        reportProgress()
+      })
+    }
+  } catch (err) {
+    await completeUpload(presigned.jobId, signal).catch(() => {
+      /* best-effort - see the doc comment above */
+    })
+    throw err
+  }
+
+  onProgress?.(100)
+
+  return completeUpload(presigned.jobId, signal)
+}
+
+async function presignUpload(
+  csv: File,
+  zip: File | null,
+  signal?: AbortSignal,
+): Promise<PresignedUpload> {
+  const { data } = await apiClient.post<PresignedUpload>(
+    '/ingest/presign',
+    {
+      csvFileName: csv.name,
+      csvFileSize: csv.size,
+      ...(zip ? { zipFileName: zip.name, zipFileSize: zip.size } : {}),
+    },
+    { signal },
+  )
+  return data
+}
+
+function completeUpload(jobId: string, signal?: AbortSignal): Promise<UploadAccepted> {
+  return apiClient
+    .post<UploadAccepted>(`/ingest/upload/${jobId}/complete`, undefined, { signal })
+    .then((res) => res.data)
+}
+
+/**
+ * Deliberately not apiClient: this goes straight to storage (S3 in
+ * production, a same-origin dev mirror locally - see
+ * LocalObjectStore.getUploadTarget), which must never see our app's auth
+ * cookie or bearer token. S3's CORS does not support credentialed requests
+ * at all, so sending them would make the browser block the request outright.
+ */
+async function putDirect(
+  target: PresignedUploadTarget,
+  file: File,
+  signal: AbortSignal | undefined,
+  onLoaded: (loaded: number) => void,
+): Promise<void> {
+  await axios.put(target.uploadUrl, file, {
     signal,
     timeout: UPLOAD_TIMEOUT_MS,
-    // Content-Type is deliberately unset: the browser has to add the multipart
-    // boundary itself, and naming the header here would overwrite it with one
-    // that has no boundary.
-    onUploadProgress: (event) => {
-      if (!onProgress || !event.total) return
-      onProgress(Math.round((event.loaded / event.total) * 100))
-    },
+    headers: target.headers,
+    withCredentials: false,
+    onUploadProgress: (event) => onLoaded(event.loaded),
   })
-
-  return data
 }
 
 export async function getJobStatus(jobId: string, signal?: AbortSignal): Promise<JobStatus> {

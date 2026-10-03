@@ -16,7 +16,11 @@
  */
 export interface ObjectStore {
   /** Writes the object and returns the key it was stored under. */
-  put(key: string, body: Buffer | string, contentType?: string): Promise<string>;
+  put(
+    key: string,
+    body: Buffer | string,
+    contentType?: string,
+  ): Promise<string>;
 
   /** Reads a whole object. Throws if the key does not exist. */
   get(key: string): Promise<Buffer>;
@@ -31,6 +35,21 @@ export interface ObjectStore {
 
   /** Recursive, matching S3's flat-namespace prefix listing. Returns keys. */
   list(prefix: string): Promise<string[]>;
+
+  /**
+   * A URL the *browser* can PUT a file's bytes to directly, bypassing this
+   * service entirely for the transfer itself. API Gateway hard-caps a
+   * Lambda-proxied request body at 10 MB (not a configurable quota) - well
+   * under a dealer's CSV (up to 25 MB) or photo ZIP (up to 250 MB), so those
+   * can never reliably arrive as part of a normal request in production. The
+   * caller presigns this once, the browser PUTs straight to storage, then
+   * tells the service the upload finished.
+   */
+  getUploadTarget(
+    key: string,
+    contentType: string,
+    expirySeconds: number,
+  ): Promise<{ url: string; headers?: Record<string, string> }>;
 }
 
 /** DI token - `ObjectStore` is an interface and erases at runtime. */

@@ -143,6 +143,8 @@ describe('ImageUrlResolverService', () => {
       expect(command.input).toEqual({
         Bucket: 'my-bucket',
         Key: 'images/job-1/veh-1/0-x.jpg',
+        // 300s default expiry minus the 30s regeneration safety margin.
+        ResponseCacheControl: 'public, max-age=270, immutable',
       });
       expect(options.expiresIn).toBe(300); // DEFAULT_PRESIGN_EXPIRY_SECONDS
     });
@@ -165,6 +167,45 @@ describe('ImageUrlResolverService', () => {
         { expiresIn: number },
       ];
       expect(options.expiresIn).toBe(60);
+    });
+
+    // The whole point of caching the signed URL: a dashboard reloaded a
+    // minute later should get back the *same* URL for the same photo, so the
+    // browser's own HTTP cache can recognize it instead of re-fetching.
+    it('reuses the same signed URL for the same key instead of re-signing', async () => {
+      getSignedUrl.mockResolvedValue('https://signed');
+      const resolver = new ImageUrlResolverService(
+        configWith({
+          IMAGE_SERVE_MODE: 's3',
+          MARKETPLACE_IMAGES_BUCKET: 'my-bucket',
+        }),
+      );
+
+      const first = await resolver.resolve('images/job-1/veh-1/0-x.jpg');
+      const second = await resolver.resolve('images/job-1/veh-1/0-x.jpg');
+
+      expect(first).toBe('https://signed');
+      expect(second).toBe('https://signed');
+      expect(getSignedUrl).toHaveBeenCalledTimes(1);
+    });
+
+    it('signs each distinct key separately', async () => {
+      getSignedUrl
+        .mockResolvedValueOnce('https://signed-a')
+        .mockResolvedValueOnce('https://signed-b');
+      const resolver = new ImageUrlResolverService(
+        configWith({
+          IMAGE_SERVE_MODE: 's3',
+          MARKETPLACE_IMAGES_BUCKET: 'my-bucket',
+        }),
+      );
+
+      const a = await resolver.resolve('images/job-1/veh-1/0-x.jpg');
+      const b = await resolver.resolve('images/job-1/veh-2/0-x.jpg');
+
+      expect(a).toBe('https://signed-a');
+      expect(b).toBe('https://signed-b');
+      expect(getSignedUrl).toHaveBeenCalledTimes(2);
     });
 
     // A missing bucket is a real deployment misconfiguration, not a reason
