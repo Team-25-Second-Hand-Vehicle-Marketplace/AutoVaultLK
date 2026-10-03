@@ -129,20 +129,6 @@ export class IngestionController {
     return this.uploadService.completeUpload(user.id, jobId);
   }
 
-  /**
-   * Local-dev-only counterpart to a real S3 presigned PUT (see
-   * LocalObjectStore.getUploadTarget) - exists purely so the frontend can use
-   * one upload flow in both environments instead of branching on which
-   * storage driver is running. In 's3' mode the dealer's browser never calls
-   * this; it PUTs straight to S3.
-   *
-   * Deliberately unguarded by auth, matching a real presigned URL's own
-   * security model: knowing the exact (unguessable, server-issued) URL is
-   * the authorization, not a bearer token - S3's CORS does not support
-   * credentialed requests either, so the frontend cannot attach one here
-   * even for the real driver. The `raw/` prefix check is what presignUpload
-   * ever hands out, so it is the only thing this endpoint will ever write to.
-   */
   @Put('local-object/:encodedKey')
   async putLocalObject(
     @Param('encodedKey') encodedKey: string,

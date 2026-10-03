@@ -6,24 +6,6 @@ import { SearchPage } from '../pages/SearchPage';
 import { VehicleDetailPage } from '../pages/VehicleDetailPage';
 import { VerifyEmailPage } from '../pages/VerifyEmailPage';
 
-/**
- * Filtered search → vehicle detail → save as favourite → confirmed on the
- * saved-vehicles page.
- *
- * Uses filtered search (a direct /search?... URL) rather than the
- * HeroSearch NL box: NL search runs through Groq when GROQ_API_KEY is set,
- * or the deterministic parser otherwise (marketplace-service's
- * groq-fallback.service.ts) - either path is a parsing/ranking concern
- * already covered at the unit and API-level test suites. This journey is
- * about navigation and the save/favourite round-trip, which filtered search
- * exercises without depending on parser confidence or an external LLM call.
- *
- * The local catalogue is seeded (database/src/seeds/vehicles.seed.ts, run
- * manually, not CI-enforced) - confirmed non-empty via a direct API probe
- * before writing this. No fixture is created here; the test asserts a
- * result exists rather than assuming a specific listing, so it stays valid
- * however the seed data is regenerated.
- */
 
 async function registerAndLoginBuyer(page: import('@playwright/test').Page) {
   const stamp = Date.now();

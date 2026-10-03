@@ -15,14 +15,6 @@ import {
   repositoryFor,
 } from './test-database';
 
-/**
- * admin_service_role reads across every other schema (auth, marketplace,
- * ingestion, notification) for the dashboard and reports. None of that
- * cross-schema access, nor the raw DATE_TRUNC/query-builder SQL in
- * loadReports/loadDailySeries, is observable from a unit test that stubs
- * every Repository<T> - this is the level that actually connects as
- * admin_service_role and proves the grants and the SQL both hold.
- */
 describeWithDatabase('AdminReadsRepository (integration)', () => {
   let ds: DataSource;
   let repository: AdminReadsRepository;

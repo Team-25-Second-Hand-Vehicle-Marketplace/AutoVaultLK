@@ -36,16 +36,6 @@ export class FavouritesService {
     );
   }
 
-  /**
-   * The buyer's saved vehicles, newest first, each with its photo.
-   *
-   * The joined vehicle is the raw entity, which has no image URLs - search and
-   * recommendations resolve them from vehicle_images, and without the same step
-   * here every saved card showed "No photos yet". `imageUrl` and `thumbnailUrl`
-   * are added the same way those modules add them (and stay `null` for a
-   * vehicle with no photo, which is what makes the card fall back to its
-   * placeholder).
-   */
   async getMyFavourites(buyerId: string) {
     const favourites = await this.favouritesRepository.findByBuyer(
       buyerId,

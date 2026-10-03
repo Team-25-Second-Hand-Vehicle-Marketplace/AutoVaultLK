@@ -1,13 +1,3 @@
-/**
- * Internal HTTP client for notification-service.
- *
- * A plain module rather than the `@Injectable` one in
- * admin-service/src/modules/admin/clients/notification-internal.client.ts:
- * stages may not import NestJS (see pipeline/types.ts), so configuration is
- * read from the environment the same way groq-client.ts reads its key. The
- * request shape, the header name and the never-throw posture are copied from
- * there so both services fail the same way.
- */
 
 const DEFAULT_URL = 'http://localhost:3005';
 
@@ -34,14 +24,6 @@ export function isNotificationConfigured(): boolean {
   return (process.env.INTERNAL_SERVICE_KEY ?? '').trim().length > 0;
 }
 
-/**
- * Posts one event, and **never throws**.
- *
- * By the time this runs the rows are already in marketplace.vehicles. Failing
- * the job because an email could not be queued would turn a successful upload
- * into a FAILED one and invite the dealer to upload again - duplicating work
- * that already succeeded. The caller records DEGRADED instead.
- */
 export async function emit(event: NotificationEvent): Promise<EmitOutcome> {
   const key = (process.env.INTERNAL_SERVICE_KEY ?? '').trim();
   if (!key) return { sent: false, reason: 'INTERNAL_SERVICE_KEY is not set' };

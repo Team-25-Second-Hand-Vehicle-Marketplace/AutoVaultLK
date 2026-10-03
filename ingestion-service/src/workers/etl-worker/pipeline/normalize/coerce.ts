@@ -1,15 +1,3 @@
-/**
- * Numeric coercion for dealer-supplied cells.
- *
- * Dealers type prices the way they say them: "Rs. 3,500,000/=", "3.5M",
- * "45,000 km", "1500cc". None of these are numbers to JavaScript, and
- * Number("Rs. 3,500,000") is NaN - which would reject a perfectly good row over
- * a currency prefix. Every rule here exists because the alternative is throwing
- * away real stock.
- *
- * Returns null rather than NaN or 0 for anything unparseable. Null is a missing
- * value the validate stage can reject with a reason; 0 is a price.
- */
 
 /** "Rs.", "LKR", "SLR", "/=" - currency decoration around the digits. */
 const CURRENCY = /(?:^|\s)(?:rs\.?|lkr|slr|₨)\s*|\s*\/=\s*$/gi;
@@ -39,14 +27,6 @@ const MULTIPLIERS: Record<string, number> = {
   crores: 10_000_000,
 };
 
-/**
- * Parses a decimal number from a dealer cell.
- *
- * Thousands separators are stripped only when they sit in valid positions
- * ("3,500,000"). A cell like "3,5" is European decimal notation or a typo -
- * either way, stripping the comma would turn 3.5 into 35, a tenfold error in a
- * price. Ambiguity returns null and lets the row be rejected honestly.
- */
 export function coerceNumber(raw: string | undefined | null): number | null {
   if (raw == null) return null;
 
@@ -88,14 +68,6 @@ export function coerceInteger(raw: string | undefined | null): number | null {
   return Number.isInteger(value) ? value : null;
 }
 
-/**
- * Years, tolerating the two-digit form dealers still type.
- *
- * "98" means 1998 and "15" means 2015; the split point is the current year's
- * last two digits, since no dealer lists a vehicle from the future. Four-digit
- * years pass through untouched - range checking belongs to validateRows, which
- * can attach a rejection reason.
- */
 export function coerceYear(raw: string | undefined | null, now = new Date()): number | null {
   const text = String(raw ?? '').trim();
   if (!text) return null;
@@ -133,14 +105,6 @@ export function coerceText(raw: string | undefined | null): string | null {
   return text || null;
 }
 
-/**
- * Sri Lankan registration numbers, upper-cased with a single separating dash.
- *
- * Dealers write "cab 1234", "CAB-1234" and "CAB1234" for the same vehicle.
- * These are compared against the UNIQUE partial index on registration_number
- * (FR-35.1), so an inconsistent format would let the same vehicle be listed
- * twice - the exact duplicate the index exists to prevent.
- */
 export function coerceRegistrationNumber(raw: string | undefined | null): string | null {
   const text = String(raw ?? '')
     .toUpperCase()

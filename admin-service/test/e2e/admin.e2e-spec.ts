@@ -7,28 +7,6 @@ import { AdminMutationsService } from '../../src/modules/admin/services/admin-mu
 import { JwtAuthGuard } from '../../src/modules/auth/guards/jwt-auth.guard';
 import type { AuthenticatedUser } from '../../src/modules/auth/types/authenticated-user.type';
 
-/**
- * Exercises the /admin surface through real routing, the real RolesGuard, the
- * real ParseUUIDPipe and the same ValidationPipe main.ts installs, with only
- * the two services stubbed.
- *
- * **The guard matrix is the point of this suite.** AdminController is the
- * highest-privilege surface in the system - it approves dealers, deactivates
- * accounts and mints other admins - and every route on it is protected by a
- * class-level `@Roles('ADMIN')` that no unit test exercises end to end. A
- * decorator dropped during a refactor would leave the routes open to any
- * authenticated buyer, and nothing else in the repo would notice.
- *
- * Only JwtAuthGuard is overridden (it would otherwise need a signed token and
- * a running auth service); RolesGuard runs for real, so the role checks below
- * are the production code path.
- *
- * RolesGuard is left to the controller's own `@UseGuards(JwtAuthGuard,
- * RolesGuard)` rather than registered as an APP_GUARD here. A global guard
- * runs *before* controller-scoped ones, so it would read `request.user` before
- * the overridden JwtAuthGuard had set it and 403 every route - including the
- * ones an admin is entitled to.
- */
 
 const ADMIN_ID = '2c4a1f6e-9b3d-4c8a-9e1f-5d7b3a2c4e6f';
 const DEALER_ID = '7b1e3d5f-2a4c-4e6b-8d0f-1a3c5e7b9d0f';

@@ -72,14 +72,6 @@ export class ListingService {
     };
   }
 
-  /**
-   * A dealer's own inventory, every status included - unlike getAllListings,
-   * which is the public LIVE-only feed. This is what a dealer dashboard reads
-   * to show DRAFT/PENDING_REVIEW/REJECTED listings that the public feed hides.
-   *
-   * `sort: 'confidence_asc'` (FR-42.1) surfaces the PENDING_REVIEW rows most
-   * likely to need a correction first.
-   */
   async getMyListings(actor: AuthenticatedUser, sort?: ListingSortOption) {
     const listings = await this.listingRepository.findByDealer(actor.id, sort);
 
@@ -148,20 +140,6 @@ export class ListingService {
     };
   }
 
-  /**
-   * FR-42/FR-42.1: the dealer's explicit approval that moves a PENDING_REVIEW
-   * listing to LIVE. Until this existed, FR-42's "no ETL-loaded listing shall
-   * become publicly visible until the owning Dealer explicitly approves it"
-   * had a status describing the wait but no action ending it - a bulk upload
-   * landed every row in PENDING_REVIEW and nothing in the API could move one
-   * forward.
-   *
-   * A listing that is not PENDING_REVIEW is a 409, not a 404: the id is real
-   * and the dealer may well own it, but "approve" is not a meaningful action
-   * on an already-LIVE listing or a manually-created DRAFT, and the UI needs
-   * to tell that apart from "this listing does not exist" to show the right
-   * message.
-   */
   async approveListing(id: string, actor: AuthenticatedUser) {
     const existing = await this.listingRepository.findById(id);
 
@@ -230,14 +208,6 @@ export class ListingService {
     };
   }
 
-  /**
-   * Reverses deactivateListing: brings an ARCHIVED listing back to LIVE for
-   * the public feed. Its own action rather than a flag on the generic PATCH,
-   * matching approveListing's shape - a listing that is not ARCHIVED is a
-   * 409, not a 404: the id is real and the dealer may own it, but there is
-   * nothing to unarchive on a LIVE, DRAFT, PENDING_REVIEW, SOLD or REJECTED
-   * listing.
-   */
   async unarchiveListing(id: string, actor: AuthenticatedUser) {
     const existing = await this.listingRepository.findById(id);
 
@@ -268,18 +238,6 @@ export class ListingService {
     };
   }
 
-  /**
-   * Permanently removes a listing - distinct from `deactivateListing`, which
-   * only hides it from the public feed and keeps the row. Restricted to
-   * DRAFT, PENDING_REVIEW and REJECTED: those never went live, so nothing
-   * external (a buyer's favourite, a recommendation, search history) should
-   * reasonably reference one. LIVE, SOLD and ARCHIVED listings can only be
-   * archived, never hard-deleted, because they may already be referenced -
-   * ON DELETE CASCADE on vehicle_images/favourites would remove those
-   * references cleanly, but a buyer who favourited a listing that then
-   * vanishes without a trace is a worse experience than one that stays
-   * visible as archived.
-   */
   private static readonly DELETABLE_STATUSES = ['DRAFT', 'PENDING_REVIEW', 'REJECTED'] as const;
 
   async deleteListing(id: string, actor: AuthenticatedUser) {
@@ -309,17 +267,6 @@ export class ListingService {
     return { message: 'Vehicle listing deleted permanently' };
   }
 
-  /**
-   * FR-58: attaches photos to a listing the dealer owns. The manual listing
-   * form never had an image field before this - a dealer creating one
-   * vehicle at a time had no way to attach a photo at all, unlike bulk
-   * upload's ZIP-of-images path.
-   *
-   * Replaces the vehicle's whole image set rather than appending: a dealer
-   * re-submitting photos for a listing means "here is the current set", and
-   * appending would leave stale images from an earlier attempt with no way
-   * for the form to show which one is which.
-   */
   async uploadImages(
     id: string,
     actor: AuthenticatedUser,
@@ -361,20 +308,6 @@ export class ListingService {
     };
   }
 
-  /**
-   * Manual, one-at-a-time listing creation is available to every dealer
-   * type. Business dealers additionally have the bulk upload pipeline for
-   * their stock (ingestion-service's DealerProfileRepository.
-   * isVerifiedBusinessDealer still restricts that to verified business
-   * dealers only) - the two paths aren't mutually exclusive, a business
-   * dealer may also list a single vehicle manually here.
-   *
-   * Verification is still checked here: a dealer can log in while PENDING
-   * or REJECTED (see auth-user-service's DealerProfilesService - approval
-   * no longer gates login, only whether the account may create listings),
-   * so this is the only thing standing between an unverified dealer of any
-   * type and a real LIVE listing.
-   */
   private assertManualUploadAllowed(dealer: DealerSummary) {
     if (dealer.verificationStatus !== 'VERIFIED') {
       throw new ForbiddenException(
@@ -397,14 +330,6 @@ export class ListingService {
     }
   }
 
-  /**
-   * Turns each image's stored key into a URL the dealer's own browser can
-   * fetch, the same way vehicle-search.repository.ts does for public search
-   * results (NFR-19 - images are never publicly writable, so the raw key is
-   * not itself fetchable). "My listings" had never resolved this before: the
-   * raw entity's images carried s3Path straight through, which an <img src>
-   * cannot use.
-   */
   private async withImageUrls(listing: Vehicle) {
     const images = listing.images ?? [];
     const resolved = await Promise.all(

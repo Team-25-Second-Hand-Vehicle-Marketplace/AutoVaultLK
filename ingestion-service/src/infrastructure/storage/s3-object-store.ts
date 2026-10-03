@@ -13,18 +13,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { ObjectStore } from '../ports/object-store.port';
 
-/**
- * S3-backed ObjectStore for deployment (ADR-007).
- *
- * Notably shorter than LocalObjectStore, and the difference is instructive: a
- * key like `../../etc/passwd` escapes a real filesystem but is inert in S3's
- * flat namespace, where it is simply an object whose name contains dots. The
- * traversal guard LocalObjectStore needs has nothing to guard against here.
- *
- * Keys are still validated for emptiness and null bytes - an empty key is a
- * caller bug either way, and S3 rejects control characters with an opaque
- * error that is harder to trace than a thrown one.
- */
 @Injectable()
 export class S3ObjectStore implements ObjectStore {
   private readonly logger = new Logger(S3ObjectStore.name);
@@ -94,15 +82,6 @@ export class S3ObjectStore implements ObjectStore {
     return Buffer.from(await response.Body.transformToByteArray());
   }
 
-  /**
-   * Returns a Node stream, not the web stream the SDK hands back.
-   *
-   * `splitChunks` pipes this into csv-parse, which is a Node stream consumer;
-   * a web ReadableStream has no `.pipe` and would fail at runtime with a
-   * message that says nothing about why. In Node the SDK's Body is already a
-   * Readable, but the type union includes the web and Blob variants, so the
-   * conversion is explicit rather than assumed.
-   */
   async getStream(key: string): Promise<NodeJS.ReadableStream> {
     assertKey(key);
 

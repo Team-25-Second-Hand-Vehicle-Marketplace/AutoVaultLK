@@ -3,20 +3,6 @@ import { buildFilterQuery } from '../../../../src/modules/search/filters/filter-
 import { FilterSearchDto } from '../../../../src/modules/search/dto/filter-search.dto';
 import { EMBEDDING_DIMENSIONS } from '../../../../src/shared/normalize-embed';
 
-/**
- * The repository is the layer that turns a built WHERE clause into a real
- * statement: it owns JOIN composition, ORDER BY resolution, LIMIT/OFFSET
- * parameter numbering, and row mapping.
- *
- * None of that is covered by the query-builder tests, and all of it is the
- * kind of code where an off-by-one in parameter indexing produces a runtime
- * error only under a specific combination of options (relevance sort + a
- * keyword + verifiedDealersOnly, for instance).
- *
- * DataSource is stubbed rather than connected: these assert the SQL and
- * parameters the repository *composes*, which is exactly the part that can
- * be wrong without Postgres ever being reached.
- */
 
 interface Captured {
   sql: string;
@@ -160,16 +146,6 @@ describe('VehicleSearchRepository - search()', () => {
 });
 
 describe('VehicleSearchRepository - vector ranking (FR-23)', () => {
-  /**
-   * These assert the seam between the rank decision and the emitted SQL.
-   *
-   * buildOrderBy is unit-tested directly, but nothing else proves the
-   * repository actually forwards rank.queryEmbedding into the statement.
-   * That gap is not academic: every listing embedding was NULL and
-   * @xenova/transformers was absent for the whole life of this branch, so
-   * embedQuery() always returned null and semantic ranking silently never
-   * ran - while the suite stayed green, because no test reached this path.
-   */
   const unitVector = () => {
     const values = new Array(EMBEDDING_DIMENSIONS).fill(0);
     values[0] = 1;

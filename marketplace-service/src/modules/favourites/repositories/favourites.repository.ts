@@ -51,14 +51,6 @@ export class FavouritesRepository {
     });
   }
 
-  /**
-   * The primary photo's stored paths for each vehicle, keyed by vehicle id.
-   *
-   * One query for the whole list rather than one per saved vehicle. Mirrors the
-   * search repository's choice of image - `COALESCE(processed_path, s3_path)` -
-   * so a vehicle shows the same photo whether it is found by search or saved.
-   * A vehicle with no photo has no entry; the card shows its placeholder.
-   */
   async findPrimaryImagePaths(
     vehicleIds: string[],
   ): Promise<Map<string, { imagePath: string | null; thumbnailPath: string | null }>> {

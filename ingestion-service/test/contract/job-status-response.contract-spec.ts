@@ -1,21 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-/**
- * Drift guard between JobStatusResponseDto/RejectionsResponseDto and the
- * web-frontend types that mirror them (ingestion.types.ts). The two build
- * independently, so the frontend has no import path into this service's DTOs
- * - a field added, renamed or removed here has nothing else to fail until a
- * dealer's upload-status page silently drops it. This reads both files off
- * disk and compares their field names.
- *
- * Compares field lists rather than full TypeScript structural types: this
- * runs under ts-jest without a cross-project type checker, so a name-level
- * diff is what is actually verifiable here. The equivalent enum-vocabulary
- * checks (EtlStage, UploadJobStatus) already exist as backend-owned source
- * for the frontend's mirrored unions; this test is about the response
- * envelope shape, not the enums inside it.
- */
 
 const JOB_STATUS_DTO = resolve(
   __dirname,

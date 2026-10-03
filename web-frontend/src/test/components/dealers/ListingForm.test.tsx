@@ -4,15 +4,6 @@ import userEvent from '@testing-library/user-event'
 import { ListingForm } from '../../../components/dealers/ListingForm'
 import type { DealerListing } from '../../../api/listings.types'
 
-/**
- * FR-58: the manual listing form never had an image field before this.
- * What these guard is the client-side validation that mirrors
- * marketplace-service's ImageUploadService limits (so a rejection is
- * instant, not a round trip to the server) and that no files selected is
- * treated as "unchanged" on edit, not as "clear the photos" - the backend
- * replaces the whole image set on any upload, so calling it with zero
- * files, or calling it accidentally, would delete a listing's photos.
- */
 
 const jpeg = (name: string, sizeBytes = 1024) => {
   const file = new File([new Uint8Array(sizeBytes)], name, { type: 'image/jpeg' })

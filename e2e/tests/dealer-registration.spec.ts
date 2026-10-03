@@ -6,25 +6,6 @@ import { DealerProfilePage } from '../pages/DealerProfilePage';
 import { DealerRegisterPage } from '../pages/DealerRegisterPage';
 import { VerifyEmailPage } from '../pages/VerifyEmailPage';
 
-/**
- * Dealer registration (individual path, no file upload) → email
- * verification → sign in while PENDING → administrator approval (via
- * admin-service's real API, not its UI - see helpers/admin-api.ts) →
- * verified dashboard → profile completion.
- *
- * Uses the individual-dealer path deliberately: the business path requires
- * uploading a real file (POST /documents/verification) before the wizard
- * can proceed past step 0, which needs its own fixture file and S3/local
- * storage config to be deterministic. Individual dealers supply an NIC
- * number instead - no upload, same downstream approval flow.
- *
- * A dealer can sign in immediately after verifying their email, before
- * administrator approval (auth-user-service's DealerProfilesService:
- * approval no longer gates login) - VerifyEmailPage's copy was corrected to
- * say so as part of writing this test; the previous copy claimed sign-in
- * was blocked until approval, which the backend has not enforced for some
- * time.
- */
 
 function uniqueDealer() {
   const stamp = Date.now();

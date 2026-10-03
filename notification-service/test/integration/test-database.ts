@@ -7,26 +7,6 @@ import { Notification } from '../../src/infrastructure/database/entities/notific
 loadEnv({ path: '../.env' });
 loadEnv({ path: '.env' });
 
-/**
- * Shared setup for the notification-service integration suite.
- *
- * NotificationsRepository.claimDueRetries relies on `FOR UPDATE SKIP LOCKED`
- * so that more than one replica sweeping concurrently never sends the same
- * notification twice (FR-53). That concurrency semantic, the
- * auth.users cross-schema read, and the unique idempotency_key constraint
- * are all invisible to a unit test that stubs Repository<T> - this is the
- * level that proves them against a live Postgres.
- *
- * Requires a migrated, seeded database - the one docker-compose brings up:
- *
- *   docker compose up -d postgres
- *   npm --prefix database run migration:run
- *   npm --prefix database run grants
- *   npm --prefix database run seed:vehicles
- *
- * When no database is reachable the suite SKIPS rather than fails, matching
- * marketplace-service/test/integration/test-database.ts.
- */
 
 export const INTEGRATION_DATABASE_URL =
   process.env.NOTIFICATION_DATABASE_URL ??

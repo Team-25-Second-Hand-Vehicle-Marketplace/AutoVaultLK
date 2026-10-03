@@ -29,15 +29,6 @@ async function bootstrap(): Promise<CachedApp> {
   return { app, server };
 }
 
-/**
- * EventBridge's scheduled input, set by the Terraform rule that drives FR-53
- * in production. `NotificationRetrySweeper`'s own `setInterval` never fires
- * reliably here - Lambda freezes the process between invocations, so a timer
- * only ever ticks during the brief window a request happens to be in flight.
- * This is the actual trigger; the in-process interval stays as the local/
- * long-lived-process path (`NOTIFICATION_RETRY_ENABLED=false` disables it in
- * this deployment so it isn't silently doing nothing).
- */
 type ScheduledSweepEvent = { action: 'sweep-notifications' };
 
 function isScheduledSweep(event: unknown): event is ScheduledSweepEvent {

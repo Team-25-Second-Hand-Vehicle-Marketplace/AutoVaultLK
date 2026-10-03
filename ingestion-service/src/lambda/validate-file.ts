@@ -16,17 +16,6 @@ export type ValidateFileOutput = {
   zipKey: string | null;
 };
 
-/**
- * Step Functions state: ValidateFile. The first state, and the only one
- * permitted to fail a whole job on content.
- *
- * Does not use runChunkStage: this is a whole-file stage with no envelope, no
- * chunk id and no rows to write.
- *
- * Reads the job row rather than trusting the message, exactly as the JobQueue
- * port documents - a redelivered or replayed SQS message must not be able to
- * resurrect stale field values.
- */
 export const handler = async (input: ValidateFileInput): Promise<ValidateFileOutput> => {
   const ctx = await getContext();
   const job = await ctx.uploadJobs.findById(input.jobId);

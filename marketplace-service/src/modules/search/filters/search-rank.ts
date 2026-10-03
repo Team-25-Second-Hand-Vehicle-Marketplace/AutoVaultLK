@@ -17,22 +17,6 @@ export const LAST_RESORT_WORD_SIMILARITY = 0.3;
 
 export const MAX_EMBEDDING_DISTANCE = 0.7;
 
-/**
- * A one-word query embeds far more noisily than a full sentence - there is
- * simply less context for the model to place it precisely in vector space.
- * Measured directly against this catalog's seed data: the query "sporty"
- * sits at distance 0.811 from a listing whose own description says "Sporty
- * hatch, responsive steering" (the actually-relevant result), while
- * "family friendly vehicle" sits at 0.595 from an UNRELATED listing. A
- * single fixed cutoff cannot fit both - 0.7 is right for multi-word queries
- * (tight enough to keep "family friendly" from returning motorbikes, per
- * the existing test) but wrongly excludes the best possible match for a
- * bare single word.
- *
- * This scales the cutoff by how many meaningful words made it into
- * semanticText: fewer words (less context, noisier embedding) get more
- * distance tolerance. 3+ words keeps today's behavior unchanged.
- */
 export function maxEmbeddingDistanceFor(semanticText: string): number {
   const wordCount = semanticText.trim().split(/\s+/).filter(Boolean).length;
   if (wordCount <= 1) return 0.85;

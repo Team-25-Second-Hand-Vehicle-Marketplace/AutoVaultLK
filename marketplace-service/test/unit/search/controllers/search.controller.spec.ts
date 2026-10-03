@@ -2,15 +2,6 @@ import { NotFoundException } from '@nestjs/common';
 import { SearchController } from '../../../../src/modules/search/controllers/search.controller';
 import { FilterSearchDto } from '../../../../src/modules/search/dto/filter-search.dto';
 
-/**
- * Controller-level contract: which collaborator each route delegates to, and
- * the HTTP shape it produces.
- *
- * The routing decisions here are deliberate and easy to regress -
- * /search/facets goes straight to the repository specifically to avoid the
- * full search path, and /search/vehicles/:id must convert a null into a 404
- * rather than returning an empty body. Both are asserted below.
- */
 
 function makeController() {
   const filterSearchService = { search: jest.fn().mockResolvedValue({ items: [], total: 0 }) };

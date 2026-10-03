@@ -14,15 +14,6 @@ import { ErrorBanner } from '../../components/ui/ErrorBanner'
 import { Pill } from '../../components/ui/Pill'
 import { AdminTable } from '../../components/ui/AdminTable'
 
-/**
- * FR-?? (dictionary review): a dealer's make text that never resolved during
- * bulk upload - some of it is a genuinely new vehicle type (a brand this
- * marketplace has never catalogued), most of it is noise (a typo, a blank, a
- * placeholder). The backend already filters out anything a one-off row
- * produced and scores each candidate against the existing dictionary, so
- * this page's job is just showing that judgement clearly: how often it
- * recurs, across how many dealers, and how close the nearest real make is.
- */
 
 const candidatesError = (err: unknown) =>
   toErrorMessage(err, 'Could not load unresolved makes.')

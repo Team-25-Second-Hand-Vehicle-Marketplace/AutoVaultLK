@@ -5,29 +5,6 @@ import { DataSource } from 'typeorm';
 loadEnv({ path: '../.env' });
 loadEnv({ path: '.env' });
 
-/**
- * Shared setup for the marketplace integration suite.
- *
- * These tests exist because the search unit tests assert on the SQL *string*.
- * That catches a typo in a column name and nothing else: a `::vector` cast
- * pgvector rejects, a `word_similarity` call with its arguments the wrong way
- * round, a cross-schema join to a table whose owning service renamed a column
- * - every one of those passes the unit suite and fails on the first real
- * search. Only a live Postgres can tell the difference.
- *
- * Requires a migrated, seeded database - the one docker-compose brings up:
- *
- *   docker compose up -d postgres
- *   npm --prefix database run migration:run
- *   npm --prefix database run grants
- *   npm --prefix database run seed:vehicles
- *   npm --prefix database run seed:embeddings
- *
- * When no database is reachable the suite SKIPS rather than fails, matching
- * ingestion-service/test/integration/test-database.ts. A developer without
- * Docker running should not see a red build for a suite they were never asked
- * to run; CI opts in explicitly with a postgres service container.
- */
 
 export const INTEGRATION_DATABASE_URL =
   process.env.MARKETPLACE_DATABASE_URL ??
@@ -35,14 +12,6 @@ export const INTEGRATION_DATABASE_URL =
 
 let cached: DataSource | undefined;
 
-/**
- * Connects as `marketplace_service_role`, not as the database owner.
- *
- * That is deliberate: the cross-schema reads these tests cover (auth.users,
- * auth.dealer_profiles) depend on grants that live in database/src/grants.sql.
- * Running as the owner would pass whether or not those grants exist, and the
- * first deploy would then be where the missing GRANT is discovered.
- */
 export async function connect(): Promise<DataSource | null> {
   if (cached?.isInitialized) return cached;
 
@@ -129,14 +98,6 @@ function redact(url: string): string {
   return url.replace(/\/\/[^@]*@/, '//***@');
 }
 
-/**
- * A deterministic unit vector of the right dimensionality.
- *
- * The tests below assert on *ordering*, not on semantic relevance, so a
- * synthetic vector is both sufficient and preferable: loading the real MiniLM
- * model would make the suite slow and its results depend on a model download.
- * `seed` varies the direction so two different vectors rank rows differently.
- */
 export function fakeEmbedding(seed = 1): number[] {
   const values = Array.from({ length: 384 }, (_, i) =>
     Math.sin((i + 1) * seed),

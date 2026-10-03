@@ -20,24 +20,6 @@ const UPLOAD_TIMEOUT_MS = 5 * 60 * 1000
 
 export type UploadProgress = (percent: number) => void
 
-/**
- * Three steps, because API Gateway hard-caps a Lambda-proxied request body at
- * 10 MB (not a configurable quota) - well under either file, so they can
- * never reliably arrive as part of a normal request to our own API:
- *
- *   1. POST /ingest/presign - declares the format (csv or json), creates the
- *      job, returns a presigned PUT per file.
- *   2. PUT the file(s) straight to storage - this service never sees the bytes.
- *   3. POST /ingest/upload/{jobId}/complete - confirms they landed, starts the pipeline.
- *
- * The format is sent in step 1 and stored on the job, so the worker reads the
- * inventory with the right reader; it is never guessed from the extension.
- *
- * If step 2 or 3 fails, step 3 is still attempted (best-effort) so the
- * backend can mark the job FAILED rather than leave it at PENDING forever -
- * which getActiveJob() would otherwise treat as still in progress and block
- * the dealer from trying again.
- */
 export async function uploadInventory(
   format: UploadFileFormat,
   file: File,
@@ -216,15 +198,6 @@ export function buildTemplateCsv(): string {
 /** Columns a JSON file writes as numbers, the way a real export would. */
 const JSON_NUMERIC_COLUMNS = new Set(['year', 'price', 'mileage', 'engine_capacity_cc', 'owners_count'])
 
-/**
- * The JSON counterpart of buildTemplateCsv: an array holding one example
- * vehicle, with every column the pipeline accepts present as a key.
- *
- * Columns with no example are `null`, which the pipeline reads as a blank
- * cell - so the dealer sees every field that exists, and can delete the ones
- * they do not use. Built from the same TEMPLATE_HEADER and EXAMPLE_ROW as the
- * CSV, so the two templates cannot drift apart.
- */
 export function buildTemplateJson(): string {
   const vehicle: Record<string, string | number | null> = {}
   for (const column of TEMPLATE_HEADER) {
@@ -239,18 +212,6 @@ export function buildTemplate(format: UploadFileFormat): string {
   return format === 'json' ? buildTemplateJson() : buildTemplateCsv()
 }
 
-/**
- * FR-57's export: a dealer fixing skipped rows needs them outside the
- * browser, not just on screen - re-typing which rows failed from a table is
- * exactly the manual, error-prone step this is meant to remove.
- *
- * `row` and `reason` lead the file for reference. They are not template
- * columns, but a stray extra column is not a re-upload hazard either: the
- * parser folds anything it does not recognise into `description` rather than
- * rejecting the file (see COLUMN_HELP), so the worst case if a dealer forgets
- * to delete them is a stray note in the description field, not a failed
- * re-upload. The download hint says to remove them regardless.
- */
 export function buildRejectionsCsv(rows: RejectedRecord[]): string {
   const rawKeys = new Set<string>()
   for (const row of rows) {

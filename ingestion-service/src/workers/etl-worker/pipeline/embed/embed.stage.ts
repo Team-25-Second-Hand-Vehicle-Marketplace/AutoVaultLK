@@ -19,15 +19,6 @@ export type EmbedResult = StageResult<EmbeddedRow> & {
   metrics: { embedded: number; withoutVector: number };
 };
 
-/**
- * The ~90MB ONNX model, cached for the life of the process.
- *
- * A module singleton rather than a class field because stages are plain
- * objects, not injectables - the same posture as
- * marketplace-service's ListingSearchIndexService and QueryEmbeddingService,
- * which both cache for the same reason. Loading per chunk under
- * MaxConcurrency 10 would mean ten simultaneous model loads.
- */
 let cachedEmbedder: Embedder | undefined;
 
 /** Test seam: the model is far too slow to load in a unit test. */
@@ -40,28 +31,6 @@ function getEmbedder(): Embedder {
   return cachedEmbedder;
 }
 
-/**
- * Builds search_text and the 384-dimension vector for every row.
- *
- * **This is where FR-22.1 / NFR-26.1 model parity is enforced.** The fields
- * below are exactly those marketplace-service's ListingSearchIndexService
- * passes for a manually created listing - same fields, same order, same
- * source module. An embedding is only meaningful relative to vectors built the
- * same way, so if these two ever diverge, bulk listings land in a different
- * region of vector space and rank badly forever: no error, no failing test, no
- * log line (plan-b §9A calls this silent drift).
- *
- * Two guards stand behind that claim. test/unit/shared/normalize-embed-parity
- * asserts our copy of the shared module is byte-identical to marketplace's,
- * and this stage's spec asserts the text produced here matches what the
- * manual path produces for an equivalent vehicle. Changing the field list here
- * without changing ListingSearchIndexService breaks the second.
- *
- * A missing vector is never a row failure - it matches the manual path, which
- * saves the listing and logs a warning. The row still has search_text, so the
- * lexical half of hybrid search finds it; only vector similarity is lost, and
- * a re-embed can repair that later. Refusing the row could not.
- */
 export const embedStage: StageRunner<EnrichedRow[], EmbedResult> = {
   stage: 'EMBED',
 
@@ -121,15 +90,6 @@ export const embedStage: StageRunner<EnrichedRow[], EmbedResult> = {
   },
 };
 
-/**
- * The fields ListingSearchIndexService passes, in the same order.
- *
- * Do not reorder, add or remove a field here without making the identical
- * change in marketplace-service/src/modules/listings/services/
- * listing-search-index.service.ts and re-running
- * `cd database && npm run seed:embeddings` - every embedding already stored is
- * invalidated by a change to this shape.
- */
 export function searchTextFor(row: EnrichedRow): string | null {
   const f = row.normalized;
 

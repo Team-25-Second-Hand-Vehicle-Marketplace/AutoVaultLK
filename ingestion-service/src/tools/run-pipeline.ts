@@ -1,24 +1,3 @@
-/**
- * Runs the ETL pipeline against a real database, end to end, with no HTTP.
- *
- * Stands in for POST /ingest/upload (§B1) so Phase A can be verified before
- * that endpoint exists: it does exactly what the upload handler will do -
- * store the file(s), insert a PENDING job, publish to the queue - and then
- * waits for the pipeline to finish and prints what landed, row by row.
- *
- *   npx ts-node src/tools/run-pipeline.ts test/fixtures/e2e-mixed.csv
- *   npx ts-node src/tools/run-pipeline.ts <file.csv> --zip <photos.zip>
- *   npx ts-node src/tools/run-pipeline.ts <file.csv> --dealer you@example.com
- *   npx ts-node src/tools/run-pipeline.ts <file.csv> --job <existingJobId>
- *
- * Run with ts-node, not tsx: tsx (esbuild) strips types per-file without a
- * type-checking pass, and Nest's DI relies on emitDecoratorMetadata, which
- * needs one - under tsx, constructor params resolve to undefined at runtime
- * and the app fails to boot with an UndefinedDependencyException.
- *
- * The --job form re-runs an existing job, which is how the idempotency claim
- * in §A8 is checked: the row count must not change.
- */
 import { readFileSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 import { parse } from 'csv-parse/sync';
@@ -185,15 +164,6 @@ async function report(dataSource: DataSource, jobId: string, filePath: string): 
   console.log(`  npx ts-node src/tools/run-pipeline.ts <file> --job ${jobId}\n`);
 }
 
-/**
- * Re-reads the source CSV and, for every data row (1-based, header excluded -
- * the same numbering rejected_records uses), prints exactly one outcome line:
- * either the loaded vehicle's stored state, or the rejection reason. This is
- * the answer to "what happened to the record on row N", which the old
- * aggregate-only report (job counts + a 5-row sample) could not give: a
- * dealer re-uploading the same three rows across test runs would see the
- * SAME five loaded rows every time, never their own.
- */
 async function reportPerRow(dataSource: DataSource, jobId: string, filePath: string): Promise<void> {
   const rawRows = parse(readFileSync(resolve(filePath), 'utf8'), {
     columns: true,

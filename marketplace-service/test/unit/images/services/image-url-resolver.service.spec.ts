@@ -17,14 +17,6 @@ jest.mock('@aws-sdk/s3-request-presigner', () => ({
 const configWith = (values: Record<string, string>): ConfigService =>
   ({ get: (key: string) => values[key] }) as unknown as ConfigService;
 
-/**
- * NFR-19: "Vehicle images shall not be publicly writable; access shall be
- * via signed URLs." What this guards is that every mode resolves a stored
- * key into something a browser can actually fetch - or, deliberately,
- * into nothing at all when there is nothing honest to return - rather than
- * handing the raw storage key straight through as if it were a URL (the
- * defect this whole module exists to fix).
- */
 describe('ImageUrlResolverService', () => {
   beforeEach(() => {
     jest.clearAllMocks();

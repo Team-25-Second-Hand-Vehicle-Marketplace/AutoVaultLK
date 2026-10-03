@@ -59,15 +59,6 @@ export async function extractImagesStage(
 
     const baseName = getBaseName(normalized);
 
-    /*
-     * Expected naming:
-     *
-     * WPX1234.jpg
-     * WPX1234_1.jpg
-     * WPX1234_2.jpg
-     *
-     * The registration number is the part before the optional _number.
-     */
     const registrationNumber = coerceRegistrationNumber(
       baseName.replace(/_\d+$/, ''),
     );

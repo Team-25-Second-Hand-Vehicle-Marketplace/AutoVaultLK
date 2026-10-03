@@ -1,46 +1,4 @@
-/**
- * The dealer CSV contract - the single definition of what a bulk upload file
- * must look like.
- *
- * This is a shared boundary, not an implementation detail: validateFile checks
- * headers against it, splitChunks parses with it, and the downloadable template
- * on the dealer frontend (§B5) is generated from it. All three must agree, so
- * they read the same constants rather than restating the column list.
- *
- * The column names match src/tools/vehicle-generator/vehicle-generator.ts, so
- * generated fixtures are valid uploads by construction.
- */
 
-/**
- * Columns a file must carry to be processable at all. Their absence is a file
- * defect, not a row defect - there is no per-row rejection that could describe
- * "this file has no price column", so validateFile fails the whole job.
- *
- * `registration_number` is deliberately NOT required: unregistered imports are
- * legitimate stock and arrive with the column blank. It is still declared in
- * KNOWN_COLUMNS because the image matcher (§B3) keys on it.
- *
- * `fuel_type`, `transmission`, `color`, `engine_capacity_cc`, `owners_count`
- * and `location_district` were widened from optional to required per the
- * updated SRS Appendix A: a listing missing any of these was judged too thin
- * for a buyer to evaluate, so a dealer file predating this column set is
- * rejected at the file gate rather than silently loading incomplete rows.
- *
- * `condition` joined them later: New / Used / Reconditioned is the first thing
- * a buyer filters on, and relying on the USED default meant a dealer who never
- * thought about the column quietly listed new stock as used. The column must
- * exist; a blank cell in it is still defaulted to USED by the enrich stage
- * rather than rejecting the row, the same way a blank is treated everywhere
- * else the pipeline can infer a value.
- *
- * `vehicle_type` is the latest addition, for the same reason: leaving it to a
- * silent default listed a bike or a lorry as a car, and the category-specific
- * columns (stroke type, axle count, ...) are only read for the matching type,
- * so a wrong type also lost those values. The column must exist. A blank cell
- * is still filled from the matched make/model where that is unambiguous (a
- * Hilux is a pickup), and a row whose type cannot be worked out either way is
- * rejected by validateRows, with the reason, rather than guessed.
- */
 export const REQUIRED_COLUMNS = [
   'make',
   'model',
@@ -57,14 +15,6 @@ export const REQUIRED_COLUMNS = [
   'vehicle_type',
 ] as const;
 
-/**
- * Every column the pipeline reads as a field or a spec.
- *
- * A column outside this set is not an error - dealers export from their own
- * DMS and routinely carry fields we have no schema for. Those are appended to
- * the listing's description by the enrich stage rather than dropped, so they
- * stay readable and searchable without adding an unqueryable key to specs.
- */
 export const KNOWN_COLUMNS = [
   ...REQUIRED_COLUMNS,
   'registration_number',
@@ -159,14 +109,6 @@ const HEADER_ALIASES: Record<string, KnownColumn> = {
   negotiable: 'is_negotiable',
 };
 
-/**
- * Folds a raw header cell to its canonical column name.
- *
- * Excel writes a UTF-8 BOM at the start of the first cell, which would make
- * `﻿make` miss an exact comparison against `make` - a failure that is
- * invisible in every editor and reads as "the file has no make column". Strip
- * it here, once, rather than debugging it per dealer.
- */
 export function normalizeHeader(header: string): string {
   const key = header
     .replace(/^﻿/, '')
@@ -178,14 +120,4 @@ export function normalizeHeader(header: string): string {
   return HEADER_ALIASES[key] ?? key;
 }
 
-/**
- * The header row of the downloadable dealer template (§B5).
- *
- * Every KNOWN_COLUMNS entry, in the same order - the template is a complete
- * reference of what the pipeline accepts, not just the minimum to pass
- * validateFile. Only REQUIRED_COLUMNS + registration_number are mandatory;
- * everything else may be left blank, but showing dealers the full set means
- * they don't have to guess whether e.g. "sunroof" is something this pipeline
- * understands.
- */
 export const TEMPLATE_HEADER: readonly string[] = [...KNOWN_COLUMNS];

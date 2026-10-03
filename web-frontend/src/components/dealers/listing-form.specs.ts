@@ -136,16 +136,6 @@ export interface SpecValues {
   airConditioning?: boolean
 }
 
-/**
- * The `specs` object for a submit. Mirrors the enrich stage: a category's
- * columns are stored only for that category (a bike's stroke type on a car is
- * dropped), the equipment flags apply to every type, and an unticked flag is
- * left out rather than stored as false - the same as a blank CSV cell.
- *
- * `extras` are keys on an edited listing that the form does not own (a bulk
- * upload's carried-over DMS columns); they pass through so an edit never
- * silently deletes them.
- */
 export function buildSpecs(
   values: SpecValues,
   extras: Record<string, unknown> = {},

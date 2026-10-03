@@ -1,14 +1,6 @@
 import type { EtlStage, RejectedRecord } from '../../api/ingestion.types'
 import { ErrorBanner } from '../ui/ErrorBanner'
 
-/**
- * FR-57: the row-level half of the dealer's upload report.
- *
- * This replaces a paragraph that *guessed* at why rows failed ("usually a
- * missing make or model…"). A dealer cannot act on a guess: with 6 skipped
- * rows out of 40 they had no way to tell which 6, so the only safe response
- * was to re-check the whole file by hand.
- */
 
 /**
  * Stage names are internal pipeline vocabulary - a dealer has no reason to

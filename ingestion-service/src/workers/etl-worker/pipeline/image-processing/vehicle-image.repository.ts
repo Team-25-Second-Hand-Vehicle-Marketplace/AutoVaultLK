@@ -36,26 +36,6 @@ export class VehicleImageRepository {
     });
   }
 
-  /**
-   * Whether this job already rejected a row for this registration number.
-   *
-   * Images run concurrently with the chunk Map, so an image's vehicle row
-   * being absent is ordinarily just a race - the retry loop in
-   * process-job-images.service.ts waits it out. But a row that VALIDATE_ROWS
-   * (or the file gate) rejected will NEVER produce a vehicle row, no matter
-   * how long the retry waits; this lets the caller tell "still loading" from
-   * "provably never coming" and stop immediately instead of burning the
-   * whole retry budget on every image whose row simply failed validation.
-   *
-   * `rejected_records.raw_data` holds the untouched CSV cell - "cad-7201",
-   * "CAD 7201" and "CAD-7201" are all the same plate but different text -
-   * while the image side has already been through coerceRegistrationNumber.
-   * Rather than reimplement that coercion in SQL, this compares both sides
-   * with punctuation and case stripped out entirely: loose enough that a
-   * false negative (missing a real rejection) is very unlikely, and a false
-   * positive only costs a redundant DB round trip, never a wrongly-skipped
-   * match - the caller still falls through to its own timed retry either way.
-   */
   async wasRejected(jobId: string, registrationNumber: string): Promise<boolean> {
     const [row] = (await this.dataSource.query(
       `SELECT 1 FROM ingestion.rejected_records

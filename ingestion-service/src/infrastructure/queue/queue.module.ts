@@ -4,17 +4,6 @@ import { JOB_QUEUE } from '../ports/job-queue.port';
 import { InProcessJobQueue } from './in-process-job-queue';
 import { SqsJobQueue } from './sqs-job-queue';
 
-/**
- * Selects the JobQueue driver from INGESTION_QUEUE_DRIVER. Same fail-loud
- * posture as StorageModule: an unknown driver throws rather than quietly
- * running the pipeline in-process on a deployed instance.
- *
- * InProcessJobQueue is also exported as a concrete class so the ETL module can
- * call setHandler on the very same instance the JOB_QUEUE token resolves to.
- * SqsJobQueue has no setHandler - under `sqs` the queue is consumed by Step
- * Functions, not by this process - so EtlWorkerService must not register a
- * handler in that mode. It checks the driver before wiring itself up.
- */
 @Global()
 @Module({
   providers: [

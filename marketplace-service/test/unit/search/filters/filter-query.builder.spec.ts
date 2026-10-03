@@ -2,17 +2,6 @@ import { BadRequestException } from '@nestjs/common';
 import { buildFilterQuery } from '../../../../src/modules/search/filters/filter-query.builder';
 import { FilterSearchDto } from '../../../../src/modules/search/dto/filter-search.dto';
 
-/**
- * buildFilterQuery is a pure function with no database access, which makes
- * it the highest-value test target in the search module: every SQL-shaping
- * decision the feature depends on is observable from its return value alone.
- *
- * These tests deliberately assert on SQL fragments rather than just
- * parameter arrays. The distinction between `@>` and `->>` is invisible in
- * the results but is the difference between using a GIN index and a
- * sequential scan, so it is exactly the kind of thing a refactor can quietly
- * undo.
- */
 describe('buildFilterQuery', () => {
   const build = (dto: Partial<FilterSearchDto>) => buildFilterQuery(dto as FilterSearchDto);
 

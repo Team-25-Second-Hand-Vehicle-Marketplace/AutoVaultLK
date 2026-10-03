@@ -1,20 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-/**
- * Turns silent vector-space drift into a red build.
- *
- * ingestion-service/src/shared/normalize-embed/ is a deliberate byte-for-byte
- * copy of marketplace-service's. If the two definitions of buildSearchText or
- * EMBEDDING_MODEL_ID ever diverge, bulk-uploaded listings get embedded into a
- * different region of vector space than manually created ones and rank badly
- * forever - with no exception, no failing assertion anywhere else, and no log
- * line (FR-22.1 / NFR-26.1; plan-b §9A "silent drift").
- *
- * Nothing but this test enforces it, so it compares raw file contents rather
- * than behaviour: a reordered field or a changed model id must fail even if
- * both copies still compile and both still "work".
- */
 const SHARED_FILES = [
   'constants.ts',
   'search-text.ts',

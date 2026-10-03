@@ -47,16 +47,6 @@ export class JobStatusRepository {
     });
   }
 
-  /**
-   * The dealer's own most recent job that has not settled yet, if any.
-   *
-   * Lets the Bulk Upload page notice "you already have one running" on load
-   * rather than showing a blank form a dealer could resubmit into - a dealer
-   * who submits, navigates away mid-processing, and comes back otherwise has
-   * no way back to that job's status short of the URL they were on.
-   *
-   * Jobs untouched for ACTIVE_JOB_STALE_AFTER_MS are ignored: see that constant.
-   */
   async findLatestActiveForDealer(dealerId: string): Promise<UploadJob | null> {
     const freshSince = new Date(Date.now() - ACTIVE_JOB_STALE_AFTER_MS);
     return this.uploadJobRepository.findOne({
@@ -100,20 +90,6 @@ export class JobStatusRepository {
     return { rows, total };
   }
 
-  /**
-   * The rejected rows of one job, scoped to the dealer that owns it.
-   *
-   * **The dealer filter is part of this query, not a prior check.** Fetching
-   * the job first and then its rejections would leave a window where a caller
-   * who guesses a job id reads another dealer's rows if the ownership test is
-   * ever moved, reordered or short-circuited. Joining through `upload_jobs` on
-   * `dealer_id` makes a non-owner match zero rows by construction, which is the
-   * same answer a missing job gives - see the 404-not-403 note on the service.
-   *
-   * Ordered by row number so the report reads in file order. `stage` breaks the
-   * tie: row 0 is the whole-file rejection and several stages can each record
-   * one, so without it the order of those rows is whatever Postgres returns.
-   */
   async findRejectedRecords(
     uploadJobId: string,
     dealerId: string,

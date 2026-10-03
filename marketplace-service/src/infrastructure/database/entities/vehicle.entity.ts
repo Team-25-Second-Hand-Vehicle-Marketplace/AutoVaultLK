@@ -164,17 +164,6 @@ export class Vehicle {
   @Column({ type: 'jsonb', default: () => `'{}'::jsonb` })
   specs: Record<string, unknown>;
 
-  /**
-   * FR-42.1: which fields on a PENDING_REVIEW listing the ETL pipeline
-   * inferred (dictionary/rule/groq) versus took verbatim, and Groq's stated
-   * reasoning where it repaired a value. Written once by the Load stage
-   * (ingestion-service) and never by anything in this service - null for
-   * every manually-created listing and for the rows that predate migration
-   * 29000. Shape: NormalizationPayload in
-   * ingestion-service/.../pipeline/types.ts, kept in sync by hand the same
-   * way vehicle.write-entity.ts's other columns are (plan-b-reads-cross-
-   * schemas.md §9A).
-   */
   @Column({ type: 'jsonb', nullable: true })
   normalization: VehicleNormalization | null;
 

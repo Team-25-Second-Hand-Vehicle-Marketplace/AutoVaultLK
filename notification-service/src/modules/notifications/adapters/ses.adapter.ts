@@ -13,15 +13,6 @@ export class SesUnavailableError extends Error {
   }
 }
 
-/**
- * FR-51 / SAD 3.6.3. Locally neither SES_FROM_EMAIL nor SMTP_HOST is set →
- * log and succeed (same skip as Groq).
- *
- * Two transports behind one interface: when SMTP_HOST is set, mail goes out
- * over SMTP (nodemailer) - this needs no SES sandbox exit or verified domain.
- * Otherwise it uses SES. The name is historical; the retry/idempotency logic
- * in NotificationEventHandler is transport-independent.
- */
 @Injectable()
 export class SesAdapter {
   private readonly logger = new Logger(SesAdapter.name);

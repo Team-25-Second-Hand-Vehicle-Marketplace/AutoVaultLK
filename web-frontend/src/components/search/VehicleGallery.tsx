@@ -1,14 +1,6 @@
 import { useState, type KeyboardEvent } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
-/**
- * The detail page's photo viewer. Every photo is a thumbnail - the main one
- * included - and clicking one (or the arrows, or ←/→ with the gallery focused)
- * swaps it into the large frame. Before this, the thumbnails were a dead strip
- * of the *other* photos: you could see there were more, but not open them.
- *
- * A listing's own photos only; with none, the caller shows its placeholder.
- */
 export function VehicleGallery({ images, alt }: { images: string[]; alt: string }) {
   const [index, setIndex] = useState(0)
   const count = images.length

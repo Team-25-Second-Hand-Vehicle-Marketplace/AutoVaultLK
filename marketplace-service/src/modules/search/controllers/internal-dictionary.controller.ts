@@ -15,17 +15,6 @@ import {
   CreateDictionaryEntryDto,
 } from '../dto/internal-dictionary.dto';
 
-/**
- * East-west routes for admin-service's "New vehicle types" tab (ADR-005).
- * Not on the public nginx listener. Requires X-Internal-Service-Key.
- *
- * marketplace_service_role owns the only write access to
- * marketplace.vehicle_dictionaries - admin-service can only SELECT it, so an
- * admin's "add this make" / "add this alias" decision has to reach the
- * dictionary through here rather than a direct write from admin-service's
- * own connection, the same reason auth-user-service's internal/dealers
- * routes exist for approve/reject.
- */
 @Controller('internal/dictionary')
 @UseGuards(InternalServiceGuard)
 export class InternalDictionaryController {

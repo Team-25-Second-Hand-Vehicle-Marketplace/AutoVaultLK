@@ -3,16 +3,6 @@ import { FIXTURE_VOCABULARY } from '../../../../src/modules/search/parser/fixtur
 
 const parse = (q: string) => parseQuery(q, FIXTURE_VOCABULARY);
 
-/**
- * Fuzzy-match collisions against the closed enums (FR-21.1/21.2).
- *
- * The closed vocabulary is short, common English words, so an unrelated
- * query term can outscore the 0.45 make/model threshold against one of
- * them. That failure mode is worse than a miss: the token is consumed, the
- * query reports confidence 1.0, and Groq is never consulted precisely
- * because nothing looks unresolved - so a wrong filter is applied with full
- * confidence and no recovery path.
- */
 describe('closed-enum fuzzy collisions', () => {
   it('does not read "volkswagon" as body_type WAGON', () => {
     // 0.4706 vs "wagon" - over the shared 0.45 gate. Volkswagen is absent
