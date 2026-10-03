@@ -119,7 +119,7 @@ export async function refreshSession(): Promise<AuthTokenResponse> {
     `${import.meta.env.VITE_API_BASE_URL ?? ''}/auth/refresh`,
     {},
     {
-      timeout: 10000,
+      timeout: 20000,
       withCredentials: true,
       headers: { 'x-csrf-token': getCsrfToken() ?? '' },
     },
