@@ -16,6 +16,7 @@ import type { ListingSortOption } from '../dto/my-listings-query.dto';
 import { UpdateListingDto } from '../dto/update-listing.dto';
 import { RenewListingsDto } from '../dto/renew-listings.dto';
 import { renewedExpiry } from '../listing-expiry';
+import { guardRegistration } from '../registration-conflict';
 import { ListingRepository } from '../repositories/listing.repository';
 import { Vehicle } from '../../../infrastructure/database/entities/vehicle.entity';
 import type { AuthenticatedUser } from '../../auth/types/authenticated-user.type';
@@ -52,9 +53,8 @@ export class ListingService {
     }
 
     const status = dto.status ?? 'LIVE';
-    const listing = await this.listingRepository.create(
-      { ...dto, dealerId: actor.id },
-      status,
+    const listing = await guardRegistration(() =>
+      this.listingRepository.create({ ...dto, dealerId: actor.id }, status),
     );
 
     return {
@@ -174,7 +174,7 @@ export class ListingService {
         renewedExpiry(existing.expiresAt, now),
       );
     } else if (existing.status === 'ARCHIVED') {
-      listing = await this.listingRepository.relist(id, now);
+      listing = await guardRegistration(() => this.listingRepository.relist(id, now));
     } else {
       throw new ConflictException(
         `Vehicle listing ${id} is ${existing.status} and cannot be renewed`,
@@ -239,7 +239,7 @@ export class ListingService {
       );
     }
 
-    const listing = await this.listingRepository.approve(id);
+    const listing = await guardRegistration(() => this.listingRepository.approve(id));
 
     if (!listing) {
       // The status check above already confirmed PENDING_REVIEW; only a race
@@ -263,7 +263,9 @@ export class ListingService {
    * "nothing left to do" is the answer the dealer wanted anyway.
    */
   async approveAllPending(actor: AuthenticatedUser) {
-    const approved = await this.listingRepository.approveAllPending(actor.id);
+    const approved = await guardRegistration(() =>
+      this.listingRepository.approveAllPending(actor.id),
+    );
 
     return {
       message:
@@ -280,7 +282,9 @@ export class ListingService {
    * what actually moved, and `skipped` is the rest, so the page can say so.
    */
   async approveSelected(actor: AuthenticatedUser, ids: string[]) {
-    const approved = await this.listingRepository.approveSelected(actor.id, ids);
+    const approved = await guardRegistration(() =>
+      this.listingRepository.approveSelected(actor.id, ids),
+    );
     const skipped = ids.length - approved;
 
     return {
@@ -315,7 +319,7 @@ export class ListingService {
       );
     }
 
-    const listing = await this.listingRepository.unarchive(id);
+    const listing = await guardRegistration(() => this.listingRepository.unarchive(id));
 
     if (!listing) {
       // The status check above already confirmed ARCHIVED; only a race with
