@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2';
 import { createTransport, type Transporter } from 'nodemailer';
 
-const DEFAULT_TIMEOUT_MS = 5000;
+const DEFAULT_TIMEOUT_MS = 10000;
 const DEFAULT_FRONTEND_URL = 'http://localhost:5173';
 
 type Message = { from: string; to: string; subject: string; text: string; html: string };

@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 
 const DEFAULT_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const DEFAULT_MODEL = 'llama-3.1-8b-instant';
-const DEFAULT_TIMEOUT_MS = 1500;
+const DEFAULT_TIMEOUT_MS = 3000;
 
 export class GroqUnavailableError extends Error {
   constructor(message: string) {

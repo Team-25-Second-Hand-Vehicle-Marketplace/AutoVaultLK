@@ -17,7 +17,7 @@ const DEFAULT_MODEL = 'openai/gpt-oss-20b';
  * a batch of dealer rows is already asynchronous, and a timeout here costs the
  * whole batch its enrichment rather than one person their result.
  */
-const DEFAULT_TIMEOUT_MS = 8000;
+const DEFAULT_TIMEOUT_MS = 16000;
 
 export class GroqUnavailableError extends Error {
   status?: number;

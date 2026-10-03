@@ -47,7 +47,7 @@ export async function emit(event: NotificationEvent): Promise<EmitOutcome> {
   if (!key) return { sent: false, reason: 'INTERNAL_SERVICE_KEY is not set' };
 
   const base = (process.env.NOTIFICATION_INTERNAL_URL ?? DEFAULT_URL).replace(/\/$/, '');
-  const timeoutMs = Number(process.env.NOTIFICATION_TIMEOUT_MS ?? 5000) || 5000;
+  const timeoutMs = Number(process.env.NOTIFICATION_TIMEOUT_MS ?? 10000) || 10000;
 
   let response: Response;
   try {

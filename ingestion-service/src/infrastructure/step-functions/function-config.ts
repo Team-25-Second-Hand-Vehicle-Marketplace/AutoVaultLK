@@ -58,7 +58,7 @@ export const FUNCTION_CONFIGS: Record<string, FunctionConfig> = {
     packaging: 'zip',
     memoryMb: 512,
     // Reads only the first 64KB of the object, whatever its size.
-    timeoutSeconds: 60,
+    timeoutSeconds: 120,
     env: BASE_ENV,
   },
 
@@ -69,7 +69,7 @@ export const FUNCTION_CONFIGS: Record<string, FunctionConfig> = {
     // size - but a 25MB upload still moves through this function, and Lambda
     // scales I/O throughput with memory.
     memoryMb: 1024,
-    timeoutSeconds: 300,
+    timeoutSeconds: 600,
     env: [...BASE_ENV, ...PIPELINE_ENV],
   },
 
@@ -78,7 +78,7 @@ export const FUNCTION_CONFIGS: Record<string, FunctionConfig> = {
     packaging: 'zip',
     // Holds the dictionary snapshot (177 rows) plus one chunk of raw rows.
     memoryMb: 512,
-    timeoutSeconds: 120,
+    timeoutSeconds: 240,
     env: [...BASE_ENV, ...PIPELINE_ENV, 'INGESTION_GROQ_CONFIDENCE_THRESHOLD'],
   },
 
@@ -89,7 +89,7 @@ export const FUNCTION_CONFIGS: Record<string, FunctionConfig> = {
     // Longer than its siblings: it makes an outbound call to a third party and
     // retries once. GROQ_TIMEOUT_MS (8s) times two attempts plus overhead must
     // fit well inside this.
-    timeoutSeconds: 120,
+    timeoutSeconds: 240,
     env: [
       ...BASE_ENV,
       ...PIPELINE_ENV,
@@ -104,7 +104,7 @@ export const FUNCTION_CONFIGS: Record<string, FunctionConfig> = {
     slug: 'validate-rows',
     packaging: 'zip',
     memoryMb: 512,
-    timeoutSeconds: 60,
+    timeoutSeconds: 120,
     env: [...BASE_ENV, ...PIPELINE_ENV],
   },
 
@@ -112,7 +112,7 @@ export const FUNCTION_CONFIGS: Record<string, FunctionConfig> = {
     slug: 'enrich',
     packaging: 'zip',
     memoryMb: 512,
-    timeoutSeconds: 60,
+    timeoutSeconds: 120,
     env: [...BASE_ENV, ...PIPELINE_ENV],
   },
 
@@ -126,7 +126,7 @@ export const FUNCTION_CONFIGS: Record<string, FunctionConfig> = {
     memoryMb: 3008,
     // Cold start loads the model before the first row is embedded, and a
     // 250-row chunk follows it.
-    timeoutSeconds: 300,
+    timeoutSeconds: 600,
     env: [...BASE_ENV, ...PIPELINE_ENV, 'EMBEDDING_DISABLED'],
   },
 
@@ -136,7 +136,7 @@ export const FUNCTION_CONFIGS: Record<string, FunctionConfig> = {
     memoryMb: 512,
     // Batched upsert, degrading to per-row isolation when a duplicate
     // registration is present - 250 individual statements in the worst case.
-    timeoutSeconds: 120,
+    timeoutSeconds: 240,
     env: [...BASE_ENV, ...PIPELINE_ENV],
   },
 
@@ -151,7 +151,7 @@ export const FUNCTION_CONFIGS: Record<string, FunctionConfig> = {
     // must cover the whole upload's photo set, not one chunk's worth - plus
     // the registration-lookup retry budget (up to 30s per unmatched image)
     // for rows whose Load has not landed yet.
-    timeoutSeconds: 600,
+    timeoutSeconds: 900,
     env: BASE_ENV,
   },
 
@@ -159,7 +159,7 @@ export const FUNCTION_CONFIGS: Record<string, FunctionConfig> = {
     slug: 'aggregate-results',
     packaging: 'zip',
     memoryMb: 512,
-    timeoutSeconds: 60,
+    timeoutSeconds: 120,
     env: BASE_ENV,
   },
 
@@ -172,7 +172,7 @@ export const FUNCTION_CONFIGS: Record<string, FunctionConfig> = {
     // statement_timeout to 55s so a hung query dies before the function does;
     // a shorter timeout here would invert that and orphan the connection,
     // holding an RDS Proxy slot for nothing.
-    timeoutSeconds: 60,
+    timeoutSeconds: 120,
     env: [...BASE_ENV, ...NOTIFICATION_ENV],
   },
 
@@ -182,7 +182,7 @@ export const FUNCTION_CONFIGS: Record<string, FunctionConfig> = {
     memoryMb: 256,
     // Two writes. If this cannot finish in 30s the database is gone, and a
     // longer timeout only delays the operator learning that.
-    timeoutSeconds: 30,
+    timeoutSeconds: 60,
     env: BASE_ENV,
   },
 };

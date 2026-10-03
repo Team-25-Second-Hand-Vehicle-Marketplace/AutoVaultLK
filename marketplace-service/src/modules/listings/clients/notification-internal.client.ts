@@ -38,7 +38,7 @@ export class NotificationInternalClient {
           'X-Internal-Service-Key': key,
         },
         body: JSON.stringify(event),
-        signal: AbortSignal.timeout(5000),
+        signal: AbortSignal.timeout(10000),
       });
       if (!res.ok) {
         this.logger.warn(`Listing reminder ${event.idempotencyKey} rejected (${res.status})`);

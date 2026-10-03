@@ -42,7 +42,7 @@ variable "memory_size" {
 
 variable "timeout" {
   type    = number
-  default = 60
+  default = 120
 }
 
 variable "execution_role_arn" {

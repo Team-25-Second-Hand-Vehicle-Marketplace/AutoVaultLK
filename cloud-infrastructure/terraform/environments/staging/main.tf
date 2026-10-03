@@ -267,7 +267,7 @@ module "marketplace_lambda" {
     MARKETPLACE_DATABASE_URL = local.db_url["marketplace"]
     GROQ_API_KEY             = var.groq_api_key
     GROQ_MODEL               = "openai/gpt-oss-20b"
-    GROQ_TIMEOUT_MS          = "4000"
+    GROQ_TIMEOUT_MS          = "8000"
     EMBEDDING_DISABLED       = "false"
     AUTH_INTERNAL_URL        = local.internal_api_base
     # NFR-19: presigned GET URLs, never a public bucket. IMAGE_SERVE_MODE=s3
@@ -317,7 +317,7 @@ module "notification_lambda" {
   environment_variables = merge(local.common_env, local.smtp_env, {
     NOTIFICATION_DATABASE_URL = local.db_url["notification"]
     SES_FROM_EMAIL            = coalesce(var.ses_sender_email, var.ses_domain_name != null ? "no-reply@${var.ses_domain_name}" : "")
-    SES_TIMEOUT_MS            = "5000"
+    SES_TIMEOUT_MS            = "10000"
     # No NOTIFICATION_SQS_QUEUE_URL on purpose: with no queue configured,
     # POST /notifications/events delivers synchronously (see
     # NotificationsController). The queue path still exists in code, but an
@@ -478,7 +478,7 @@ module "embed_lambda" {
   # unzipped zip-package layer cap, so this one stage runs as a container
   # image instead of the zip packaging the other 10 stages use.
   memory_size = 3008
-  timeout     = 300
+  timeout     = 600
 
   environment_variables = merge(local.common_env, {
     INGESTION_DATABASE_URL    = local.db_url["ingestion"]
@@ -503,7 +503,7 @@ module "process_images_lambda" {
   # docker/process-images.Dockerfile - Sharp's native binary, same reasoning
   # as embed above.
   memory_size = 2048
-  timeout     = 600
+  timeout     = 900
 
   environment_variables = merge(local.common_env, {
     INGESTION_DATABASE_URL   = local.db_url["ingestion"]
@@ -577,10 +577,10 @@ locals {
     INGESTION_MAX_CONCURRENCY = "10"
     GROQ_API_KEY              = var.groq_api_key
     GROQ_MODEL                = "openai/gpt-oss-20b"
-    GROQ_TIMEOUT_MS           = "4000"
+    GROQ_TIMEOUT_MS           = "8000"
     NOTIFICATION_INTERNAL_URL = local.internal_api_base
     INTERNAL_SERVICE_KEY      = module.secrets.internal_service_key_value
-    NOTIFICATION_TIMEOUT_MS   = "20000"
+    NOTIFICATION_TIMEOUT_MS   = "40000"
   }
 }
 
