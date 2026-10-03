@@ -6,6 +6,7 @@ import { DictionaryRepository } from '../../modules/ingestion/repositories/dicti
 import { EtlStageLogRepository } from '../../modules/ingestion/repositories/etl-stage-log.repository';
 import { RejectedRecordRepository } from '../../modules/ingestion/repositories/rejected-record.repository';
 import { UploadJobRepository } from '../../modules/ingestion/repositories/upload-job.repository';
+import type { UploadFileFormat } from '../../infrastructure/database/entities/upload-job.entity';
 import { pipelineConfig } from '../../config/pipeline.config';
 import { asChunkStage, type ChunkStage } from './pipeline/chunk-stage';
 import { mapWithConcurrency } from './pipeline/concurrency';
@@ -177,17 +178,23 @@ export class LocalOrchestrator {
   /** validateFile then splitChunks - the whole-file stages. */
   private async prepare(
     jobId: string,
-    job: { csvS3Path: string; fileName: string; zipS3Path: string | null },
+    job: {
+      csvS3Path: string;
+      fileName: string;
+      zipS3Path: string | null;
+      fileFormat: UploadFileFormat;
+    },
     log: StageLogger,
   ): Promise<{ headers: string[]; chunkKeys: string[]; totalRecords: number }> {
     const ctx = this.contextFor(jobId, '', null, undefined);
 
     const validateId = await log.start('VALIDATE_FILE', null);
-    let validated: { headers: string[]; key: string };
+    let validated: { headers: string[]; key: string; format: UploadFileFormat };
     try {
       validated = await validateFileStage.run(ctx, {
         key: job.csvS3Path,
         fileName: job.fileName,
+        format: job.fileFormat,
         zipKey: job.zipS3Path ?? undefined,
       });
       await log.finish(validateId, 'SUCCEEDED', {
@@ -202,6 +209,7 @@ export class LocalOrchestrator {
     try {
       const split = await splitChunksStage.run(ctx, {
         key: validated.key,
+        format: validated.format,
         headers: validated.headers,
       });
 

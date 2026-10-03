@@ -1,4 +1,7 @@
-import { JobStatusRepository } from '../../../src/modules/job-status/repositories/job-status.repository';
+import {
+  ACTIVE_JOB_STALE_AFTER_MS,
+  JobStatusRepository,
+} from '../../../src/modules/job-status/repositories/job-status.repository';
 import { UploadJob } from '../../../src/infrastructure/database/entities/upload-job.entity';
 
 /**
@@ -138,6 +141,29 @@ describe('JobStatusRepository', () => {
       await expect(
         repository.findRejectedRecords('job-1', 'dealer-1', 1, 50),
       ).resolves.toEqual({ rows: [row], total: 17 });
+    });
+  });
+
+  describe('findLatestActiveForDealer', () => {
+    it('ignores jobs that have not been touched within the stale window', async () => {
+      uploadJobRepository.findOne.mockResolvedValue(null);
+      const before = Date.now();
+
+      await repository.findLatestActiveForDealer('dealer-1');
+
+      const { where } = uploadJobRepository.findOne.mock.calls[0][0];
+      expect(where).toHaveLength(2);
+      for (const clause of where) {
+        expect(clause.dealerId).toBe('dealer-1');
+        // MoreThan(date): the lower bound must be about one window ago.
+        const bound: Date = clause.updatedAt.value;
+        expect(before - bound.getTime()).toBeGreaterThanOrEqual(
+          ACTIVE_JOB_STALE_AFTER_MS - 5,
+        );
+        expect(before - bound.getTime()).toBeLessThan(
+          ACTIVE_JOB_STALE_AFTER_MS + 5_000,
+        );
+      }
     });
   });
 });

@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
   UploadJob,
+  type UploadFileFormat,
   type UploadJobStatus,
 } from '../../../infrastructure/database/entities/upload-job.entity';
 
@@ -11,6 +12,8 @@ export type CreateUploadJobInput = {
   fileName: string;
   csvS3Path: string;
   zipS3Path?: string | null;
+  /** Defaults to 'csv' (the pre-JSON behaviour) for callers that omit it. */
+  fileFormat?: UploadFileFormat;
 };
 
 export type UploadJobPage = {
@@ -45,6 +48,7 @@ export class UploadJobRepository {
         fileName: input.fileName,
         csvS3Path: input.csvS3Path,
         zipS3Path: input.zipS3Path ?? null,
+        fileFormat: input.fileFormat ?? 'csv',
         status: 'PENDING',
         totalRecords: 0,
         validRecords: 0,

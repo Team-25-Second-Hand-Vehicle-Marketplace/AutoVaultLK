@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { MoreThan, Repository } from 'typeorm';
 import { RejectedRecord } from '../../../infrastructure/database/entities/rejected-record.entity';
 import { UploadJob } from '../../../infrastructure/database/entities/upload-job.entity';
 
@@ -13,6 +13,14 @@ export type JobsPage = {
   rows: UploadJob[];
   total: number;
 };
+
+/**
+ * A job that has shown no sign of life for this long is not "active", whatever
+ * its status says. A worker that is restarted or killed mid-run never writes
+ * the terminal status, and without this the dealer would be sent back to that
+ * job's page forever and could not start another upload.
+ */
+export const ACTIVE_JOB_STALE_AFTER_MS = 30 * 60 * 1000;
 
 @Injectable()
 export class JobStatusRepository {
@@ -46,13 +54,16 @@ export class JobStatusRepository {
    * rather than showing a blank form a dealer could resubmit into - a dealer
    * who submits, navigates away mid-processing, and comes back otherwise has
    * no way back to that job's status short of the URL they were on.
+   *
+   * Jobs untouched for ACTIVE_JOB_STALE_AFTER_MS are ignored: see that constant.
    */
   async findLatestActiveForDealer(dealerId: string): Promise<UploadJob | null> {
+    const freshSince = new Date(Date.now() - ACTIVE_JOB_STALE_AFTER_MS);
     return this.uploadJobRepository.findOne({
       select: { id: true },
       where: [
-        { dealerId, status: 'PENDING' },
-        { dealerId, status: 'PROCESSING' },
+        { dealerId, status: 'PENDING', updatedAt: MoreThan(freshSince) },
+        { dealerId, status: 'PROCESSING', updatedAt: MoreThan(freshSince) },
       ],
       order: { createdAt: 'DESC' },
     });

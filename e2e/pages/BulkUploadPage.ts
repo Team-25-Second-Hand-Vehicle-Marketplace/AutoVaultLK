@@ -12,10 +12,24 @@ export class BulkUploadPage {
       0,
       { timeout: 10_000 },
     );
+
+    // The "How to prepare your upload" guide opens on a dealer's first visit
+    // and its backdrop intercepts clicks on the form until it is closed.
+    const guide = this.page.getByRole('dialog', { name: 'How to prepare your upload' });
+    if (await guide.isVisible()) {
+      await guide.getByRole('button', { name: 'Close' }).click();
+      await expect(guide).toBeHidden();
+    }
   }
 
+  /** CSV is the default format, so no selection is needed first. */
   async chooseCsv(path: string): Promise<void> {
-    await this.page.locator('input#csv-input').setInputFiles(path);
+    await this.page.locator('input#file-input').setInputFiles(path);
+  }
+
+  async chooseJson(path: string): Promise<void> {
+    await this.page.getByRole('radio', { name: 'JSON' }).check();
+    await this.page.locator('input#file-input').setInputFiles(path);
   }
 
   async chooseZip(path: string): Promise<void> {

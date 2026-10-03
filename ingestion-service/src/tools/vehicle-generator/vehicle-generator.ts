@@ -4,6 +4,7 @@
 //mixed - mostly valid data with some dirty/invalid records
 import { mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
+import { writeImageZip } from '../image-generator/image-generator';
 import { TEMPLATE_HEADER } from '../../workers/etl-worker/pipeline/parse/csv-contract';
 
 /**
@@ -370,6 +371,8 @@ function parseArguments() {
   let format: 'csv' | 'json' = 'csv';
   let mode: GenerationMode = 'clean';
   let output: string | undefined;
+  let zip = false;
+  let perVehicle = 2;
 
   for (let i = 0; i < args.length; i++) {
     switch (args[i]) {
@@ -388,6 +391,14 @@ function parseArguments() {
       case '--output':
         output = args[++i];
         break;
+
+      case '--zip':
+        zip = true;
+        break;
+
+      case '--images-per-vehicle':
+        perVehicle = Number(args[++i]);
+        break;
     }
   }
 
@@ -405,11 +416,17 @@ function parseArguments() {
     );
   }
 
+  if (!Number.isInteger(perVehicle) || perVehicle <= 0) {
+    throw new Error('--images-per-vehicle must be a positive integer');
+  }
+
   return {
     count,
     format,
     mode,
     output,
+    zip,
+    perVehicle,
   };
 }
 
@@ -444,8 +461,31 @@ export function convertToCsv(vehicles: Vehicle[]): string {
   return [headers.join(','), ...rows].join('\n') + '\n';
 }
 
+/**
+ * The JSON counterpart of convertToCsv: an array of flat objects keyed by the
+ * same TEMPLATE_HEADER columns, in the same order. Blank values are left out
+ * (a dealer's export would not write them), numbers stay numbers and
+ * "true"/"false" become booleans, so the file reads like a real JSON export.
+ * Dirty and invalid values are text and stay exactly as generated.
+ */
+export function convertToJson(vehicles: Vehicle[]): string {
+  const records = vehicles.map((vehicle) => {
+    const record: Record<string, string | number | boolean> = {};
+    for (const header of TEMPLATE_HEADER) {
+      const value = vehicle[header as keyof Vehicle];
+      if (value === undefined || value === null || value === '') continue;
+      if (value === 'true') record[header] = true;
+      else if (value === 'false') record[header] = false;
+      else record[header] = value;
+    }
+    return record;
+  });
+
+  return `${JSON.stringify(records, null, 2)}\n`;
+}
+
 async function main() {
-  const { count, format, mode, output } = parseArguments();
+  const { count, format, mode, output, zip, perVehicle } = parseArguments();
 
   const vehicles = Array.from(
     { length: count },
@@ -472,7 +512,7 @@ async function main() {
   const content =
     format === 'csv'
       ? convertToCsv(vehicles)
-      : JSON.stringify(vehicles, null, 2);
+      : convertToJson(vehicles);
 
   await writeFile(outputPath, content, 'utf8');
 
@@ -480,6 +520,21 @@ async function main() {
   console.log(`Mode: ${mode}`);
   console.log(`Format: ${format.toUpperCase()}`);
   console.log(`Output: ${outputPath}`);
+
+  if (zip) {
+    // Photos are named after the inventory's own registration numbers, so the
+    // ZIP always matches the file beside it, whichever format it is in.
+    const registrations = vehicles
+      .map((vehicle) => String(vehicle.registration_number ?? '').trim())
+      .filter(Boolean);
+    const zipPath = outputPath.replace(/\.(csv|json)$/, '') + '.zip';
+    const result = await writeImageZip(registrations, zipPath, {
+      perVehicle,
+      width: 1600,
+      height: 1200,
+    });
+    console.log(`Photos: ${result.fileCount} images -> ${zipPath}`);
+  }
 }
 
 // Guarded so ingestion-tester.ts can import generateVehicle/convertToCsv

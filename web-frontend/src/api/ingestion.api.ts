@@ -8,6 +8,7 @@ import type {
   RejectedRecord,
   RejectionsPage,
   UploadAccepted,
+  UploadFileFormat,
 } from './ingestion.types'
 import { TEMPLATE_HEADER } from './ingestion.template'
 
@@ -24,9 +25,13 @@ export type UploadProgress = (percent: number) => void
  * 10 MB (not a configurable quota) - well under either file, so they can
  * never reliably arrive as part of a normal request to our own API:
  *
- *   1. POST /ingest/presign - creates the job, returns a presigned PUT per file.
+ *   1. POST /ingest/presign - declares the format (csv or json), creates the
+ *      job, returns a presigned PUT per file.
  *   2. PUT the file(s) straight to storage - this service never sees the bytes.
  *   3. POST /ingest/upload/{jobId}/complete - confirms they landed, starts the pipeline.
+ *
+ * The format is sent in step 1 and stored on the job, so the worker reads the
+ * inventory with the right reader; it is never guessed from the extension.
  *
  * If step 2 or 3 fails, step 3 is still attempted (best-effort) so the
  * backend can mark the job FAILED rather than leave it at PENDING forever -
@@ -34,14 +39,15 @@ export type UploadProgress = (percent: number) => void
  * the dealer from trying again.
  */
 export async function uploadInventory(
-  csv: File,
+  format: UploadFileFormat,
+  file: File,
   zip: File | null,
   onProgress?: UploadProgress,
   signal?: AbortSignal,
 ): Promise<UploadAccepted> {
-  const presigned = await presignUpload(csv, zip, signal)
+  const presigned = await presignUpload(format, file, zip, signal)
 
-  const totalBytes = csv.size + (zip?.size ?? 0)
+  const totalBytes = file.size + (zip?.size ?? 0)
   let csvLoaded = 0
   let zipLoaded = 0
   const reportProgress = () => {
@@ -52,7 +58,7 @@ export async function uploadInventory(
   }
 
   try {
-    await putDirect(presigned.csv, csv, signal, (loaded) => {
+    await putDirect(presigned.csv, file, signal, (loaded) => {
       csvLoaded = loaded
       reportProgress()
     })
@@ -76,15 +82,18 @@ export async function uploadInventory(
 }
 
 async function presignUpload(
-  csv: File,
+  format: UploadFileFormat,
+  file: File,
   zip: File | null,
   signal?: AbortSignal,
 ): Promise<PresignedUpload> {
   const { data } = await apiClient.post<PresignedUpload>(
     '/ingest/presign',
     {
-      csvFileName: csv.name,
-      csvFileSize: csv.size,
+      format,
+      // `csv*` is the inventory file's slot in the API, whichever format it is.
+      csvFileName: file.name,
+      csvFileSize: file.size,
       ...(zip ? { zipFileName: zip.name, zipFileSize: zip.size } : {}),
     },
     { signal },
@@ -202,6 +211,32 @@ const EXAMPLE_ROW: Record<string, string> = {
 export function buildTemplateCsv(): string {
   const example = TEMPLATE_HEADER.map((column) => EXAMPLE_ROW[column] ?? '')
   return `${TEMPLATE_HEADER.join(',')}\n${example.join(',')}\n`
+}
+
+/** Columns a JSON file writes as numbers, the way a real export would. */
+const JSON_NUMERIC_COLUMNS = new Set(['year', 'price', 'mileage', 'engine_capacity_cc', 'owners_count'])
+
+/**
+ * The JSON counterpart of buildTemplateCsv: an array holding one example
+ * vehicle, with every column the pipeline accepts present as a key.
+ *
+ * Columns with no example are `null`, which the pipeline reads as a blank
+ * cell - so the dealer sees every field that exists, and can delete the ones
+ * they do not use. Built from the same TEMPLATE_HEADER and EXAMPLE_ROW as the
+ * CSV, so the two templates cannot drift apart.
+ */
+export function buildTemplateJson(): string {
+  const vehicle: Record<string, string | number | null> = {}
+  for (const column of TEMPLATE_HEADER) {
+    const example = EXAMPLE_ROW[column]
+    if (example === undefined) vehicle[column] = null
+    else vehicle[column] = JSON_NUMERIC_COLUMNS.has(column) ? Number(example) : example
+  }
+  return `${JSON.stringify([vehicle], null, 2)}\n`
+}
+
+export function buildTemplate(format: UploadFileFormat): string {
+  return format === 'json' ? buildTemplateJson() : buildTemplateCsv()
 }
 
 /**

@@ -67,5 +67,6 @@ ingestion-service/test-data/k6-*.zip
 # Local-only notes (deployment values etc.)
 *.local.md
 
+test-results/
 # Project documentation is kept out of version control
 Documentation/

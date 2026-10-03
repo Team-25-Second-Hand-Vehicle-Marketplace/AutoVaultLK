@@ -3,13 +3,16 @@ import { COLUMN_HELP, TEMPLATE_HEADER, isRequired } from '../../api/ingestion.te
 import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
 import { humanizeEnum } from '../search/vehicle-format'
+import type { UploadFileFormat } from '../../api/ingestion.types'
 
 interface Props {
   open: boolean
   onClose: () => void
+  /** Which format the dealer chose; the columns are the same, the wording is not. */
+  format?: UploadFileFormat
 }
 
-/** "fuel_type" -> "Fuel type", for reading; the code form beside it is what goes in the CSV header. */
+/** "fuel_type" -> "Fuel type", for reading; the code form beside it is what goes in the file. */
 function friendlyName(column: string): string {
   const words = humanizeEnum(column).toLowerCase()
   return words.charAt(0).toUpperCase() + words.slice(1)
@@ -40,11 +43,14 @@ function ColumnTable({ columns }: { columns: readonly string[] }) {
 }
 
 /**
- * The CSV columns, required ones first. The optional ones stay hidden until the
- * dealer asks for them: most files only need the required set, and a table of
- * forty-odd columns up front buries that.
+ * The upload columns, required ones first. The optional ones stay hidden until
+ * the dealer asks for them: most files only need the required set, and a table
+ * of forty-odd columns up front buries that.
+ *
+ * CSV and JSON share one column set - a JSON key is a CSV header - so only the
+ * title and the lead sentence change with the format.
  */
-export function BulkUploadFieldsDialog({ open, onClose }: Props) {
+export function BulkUploadFieldsDialog({ open, onClose, format = 'csv' }: Props) {
   const [showOptional, setShowOptional] = useState(false)
 
   const required = TEMPLATE_HEADER.filter((column) => isRequired(column))
@@ -59,13 +65,21 @@ export function BulkUploadFieldsDialog({ open, onClose }: Props) {
     <Modal
       open={open}
       onClose={close}
-      title="CSV columns"
+      title={format === 'json' ? 'JSON fields' : 'CSV columns'}
       size="lg"
       footer={<Button onClick={close}>Done</Button>}
     >
       <p className="dealer-muted">
-        Your file needs a header row with these {required.length} columns. Common spellings
-        are recognised automatically, so an export from your own system usually works unedited.
+        {format === 'json' ? (
+          <>
+            Each vehicle is one flat object that uses these {required.length} fields as keys.
+            Nested objects and lists are not accepted.{' '}
+          </>
+        ) : (
+          <>Your file needs a header row with these {required.length} columns. </>
+        )}
+        Common spellings are recognised automatically, so an export from your own system usually
+        works unedited.
       </p>
 
       <h3 className="modal__subhead">Required columns</h3>

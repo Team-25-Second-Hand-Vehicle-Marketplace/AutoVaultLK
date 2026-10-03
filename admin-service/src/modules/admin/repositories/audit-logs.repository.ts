@@ -38,7 +38,11 @@ export class AuditLogsRepository {
     const qb = this.auditLogs.createQueryBuilder('a').orderBy('a.createdAt', 'DESC').take(200);
 
     if (filters.action) {
-      qb.andWhere('a.action = :action', { action: filters.action });
+      // Stored as 'dealer.approved'; the admin UI sends 'DEALER_APPROVED'.
+      // Compare case-insensitively with '.' and '_' treated alike.
+      qb.andWhere("LOWER(REPLACE(a.action, '.', '_')) = LOWER(REPLACE(:action, '.', '_'))", {
+        action: filters.action,
+      });
     }
     if (filters.entityType) {
       qb.andWhere('a.entityType = :entityType', { entityType: filters.entityType });

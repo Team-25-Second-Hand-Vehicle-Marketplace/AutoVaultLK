@@ -16,6 +16,8 @@ import type { ObjectStore } from '../../../infrastructure/ports/object-store.por
 
 import { OBJECT_STORE } from '../../../infrastructure/ports/object-store.port';
 
+import type { UploadFileFormat } from '../../../infrastructure/database/entities/upload-job.entity';
+
 import { UploadJobRepository } from '../repositories/upload-job.repository';
 
 import { DealerProfileRepository } from '../repositories/dealer-profile.repository';
@@ -27,7 +29,7 @@ export type UploadFile = {
   buffer: Buffer;
 };
 
-/** What validateCsv/validateZip actually need - UploadFile satisfies this too, so upload() is unaffected. */
+/** What validateInventoryFile/validateZip actually need - UploadFile satisfies this too, so upload() is unaffected. */
 type FileMeta = {
   originalname: string;
   size: number;
@@ -38,8 +40,33 @@ export type UploadResult = {
   jobId: string;
   status: string;
   fileName: string;
+  format: UploadFileFormat;
   csvS3Path: string;
   zipS3Path: string | null;
+};
+
+/**
+ * Per declared format: the extension the file must carry, the MIME types a
+ * browser or HTTP client may legitimately send for it, and the content type it
+ * is stored under. Adding a format means adding a row here and a reader in the
+ * ETL worker, and nothing else in this service.
+ */
+const FORMAT_RULES: Record<
+  UploadFileFormat,
+  { extension: string; label: string; mimeTypes: string[]; contentType: string }
+> = {
+  csv: {
+    extension: '.csv',
+    label: 'CSV',
+    mimeTypes: ['text/csv', 'application/csv', 'application/vnd.ms-excel', 'text/plain'],
+    contentType: 'text/csv',
+  },
+  json: {
+    extension: '.json',
+    label: 'JSON',
+    mimeTypes: ['application/json', 'text/json', 'text/plain'],
+    contentType: 'application/json',
+  },
 };
 
 export type PresignedUploadTarget = {
@@ -47,8 +74,14 @@ export type PresignedUploadTarget = {
   headers: Record<string, string>;
 };
 
+/**
+ * `csv` is the inventory file's slot and keeps its name for wire compatibility
+ * with clients of the presign endpoint; it holds a JSON file when `format` is
+ * "json".
+ */
 export type PresignedUpload = {
   jobId: string;
+  format: UploadFileFormat;
   csv: PresignedUploadTarget;
   zip: PresignedUploadTarget | null;
 };
@@ -58,7 +91,7 @@ export class IngestionUploadService {
   private readonly logger = new Logger(IngestionUploadService.name);
 
   // Adjust these limits if your SRS defines different values.
-  private readonly maxCsvSize = 25 * 1024 * 1024; // 25 MB
+  private readonly maxInventorySize = 25 * 1024 * 1024; // 25 MB, either format
   private readonly maxZipSize = 250 * 1024 * 1024; // 250 MB
 
   /**
@@ -83,12 +116,15 @@ export class IngestionUploadService {
 
   async upload(
     dealerId: string,
-    csv: UploadFile,
+    file: UploadFile,
+    rawFormat: string | undefined,
     zip?: UploadFile,
   ): Promise<UploadResult> {
     await this.verifyDealer(dealerId);
 
-    this.validateCsv(csv);
+    const format = this.parseFormat(rawFormat);
+
+    this.validateInventoryFile(format, file);
 
     if (zip) {
       this.validateZip(zip);
@@ -99,17 +135,22 @@ export class IngestionUploadService {
      */
     const job = await this.uploadJobRepository.create({
       dealerId,
-      fileName: csv.originalname,
+      fileName: file.originalname,
       csvS3Path: '',
       zipS3Path: null,
+      fileFormat: format,
     });
 
-    const csvKey = `raw/${job.id}/${this.safeFileName(csv.originalname)}`;
+    const csvKey = `raw/${job.id}/${this.safeFileName(file.originalname)}`;
 
     let zipKey: string | null = null;
 
     try {
-      await this.objectStore.put(csvKey, csv.buffer, 'text/csv');
+      await this.objectStore.put(
+        csvKey,
+        file.buffer,
+        FORMAT_RULES[format].contentType,
+      );
 
       if (zip) {
         zipKey = `raw/${job.id}/${this.safeFileName(zip.originalname)}`;
@@ -147,7 +188,8 @@ export class IngestionUploadService {
       return {
         jobId: job.id,
         status: 'PENDING',
-        fileName: csv.originalname,
+        fileName: file.originalname,
+        format,
         csvS3Path: csvKey,
         zipS3Path: zipKey,
       };
@@ -176,24 +218,31 @@ export class IngestionUploadService {
    */
   async presignUpload(
     dealerId: string,
-    csv: { fileName: string; fileSize: number },
+    inventory: { fileName: string; fileSize: number },
+    rawFormat: string | undefined,
     zip?: { fileName: string; fileSize: number },
   ): Promise<PresignedUpload> {
     await this.verifyDealer(dealerId);
 
-    this.validateCsv({ originalname: csv.fileName, size: csv.fileSize });
+    const format = this.parseFormat(rawFormat);
+
+    this.validateInventoryFile(format, {
+      originalname: inventory.fileName,
+      size: inventory.fileSize,
+    });
     if (zip) {
       this.validateZip({ originalname: zip.fileName, size: zip.fileSize });
     }
 
     const job = await this.uploadJobRepository.create({
       dealerId,
-      fileName: csv.fileName,
+      fileName: inventory.fileName,
       csvS3Path: '',
       zipS3Path: null,
+      fileFormat: format,
     });
 
-    const csvKey = `raw/${job.id}/${this.safeFileName(csv.fileName)}`;
+    const csvKey = `raw/${job.id}/${this.safeFileName(inventory.fileName)}`;
     const zipKey = zip
       ? `raw/${job.id}/${this.safeFileName(zip.fileName)}`
       : null;
@@ -202,7 +251,7 @@ export class IngestionUploadService {
 
     const csvTarget = await this.objectStore.getUploadTarget(
       csvKey,
-      'text/csv',
+      FORMAT_RULES[format].contentType,
       this.uploadUrlExpirySeconds,
     );
     const zipTarget = zipKey
@@ -213,10 +262,13 @@ export class IngestionUploadService {
         )
       : null;
 
-    this.logger.log(`Presigned upload: job=${job.id}, dealer=${dealerId}`);
+    this.logger.log(
+      `Presigned upload: job=${job.id}, dealer=${dealerId}, format=${format}`,
+    );
 
     return {
       jobId: job.id,
+      format,
       csv: { uploadUrl: csvTarget.url, headers: csvTarget.headers ?? {} },
       zip: zipTarget
         ? { uploadUrl: zipTarget.url, headers: zipTarget.headers ?? {} }
@@ -248,6 +300,7 @@ export class IngestionUploadService {
         jobId: job.id,
         status: job.status,
         fileName: job.fileName,
+        format: job.fileFormat,
         csvS3Path: job.csvS3Path,
         zipS3Path: job.zipS3Path,
       };
@@ -260,7 +313,7 @@ export class IngestionUploadService {
       // them from starting a fresh one.
       await this.uploadJobRepository.updateStatus(job.id, 'FAILED');
       throw new BadRequestException(
-        'CSV upload has not finished - nothing was found at the expected location',
+        `${FORMAT_RULES[job.fileFormat].label} upload has not finished - nothing was found at the expected location`,
       );
     }
 
@@ -279,6 +332,7 @@ export class IngestionUploadService {
       jobId: job.id,
       status: 'PENDING',
       fileName: job.fileName,
+      format: job.fileFormat,
       csvS3Path: job.csvS3Path,
       zipS3Path: job.zipS3Path,
     };
@@ -295,40 +349,82 @@ export class IngestionUploadService {
     }
   }
 
-  private validateCsv(file: FileMeta): void {
+  /**
+   * The dealer declares the format; it is never defaulted or guessed from the
+   * extension. A silent default would read a JSON file as CSV and fail later
+   * with a confusing header error, so an absent or unknown value is rejected
+   * here, at upload time.
+   */
+  private parseFormat(raw: string | undefined): UploadFileFormat {
+    const value = raw?.trim().toLowerCase();
+
+    if (!value) {
+      throw new BadRequestException('format is required: "csv" or "json"');
+    }
+
+    if (Object.prototype.hasOwnProperty.call(FORMAT_RULES, value)) {
+      return value as UploadFileFormat;
+    }
+
+    throw new BadRequestException(
+      `Unsupported format "${raw}". Use "csv" or "json".`,
+    );
+  }
+
+  /**
+   * Checks the file against the format the dealer declared, so a mismatch is
+   * reported here, immediately, instead of failing later inside the worker.
+   */
+  private validateInventoryFile(
+    format: UploadFileFormat,
+    file: FileMeta,
+  ): void {
+    const rules = FORMAT_RULES[format];
+
     if (!file) {
-      throw new BadRequestException('CSV file is required');
+      throw new BadRequestException('Inventory file is required');
     }
 
     if (file.size <= 0) {
-      throw new BadRequestException('CSV file is empty');
+      throw new BadRequestException(`${rules.label} file is empty`);
     }
 
-    if (file.size > this.maxCsvSize) {
+    if (file.size > this.maxInventorySize) {
       throw new BadRequestException(
-        'CSV file exceeds the maximum allowed size of 25 MB',
+        `${rules.label} file exceeds the maximum allowed size of 25 MB`,
       );
     }
 
     const name = file.originalname.toLowerCase();
 
-    if (!name.endsWith('.csv')) {
-      throw new BadRequestException('Inventory file must be a CSV');
+    if (!name.endsWith(rules.extension)) {
+      /*
+       * Distinguish "you picked the wrong format" from "this is not an
+       * inventory file at all": the first has an obvious fix for the dealer.
+       */
+      const actual = (Object.keys(FORMAT_RULES) as UploadFileFormat[]).find(
+        (other) => name.endsWith(FORMAT_RULES[other].extension),
+      );
+
+      if (actual) {
+        throw new BadRequestException(
+          `You selected ${rules.label} but "${file.originalname}" is a ` +
+            `${FORMAT_RULES[actual].label} file. Upload a ${rules.extension} ` +
+            `file, or switch the format to ${FORMAT_RULES[actual].label}.`,
+        );
+      }
+
+      throw new BadRequestException(
+        `Inventory file must be a ${rules.label} (${rules.extension}) file`,
+      );
     }
 
     /*
      * Do not rely only on the browser-provided MIME type.
      * The extension is checked as well.
      */
-    const allowedMimeTypes = [
-      'text/csv',
-      'application/csv',
-      'application/vnd.ms-excel',
-      'text/plain',
-    ];
-
-    if (file.mimetype && !allowedMimeTypes.includes(file.mimetype)) {
-      throw new BadRequestException('Invalid CSV file type');
+    if (file.mimetype && !rules.mimeTypes.includes(file.mimetype)) {
+      throw new BadRequestException(`Invalid ${rules.label} file type`);
     }
   }
 

@@ -41,17 +41,22 @@ describeWithDatabase('LocalOrchestrator (integration)', () => {
   let dealerId: string;
   const jobs: string[] = [];
 
-  /** Writes a CSV to the store and creates the job that points at it. */
-  const upload = async (csv: string): Promise<string> => {
+  /** Writes an inventory file to the store and creates the job that points at it. */
+  const upload = async (
+    content: string,
+    format: 'csv' | 'json' = 'csv',
+  ): Promise<string> => {
+    const fileName = `integration.${format}`;
     const job = await uploadJobs.create({
       dealerId,
-      fileName: 'integration.csv',
+      fileName,
       csvS3Path: 'pending',
+      fileFormat: format,
     });
     jobs.push(job.id);
 
-    const key = `raw/${job.id}/integration.csv`;
-    await store.put(key, csv);
+    const key = `raw/${job.id}/${fileName}`;
+    await store.put(key, content);
     await ds.query(
       `UPDATE ingestion.upload_jobs SET csv_s3_path = $1 WHERE id = $2`,
       [key, job.id],
@@ -124,6 +129,56 @@ describeWithDatabase('LocalOrchestrator (integration)', () => {
       valid_records: 3,
       invalid_records: 0,
     });
+  });
+
+  it('loads the same inventory uploaded as JSON, with the same result', async () => {
+    // JSON keeps real types - numbers, not strings - the way a DMS export
+    // would; the reader turns them back into the strings the pipeline expects.
+    const vehicle = (n: number) => ({
+      registration_number: plate(n),
+      make: 'Toyota',
+      model: 'Vitz',
+      year: 2015,
+      price: 3500000,
+      mileage: 45000,
+      fuel_type: 'Petrol',
+      transmission: 'Automatic',
+      body_type: 'Hatchback',
+      color: 'White',
+      engine_capacity_cc: 1000,
+      owners_count: 1,
+      location_district: 'Colombo',
+      condition: 'Used',
+      vehicle_type: 'Car',
+    });
+    const jobId = await upload(
+      JSON.stringify([vehicle(11), vehicle(12), vehicle(13)]),
+      'json',
+    );
+
+    await orchestrator.run(jobId);
+
+    expect(await jobRow(jobId)).toMatchObject({
+      status: 'COMPLETED',
+      total_records: 3,
+      valid_records: 3,
+      invalid_records: 0,
+    });
+  });
+
+  it('fails a JSON file that is not an array, with one whole-file reason', async () => {
+    const jobId = await upload('{"make":"Toyota"}', 'json');
+
+    await orchestrator.run(jobId);
+
+    expect(await jobRow(jobId)).toMatchObject({ status: 'FAILED' });
+    const rejections = (await ds.query(
+      `SELECT row_number, reason FROM ingestion.rejected_records WHERE upload_job_id = $1`,
+      [jobId],
+    )) as { row_number: number; reason: string }[];
+    expect(rejections).toHaveLength(1);
+    expect(rejections[0].row_number).toBe(0);
+    expect(rejections[0].reason).toMatch(/must be an array/i);
   });
 
   it('resolves the dictionary against real seed data', async () => {

@@ -42,10 +42,11 @@ describe('IngestionUploadService', () => {
       dealerProfileRepository.isVerifiedBusinessDealer.mockResolvedValue(false);
 
       await expect(
-        service().presignUpload('dealer-1', {
-          fileName: 'stock.csv',
-          fileSize: 100,
-        }),
+        service().presignUpload(
+          'dealer-1',
+          { fileName: 'stock.csv', fileSize: 100 },
+          'csv',
+        ),
       ).rejects.toThrow(ForbiddenException);
 
       expect(uploadJobRepository.create).not.toHaveBeenCalled();
@@ -53,10 +54,11 @@ describe('IngestionUploadService', () => {
 
     it('refuses a CSV over the 25 MB limit before creating a job', async () => {
       await expect(
-        service().presignUpload('dealer-1', {
-          fileName: 'stock.csv',
-          fileSize: 26 * 1024 * 1024,
-        }),
+        service().presignUpload(
+          'dealer-1',
+          { fileName: 'stock.csv', fileSize: 26 * 1024 * 1024 },
+          'csv',
+        ),
       ).rejects.toThrow(BadRequestException);
 
       expect(uploadJobRepository.create).not.toHaveBeenCalled();
@@ -67,6 +69,7 @@ describe('IngestionUploadService', () => {
         service().presignUpload(
           'dealer-1',
           { fileName: 'stock.csv', fileSize: 100 },
+          'csv',
           { fileName: 'photos.zip', fileSize: 251 * 1024 * 1024 },
         ),
       ).rejects.toThrow(BadRequestException);
@@ -89,11 +92,13 @@ describe('IngestionUploadService', () => {
       const result = await service().presignUpload(
         'dealer-1',
         { fileName: 'stock.csv', fileSize: 1000 },
+        'csv',
         { fileName: 'photos.zip', fileSize: 2000 },
       );
 
       expect(result).toEqual({
         jobId: 'job-1',
+        format: 'csv',
         csv: {
           uploadUrl: 'https://csv-put',
           headers: { 'Content-Type': 'text/csv' },
@@ -132,10 +137,11 @@ describe('IngestionUploadService', () => {
         headers: {},
       });
 
-      const result = await service().presignUpload('dealer-1', {
-        fileName: 'stock.csv',
-        fileSize: 1000,
-      });
+      const result = await service().presignUpload(
+        'dealer-1',
+        { fileName: 'stock.csv', fileSize: 1000 },
+        'csv',
+      );
 
       expect(result.zip).toBeNull();
       expect(uploadJobRepository.updateStoragePaths).toHaveBeenCalledWith(
@@ -147,12 +153,73 @@ describe('IngestionUploadService', () => {
     });
   });
 
+  describe('presignUpload - declared format', () => {
+    it('requires the format and never guesses it from the extension', async () => {
+      await expect(
+        service().presignUpload(
+          'dealer-1',
+          { fileName: 'stock.json', fileSize: 100 },
+          undefined,
+        ),
+      ).rejects.toThrow(/format is required/);
+
+      expect(uploadJobRepository.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects an unknown format', async () => {
+      await expect(
+        service().presignUpload(
+          'dealer-1',
+          { fileName: 'stock.xml', fileSize: 100 },
+          'xml',
+        ),
+      ).rejects.toThrow(/Unsupported format/);
+    });
+
+    it('rejects a file whose extension contradicts the declared format', async () => {
+      await expect(
+        service().presignUpload(
+          'dealer-1',
+          { fileName: 'stock.csv', fileSize: 100 },
+          'json',
+        ),
+      ).rejects.toThrow(/You selected JSON but "stock.csv" is a CSV file/);
+
+      expect(uploadJobRepository.create).not.toHaveBeenCalled();
+    });
+
+    it('stores a JSON job with its format and a JSON content type', async () => {
+      uploadJobRepository.create.mockResolvedValue({ id: 'job-2' });
+      objectStore.getUploadTarget.mockResolvedValue({
+        url: 'https://json-put',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const result = await service().presignUpload(
+        'dealer-1',
+        { fileName: 'stock.json', fileSize: 1000 },
+        'json',
+      );
+
+      expect(result.format).toBe('json');
+      expect(uploadJobRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ fileName: 'stock.json', fileFormat: 'json' }),
+      );
+      expect(objectStore.getUploadTarget).toHaveBeenCalledWith(
+        'raw/job-2/stock.json',
+        'application/json',
+        900,
+      );
+    });
+  });
+
   describe('completeUpload', () => {
     const pendingJob = {
       id: 'job-1',
       dealerId: 'dealer-1',
       status: 'PENDING',
       fileName: 'stock.csv',
+      fileFormat: 'csv',
       csvS3Path: 'raw/job-1/stock.csv',
       zipS3Path: null,
     };
@@ -231,6 +298,7 @@ describe('IngestionUploadService', () => {
         jobId: 'job-1',
         status: 'PENDING',
         fileName: 'stock.csv',
+        format: 'csv',
         csvS3Path: 'raw/job-1/stock.csv',
         zipS3Path: null,
       });

@@ -494,8 +494,8 @@ export function dealerIngestion(data) {
   const uploadRes = http.post(
     `${INGESTION_BASE_URL}/ingest/upload`,
     zip
-      ? { csv: http.file(csv, 'inventory.csv', 'text/csv'), zip: http.file(zip, 'images.zip', 'application/zip') }
-      : { csv: http.file(csv, 'inventory.csv', 'text/csv') },
+      ? { format: 'csv', file: http.file(csv, 'inventory.csv', 'text/csv'), zip: http.file(zip, 'images.zip', 'application/zip') }
+      : { format: 'csv', file: http.file(csv, 'inventory.csv', 'text/csv') },
     {
       headers: { Authorization: `Bearer ${dealer.token}` },
       tags: { name: 'ingest_upload' },

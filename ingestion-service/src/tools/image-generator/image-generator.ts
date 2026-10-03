@@ -13,6 +13,7 @@ import sharp from 'sharp';
 
 type Args = {
   fromCsv?: string;
+  fromJson?: string;
   count: number;
   perVehicle: number;
   totalImages?: number;
@@ -25,6 +26,7 @@ function parseArguments(): Args {
   const args = process.argv.slice(2);
 
   let fromCsv: string | undefined;
+  let fromJson: string | undefined;
   let count = 10;
   let perVehicle = 2;
   let totalImages: number | undefined;
@@ -36,6 +38,9 @@ function parseArguments(): Args {
     switch (args[i]) {
       case '--from-csv':
         fromCsv = args[++i];
+        break;
+      case '--from-json':
+        fromJson = args[++i];
         break;
       case '--count':
         count = Number(args[++i]);
@@ -58,8 +63,11 @@ function parseArguments(): Args {
     }
   }
 
-  if (!fromCsv && (!Number.isInteger(count) || count <= 0)) {
-    throw new Error('--count must be a positive integer when --from-csv is not given');
+  if (fromCsv && fromJson) {
+    throw new Error('Use either --from-csv or --from-json, not both');
+  }
+  if (!fromCsv && !fromJson && (!Number.isInteger(count) || count <= 0)) {
+    throw new Error('--count must be a positive integer when --from-csv/--from-json is not given');
   }
   if (!Number.isInteger(perVehicle) || perVehicle <= 0) {
     throw new Error('--per-vehicle must be a positive integer');
@@ -71,7 +79,7 @@ function parseArguments(): Args {
     throw new Error('--width/--height must be positive integers');
   }
 
-  return { fromCsv, count, perVehicle, totalImages, width, height, output };
+  return { fromCsv, fromJson, count, perVehicle, totalImages, width, height, output };
 }
 
 /** Pulls registration_number out of a generator CSV - first column, header row skipped. */
@@ -87,6 +95,22 @@ export async function registrationsFromCsv(path: string): Promise<string[]> {
   }
 
   return rows.map((row) => row.split(',')[regIndex].trim()).filter(Boolean);
+}
+
+/**
+ * Pulls registration_number out of a dealer JSON file: a top-level array of
+ * flat objects, the same shape the upload accepts. Records without the key
+ * (unregistered stock) are skipped, as blank CSV cells are.
+ */
+export async function registrationsFromJson(path: string): Promise<string[]> {
+  const parsed: unknown = JSON.parse(await readFile(path, 'utf-8'));
+  if (!Array.isArray(parsed)) {
+    throw new Error(`${path} must hold a JSON array of vehicle objects`);
+  }
+  return parsed
+    .map((record) => (record as Record<string, unknown>)?.registration_number)
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    .map((value) => value.trim());
 }
 
 function generateRegistrations(count: number): string[] {
@@ -126,20 +150,24 @@ export async function buildImage(
     .toBuffer();
 }
 
-async function main() {
-  const args = parseArguments();
+export type ImageZipResult = { fileCount: number; totalOriginalBytes: number; zipBytes: number };
 
-  const registrations = args.fromCsv
-    ? await registrationsFromCsv(args.fromCsv)
-    : generateRegistrations(args.count);
-
-  const outputDir = join(args.output, '..');
+/**
+ * Writes a ZIP of synthetic photos, `<REG>.jpg`, `<REG>_2.jpg`, ... for every
+ * registration. Shared by this tool's CLI and the vehicle generator's --zip.
+ */
+export async function writeImageZip(
+  registrations: string[],
+  output: string,
+  options: { perVehicle: number; width: number; height: number; totalImages?: number },
+): Promise<ImageZipResult> {
+  const outputDir = join(output, '..');
   if (!existsSync(outputDir)) {
     await mkdir(outputDir, { recursive: true });
   }
 
   const archive = archiver('zip', { zlib: { level: 9 } });
-  const stream = createWriteStream(args.output);
+  const stream = createWriteStream(output);
   const done = new Promise<void>((resolve, reject) => {
     stream.on('close', resolve);
     archive.on('error', reject);
@@ -149,13 +177,13 @@ async function main() {
   let totalOriginalBytes = 0;
   let fileCount = 0;
 
-  // --total-images caps the archive's entry count (for exact fixtures like
+  // totalImages caps the archive's entry count (for exact fixtures like
   // "2 vehicles, 3 images"); vehicles are filled in order until it is reached.
-  const maxImages = args.totalImages ?? Infinity;
+  const maxImages = options.totalImages ?? Infinity;
 
   for (const registration of registrations) {
-    for (let i = 1; i <= args.perVehicle && fileCount < maxImages; i++) {
-      const buffer = await buildImage(registration, i, args.width, args.height);
+    for (let i = 1; i <= options.perVehicle && fileCount < maxImages; i++) {
+      const buffer = await buildImage(registration, i, options.width, options.height);
       const name = i === 1 ? `${registration}.jpg` : `${registration}_${i}.jpg`;
       archive.append(buffer, { name });
       totalOriginalBytes += buffer.length;
@@ -166,12 +194,24 @@ async function main() {
   await archive.finalize();
   await done;
 
-  const zipStat = await stat(args.output);
+  return { fileCount, totalOriginalBytes, zipBytes: (await stat(output)).size };
+}
 
-  console.log(`Generated ${fileCount} images for ${registrations.length} vehicles.`);
+async function main() {
+  const args = parseArguments();
+
+  const registrations = args.fromCsv
+    ? await registrationsFromCsv(args.fromCsv)
+    : args.fromJson
+      ? await registrationsFromJson(args.fromJson)
+      : generateRegistrations(args.count);
+
+  const result = await writeImageZip(registrations, args.output, args);
+
+  console.log(`Generated ${result.fileCount} images for ${registrations.length} vehicles.`);
   console.log(`Dimensions: ${args.width}x${args.height}`);
-  console.log(`Total uncompressed image bytes: ${totalOriginalBytes.toLocaleString()}`);
-  console.log(`Output zip: ${args.output} (${zipStat.size.toLocaleString()} bytes)`);
+  console.log(`Total uncompressed image bytes: ${result.totalOriginalBytes.toLocaleString()}`);
+  console.log(`Output zip: ${args.output} (${result.zipBytes.toLocaleString()} bytes)`);
 }
 
 // Guarded so ingestion-tester.ts can import buildImage/registrationsFromCsv

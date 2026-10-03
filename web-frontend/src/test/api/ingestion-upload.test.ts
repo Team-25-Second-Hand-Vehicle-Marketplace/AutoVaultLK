@@ -17,6 +17,7 @@ function file(name: string, size: number): File {
 
 const presignedBody = {
   jobId: 'job-1',
+  format: 'csv',
   csv: { uploadUrl: 'https://s3/csv', headers: { 'Content-Type': 'text/csv' } },
   zip: { uploadUrl: 'https://s3/zip', headers: { 'Content-Type': 'application/zip' } },
 }
@@ -38,12 +39,12 @@ describe('uploadInventory', () => {
       .mockResolvedValueOnce({ data: presignedBody })
       .mockResolvedValueOnce({ data: { jobId: 'job-1', status: 'PENDING', fileName: 'a.csv', csvS3Path: 'raw/job-1/a.csv', zipS3Path: null } })
 
-    await uploadInventory(file('a.csv', 10), null)
+    await uploadInventory('csv', file('a.csv', 10), null)
 
     expect(post).toHaveBeenNthCalledWith(
       1,
       '/ingest/presign',
-      expect.objectContaining({ csvFileName: 'a.csv', csvFileSize: 10 }),
+      expect.objectContaining({ format: 'csv', csvFileName: 'a.csv', csvFileSize: 10 }),
       expect.anything(),
     )
     expect(put).toHaveBeenCalledWith(
@@ -62,7 +63,7 @@ describe('uploadInventory', () => {
   it('never sends credentials to the direct-upload target - S3 CORS does not support them', async () => {
     post.mockResolvedValueOnce({ data: presignedBody }).mockResolvedValueOnce({ data: {} })
 
-    await uploadInventory(file('a.csv', 10), null)
+    await uploadInventory('csv', file('a.csv', 10), null)
 
     expect(put).toHaveBeenCalledWith(
       expect.anything(),
@@ -76,7 +77,7 @@ describe('uploadInventory', () => {
       data: {},
     })
 
-    await uploadInventory(file('a.csv', 10), null)
+    await uploadInventory('csv', file('a.csv', 10), null)
 
     expect(put).toHaveBeenCalledTimes(1)
   })
@@ -84,7 +85,7 @@ describe('uploadInventory', () => {
   it('PUTs both files when a zip is given', async () => {
     post.mockResolvedValueOnce({ data: presignedBody }).mockResolvedValueOnce({ data: {} })
 
-    await uploadInventory(file('a.csv', 10), file('photos.zip', 20))
+    await uploadInventory('csv', file('a.csv', 10), file('photos.zip', 20))
 
     expect(put).toHaveBeenCalledTimes(2)
     expect(put).toHaveBeenCalledWith('https://s3/zip', expect.anything(), expect.anything())
@@ -103,7 +104,7 @@ describe('uploadInventory', () => {
       })
     const onProgress = vi.fn()
 
-    await uploadInventory(file('a.csv', 10), file('photos.zip', 20), onProgress)
+    await uploadInventory('csv', file('a.csv', 10), file('photos.zip', 20), onProgress)
 
     // 10/30 after the csv, 30/30 after the zip - but capped at 99 until the
     // final complete() call actually succeeds.
@@ -118,7 +119,7 @@ describe('uploadInventory', () => {
     put.mockRejectedValueOnce(new Error('connection dropped'))
     post.mockResolvedValueOnce({ data: {} }) // the best-effort complete() call
 
-    await expect(uploadInventory(file('a.csv', 10), null)).rejects.toThrow('connection dropped')
+    await expect(uploadInventory('csv', file('a.csv', 10), null)).rejects.toThrow('connection dropped')
 
     expect(post).toHaveBeenNthCalledWith(
       2,
@@ -133,6 +134,21 @@ describe('uploadInventory', () => {
     put.mockRejectedValueOnce(new Error('connection dropped'))
     post.mockRejectedValueOnce(new Error('complete also failed'))
 
-    await expect(uploadInventory(file('a.csv', 10), null)).rejects.toThrow('connection dropped')
+    await expect(uploadInventory('csv', file('a.csv', 10), null)).rejects.toThrow('connection dropped')
+  })
+
+  it('declares the JSON format when presigning a JSON inventory', async () => {
+    post
+      .mockResolvedValueOnce({ data: { ...presignedBody, format: 'json' } })
+      .mockResolvedValueOnce({ data: {} })
+
+    await uploadInventory('json', file('stock.json', 10), null)
+
+    expect(post).toHaveBeenNthCalledWith(
+      1,
+      '/ingest/presign',
+      expect.objectContaining({ format: 'json', csvFileName: 'stock.json', csvFileSize: 10 }),
+      expect.anything(),
+    )
   })
 })

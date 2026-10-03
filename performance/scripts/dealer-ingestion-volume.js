@@ -196,7 +196,7 @@ export default function (data) {
   const uploadStart = Date.now();
   const uploadRes = http.post(
     `${INGESTION_BASE_URL}/ingest/upload`,
-    { csv: http.file(csv, `inventory-${file.count}.csv`, 'text/csv') },
+    { format: 'csv', file: http.file(csv, `inventory-${file.count}.csv`, 'text/csv') },
     {
       headers: { Authorization: `Bearer ${data.dealerToken}` },
       tags: { name: 'ingest_upload', size: String(file.count) },
