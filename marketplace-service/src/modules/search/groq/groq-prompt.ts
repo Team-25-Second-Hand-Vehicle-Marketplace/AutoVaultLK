@@ -28,6 +28,14 @@ Rules:
 - Never invent a value that is absent from the allowed lists - but
   correcting a misspelled token TO an allowed value is required, not
   inventing.
+- A vehicle-character or style word - e.g. "sport"/"sporty", "luxury",
+  "family", "economical", "fast", "spacious", "reliable", "affordable",
+  "comfortable" - describes how a listing feels, never a specific make or
+  model, even when it happens to look similar to one (e.g. "sport" is never
+  a misspelling of "Sportage"). Never put these in consumedTokens or use
+  them to justify a make/model/bodyType correction - leave them unresolved
+  so semantic ranking can match them against listings' own descriptions
+  instead of hard-locking the search to one guessed vehicle.
 - Every filter key is SINGULAR even though its value is an array and the
   allowed lists are named in the plural: write "make":["Toyota"], never
   "makes". A plural key is discarded.
@@ -60,8 +68,10 @@ export function buildGroqUserPayload(
       })),
       specs: Object.fromEntries(
         Object.entries(KNOWN_SPEC_KEYS).map(([key, def]) => {
-          if (def.type === 'enum') return [key, { type: 'enum', values: [...def.values] }];
-          if (def.type === 'int') return [key, { type: 'int', min: def.min, max: def.max }];
+          if (def.type === 'enum')
+            return [key, { type: 'enum', values: [...def.values] }];
+          if (def.type === 'int')
+            return [key, { type: 'int', min: def.min, max: def.max }];
           return [key, { type: 'bool' }];
         }),
       ),

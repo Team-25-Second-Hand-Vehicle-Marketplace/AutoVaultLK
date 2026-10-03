@@ -31,7 +31,11 @@ export function indexEntries(entries: DictionaryEntry[]): DictionaryIndex {
   return map;
 }
 
-function addKey(map: DictionaryIndex, key: string, entry: DictionaryEntry): void {
+function addKey(
+  map: DictionaryIndex,
+  key: string,
+  entry: DictionaryEntry,
+): void {
   if (!key) return;
   const list = map.get(key);
   if (list) {
@@ -93,10 +97,17 @@ export function exactSpanHit(
  * relevant listings via their description text instead of hard-locking to
  * one wrong model.
  *
+ * Exported so groq-whitelist.ts can enforce the same rule on Groq's output:
+ * the LLM gets no equivalent protection from its own prompt alone (an
+ * instruction is a request, not a guarantee), so whitelistGroqOutput rejects
+ * any of these from consumedTokens outright, regardless of what Groq
+ * returns - the same "never the answer to a make/model lookup" reasoning
+ * applies identically to both resolution paths.
+ *
  * Extend this list only when a new false positive is found in practice -
  * do not attempt to make it exhaustive up front.
  */
-const VEHICLE_CHARACTER_WORDS = new Set([
+export const VEHICLE_CHARACTER_WORDS = new Set([
   'sporty',
   'sport',
   'luxury',
@@ -131,7 +142,10 @@ export function fuzzySpanHit(
   const threshold = options.threshold ?? TRIGRAM_THRESHOLD;
   for (let span = maxSpan; span >= 1; span--) {
     if (!spanIsOpen(tokens, start, span)) continue;
-    if (options.rejectDigitAdjacent && spanHasDigitAdjacent(tokens, start, span)) {
+    if (
+      options.rejectDigitAdjacent &&
+      spanHasDigitAdjacent(tokens, start, span)
+    ) {
       continue;
     }
     const probe = compact(joinSpan(tokens, start, span));
@@ -166,11 +180,20 @@ function bestSimilarity(probe: string, entry: DictionaryEntry): number {
   return best;
 }
 
-export function spanIsOpen(tokens: ParserToken[], start: number, span: number): boolean {
+export function spanIsOpen(
+  tokens: ParserToken[],
+  start: number,
+  span: number,
+): boolean {
   if (start + span > tokens.length) return false;
   for (let i = start; i < start + span; i++) {
     const token = tokens[i];
-    if (token.consumed || token.stopword || isNumericToken(token.norm) || !token.norm) {
+    if (
+      token.consumed ||
+      token.stopword ||
+      isNumericToken(token.norm) ||
+      !token.norm
+    ) {
       return false;
     }
   }
@@ -178,7 +201,11 @@ export function spanIsOpen(tokens: ParserToken[], start: number, span: number): 
 }
 
 /** Like spanIsOpen but allows numeric tokens so "4 wheel drive" can match. */
-export function spanIsPresent(tokens: ParserToken[], start: number, span: number): boolean {
+export function spanIsPresent(
+  tokens: ParserToken[],
+  start: number,
+  span: number,
+): boolean {
   if (start + span > tokens.length) return false;
   for (let i = start; i < start + span; i++) {
     const token = tokens[i];
@@ -187,21 +214,33 @@ export function spanIsPresent(tokens: ParserToken[], start: number, span: number
   return true;
 }
 
-function spanHasDigitAdjacent(tokens: ParserToken[], start: number, span: number): boolean {
+function spanHasDigitAdjacent(
+  tokens: ParserToken[],
+  start: number,
+  span: number,
+): boolean {
   for (let i = start; i < start + span; i++) {
     if (tokens[i].digitAdjacent) return true;
   }
   return false;
 }
 
-export function joinSpan(tokens: ParserToken[], start: number, span: number): string {
+export function joinSpan(
+  tokens: ParserToken[],
+  start: number,
+  span: number,
+): string {
   return tokens
     .slice(start, start + span)
     .map((t) => t.norm)
     .join(' ');
 }
 
-export function consumeSpan(tokens: ParserToken[], start: number, span: number): void {
+export function consumeSpan(
+  tokens: ParserToken[],
+  start: number,
+  span: number,
+): void {
   for (let i = start; i < start + span; i++) {
     tokens[i].consumed = true;
   }
@@ -226,7 +265,11 @@ type ClosedPhrase = { words: string[]; field: ClosedField; value: string };
 
 const CLOSED_PHRASES: ClosedPhrase[] = [
   { words: ['three', 'wheeler'], field: 'vehicleType', value: 'THREE_WHEELER' },
-  { words: ['heavy', 'machinery'], field: 'vehicleType', value: 'HEAVY_MACHINERY' },
+  {
+    words: ['heavy', 'machinery'],
+    field: 'vehicleType',
+    value: 'HEAVY_MACHINERY',
+  },
   { words: ['tuk', 'tuk'], field: 'vehicleType', value: 'THREE_WHEELER' },
   { words: ['second', 'hand'], field: 'condition', value: 'USED' },
   { words: ['brand', 'new'], field: 'condition', value: 'NEW' },
@@ -237,14 +280,38 @@ const CLOSED_PHRASES: ClosedPhrase[] = [
   { words: ['station', 'wagon'], field: 'bodyType', value: 'WAGON' },
   { words: ['double', 'cab'], field: 'bodyType', value: 'PICKUP' },
 
-  { words: ['heavy', 'equipment'], field: 'vehicleType', value: 'HEAVY_MACHINERY' },
+  {
+    words: ['heavy', 'equipment'],
+    field: 'vehicleType',
+    value: 'HEAVY_MACHINERY',
+  },
   { words: ['pick', 'up'], field: 'vehicleType', value: 'PICKUP' },
   { words: ['re', 'conditioned'], field: 'condition', value: 'RECONDITIONED' },
-  { words: ['semi', 'automatic'], field: 'transmissionType', value: 'SEMI_AUTOMATIC' },
-  { words: ['semi', 'auto'], field: 'transmissionType', value: 'SEMI_AUTOMATIC' },
-  { words: ['auto', 'transmission'], field: 'transmissionType', value: 'AUTOMATIC' },
-  { words: ['automatic', 'transmission'], field: 'transmissionType', value: 'AUTOMATIC' },
-  { words: ['manual', 'transmission'], field: 'transmissionType', value: 'MANUAL' },
+  {
+    words: ['semi', 'automatic'],
+    field: 'transmissionType',
+    value: 'SEMI_AUTOMATIC',
+  },
+  {
+    words: ['semi', 'auto'],
+    field: 'transmissionType',
+    value: 'SEMI_AUTOMATIC',
+  },
+  {
+    words: ['auto', 'transmission'],
+    field: 'transmissionType',
+    value: 'AUTOMATIC',
+  },
+  {
+    words: ['automatic', 'transmission'],
+    field: 'transmissionType',
+    value: 'AUTOMATIC',
+  },
+  {
+    words: ['manual', 'transmission'],
+    field: 'transmissionType',
+    value: 'MANUAL',
+  },
   { words: ['petrol', 'hybrid'], field: 'fuelType', value: 'HYBRID' },
   { words: ['plugin', 'hybrid'], field: 'fuelType', value: 'HYBRID' },
   { words: ['fully', 'electric'], field: 'fuelType', value: 'ELECTRIC' },

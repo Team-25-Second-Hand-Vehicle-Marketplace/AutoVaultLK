@@ -25,27 +25,41 @@ export class GroqFallbackService {
       return { parsed, usedLlm: false, dropped: [] };
     }
     if (!this.groq.isConfigured()) {
-      this.logger.warn('Groq skipped: GROQ_API_KEY is not set; using rules-only filters');
+      this.logger.warn(
+        'Groq skipped: GROQ_API_KEY is not set; using rules-only filters',
+      );
       return { parsed, usedLlm: false, dropped: [] };
     }
 
     try {
       const content = await this.groq.complete(
         GROQ_SYSTEM_PROMPT,
-        buildGroqUserPayload(query, parsed.filters, parsed.unresolvedTokens, vocab),
+        buildGroqUserPayload(
+          query,
+          parsed.filters,
+          parsed.unresolvedTokens,
+          vocab,
+        ),
       );
       const whitelisted = whitelistGroqOutput(
         parseGroqJson(content),
         vocab,
         parsed.unresolvedTokens,
+        parsed.filters.vehicleType,
       );
       if (whitelisted.dropped.length > 0) {
-        this.logger.warn(`Groq whitelist dropped: ${whitelisted.dropped.join(', ')}`);
+        this.logger.warn(
+          `Groq whitelist dropped: ${whitelisted.dropped.join(', ')}`,
+        );
       }
 
       const filters = mergeFilters(parsed.filters, whitelisted.filters);
-      const consumed = new Set(whitelisted.consumedTokens.map((t) => t.toLowerCase()));
-      const unresolvedTokens = parsed.unresolvedTokens.filter((t) => !consumed.has(t.toLowerCase()));
+      const consumed = new Set(
+        whitelisted.consumedTokens.map((t) => t.toLowerCase()),
+      );
+      const unresolvedTokens = parsed.unresolvedTokens.filter(
+        (t) => !consumed.has(t.toLowerCase()),
+      );
 
       return {
         usedLlm: true,
@@ -59,7 +73,9 @@ export class GroqFallbackService {
       };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      this.logger.warn(`Groq unavailable (${message}); proceeding with rules-only filters`);
+      this.logger.warn(
+        `Groq unavailable (${message}); proceeding with rules-only filters`,
+      );
       return { parsed, usedLlm: false, dropped: [] };
     }
   }
