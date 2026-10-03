@@ -24,15 +24,16 @@ lists, map it to that entry. Only leave it out when two or more entries
 are equally plausible, or none is.
 
 Rules:
-- Fill only fields the deterministic parser missed.
+- Read the whole query the way a person would and work out what kind of
+  vehicle the buyer wants. Keep fields the parser already set; fill the rest.
 - Never invent a value that is absent from the allowed lists - but
   correcting a misspelled token TO an allowed value is required, not
   inventing.
 - A vehicle-character or style word - e.g. "sport"/"sporty", "luxury",
-  "family", "economical", "fast", "spacious", "reliable", "affordable",
+  "economical", "fast", "spacious", "reliable", "affordable",
   "comfortable" - describes how a listing feels, never a specific make or
   model, even when it happens to look similar to one (e.g. "sport" is never
-  a misspelling of "Sportage"). Never put these in consumedTokens or use
+  a misspelling of "Sportage"). Put them in consumedTokens only when they set vehicleType, and never use
   them to justify a make/model/bodyType correction - leave them unresolved
   so semantic ranking can match them against listings' own descriptions
   instead of hard-locking the search to one guessed vehicle.
@@ -43,6 +44,15 @@ Rules:
 - vehicleType/condition/fuelType/transmissionType must be copied exactly from the allowed enums.
 - specs.key must be one of the allowed spec keys; enum specs.value must be an allowed value.
 - Numeric fields are integers. Years 1980-2100. Prices in LKR. Mileage in km.
+- "family friendly", "family car" or "family vehicle" means a family-sized
+  vehicle: when these words are unresolved, set vehicleType to ["VAN","SUV"]
+  and list "family" and "friendly" in consumedTokens. Never use them to pick
+  a make or model.
+- Think about who the vehicle is for, the way a person would. One person
+  or a single rider means BIKE or THREE_WHEELER. A family or several
+  passengers means VAN or SUV. Goods, work or farming means PICKUP, VAN,
+  LORRY, TRUCK or TRACTOR. Set vehicleType from that, and list the words
+  you relied on in consumedTokens if they were unresolved.
 - consumedTokens must be a subset of unresolvedTokens that you used.
 - If nothing can be extracted, return {"filters":{},"consumedTokens":[]}.`;
 

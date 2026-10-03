@@ -69,6 +69,25 @@ describe('whitelistGroqOutput', () => {
     expect(result.dropped).toContain('consumedTokens:injected');
   });
 
+  it('lets "family friendly" be consumed when it resolves a vehicle type', () => {
+    const result = whitelistGroqOutput(
+      { filters: { vehicleType: ['VAN', 'SUV'] }, consumedTokens: ['family', 'friendly'] },
+      FIXTURE_VOCABULARY,
+      ['family', 'friendly'],
+    );
+    expect(result.filters.vehicleType).toEqual(['VAN', 'SUV']);
+    expect(result.consumedTokens).toEqual(['family', 'friendly']);
+  });
+
+  it('does not let "family" be consumed to justify a make or model', () => {
+    const result = whitelistGroqOutput(
+      { filters: { make: ['Honda'], vehicleType: ['VAN'] }, consumedTokens: ['family'] },
+      FIXTURE_VOCABULARY,
+      ['family'],
+    );
+    expect(result.consumedTokens).toEqual([]);
+  });
+
   // The actual bug: "sport" describes a listing's feel, not a brand, but
   // trigram similarity alone can't tell "sport" from a genuine misspelling
   // of a real model - Groq has no equivalent to the deterministic parser's

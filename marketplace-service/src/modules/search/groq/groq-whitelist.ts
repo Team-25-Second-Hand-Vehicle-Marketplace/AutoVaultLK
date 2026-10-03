@@ -19,6 +19,18 @@ import { compact, VEHICLE_CHARACTER_WORDS } from '../parser/vocabulary';
 const YEAR_MIN = 1980;
 const YEAR_MAX = 2100;
 const PRICE_MAX = 500_000_000;
+
+/**
+ * A character word may be consumed only when it justifies a vehicle type
+ * (e.g. "family friendly" -> VAN/SUV) and never a make or model.
+ */
+function isVehicleTypeOnly(filters: ExtractedFilters): boolean {
+  return (
+    Boolean(filters.vehicleType?.length) &&
+    !filters.make?.length &&
+    !filters.model?.length
+  );
+}
 const MILEAGE_MAX = 2_000_000;
 
 export type WhitelistResult = {
@@ -159,7 +171,7 @@ export function whitelistGroqOutput(
     // trigram similarity happens to be high). Rejecting it here, regardless
     // of what Groq returned, keeps the word unresolved so it still reaches
     // semantic ranking instead of hard-locking the search to one bad guess.
-    if (VEHICLE_CHARACTER_WORDS.has(normalized)) {
+    if (VEHICLE_CHARACTER_WORDS.has(normalized) && !isVehicleTypeOnly(filters)) {
       dropped.push(`consumedTokens:${token}:character-word`);
       return false;
     }
