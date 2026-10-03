@@ -6,6 +6,8 @@ import {
   deactivateListing,
   deleteListing,
   deleteListingImage,
+  renewListing,
+  renewListings,
   getMyListings,
   unarchiveListing,
   updateListing,
@@ -15,7 +17,6 @@ import type {
   CreateListingInput,
   DealerListing,
   ListingSortOption,
-  ListingStatus,
 } from '../../api/listings.types'
 import { toErrorMessage } from '../../api/client'
 import { useAsyncData } from '../../hooks/useAsyncData'
@@ -52,14 +53,6 @@ function useConfirm() {
   return useCallback((message: string) => window.confirm(message), [])
 }
 
-/**
- * Statuses the backend allows a hard delete on - mirrors
- * ListingService.DELETABLE_STATUSES. A LIVE, SOLD or ARCHIVED listing may
- * already be referenced by a favourite or a recommendation, so those only
- * ever offer Archive; keeping this list here means the button never appears
- * only to 409 on click.
- */
-const DELETABLE_STATUSES: ListingStatus[] = ['DRAFT', 'PENDING_REVIEW', 'REJECTED']
 
 type Mode = { kind: 'list' } | { kind: 'edit'; listing: DealerListing }
 
@@ -69,6 +62,9 @@ export function DealerListingsPage() {
   const [unarchiving, setUnarchiving] = useState<string | null>(null)
   const [approving, setApproving] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [renewing, setRenewing] = useState<string | null>(null)
+  const [renewingAll, setRenewingAll] = useState(false)
+  const [expiringOnly, setExpiringOnly] = useState(false)
   const confirm = useConfirm()
 
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -84,8 +80,13 @@ export function DealerListingsPage() {
   const [columnSort, setColumnSort] = useState<ColumnSort | null>(null)
 
   const fetchListings = useCallback(
-    (signal: AbortSignal) => getMyListings(sort === 'confidence_asc' ? sort : undefined, signal),
-    [sort],
+    (signal: AbortSignal) =>
+      getMyListings(
+        sort === 'confidence_asc' ? sort : undefined,
+        signal,
+        expiringOnly ? 5 : undefined,
+      ),
+    [sort, expiringOnly],
   )
   const listings = useAsyncData<DealerListing[]>(fetchListings, listingsError)
   const dealer = useDealerProfile().data
@@ -263,6 +264,43 @@ export function DealerListingsPage() {
     }
   }
 
+  const onRenew = async (listing: DealerListing) => {
+    setRenewing(listing.id)
+    try {
+      await renewListing(listing.id)
+      toast.success(
+        listing.status === 'ARCHIVED'
+          ? `${listing.make} ${listing.model} is relisted for 90 days`
+          : `${listing.make} ${listing.model} renewed for 90 more days`,
+      )
+      listings.reload()
+    } catch (error) {
+      toast.error(toErrorMessage(error, 'Could not renew the listing.'))
+    } finally {
+      setRenewing(null)
+    }
+  }
+
+  const onRenewAll = async () => {
+    const scope = expiringOnly ? 'expiring within 5 days' : 'live'
+    if (!confirm(`Renew every ${scope} listing for another 90 days?`)) {
+      return
+    }
+
+    setRenewingAll(true)
+    try {
+      const { renewed } = await renewListings(
+        expiringOnly ? { expiringWithinDays: 5 } : {},
+      )
+      toast.success(`${renewed} listing${renewed === 1 ? '' : 's'} renewed for 90 more days`)
+      listings.reload()
+    } catch (error) {
+      toast.error(toErrorMessage(error, 'Could not renew the listings.'))
+    } finally {
+      setRenewingAll(false)
+    }
+  }
+
   const onApprove = async (listing: DealerListing) => {
     setApproving(listing.id)
     try {
@@ -328,6 +366,17 @@ export function DealerListingsPage() {
             <option value="createdAt">Most recent</option>
           </select>
         </label>
+        <Button
+          variant={expiringOnly ? 'primary' : 'ghost'}
+          size="sm"
+          aria-pressed={expiringOnly}
+          onClick={() => setExpiringOnly((v) => !v)}
+        >
+          Expiring in 5 days
+        </Button>
+        <Button size="sm" disabled={renewingAll} onClick={() => void onRenewAll()}>
+          {renewingAll ? 'Renewing…' : expiringOnly ? 'Renew all expiring' : 'Renew all'}
+        </Button>
       </div>
 
       {pendingReviewCount > 0 && (
@@ -461,6 +510,22 @@ export function DealerListingsPage() {
                           Edit
                         </Button>
 
+                        {(listing.status === 'LIVE' || listing.status === 'ARCHIVED') && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-label={`${listing.status === 'ARCHIVED' ? 'Relist' : 'Renew'} ${listing.make} ${listing.model}`}
+                            disabled={renewing === listing.id}
+                            onClick={() => void onRenew(listing)}
+                          >
+                            {renewing === listing.id
+                              ? 'Saving…'
+                              : listing.status === 'ARCHIVED'
+                                ? 'Relist'
+                                : 'Renew'}
+                          </Button>
+                        )}
+
                         {listing.status === 'ARCHIVED' ? (
                           <Button
                             variant="ghost"
@@ -484,9 +549,9 @@ export function DealerListingsPage() {
                           </Button>
                         )}
 
-                        {/* Never went live: nothing external can reference it, so a
-                            permanent delete is safe - see ListingService.DELETABLE_STATUSES. */}
-                        {DELETABLE_STATUSES.includes(listing.status) && (
+                        {/* Permanent delete is offered in every status. A 30-day snapshot is kept
+                            on the server for dispute review. */}
+                        {(
                           <Button
                             variant="ghost"
                             size="sm"

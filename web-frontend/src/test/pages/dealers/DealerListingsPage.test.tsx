@@ -118,22 +118,22 @@ describe('DealerListingsPage - row actions', () => {
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
-  it('offers Edit and Archive, but not Unarchive or Delete, for a LIVE listing', async () => {
+  it('offers Edit, Archive and Delete, but not Unarchive, for a LIVE listing', async () => {
     getListings.mockResolvedValue([listing({ status: 'LIVE' })])
     renderPage()
 
     await screen.findByRole('button', { name: 'Edit Toyota Aqua' })
 
-    expect(actionNames()).toEqual(['Edit', 'Archive'])
+    expect(actionNames()).toEqual(['Edit', 'Archive', 'Delete'])
   })
 
-  it('offers Edit, Unarchive and no Archive/Delete for an ARCHIVED listing', async () => {
+  it('offers Edit, Unarchive and Delete, but no Archive, for an ARCHIVED listing', async () => {
     getListings.mockResolvedValue([listing({ status: 'ARCHIVED' })])
     renderPage()
 
     await screen.findByRole('button', { name: 'Edit Toyota Aqua' })
 
-    expect(actionNames()).toEqual(['Edit', 'Unarchive'])
+    expect(actionNames()).toEqual(['Edit', 'Unarchive', 'Delete'])
   })
 
   it('offers Edit, Archive and Delete for a DRAFT listing', async () => {
@@ -236,12 +236,12 @@ describe('DealerListingsPage - row actions', () => {
 
     const user = userEvent.setup()
     const sort = await screen.findByLabelText('Sort by')
-    expect(getListings).toHaveBeenLastCalledWith('confidence_asc', expect.anything())
+    expect(getListings).toHaveBeenLastCalledWith('confidence_asc', expect.anything(), undefined)
 
     await user.selectOptions(sort, 'createdAt')
 
     await waitFor(() =>
-      expect(getListings).toHaveBeenLastCalledWith(undefined, expect.anything()),
+      expect(getListings).toHaveBeenLastCalledWith(undefined, expect.anything(), undefined),
     )
   })
 

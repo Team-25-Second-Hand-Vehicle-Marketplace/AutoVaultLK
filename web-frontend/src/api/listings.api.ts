@@ -24,9 +24,13 @@ interface ListingEnvelope {
 export async function getMyListings(
   sort?: ListingSortOption,
   signal?: AbortSignal,
+  expiresWithinDays?: number,
 ): Promise<DealerListing[]> {
+  const params: Record<string, string | number> = {}
+  if (sort) params.sort = sort
+  if (expiresWithinDays !== undefined) params.expiresWithinDays = expiresWithinDays
   const { data } = await apiClient.get<ListingsEnvelope>('/marketplace/listings/mine', {
-    params: sort ? { sort } : undefined,
+    params: Object.keys(params).length > 0 ? params : undefined,
     signal,
   })
   return data.data
@@ -158,10 +162,32 @@ export async function approveSelectedListings(
 }
 
 /**
- * DELETE /marketplace/listings/:id - permanently removes the listing.
- * Distinct from `deactivateListing`, which only hides it: the backend 409s
- * unless the listing is DRAFT, PENDING_REVIEW or REJECTED - a LIVE, SOLD or
- * ARCHIVED listing can only be archived, never deleted.
+ * POST /marketplace/listings/:id/renew - extends a LIVE listing by 90 days from
+ * its expiry day, or relists an ARCHIVED one with a fresh term.
+ */
+export async function renewListing(id: string, signal?: AbortSignal): Promise<void> {
+  await apiClient.post(`/marketplace/listings/${id}/renew`, undefined, { signal })
+}
+
+/**
+ * POST /marketplace/listings/renew - renews the listed ids, the ones expiring
+ * within `expiringWithinDays`, or every LIVE listing when neither is given.
+ */
+export async function renewListings(
+  body: { ids?: string[]; expiringWithinDays?: number },
+  signal?: AbortSignal,
+): Promise<{ renewed: number }> {
+  const { data } = await apiClient.post<{ data: { renewed: number } }>(
+    '/marketplace/listings/renew',
+    body,
+    { signal },
+  )
+  return data.data
+}
+
+/**
+ * DELETE /marketplace/listings/:id - permanently removes the listing, in any
+ * status. The backend keeps a 30-day snapshot for dispute review.
  */
 export async function deleteListing(id: string, signal?: AbortSignal): Promise<void> {
   await apiClient.delete(`/marketplace/listings/${id}`, { signal })

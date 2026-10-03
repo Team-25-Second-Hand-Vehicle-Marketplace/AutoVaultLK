@@ -7,7 +7,6 @@ export const ALL_LISTING_STATUSES = [
   'DRAFT',
   'PENDING_REVIEW',
   'LIVE',
-  'SOLD',
   'ARCHIVED',
   'REJECTED',
 ] as const
@@ -64,6 +63,8 @@ export interface DealerListingImage {
 export interface DealerListing {
   id: string
   status: ListingStatus
+  publishedAt?: string | null
+  expiresAt?: string | null
   make: string
   model: string
   manufactureYear: number
