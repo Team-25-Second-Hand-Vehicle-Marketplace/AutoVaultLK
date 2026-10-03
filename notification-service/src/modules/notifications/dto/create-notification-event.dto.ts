@@ -6,6 +6,8 @@ export const INTAKE_NOTIFICATION_TYPES = [
   'UPLOAD_FAILED',
   'DEALER_VERIFIED',
   'DEALER_REJECTED',
+  'LISTING_EXPIRING_BATCH',
+  'LISTING_EXPIRING',
 ] as const;
 
 export type IntakeNotificationType = (typeof INTAKE_NOTIFICATION_TYPES)[number];

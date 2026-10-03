@@ -45,6 +45,30 @@ export class EmailTemplateService {
             '- AutoVault LK',
           ].join('\n'),
         };
+      case 'LISTING_EXPIRING_BATCH':
+        return {
+          subject: `${String(payload.count ?? 'Some')} of your AutoVault LK listings expire soon`,
+          message: [
+            `Hi ${name},`,
+            '',
+            `${String(payload.count ?? 'Some')} listing(s) from your upload will expire on ${String(payload.expiresOn ?? 'soon')}.`,
+            'Renew them from your dealer dashboard to keep them visible. Renew all renews every listing in the batch at once.',
+            '',
+            '- AutoVault LK',
+          ].join('\n'),
+        };
+      case 'LISTING_EXPIRING':
+        return {
+          subject: 'Your AutoVault LK listing expires soon',
+          message: [
+            `Hi ${name},`,
+            '',
+            `${String(payload.listingTitle ?? 'Your vehicle listing')} will expire on ${String(payload.expiresOn ?? 'soon')}.`,
+            'Renew it from your dealer dashboard to keep it visible, or delete it if the vehicle has been sold.',
+            '',
+            '- AutoVault LK',
+          ].join('\n'),
+        };
       case 'DEALER_VERIFIED':
         return {
           subject: 'Your AutoVault LK dealer account is verified',

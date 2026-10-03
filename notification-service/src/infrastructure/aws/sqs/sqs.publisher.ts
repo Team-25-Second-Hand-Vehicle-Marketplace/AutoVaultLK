@@ -16,7 +16,9 @@ export type NotificationEvent = {
     | 'UPLOAD_COMPLETED'
     | 'UPLOAD_FAILED'
     | 'DEALER_VERIFIED'
-    | 'DEALER_REJECTED';
+    | 'DEALER_REJECTED'
+    | 'LISTING_EXPIRING_BATCH'
+    | 'LISTING_EXPIRING';
 
   userId: string;
 

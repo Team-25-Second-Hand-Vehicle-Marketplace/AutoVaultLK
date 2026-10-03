@@ -18,6 +18,8 @@ const supportedTypes = [
   'UPLOAD_FAILED',
   'DEALER_VERIFIED',
   'DEALER_REJECTED',
+  'LISTING_EXPIRING_BATCH',
+  'LISTING_EXPIRING',
 ] as const;
 
 @Injectable()
