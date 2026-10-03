@@ -109,7 +109,13 @@ describe('LocalObjectStore', () => {
       const target = await store.getUploadTarget('raw/job-1/vehicles.csv', 'text/csv', 900);
 
       expect(target.url).toBe('/ingest/local-object/raw%2Fjob-1%2Fvehicles.csv');
-      expect(target.headers).toEqual({ 'Content-Type': 'text/csv' });
+      expect(target.headers).toEqual({ 'Content-Type': 'application/octet-stream' });
+    });
+
+    it('never asks the browser to send application/json, which Nest would pre-parse and drain', async () => {
+      const target = await store.getUploadTarget('raw/job-1/stock.json', 'application/json', 900);
+
+      expect(target.headers?.['Content-Type']).not.toMatch(/json/);
     });
   });
 });

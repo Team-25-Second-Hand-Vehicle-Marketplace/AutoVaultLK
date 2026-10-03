@@ -86,9 +86,18 @@ export class LocalObjectStore implements ObjectStore {
     // shared signature. Nothing to await either.
     void expirySeconds;
 
+    // The requested content type is deliberately not echoed back. Nest's body
+    // parser consumes any `application/json` request before the controller
+    // runs, so a JSON inventory PUT with its real type would reach
+    // putLocalObject as an already-drained stream and be stored as an empty
+    // file. The local store never serves this type back (it does not keep
+    // one), so an opaque type that no parser touches loses nothing. S3's
+    // presigned PUT signs the real type, and is unaffected.
+    void contentType;
+
     return Promise.resolve({
       url: `/ingest/local-object/${encodeURIComponent(key)}`,
-      headers: { 'Content-Type': contentType },
+      headers: { 'Content-Type': 'application/octet-stream' },
     });
   }
 
