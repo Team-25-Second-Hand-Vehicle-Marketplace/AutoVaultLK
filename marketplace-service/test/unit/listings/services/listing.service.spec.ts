@@ -260,6 +260,7 @@ describe('ListingService', () => {
       expect(listingRepository.findByDealer).toHaveBeenCalledWith(
         DEALER.id,
         undefined,
+        undefined,
       );
       expect(result.data).toHaveLength(3);
       expect(result.data.map((v) => v.status)).toEqual([
@@ -277,6 +278,7 @@ describe('ListingService', () => {
       expect(listingRepository.findByDealer).toHaveBeenCalledWith(
         DEALER.id,
         'confidence_asc',
+        undefined,
       );
     });
 

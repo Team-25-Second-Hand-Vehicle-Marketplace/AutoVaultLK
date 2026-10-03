@@ -54,7 +54,7 @@ export class ListingController {
     @CurrentUser() actor: AuthenticatedUser,
     @Query() query: MyListingsQueryDto,
   ) {
-    return this.listingService.getMyListings(actor, query.sort);
+    return this.listingService.getMyListings(actor, query.sort, query.expiresWithinDays);
   }
 
   /**

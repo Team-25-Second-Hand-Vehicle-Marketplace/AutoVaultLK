@@ -1,4 +1,6 @@
-import { IsIn, IsOptional } from 'class-validator';
+import { IsIn, IsInt, IsOptional, Max, Min } from 'class-validator';
+
+import { LISTING_TERM_DAYS } from '../listing-expiry';
 
 /**
  * FR-42.1: the dealer's review interface must present PENDING_REVIEW rows in
@@ -18,4 +20,11 @@ export class MyListingsQueryDto {
   @IsOptional()
   @IsIn(LISTING_SORT_OPTIONS)
   sort?: ListingSortOption;
+
+  /** Only LIVE listings expiring within this many days, soonest first. */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(LISTING_TERM_DAYS)
+  expiresWithinDays?: number;
 }

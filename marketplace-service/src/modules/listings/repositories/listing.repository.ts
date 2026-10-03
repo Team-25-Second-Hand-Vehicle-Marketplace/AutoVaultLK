@@ -128,7 +128,21 @@ export class ListingRepository {
    * The default stays `createdAt DESC` for every other case, matching the
    * behaviour before this sort option existed.
    */
-  findByDealer(dealerId: string, sort?: ListingSortOption) {
+  findByDealer(dealerId: string, sort?: ListingSortOption, expiresWithinDays?: number) {
+    if (expiresWithinDays !== undefined) {
+      return this.vehicleRepo
+        .createQueryBuilder('vehicle')
+        .leftJoinAndSelect('vehicle.images', 'images')
+        .where('vehicle.dealer_id = :dealerId', { dealerId })
+        .andWhere("vehicle.status = 'LIVE'")
+        .andWhere('vehicle.expires_at <= now() + make_interval(days => :days)', {
+          days: expiresWithinDays,
+        })
+        .orderBy('vehicle.expires_at', 'ASC')
+        .addOrderBy('images.display_order', 'ASC')
+        .getMany();
+    }
+
     if (sort === 'confidence_asc') {
       return this.vehicleRepo
         .createQueryBuilder('vehicle')

@@ -43,7 +43,7 @@ describe('ListingController', () => {
     listingService.getMyListings.mockReturnValue('mine');
 
     expect(controller.getMyListings(actor, {})).toBe('mine');
-    expect(listingService.getMyListings).toHaveBeenCalledWith(actor, undefined);
+    expect(listingService.getMyListings).toHaveBeenCalledWith(actor, undefined, undefined);
   });
 
   it('GET mine passes the sort query through (FR-42.1)', () => {
@@ -55,6 +55,7 @@ describe('ListingController', () => {
     expect(listingService.getMyListings).toHaveBeenCalledWith(
       actor,
       'confidence_asc',
+      undefined,
     );
   });
 

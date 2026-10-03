@@ -82,8 +82,12 @@ export class ListingService {
    * `sort: 'confidence_asc'` (FR-42.1) surfaces the PENDING_REVIEW rows most
    * likely to need a correction first.
    */
-  async getMyListings(actor: AuthenticatedUser, sort?: ListingSortOption) {
-    const listings = await this.listingRepository.findByDealer(actor.id, sort);
+  async getMyListings(
+    actor: AuthenticatedUser,
+    sort?: ListingSortOption,
+    expiresWithinDays?: number,
+  ) {
+    const listings = await this.listingRepository.findByDealer(actor.id, sort, expiresWithinDays);
 
     return {
       message: 'Vehicle listings retrieved successfully',
