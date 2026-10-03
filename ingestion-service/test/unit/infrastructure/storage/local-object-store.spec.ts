@@ -103,4 +103,13 @@ describe('LocalObjectStore', () => {
     expect(await store.list('raw')).toEqual(['raw/job-1/a.csv']);
     await rm(outside, { recursive: true, force: true });
   });
+
+  describe('getUploadTarget', () => {
+    it('points at this process\'s own local-object endpoint, URL-encoded', async () => {
+      const target = await store.getUploadTarget('raw/job-1/vehicles.csv', 'text/csv', 900);
+
+      expect(target.url).toBe('/ingest/local-object/raw%2Fjob-1%2Fvehicles.csv');
+      expect(target.headers).toEqual({ 'Content-Type': 'text/csv' });
+    });
+  });
 });

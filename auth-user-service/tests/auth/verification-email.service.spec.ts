@@ -86,6 +86,21 @@ describe('VerificationEmailService', () => {
       );
     });
 
+    it('sends a password reset link to the reset page via SMTP', async () => {
+      const service = makeService(smtp);
+
+      await expect(service.sendPasswordReset('a@test.com', 'tok')).resolves.toBe(true);
+
+      expect(mockSendMail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'a@test.com',
+          subject: 'Reset your AutoVault LK password',
+          text: expect.stringContaining('https://app.example.com/reset-password?token=tok'),
+          html: expect.stringContaining('https://app.example.com/reset-password?token=tok'),
+        }),
+      );
+    });
+
     it('uses SMTP_FROM as the from address when provided', async () => {
       const service = makeService({ ...smtp, SMTP_FROM: 'AutoVault <no-reply@rashmip.me>' });
 

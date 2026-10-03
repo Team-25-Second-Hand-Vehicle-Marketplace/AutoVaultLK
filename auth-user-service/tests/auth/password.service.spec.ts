@@ -39,6 +39,9 @@ describe('PasswordService', () => {
   const configService = {
     get: jest.fn((key: string, defaultValue?: unknown) => defaultValue),
   };
+  const verificationEmail = {
+    sendPasswordReset: jest.fn().mockResolvedValue(true),
+  };
 
   const service = new PasswordService(
     configService as unknown as ConfigService,
@@ -47,6 +50,7 @@ describe('PasswordService', () => {
     passwordHistoryRepository as never,
     refreshTokensRepository as never,
     dataSource as unknown as DataSource,
+    verificationEmail as never,
   );
 
   const user = {
@@ -75,6 +79,24 @@ describe('PasswordService', () => {
         tokenHash: hashToken(result.rawToken),
       }),
     );
+  });
+
+  it('emails the reset link to a known user', async () => {
+    passwordResetTokensRepository.revokeUnusedForUser.mockResolvedValue(undefined);
+    passwordResetTokensRepository.create.mockResolvedValue({ id: 'token-id' });
+
+    await service.requestResetResponse(user);
+
+    expect(verificationEmail.sendPasswordReset).toHaveBeenCalledWith(
+      'user@test.com',
+      expect.any(String),
+    );
+  });
+
+  it('sends no reset email for an unknown address', async () => {
+    await service.requestResetResponse(null);
+
+    expect(verificationEmail.sendPasswordReset).not.toHaveBeenCalled();
   });
 
   it('returns the same forgot-password response when the email is unknown', async () => {

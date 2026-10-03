@@ -1,4 +1,7 @@
-import { mergeFilters, whitelistGroqOutput } from '../../../../src/modules/search/groq/groq-whitelist';
+import {
+  mergeFilters,
+  whitelistGroqOutput,
+} from '../../../../src/modules/search/groq/groq-whitelist';
 import { FIXTURE_VOCABULARY } from '../../../../src/modules/search/parser/fixture-vocabulary';
 import { parseGroqJson } from '../../../../src/modules/search/groq/groq-client';
 
@@ -8,7 +11,10 @@ describe('whitelistGroqOutput', () => {
   it('keeps dictionary makes and drops hallucinations (FR-21.3)', () => {
     const result = whitelistGroqOutput(
       {
-        filters: { make: ['Honda', 'Cybertruck'], fuelType: ['PETROL', 'BANANA'] },
+        filters: {
+          make: ['Honda', 'Cybertruck'],
+          fuelType: ['PETROL', 'BANANA'],
+        },
         consumedTokens: ['honda'],
       },
       FIXTURE_VOCABULARY,
@@ -17,7 +23,9 @@ describe('whitelistGroqOutput', () => {
 
     expect(result.filters.make).toEqual(['Honda']);
     expect(result.filters.fuelType).toEqual(['PETROL']);
-    expect(result.dropped).toEqual(expect.arrayContaining(['make:Cybertruck', 'fuelType:BANANA']));
+    expect(result.dropped).toEqual(
+      expect.arrayContaining(['make:Cybertruck', 'fuelType:BANANA']),
+    );
     expect(result.consumedTokens).toEqual(['honda']);
   });
 
@@ -61,12 +69,61 @@ describe('whitelistGroqOutput', () => {
     expect(result.dropped).toContain('consumedTokens:injected');
   });
 
+  // The actual bug: "sport" describes a listing's feel, not a brand, but
+  // trigram similarity alone can't tell "sport" from a genuine misspelling
+  // of a real model - Groq has no equivalent to the deterministic parser's
+  // own denylist for this, so it must be enforced here instead.
+  it('refuses to let a vehicle-character word count as consumed, even if Groq claims it', () => {
+    const result = whitelistGroqOutput(
+      { filters: {}, consumedTokens: ['sporty'] },
+      FIXTURE_VOCABULARY,
+      unresolved,
+    );
+    expect(result.consumedTokens).toEqual([]);
+    expect(result.dropped).toContain('consumedTokens:sporty:character-word');
+  });
+
+  it('drops a model that cannot be the rules-resolved vehicleType', () => {
+    // Vezel is SUV-only in FIXTURE_VOCABULARY; a CAR search proposing it is a
+    // contradiction, not a correction - keeping it would AND two filters
+    // together that can never both be true for any row.
+    const result = whitelistGroqOutput(
+      { filters: { make: ['Honda'], model: ['Vezel'] }, consumedTokens: [] },
+      FIXTURE_VOCABULARY,
+      unresolved,
+      ['CAR'],
+    );
+    expect(result.filters.model).toBeUndefined();
+    expect(result.dropped).toContain('model:Vezel:vehicleType-mismatch');
+  });
+
+  it('keeps a model consistent with the resolved vehicleType', () => {
+    const result = whitelistGroqOutput(
+      { filters: { make: ['Honda'], model: ['Civic'] }, consumedTokens: [] },
+      FIXTURE_VOCABULARY,
+      unresolved,
+      ['CAR'],
+    );
+    expect(result.filters.model).toEqual(['Civic']);
+  });
+
+  it('does not apply the vehicleType check when rules resolved nothing', () => {
+    const result = whitelistGroqOutput(
+      { filters: { make: ['Honda'], model: ['Vezel'] }, consumedTokens: [] },
+      FIXTURE_VOCABULARY,
+      unresolved,
+    );
+    expect(result.filters.model).toEqual(['Vezel']);
+  });
+
   it('treats a non-object payload as empty rather than throwing', () => {
-    expect(whitelistGroqOutput('nope', FIXTURE_VOCABULARY, unresolved)).toEqual({
-      filters: {},
-      dropped: ['payload'],
-      consumedTokens: [],
-    });
+    expect(whitelistGroqOutput('nope', FIXTURE_VOCABULARY, unresolved)).toEqual(
+      {
+        filters: {},
+        dropped: ['payload'],
+        consumedTokens: [],
+      },
+    );
   });
 });
 
@@ -84,7 +141,9 @@ describe('mergeFilters', () => {
 
 describe('parseGroqJson', () => {
   it('extracts JSON from a fenced completion', () => {
-    expect(parseGroqJson('```json\n{"filters":{"make":["Honda"]}}\n```')).toEqual({
+    expect(
+      parseGroqJson('```json\n{"filters":{"make":["Honda"]}}\n```'),
+    ).toEqual({
       filters: { make: ['Honda'] },
     });
   });

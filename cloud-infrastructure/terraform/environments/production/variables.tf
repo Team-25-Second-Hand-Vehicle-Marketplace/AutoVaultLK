@@ -53,12 +53,17 @@ variable "image_tag" {
   default = "latest"
 }
 
-# Flip to false only once auth-user-service's SES integration (plan item 2)
-# is actually implemented and deployed - until then this is the only way a
-# registered user can complete email verification at all.
+# Returning tokens in API responses lets anyone take over an account knowing
+# only its email address. Keep both false in production; email delivery is
+# the only path. Set true only for a throwaway, non-public environment.
 variable "auth_return_verification_token" {
   type    = bool
-  default = true
+  default = false
+}
+
+variable "auth_return_password_reset_token" {
+  type    = bool
+  default = false
 }
 
 variable "github_org" {
