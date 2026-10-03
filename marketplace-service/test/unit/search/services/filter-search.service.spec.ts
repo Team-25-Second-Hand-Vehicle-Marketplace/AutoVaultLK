@@ -153,3 +153,132 @@ describe('FilterSearchService - relaxation ladder', () => {
     expect(result.total).toBe(5);
   });
 });
+
+/**
+ * Natural-language relaxation. Unlike the dropdown ladder, the descriptive
+ * word is dropped first, and the semantic rank is part of what gets relaxed.
+ */
+describe('FilterSearchService - natural-language relaxation', () => {
+  const rankWithWord = {
+    queryEmbedding: [0.1, 0.2],
+    embeddingWhere: false,
+    maxEmbeddingDistance: 0.7,
+  };
+
+  function makeNaturalService(matches: (dto: FilterSearchDto, rank?: unknown) => boolean) {
+    const repository = {
+      count: jest.fn(async (built: unknown, _verified: unknown, rank?: unknown) => {
+        const dto = (built as { __dto?: FilterSearchDto }).__dto;
+        return dto && matches(dto, rank) ? 5 : 0;
+      }),
+      search: jest.fn(async () => []),
+      facets: jest.fn(async () => ({})),
+    };
+    return new FilterSearchService(
+      repository as unknown as VehicleSearchRepository,
+      { query: jest.fn(async () => []) } as unknown as DataSource,
+    );
+  }
+
+  beforeAll(() => {
+    const builderModule = builderModuleRef as {
+      buildFilterQuery: (dto: FilterSearchDto) => object;
+    };
+    const original = builderModule.buildFilterQuery;
+    builderModule.buildFilterQuery = (dto: FilterSearchDto) =>
+      Object.assign(original(dto), { __dto: dto });
+  });
+
+  it('"luxury car under 10 million": drops the descriptive word and keeps the 10M ceiling', async () => {
+    const service = makeNaturalService((dto, rank) => !rank && dto.maxPrice === 10_000_000);
+
+    const result = await service.search(
+      { vehicleType: ['CAR'], maxPrice: 10_000_000 } as FilterSearchDto,
+      undefined,
+      rankWithWord,
+      { semanticText: 'luxury' },
+    );
+
+    expect(result.total).toBe(5);
+    expect(result.relaxation!.droppedFilters).toEqual(['semanticText']);
+    expect(result.relaxation!.message).toContain('"luxury"');
+    expect(result.relaxation!.priceCeilingExceeded).toBe(false);
+  });
+
+  it('"sporty car under 10 million": same ladder, the word goes before anything else', async () => {
+    const service = makeNaturalService((dto, rank) => !rank && dto.maxPrice === 10_000_000);
+
+    const result = await service.search(
+      { vehicleType: ['CAR'], maxPrice: 10_000_000 } as FilterSearchDto,
+      undefined,
+      rankWithWord,
+      { semanticText: 'sporty' },
+    );
+
+    expect(result.relaxation!.droppedFilters).toEqual(['semanticText']);
+  });
+
+  it('"toyota sports car under 3 million": keeps the budget and drops the make when nothing else matches', async () => {
+    // Nothing Toyota-branded under 3M; without the make, cars under 3M exist.
+    const service = makeNaturalService(
+      (dto, rank) => !rank && dto.maxPrice === 3_000_000 && !dto.make?.length,
+    );
+
+    const result = await service.search(
+      { make: ['Toyota'], vehicleType: ['CAR'], maxPrice: 3_000_000 } as FilterSearchDto,
+      undefined,
+      rankWithWord,
+      { semanticText: 'sports' },
+    );
+
+    expect(result.relaxation!.droppedFilters).toEqual(['semanticText', 'make']);
+    expect(result.relaxation!.priceCeilingExceeded).toBe(false);
+  });
+
+  it('"luxury under 1 million": raises the price ceiling only after the other filters', async () => {
+    // Nothing under 1M at all; only once the ceiling reaches 1.2M does anything match.
+    const service = makeNaturalService(
+      (dto, rank) => !rank && dto.maxPrice !== undefined && dto.maxPrice >= 1_200_000,
+    );
+
+    const result = await service.search(
+      { vehicleType: ['CAR'], maxPrice: 1_000_000 } as FilterSearchDto,
+      undefined,
+      rankWithWord,
+      { semanticText: 'luxury' },
+    );
+
+    expect(result.relaxation!.droppedFilters).toEqual([
+      'semanticText',
+      'vehicleType',
+      'maxPrice',
+    ]);
+    expect(result.relaxation!.priceCeilingExceeded).toBe(true);
+  });
+
+  it('a purely descriptive query stays empty instead of returning the whole catalogue', async () => {
+    // With the semantic rank applied nothing matches; without it, everything would.
+    const service = makeNaturalService((_dto, rank) => !rank);
+
+    const result = await service.search({} as FilterSearchDto, undefined, rankWithWord, {
+      semanticText: 'luxury',
+    });
+
+    expect(result.total).toBe(0);
+    expect(result.relaxation).toBeUndefined();
+  });
+
+  it('a query that already has results is not relaxed', async () => {
+    const service = makeNaturalService(() => true);
+
+    const result = await service.search(
+      { vehicleType: ['CAR'], maxPrice: 10_000_000 } as FilterSearchDto,
+      undefined,
+      rankWithWord,
+      { semanticText: 'luxury' },
+    );
+
+    expect(result.relaxation).toBeUndefined();
+    expect(result.total).toBe(5);
+  });
+});

@@ -53,6 +53,7 @@ export class NlSearchService {
         usedLlm,
       },
       rank,
+      { semanticText: parsed.semanticText },
     );
 
     return {
