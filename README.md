@@ -95,10 +95,21 @@ SES or SMTP for email.
 | Install and build everything | `.\scripts\build-all.ps1` | `scripts/build-all.sh` |
 | Build without reinstalling | `.\scripts\build-all.ps1 -SkipInstall` | `scripts/build-all.sh --skip-install` |
 | Install / build / test / typecheck / lint | `make install` / `make build` / `make test` / `make typecheck` / `make lint` | same |
-| Unit tests for one service | `npm run test` inside the service | same |
-| End-to-end tests | `npm run test:e2e` inside the service | same |
+| Run all unit tests | `.\scripts\test-all.ps1` | `scripts/test-all.sh` |
+| Run every suite (needs Postgres, see below) | `.\scripts\test-all.ps1 -Integration -Contract -E2E -Security` | `scripts/test-all.sh --integration --contract --e2e --security` |
+| Unit tests for one service | `npm run test:ci` inside the service | same |
+| Integration / contract / API e2e tests for one service | `npm run test:integration` / `test:contract` / `test:e2e` inside the service | same |
+| Browser e2e tests (Playwright) | `cd e2e; npm ci; npx playwright install; npm test` (full stack running) | same |
+| Performance tests (k6) | `k6 run performance\scripts\<script>.js` | `k6 run performance/scripts/<script>.js` |
 
-The e2e suites need the local Postgres container running.
+`test-all` runs every selected suite even if one fails, prints a PASS / FAIL /
+SKIP table with test counts, and exits with code 1 if anything failed. By
+default it runs only the unit tests of the five backend services,
+`api-gateway` and `web-frontend`.
+
+The integration, contract, API e2e and security suites need the local Postgres
+container, migrated and seeded (the database steps in Quick start). The
+Playwright suite and the k6 scripts need the full stack running.
 
 ## Repository layout
 
