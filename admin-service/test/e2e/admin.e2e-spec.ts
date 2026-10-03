@@ -4,6 +4,7 @@ import request from 'supertest';
 import { AdminController } from '../../src/modules/admin/controllers/admin.controller';
 import { AdminReadsService } from '../../src/modules/admin/services/admin-reads.service';
 import { AdminMutationsService } from '../../src/modules/admin/services/admin-mutations.service';
+import { DictionaryCandidatesService } from '../../src/modules/admin/services/dictionary-candidates.service';
 import { JwtAuthGuard } from '../../src/modules/auth/guards/jwt-auth.guard';
 import type { AuthenticatedUser } from '../../src/modules/auth/types/authenticated-user.type';
 
@@ -75,6 +76,7 @@ describe('AdminController (e2e)', () => {
       providers: [
         { provide: AdminReadsService, useValue: reads },
         { provide: AdminMutationsService, useValue: mutations },
+        { provide: DictionaryCandidatesService, useValue: {} },
       ],
     })
       .overrideGuard(JwtAuthGuard)
