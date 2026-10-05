@@ -16,6 +16,9 @@ export interface AuthTokenResponse {
   // deployed environment) - the refresh token travels only as an httpOnly
   // cookie the frontend never reads directly.
   refreshToken?: string;
+  // Echoed back on login, registration and refresh so the SPA can send it as
+  // the x-csrf-token header; it cannot read the API's csrf_token cookie itself.
+  csrfToken?: string;
   user: AuthUser;
 }
 
