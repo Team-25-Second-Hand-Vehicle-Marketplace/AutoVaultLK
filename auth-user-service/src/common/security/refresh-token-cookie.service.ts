@@ -27,24 +27,28 @@ export class RefreshTokenCookieService {
   }
 
   attachCookies(response: Response, payload: TokenResponse) {
+    let body = payload;
+
     if (
       shouldUseRefreshCookies(this.configService) &&
       typeof payload.refreshToken === 'string'
     ) {
       this.setRefreshCookie(response, payload.refreshToken);
-      this.setCsrfCookie(response);
+      // Also returned in the body: the SPA runs on a different site from this
+      // API, so it cannot read this cookie and must echo the value from here.
+      body = { ...payload, csrfToken: this.setCsrfCookie(response) };
     }
 
     if (
       shouldUseRefreshCookies(this.configService) &&
       !shouldIncludeRefreshTokenInBody(this.configService) &&
-      'refreshToken' in payload
+      'refreshToken' in body
     ) {
-      const { refreshToken: _refreshToken, ...safePayload } = payload;
+      const { refreshToken: _refreshToken, ...safePayload } = body;
       return safePayload;
     }
 
-    return payload;
+    return body;
   }
 
   clearAuthCookies(response: Response) {
@@ -64,12 +68,14 @@ export class RefreshTokenCookieService {
     });
   }
 
-  private setCsrfCookie(response: Response) {
-    response.cookie(CSRF_TOKEN_COOKIE_NAME, randomBytes(32).toString('base64url'), {
+  private setCsrfCookie(response: Response): string {
+    const csrfToken = randomBytes(32).toString('base64url');
+    response.cookie(CSRF_TOKEN_COOKIE_NAME, csrfToken, {
       ...this.getBaseCookieOptions(),
       httpOnly: false,
       maxAge: this.getRefreshCookieMaxAgeMs(),
     });
+    return csrfToken;
   }
 
   private getBaseCookieOptions() {

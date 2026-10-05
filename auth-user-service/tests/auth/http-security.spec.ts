@@ -46,10 +46,15 @@ describe('HTTP security helpers', () => {
       user: { id: 'user-id' },
     });
 
+    const csrfCookieValue = response.cookie.mock.calls.find(
+      ([name]) => name === CSRF_TOKEN_COOKIE_NAME,
+    )?.[1];
     expect(payload).toEqual({
       accessToken: 'access-token',
       user: { id: 'user-id' },
+      csrfToken: csrfCookieValue,
     });
+    expect(csrfCookieValue).toEqual(expect.any(String));
     expect(response.cookie).toHaveBeenCalledWith(
       REFRESH_TOKEN_COOKIE_NAME,
       'refresh-token-value-1234567890',
