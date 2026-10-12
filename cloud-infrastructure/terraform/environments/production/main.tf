@@ -144,17 +144,17 @@ module "iam" {
 module "frontend" {
   source = "../../modules/s3"
 
-  project_name          = var.project_name
-  environment           = var.environment
-  bucket_name_override  = "${var.project_name}-frontend-${var.environment}-${data.aws_caller_identity.current.account_id}"
+  project_name         = var.project_name
+  environment          = var.environment
+  bucket_name_override = "${var.project_name}-frontend-${var.environment}-${data.aws_caller_identity.current.account_id}"
 }
 
 module "images" {
   source = "../../modules/s3-images"
 
-  project_name          = var.project_name
-  environment           = var.environment
-  bucket_name_override  = "${var.project_name}-images-${var.environment}-${data.aws_caller_identity.current.account_id}"
+  project_name         = var.project_name
+  environment          = var.environment
+  bucket_name_override = "${var.project_name}-images-${var.environment}-${data.aws_caller_identity.current.account_id}"
 
   # marketplace mints presigned GET URLs (see IMAGE_SERVE_MODE=s3 in
   # marketplace-service) - reader access. It also now owns the manual

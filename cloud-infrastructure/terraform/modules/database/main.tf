@@ -131,10 +131,10 @@ resource "aws_db_proxy_default_target_group" "this" {
 }
 
 resource "aws_db_proxy_target" "this" {
-  count                   = var.enable_rds_proxy ? 1 : 0
-  db_proxy_name           = aws_db_proxy.this[0].name
-  target_group_name       = aws_db_proxy_default_target_group.this[0].name
-  db_instance_identifier  = aws_db_instance.this.identifier
+  count                  = var.enable_rds_proxy ? 1 : 0
+  db_proxy_name          = aws_db_proxy.this[0].name
+  target_group_name      = aws_db_proxy_default_target_group.this[0].name
+  db_instance_identifier = aws_db_instance.this.identifier
 }
 
 output "proxy_endpoint" {
