@@ -60,3 +60,17 @@ variable "backup_retention_period" {
   type    = number
   default = 1
 }
+
+# RDS Proxy is not available on an AWS account still on the "Free Plan"
+# (no payment method added) - AWS rejects CreateDBProxy outright with
+# FreeTierRestrictionError, not a quota, a hard feature gate. Set to false
+# to fall back to every service connecting straight to the RDS instance
+# instead. That reintroduces the exact problem the proxy exists to solve
+# (each Lambda container holds its own unpooled connection, see the
+# module's own header comment and the production README) - only do this
+# as a stopgap until the account is upgraded, not as the real design.
+variable "enable_rds_proxy" {
+  type        = bool
+  description = "False connects every service directly to the RDS instance instead of through RDS Proxy - only meant for an AWS account that can't create a DB Proxy yet (Free Plan restriction)."
+  default     = true
+}

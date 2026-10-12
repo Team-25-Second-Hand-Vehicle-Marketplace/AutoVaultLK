@@ -59,6 +59,7 @@ resource "aws_db_instance" "this" {
 }
 
 data "aws_iam_policy_document" "proxy_assume" {
+  count = var.enable_rds_proxy ? 1 : 0
   statement {
     actions = ["sts:AssumeRole"]
     principals {
@@ -69,12 +70,14 @@ data "aws_iam_policy_document" "proxy_assume" {
 }
 
 resource "aws_iam_role" "proxy" {
+  count              = var.enable_rds_proxy ? 1 : 0
   name               = "${var.project_name}-db-proxy-${var.environment}"
-  assume_role_policy = data.aws_iam_policy_document.proxy_assume.json
+  assume_role_policy = data.aws_iam_policy_document.proxy_assume[0].json
   tags               = local.tags
 }
 
 data "aws_iam_policy_document" "proxy_secret_access" {
+  count = var.enable_rds_proxy ? 1 : 0
   statement {
     actions = ["secretsmanager:GetSecretValue"]
     resources = concat(
@@ -85,15 +88,17 @@ data "aws_iam_policy_document" "proxy_secret_access" {
 }
 
 resource "aws_iam_role_policy" "proxy_secret_access" {
+  count  = var.enable_rds_proxy ? 1 : 0
   name   = "read-master-secret"
-  role   = aws_iam_role.proxy.id
-  policy = data.aws_iam_policy_document.proxy_secret_access.json
+  role   = aws_iam_role.proxy[0].id
+  policy = data.aws_iam_policy_document.proxy_secret_access[0].json
 }
 
 resource "aws_db_proxy" "this" {
+  count                  = var.enable_rds_proxy ? 1 : 0
   name                   = "${var.project_name}-proxy-${var.environment}"
   engine_family          = "POSTGRESQL"
-  role_arn               = aws_iam_role.proxy.arn
+  role_arn               = aws_iam_role.proxy[0].arn
   vpc_subnet_ids         = var.private_subnet_ids
   vpc_security_group_ids = [var.security_group_id]
   require_tls            = false
@@ -121,18 +126,20 @@ resource "aws_db_proxy" "this" {
 }
 
 resource "aws_db_proxy_default_target_group" "this" {
-  db_proxy_name = aws_db_proxy.this.name
+  count         = var.enable_rds_proxy ? 1 : 0
+  db_proxy_name = aws_db_proxy.this[0].name
 }
 
 resource "aws_db_proxy_target" "this" {
-  db_proxy_name          = aws_db_proxy.this.name
-  target_group_name      = aws_db_proxy_default_target_group.this.name
-  db_instance_identifier = aws_db_instance.this.identifier
+  count                   = var.enable_rds_proxy ? 1 : 0
+  db_proxy_name           = aws_db_proxy.this[0].name
+  target_group_name       = aws_db_proxy_default_target_group.this[0].name
+  db_instance_identifier  = aws_db_instance.this.identifier
 }
 
 output "proxy_endpoint" {
-  description = "Use this, not the instance endpoint, for application DATABASE_URL"
-  value       = aws_db_proxy.this.endpoint
+  description = "RDS Proxy endpoint when enabled, otherwise the instance endpoint directly - callers use this output either way and don't need to know which."
+  value       = var.enable_rds_proxy ? aws_db_proxy.this[0].endpoint : aws_db_instance.this.address
 }
 
 output "instance_endpoint" {
@@ -158,6 +165,6 @@ output "instance_identifier" {
 }
 
 output "proxy_name" {
-  description = "For CloudWatch alarm dimensions (AWS/RDS ProxyName)"
-  value       = aws_db_proxy.this.name
+  description = "For CloudWatch alarm dimensions (AWS/RDS ProxyName). Empty when the proxy is disabled - the dashboard widget that uses this just shows no data, nothing fails."
+  value       = var.enable_rds_proxy ? aws_db_proxy.this[0].name : ""
 }

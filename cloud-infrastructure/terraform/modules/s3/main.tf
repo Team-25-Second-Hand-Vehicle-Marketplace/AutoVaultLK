@@ -26,7 +26,7 @@ locals {
 }
 
 resource "aws_s3_bucket" "frontend" {
-  bucket = "${var.project_name}-frontend-${var.environment}"
+  bucket = coalesce(var.bucket_name_override, "${var.project_name}-frontend-${var.environment}")
   tags   = local.tags
 
   # Without this, `terraform destroy` refuses with BucketNotEmpty once the

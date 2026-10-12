@@ -202,53 +202,62 @@ locals {
     }
   ]
 
-  fixed_widgets = [
-    {
-      type   = "metric"
-      width  = 12
-      height = 6
-      properties = {
-        region = data.aws_region.current.name
-        title  = "RDS"
-        view   = "timeSeries"
-        period = 300
-        metrics = [
-          ["AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", var.db_instance_identifier],
-          ["AWS/RDS", "DatabaseConnections", "DBInstanceIdentifier", var.db_instance_identifier, { yAxis = "right" }],
-          ["AWS/RDS", "FreeStorageSpace", "DBInstanceIdentifier", var.db_instance_identifier, { yAxis = "right" }],
-        ]
-      }
-    },
-    {
-      type   = "metric"
-      width  = 12
-      height = 6
-      properties = {
-        region = data.aws_region.current.name
-        title  = "RDS Proxy client connections"
-        view   = "timeSeries"
-        period = 300
-        metrics = [
-          ["AWS/RDS", "DatabaseConnectionsCurrentlyInTransaction", "ProxyName", var.db_proxy_name],
-        ]
-      }
-    },
-    {
-      type   = "metric"
-      width  = 12
-      height = 6
-      properties = {
-        region = data.aws_region.current.name
-        title  = "Ingestion queue"
-        view   = "timeSeries"
-        period = 300
-        metrics = [
-          ["AWS/SQS", "ApproximateNumberOfMessagesVisible", "QueueName", var.sqs_queue_name],
-          ["AWS/SQS", "ApproximateNumberOfMessagesVisible", "QueueName", var.sqs_dlq_name, { label = "DLQ" }],
-        ]
-      }
-    },
-  ]
+  fixed_widgets = concat(
+    [
+      {
+        type   = "metric"
+        width  = 12
+        height = 6
+        properties = {
+          region = data.aws_region.current.name
+          title  = "RDS"
+          view   = "timeSeries"
+          period = 300
+          metrics = [
+            ["AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", var.db_instance_identifier],
+            ["AWS/RDS", "DatabaseConnections", "DBInstanceIdentifier", var.db_instance_identifier, { yAxis = "right" }],
+            ["AWS/RDS", "FreeStorageSpace", "DBInstanceIdentifier", var.db_instance_identifier, { yAxis = "right" }],
+          ]
+        }
+      },
+      {
+        type   = "metric"
+        width  = 12
+        height = 6
+        properties = {
+          region = data.aws_region.current.name
+          title  = "Ingestion queue"
+          view   = "timeSeries"
+          period = 300
+          metrics = [
+            ["AWS/SQS", "ApproximateNumberOfMessagesVisible", "QueueName", var.sqs_queue_name],
+            ["AWS/SQS", "ApproximateNumberOfMessagesVisible", "QueueName", var.sqs_dlq_name, { label = "DLQ" }],
+          ]
+        }
+      },
+    ],
+    # CloudWatch's PutDashboard rejects an empty-string dimension value
+    # outright (a misleading "only String type is allowed" error, not about
+    # JSON types at all) - so when there's no proxy (db_proxy_name == ""),
+    # this widget is left out of the dashboard entirely rather than passed
+    # a value that won't validate.
+    var.db_proxy_name != "" ? [
+      {
+        type   = "metric"
+        width  = 12
+        height = 6
+        properties = {
+          region = data.aws_region.current.name
+          title  = "RDS Proxy client connections"
+          view   = "timeSeries"
+          period = 300
+          metrics = [
+            ["AWS/RDS", "DatabaseConnectionsCurrentlyInTransaction", "ProxyName", var.db_proxy_name],
+          ]
+        }
+      },
+    ] : []
+  )
 }
 
 resource "aws_cloudwatch_dashboard" "this" {

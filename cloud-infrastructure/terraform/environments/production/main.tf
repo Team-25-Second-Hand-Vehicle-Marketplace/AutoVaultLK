@@ -13,7 +13,7 @@ terraform {
   }
 
   backend "s3" {
-    bucket       = "vehicle-marketplace-tfstate-287761904540"
+    bucket       = "vehicle-marketplace-tfstate-741368364109"
     key          = "production/terraform.tfstate"
     region       = "ap-southeast-2"
     encrypt      = true
@@ -24,6 +24,12 @@ terraform {
 provider "aws" {
   region = var.aws_region
 }
+
+# S3 bucket names are globally unique across every AWS account - deploying
+# this same stack to a second account collides on any bucket name that
+# isn't account-specific. The account id suffix guarantees uniqueness
+# without needing a human to pick a name by hand.
+data "aws_caller_identity" "current" {}
 
 # -----------------------------------------------------------------------------
 # ingestion-service: the full design (SAD §6.6) - one Lambda per ETL stage,
@@ -92,6 +98,14 @@ module "database" {
   private_subnet_ids          = module.networking.private_subnet_ids
   security_group_id           = module.networking.database_security_group_id
   db_service_role_secret_arns = module.secrets.db_service_role_arns
+
+  # This account is on AWS's Free Plan (no payment method added yet), which
+  # hard-rejects CreateDBProxy with FreeTierRestrictionError - not a quota,
+  # a flat feature gate. Every service connects straight to the RDS instance
+  # instead until the account is upgraded. Flip back to true (or delete this
+  # line, true is the default) once it is - see modules/database/variables.tf
+  # for what this trades away in the meantime.
+  enable_rds_proxy = false
 }
 
 module "iam" {
@@ -130,15 +144,17 @@ module "iam" {
 module "frontend" {
   source = "../../modules/s3"
 
-  project_name = var.project_name
-  environment  = var.environment
+  project_name          = var.project_name
+  environment           = var.environment
+  bucket_name_override  = "${var.project_name}-frontend-${var.environment}-${data.aws_caller_identity.current.account_id}"
 }
 
 module "images" {
   source = "../../modules/s3-images"
 
-  project_name = var.project_name
-  environment  = var.environment
+  project_name          = var.project_name
+  environment           = var.environment
+  bucket_name_override  = "${var.project_name}-images-${var.environment}-${data.aws_caller_identity.current.account_id}"
 
   # marketplace mints presigned GET URLs (see IMAGE_SERVE_MODE=s3 in
   # marketplace-service) - reader access. It also now owns the manual
@@ -164,7 +180,7 @@ module "verification_documents" {
 
   project_name         = var.project_name
   environment          = var.environment
-  bucket_name_override = "${var.project_name}-verification-docs-${var.environment}"
+  bucket_name_override = "${var.project_name}-verification-docs-${var.environment}-${data.aws_caller_identity.current.account_id}"
 
   reader_role_names = [module.iam.role_names["auth"], module.iam.role_names["admin"]]
   writer_role_names = [module.iam.role_names["auth"]]
