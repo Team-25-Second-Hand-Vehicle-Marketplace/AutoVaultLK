@@ -109,10 +109,9 @@ export async function uploadVerificationDocument(
 
 /**
  * The refresh token itself never reaches this code - it rides along as the
- * httpOnly refresh_token cookie (withCredentials: true below). The CSRF
- * cookie is the one piece of that pair readable from JS, and the server's
- * CsrfGuard requires it echoed back as a header whenever the refresh cookie
- * is present.
+ * httpOnly refresh_token cookie (withCredentials: true below). The server's
+ * CsrfGuard requires the CSRF value, sent back in the body on every token
+ * response, to be echoed as a header whenever the refresh cookie is present.
  */
 export async function refreshSession(): Promise<AuthTokenResponse> {
   const { data } = await axios.post<AuthTokenResponse>(

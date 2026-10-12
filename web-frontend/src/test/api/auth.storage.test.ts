@@ -48,17 +48,25 @@ describe('saveSession / clearSession', () => {
 
 describe('getCsrfToken', () => {
   afterEach(() => {
-    document.cookie = 'csrf_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT'
+    clearSession()
   })
 
-  it('returns null when no CSRF cookie is set', () => {
+  it('returns null when no CSRF token has been saved', () => {
     expect(getCsrfToken()).toBeNull()
   })
 
-  it('reads and decodes the csrf_token cookie', () => {
-    document.cookie = 'csrf_token=abc%2Fdef'
+  it('returns the csrfToken saved with the session', () => {
+    saveSession({ accessToken: 'token', csrfToken: 'abc/def', user })
 
     expect(getCsrfToken()).toBe('abc/def')
+  })
+
+  it('clears the CSRF token with the session', () => {
+    saveSession({ accessToken: 'token', csrfToken: 'abc/def', user })
+
+    clearSession()
+
+    expect(getCsrfToken()).toBeNull()
   })
 })
 

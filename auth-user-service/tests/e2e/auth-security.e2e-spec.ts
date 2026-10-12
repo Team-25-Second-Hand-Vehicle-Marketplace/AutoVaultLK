@@ -1,4 +1,7 @@
-import { AUTH_SECURITY_MESSAGES } from '../../src/modules/auth/constants/auth-security.constants';
+import {
+  AUTH_SECURITY_MESSAGES,
+  REFRESH_TOKEN_REUSE_GRACE_MS,
+} from '../../src/modules/auth/constants/auth-security.constants';
 import {
   CSRF_TOKEN_COOKIE_NAME,
   REFRESH_TOKEN_COOKIE_NAME,
@@ -212,6 +215,9 @@ describe('Auth security (e2e)', () => {
       expect(rotated.body.refreshToken).toBeTruthy();
       expect(rotated.body.refreshToken).not.toBe(originalRefreshToken);
 
+      // A replay inside the grace window is a legitimate multi-tab race and
+      // gets a sibling token; only a replay after it counts as theft.
+      ageRevokedRefreshTokens(context.store);
       const reuse = await context.agent
         .post('/auth/refresh')
         .set('X-Forwarded-For', DEFAULT_IP)
@@ -222,6 +228,10 @@ describe('Auth security (e2e)', () => {
         AUTH_SECURITY_MESSAGES.INVALID_REFRESH_TOKEN,
       );
 
+      // revokeFamily stamps the survivors "revoked now", which the grace
+      // window would still honour for 10s, so age them again to assert the
+      // family stays dead once that window has passed.
+      ageRevokedRefreshTokens(context.store);
       const secondReuse = await context.agent
         .post('/auth/refresh')
         .set('X-Forwarded-For', DEFAULT_IP)
@@ -479,6 +489,7 @@ describe('Auth secure token transport (e2e)', () => {
       // The rotated-out cookie is dead - replaying it (a stolen cookie used
       // after the legitimate client already refreshed) is rejected, same
       // reuse-detection the body-token flow already covers above.
+      ageRevokedRefreshTokens(context.store);
       const replay = await context.agent
         .post('/auth/refresh')
         .set('Cookie', originalCookieHeader)
@@ -495,6 +506,18 @@ describe('Auth secure token transport (e2e)', () => {
     }
   });
 });
+
+/**
+ * Back-dates every revoked refresh token past REFRESH_TOKEN_REUSE_GRACE_MS so
+ * a just-rotated token counts as outside the grace window without the test
+ * sleeping.
+ */
+function ageRevokedRefreshTokens(store: AuthE2eContext['store']) {
+  const aged = new Date(Date.now() - REFRESH_TOKEN_REUSE_GRACE_MS - 1000);
+  for (const token of store.refreshTokens.values()) {
+    if (token.revokedAt) token.revokedAt = aged;
+  }
+}
 
 function readCookieValue(cookies: string[], name: string): string {
   const raw = cookies.find((cookie) => cookie.startsWith(`${name}=`));

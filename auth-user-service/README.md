@@ -1,98 +1,71 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Auth and User Service
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Owns accounts, sign-in, tokens, dealer profiles and dealer verification for AutoVault LK. Runs on port **3001**.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Responsibilities
 
-## Description
+- Buyer and dealer registration, e-mail verification and resend.
+- Sign-in with e-mail and password, Google sign-in and administrator sign-in.
+- Access tokens (JWT) and refresh tokens, with logout and logout from all sessions.
+- Password change and password reset by e-mail.
+- Dealer profiles, verification documents, and dealer approval or rejection.
+- Internal routes used by the Admin service.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Routes
 
-## Project setup
+| Area | Routes |
+|---|---|
+| Auth (`/auth`) | `POST register/buyer`, `POST register/dealer`, `POST login`, `POST login/admin`, `POST google`, `POST refresh`, `POST logout`, `POST logout/all`, `POST password-reset/request`, `POST forgot-password`, `POST password-reset/confirm`, `POST password/change`, `POST email/verify`, `POST email/resend-verification` |
+| Users (`/users`) | `GET me`, `GET /`, `GET :id`, `POST /`, `PATCH :id`, `PATCH :id/account` |
+| Dealer profiles (`/dealer-profiles`) | `GET me`, `GET /`, `GET :userId`, `POST /`, `PATCH :userId`, `PATCH :userId/resubmit` |
+| Documents (`/documents`) | `POST verification` (upload a verification document), `GET local/*key` (local development only) |
+| Internal users (`/internal/users`) | `POST :id/deactivate`, `POST :id/reactivate`, `POST admin` |
+| Internal dealers (`/internal/dealers`) | `POST :id/approve`, `POST :id/reject` |
+| Health (`/health`) | Liveness check |
 
-```bash
-$ npm install
-```
+The `/internal/*` routes are guarded by the `X-Internal-Service-Key` header.
 
-## Compile and run the project
+## Configuration
 
-```bash
-# development
-$ npm run start
+Copy `.env.example` to `.env` and fill in the values. The file lists every variable with a safe default.
 
-# watch mode
-$ npm run start:dev
+| Group | Variables |
+|---|---|
+| Service | `PORT`, `AUTH_DATABASE_URL`, `DATABASE_SSL`, `NODE_ENV`, `CORS_ORIGINS`, `COOKIE_SECURE`, `HTTP_JSON_BODY_LIMIT`, `DISABLE_VERBOSE_ERRORS`, `FRONTEND_URL` |
+| Tokens | `JWT_ALGORITHM`, `JWT_ACCESS_SECRET`, `JWT_ACCESS_EXPIRES_IN`, `JWT_REFRESH_EXPIRES_IN`, `AUTH_USE_REFRESH_COOKIES`, `AUTH_REFRESH_TOKEN_IN_BODY` |
+| Sign-in limits | `AUTH_LOGIN_MAX_ATTEMPTS`, `AUTH_LOGIN_LOCKOUT_MINUTES`, `AUTH_LOGIN_WINDOW_MINUTES`, `AUTH_REGISTER_MAX_PER_IP`, `AUTH_REGISTER_WINDOW_MINUTES`, `AUTH_REFRESH_MAX_PER_IP`, `AUTH_REFRESH_WINDOW_MINUTES` |
+| Passwords | `AUTH_PASSWORD_RESET_MAX_PER_EMAIL`, `PASSWORD_HISTORY_COUNT` |
+| Google | `GOOGLE_CLIENT_ID` |
+| E-mail | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `SES_FROM_EMAIL`, `SES_TIMEOUT_MS`, `AWS_REGION` |
+| Verification documents | `DOCUMENT_SERVE_MODE`, `VERIFICATION_DOCS_BUCKET`, `VERIFICATION_DOCS_LOCAL_ROOT`, `DOCUMENT_PRESIGN_EXPIRY_SECONDS` |
+| Internal | `INTERNAL_SERVICE_KEY` |
 
-# production mode
-$ npm run start:prod
-```
+Keep `SMTP_PASS` and the other secrets in the git-ignored `.env`. Never commit them.
 
-## Run tests
+## Scripts
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm run start:dev         # run with watch mode
+npm run build             # compile to dist/
+npm run test:ci           # unit tests
+npm run test:integration  # needs the local PostgreSQL container
+npm run test:contract
+npm run test:e2e
+npm run test:security     # authentication journeys
 ```
 
-## Deployment
+Start the local database with `docker compose up -d` at the repository root before running the integration or end-to-end suites.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+## Structure
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+```text
+src/
+├── modules/
+│   ├── auth/        sign-in, tokens, e-mail verification and password reset
+│   ├── users/       user accounts and internal user routes
+│   ├── dealers/     dealer profiles, verification and internal dealer routes
+│   └── documents/   verification document upload and serving
+├── common/          guards, security helpers and exception filters
+├── config/          database, HTTP security and document serving configuration
+└── health/          liveness check
 ```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).

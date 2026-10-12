@@ -5,16 +5,18 @@ import type { AccessTokenPayload, AuthUser } from './auth.types'
 const ACCESS_TOKEN_KEY = 'autovault.accessToken'
 const HAS_SESSION_KEY = 'autovault.hasSession'
 const USER_KEY = 'autovault.user'
-const CSRF_COOKIE_NAME = 'csrf_token'
+const CSRF_TOKEN_KEY = 'autovault.csrfToken'
 
 export interface StoredSession {
   accessToken: string
+  csrfToken?: string
   user: AuthUser
 }
 
 export function saveSession(session: StoredSession): void {
   localStorage.setItem(ACCESS_TOKEN_KEY, session.accessToken)
   localStorage.setItem(USER_KEY, JSON.stringify(session.user))
+  if (session.csrfToken) localStorage.setItem(CSRF_TOKEN_KEY, session.csrfToken)
   // The refresh token itself lives only in an httpOnly cookie the browser
   // manages - this flag just records that one was issued, so the client
   // knows a silent refresh is worth attempting. It carries no security
@@ -26,6 +28,7 @@ export function clearSession(): void {
   localStorage.removeItem(ACCESS_TOKEN_KEY)
   localStorage.removeItem(USER_KEY)
   localStorage.removeItem(HAS_SESSION_KEY)
+  localStorage.removeItem(CSRF_TOKEN_KEY)
 }
 
 export function getAccessToken(): string | null {
@@ -57,15 +60,12 @@ export function setStoredUser(user: AuthUser): void {
 }
 
 /**
- * Reads the non-httpOnly CSRF cookie the server pairs with the refresh
- * cookie, so it can be echoed back as the X-CSRF-Token header on the
- * cookie-authenticated /auth/refresh and /auth/logout calls.
+ * The CSRF value the server returned with the last login, registration or
+ * refresh. It is kept here, not read from the API's cookie, because the API
+ * is on a different site from the SPA and its cookies are not visible to JS.
  */
 export function getCsrfToken(): string | null {
-  const match = document.cookie
-    .split('; ')
-    .find((row) => row.startsWith(`${CSRF_COOKIE_NAME}=`))
-  return match ? decodeURIComponent(match.slice(CSRF_COOKIE_NAME.length + 1)) : null
+  return localStorage.getItem(CSRF_TOKEN_KEY)
 }
 
 export function isAccessTokenExpired(skewSeconds = 30): boolean {
