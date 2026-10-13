@@ -109,6 +109,34 @@ describe('chooseSearchRank', () => {
     expect(result.usedSemanticRanking).toBe(false);
     expect(result.usedTrigramFallback).toBe(false);
   });
+
+  it('skips the last resort for a query that resolved to a sort alone', () => {
+    // "cheap" narrows nothing, so hasResolvedFilters is false - but there is
+    // no leftover text either. Trigram-matching "cheap" against search_text
+    // would treat it as a model name and return nothing, when the buyer
+    // should get the catalogue ordered by price.
+    const result = chooseSearchRank({
+      filters: { sort: 'price_asc' },
+      semanticText: '',
+      rawQuery: 'cheap',
+      queryEmbedding: null,
+    });
+    expect(result.rank).toBeUndefined();
+    expect(result.usedTrigramFallback).toBe(false);
+  });
+
+  it('still uses leftover text when a sort resolved alongside it', () => {
+    const result = chooseSearchRank({
+      filters: { sort: 'price_asc' },
+      semanticText: 'leather',
+      rawQuery: 'cheap leather',
+      queryEmbedding: null,
+    });
+    expect(result.rank).toEqual({
+      trigramQuery: 'leather',
+      trigramWhere: true,
+    });
+  });
 });
 
 describe('appendTrigramWhere', () => {

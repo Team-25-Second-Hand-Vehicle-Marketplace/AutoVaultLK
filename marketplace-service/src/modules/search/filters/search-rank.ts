@@ -77,7 +77,12 @@ export function chooseSearchRank(input: {
   }
 
   const raw = input.rawQuery.trim();
-  if (!resolved && raw) {
+  // Last resort for a query nothing understood: match the raw words so the
+  // buyer gets something rather than the whole catalogue. A query the parser
+  // fully resolved into an ordering ("cheap", "newest") is excluded - there is
+  // no leftover text, and trigram-matching "cheap" against search_text would
+  // treat it as a model name and return nothing.
+  if (!resolved && raw && (leftover || !input.filters.sort)) {
     return {
       rank: { trigramQuery: leftover || raw, trigramWhere: true },
       usedSemanticRanking: false,

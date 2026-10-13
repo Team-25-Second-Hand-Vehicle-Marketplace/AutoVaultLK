@@ -1,5 +1,6 @@
 import { extractNumeric } from './numeric';
 import { extractNumericSpecs } from './numeric-specs';
+import { extractSortIntent } from './sort-intent';
 import { tokenize } from './tokenize';
 import { CONFIDENCE_THRESHOLD } from './types';
 import type {
@@ -39,6 +40,10 @@ export function parseQuery(raw: string, vocab: ParserVocabulary): ParsedQuery {
 
   extractNumericSpecs(tokens, filters);
   extractNumeric(tokens, filters);
+  // After the numeric stages so an explicit bound claims the token first, and
+  // before the dictionary stages so an ordering word is never fuzzy-matched
+  // onto a make or model that merely looks similar.
+  extractSortIntent(tokens, filters);
   stageExact(tokens, filters, makes, models, bodies);
   stageFuzzy(tokens, filters, vocab);
 

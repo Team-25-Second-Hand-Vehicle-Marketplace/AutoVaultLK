@@ -167,3 +167,72 @@ describe('parseGroqJson', () => {
     });
   });
 });
+
+describe('whitelistGroqOutput - sort', () => {
+  const vocab = FIXTURE_VOCABULARY;
+
+  it('keeps a valid sort and drops an invented one', () => {
+    expect(
+      whitelistGroqOutput(
+        { filters: { sort: 'price_asc' }, consumedTokens: [] },
+        vocab,
+        [],
+      ).filters.sort,
+    ).toBe('price_asc');
+
+    const bad = whitelistGroqOutput(
+      { filters: { sort: 'price_ascending' }, consumedTokens: [] },
+      vocab,
+      [],
+    );
+    expect(bad.filters.sort).toBeUndefined();
+    expect(bad.dropped).toContain('sort:price_ascending');
+  });
+
+  it('normalises case and separators', () => {
+    const result = whitelistGroqOutput(
+      { filters: { sort: 'Price-Asc' }, consumedTokens: [] },
+      vocab,
+      [],
+    );
+    expect(result.filters.sort).toBe('price_asc');
+  });
+
+  it('drops a sort sent as an array - it is scalar', () => {
+    const result = whitelistGroqOutput(
+      { filters: { sort: ['price_asc'] }, consumedTokens: [] },
+      vocab,
+      [],
+    );
+    expect(result.filters.sort).toBeUndefined();
+  });
+
+  it('lets an ordering word be consumed once it resolved to a sort', () => {
+    // "cheap" is a VEHICLE_CHARACTER_WORD, normally rejected from
+    // consumedTokens. With a sort set it was genuinely understood, so
+    // keeping it unresolved would push it back into semanticText.
+    const result = whitelistGroqOutput(
+      { filters: { sort: 'price_asc' }, consumedTokens: ['cheap'] },
+      vocab,
+      ['cheap'],
+    );
+    expect(result.consumedTokens).toEqual(['cheap']);
+  });
+
+  it('still rejects a character word when no sort or vehicle type resolved', () => {
+    const result = whitelistGroqOutput(
+      { filters: {}, consumedTokens: ['sporty'] },
+      vocab,
+      ['sporty'],
+    );
+    expect(result.consumedTokens).toEqual([]);
+    expect(result.dropped).toContain('consumedTokens:sporty:character-word');
+  });
+
+  it('lets the rules parser win over Groq on sort', () => {
+    expect(
+      mergeFilters({ sort: 'price_asc' }, { sort: 'price_desc' }).sort,
+    ).toBe('price_asc');
+    expect(mergeFilters({}, { sort: 'price_desc' }).sort).toBe('price_desc');
+  });
+});

@@ -2,6 +2,7 @@ import type { SpecFilterDto } from '../dto/filter-search.dto';
 import type {
   ConditionValue,
   FuelTypeValue,
+  SortOption,
   TransmissionTypeValue,
   VehicleTypeValue,
 } from '../constants/vehicle-attributes.constants';
@@ -49,6 +50,13 @@ export type ExtractedFilters = {
   minMileage?: number;
   maxMileage?: number;
   specs?: SpecFilterDto[];
+  /**
+   * Ordering asked for in words ("cheap", "newest", "low mileage") rather than
+   * picked from the sort dropdown. Deliberately not part of
+   * hasResolvedFilters: a sort narrows nothing, so a query that resolved only
+   * to a sort must not be treated as having a filter to relax.
+   */
+  sort?: SortOption;
 };
 
 export type ParsedQuery = {

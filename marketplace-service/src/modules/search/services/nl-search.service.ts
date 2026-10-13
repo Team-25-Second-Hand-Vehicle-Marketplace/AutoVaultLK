@@ -76,7 +76,9 @@ export function toFilterSearchDto(parsed: ParsedQuery, control: NlSearchDto): Fi
     ...parsed.filters,
     page: control.page,
     limit: control.limit,
-    sort: control.sort,
+    // The dropdown wins: a sort the buyer picked is an explicit instruction,
+    // while parsed.filters.sort was only inferred from their wording.
+    sort: control.sort ?? parsed.filters.sort,
     facets: control.facets,
   };
 }
