@@ -68,6 +68,24 @@ describe('toFilterSearchDto', () => {
     expect(dto.sort).toBe('price_asc');
     expect(dto.facets).toBe(true);
   });
+
+  it('carries a sort the parser inferred from the wording', () => {
+    const dto = toFilterSearchDto(
+      parsed({ filters: { vehicleType: ['CAR'], sort: 'price_asc' } }),
+      { q: 'cheap car' },
+    );
+    expect(dto.sort).toBe('price_asc');
+  });
+
+  it('lets the dropdown override an inferred sort', () => {
+    // The buyer typed "cheap" but then picked "newest" - the explicit
+    // instruction wins over the one read out of their wording.
+    const dto = toFilterSearchDto(
+      parsed({ filters: { vehicleType: ['CAR'], sort: 'price_asc' } }),
+      { q: 'cheap car', sort: 'year_desc' },
+    );
+    expect(dto.sort).toBe('year_desc');
+  });
 });
 
 describe('NlSearchService', () => {

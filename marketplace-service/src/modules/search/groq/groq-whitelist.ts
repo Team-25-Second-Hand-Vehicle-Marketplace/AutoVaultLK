@@ -1,9 +1,11 @@
 import {
   CONDITIONS,
   FUEL_TYPES,
+  SORT_OPTIONS,
   TRANSMISSION_TYPES,
   VEHICLE_TYPES,
 } from '../constants/vehicle-attributes.constants';
+import type { SortOption } from '../constants/vehicle-attributes.constants';
 import {
   KNOWN_SPEC_KEYS,
   type KnownSpecKey,
@@ -155,6 +157,9 @@ export function whitelistGroqOutput(
     dropped,
   );
 
+  const sort = whitelistSort(filtersRaw.sort, dropped);
+  if (sort) filters.sort = sort;
+
   const specs = whitelistSpecs(filtersRaw.specs, dropped);
   if (specs) filters.specs = specs;
 
@@ -171,7 +176,15 @@ export function whitelistGroqOutput(
     // trigram similarity happens to be high). Rejecting it here, regardless
     // of what Groq returned, keeps the word unresolved so it still reaches
     // semantic ranking instead of hard-locking the search to one bad guess.
-    if (VEHICLE_CHARACTER_WORDS.has(normalized) && !isVehicleTypeOnly(filters)) {
+    // An ordering word ("cheap", "budget") is also a character word, but once
+    // it has resolved to a sort it genuinely was understood - keeping it
+    // unresolved would push it into semanticText, which is the bug the sort
+    // field exists to fix.
+    if (
+      VEHICLE_CHARACTER_WORDS.has(normalized) &&
+      !isVehicleTypeOnly(filters) &&
+      !filters.sort
+    ) {
       dropped.push(`consumedTokens:${token}:character-word`);
       return false;
     }
@@ -204,6 +217,7 @@ export function mergeFilters(
   if (rules.maxYear !== undefined) merged.maxYear = rules.maxYear;
   if (rules.minMileage !== undefined) merged.minMileage = rules.minMileage;
   if (rules.maxMileage !== undefined) merged.maxMileage = rules.maxMileage;
+  if (rules.sort !== undefined) merged.sort = rules.sort;
 
   merged.specs = mergeSpecs(groq.specs, rules.specs);
   if (!merged.specs?.length) delete merged.specs;
@@ -231,6 +245,29 @@ function indexByCompact(
     for (const alias of entry.aliases) map.set(compact(alias), entry);
   }
   return map;
+}
+
+/**
+ * Scalar, and lowercase - SORT_OPTIONS are snake_case values ("price_asc"),
+ * not the SCREAMING_CASE enums whitelistEnumArray normalises to.
+ */
+function whitelistSort(
+  value: unknown,
+  dropped: string[],
+): SortOption | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== 'string') {
+    dropped.push(`sort:${String(value)}`);
+    return undefined;
+  }
+
+  const normalized = value.trim().toLowerCase().replace(/[\s-]+/g, '_');
+  if ((SORT_OPTIONS as readonly string[]).includes(normalized)) {
+    return normalized as SortOption;
+  }
+
+  dropped.push(`sort:${value}`);
+  return undefined;
 }
 
 function whitelistEnumArray(
