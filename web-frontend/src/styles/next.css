@@ -75,12 +75,16 @@ h4 {
   padding: 0 28px;
 }
 
+/* Two stacked sections double this up, so a flat 96px read as a ~192px
+   gulf between bands - enough that the page looked broken rather than
+   airy. clamp keeps a breathable rhythm on desktop and hands mobile back
+   the vertical space it cannot spare. */
 .nx-section {
-  padding: 96px 0;
+  padding: clamp(40px, 5vw, 72px) 0;
 }
 
 .nx-section--tight {
-  padding: 32px 0;
+  padding: clamp(24px, 3vw, 32px) 0;
 }
 
 .nx-section__head {
@@ -1374,7 +1378,13 @@ h4 {
 
 .nx-story {
   position: relative;
-  height: 320vh;
+  /* Scroll distance that drives the sticky panel's step animation - NOT
+     empty space. The panel inside stays pinned while this scrolls past.
+     At 320vh three steps took ~2.3 screens of scrolling with the view
+     apparently unchanged, which reads as a dead zone; 240vh keeps the
+     effect while tightening the pace. Disabled below 900px (see the
+     media query at the end of this block). */
+  height: 240vh;
   background: var(--bg-alt);
   border-block: 1px solid var(--border);
 }
