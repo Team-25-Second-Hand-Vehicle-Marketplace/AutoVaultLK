@@ -57,6 +57,15 @@
   max-width: 400px;
 }
 
+/* Matches `.auth-card form` in app.css. Without it the form is a plain
+   block: every field and the submit button sit flush against each other,
+   with only the label's line-height suggesting a gap. */
+.admin-auth__form-wrap form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .admin-auth__form-wrap h2 {
   margin: 0 0 6px;
   font-size: 24px;
