@@ -68,6 +68,7 @@ export async function getUploadRejections(
   return data
 }
 
+//time series data for the dashboard charts
 export async function getReportsTimeSeries(
   from: string,
   to: string,

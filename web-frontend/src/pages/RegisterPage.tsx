@@ -29,6 +29,7 @@ const registerSchema = z
 
 type RegisterFormValues = z.infer<typeof registerSchema>
 
+
 export function RegisterPage() {
   const { register: registerUser } = useAuth()
   const navigate = useNavigate()
