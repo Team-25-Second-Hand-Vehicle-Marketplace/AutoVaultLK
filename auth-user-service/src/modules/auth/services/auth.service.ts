@@ -327,7 +327,11 @@ export class AuthService {
       if (storedToken.revokedAt) {
         if (this.isWithinReuseGraceWindow(storedToken.revokedAt)) {
           const user = await this.usersRepository.findById(storedToken.userId);
-          if (!user || !user.isActive || !user.emailVerifiedAt) {
+          if (!user || !user.isActive) {
+            throw new UnauthorizedException(AUTH_SECURITY_MESSAGES.INVALID_REFRESH_TOKEN);
+          }
+          // Admins don't require email verification; buyers/dealers do
+          if (user.role !== 'ADMIN' && !user.emailVerifiedAt) {
             throw new UnauthorizedException(AUTH_SECURITY_MESSAGES.INVALID_REFRESH_TOKEN);
           }
 
@@ -350,7 +354,11 @@ export class AuthService {
       }
 
       const user = await this.usersRepository.findById(storedToken.userId);
-      if (!user || !user.isActive || !user.emailVerifiedAt) {
+      if (!user || !user.isActive) {
+        throw new UnauthorizedException(AUTH_SECURITY_MESSAGES.INVALID_REFRESH_TOKEN);
+      }
+      // Admins don't require email verification; buyers/dealers do
+      if (user.role !== 'ADMIN' && !user.emailVerifiedAt) {
         throw new UnauthorizedException(AUTH_SECURITY_MESSAGES.INVALID_REFRESH_TOKEN);
       }
 
